@@ -1,0 +1,29 @@
+# FleetGuard TMS — Backend Dependencies
+# Python 3.11+
+
+# --- Core Framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.11.1
+pydantic-settings==2.7.1
+
+# --- Database (Async SQLAlchemy) ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+aiosqlite==0.20.0
+alembic==1.14.1
+greenlet==3.1.1
+
+# --- HTTP Client ---
+httpx==0.28.1
+
+# --- OpenAI (Vision API for OCR) ---
+openai==1.59.7
+
+# --- WhatsApp / Webhooks ---
+python-dotenv==1.0.1
+
+# --- Utilities ---
+python-dateutil==2.9.0
+orjson==3.10.13
