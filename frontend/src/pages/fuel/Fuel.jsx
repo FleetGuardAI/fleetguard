@@ -1,10 +1,13 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import FuelDashboard from './FuelDashboard';
+import FuelForm from './FuelForm';
 
 export default function Fuel() {
   return (
-    <div className="card-base p-6">
-      <h1 className="text-xl font-bold">Fuel Management</h1>
-      <p className="text-sm text-content-secondary mt-1">This module is under construction.</p>
-    </div>
+    <Routes>
+      <Route index element={<FuelDashboard />} />
+      <Route path="new" element={<FuelForm />} />
+    </Routes>
   );
 }

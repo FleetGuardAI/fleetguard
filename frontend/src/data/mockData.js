@@ -458,3 +458,42 @@ export const mockRoles = [
   }
 ];
 
+export const mockFuelAlerts = [
+  {
+    id: 101,
+    truck_id: 1,
+    truck_plate: 'RJ14 XX 1234',
+    timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
+    fuel_drop_liters: 25.4,
+    filtered_level_before: 285.0,
+    filtered_level_after: 259.6,
+    speed: 0,
+    latitude: 24.9854,
+    longitude: 73.3125,
+  },
+  {
+    id: 102,
+    truck_id: 3,
+    truck_plate: 'GJ06 CD 9012',
+    timestamp: new Date(Date.now() - 18 * 3600000).toISOString(),
+    fuel_drop_liters: 18.2,
+    filtered_level_before: 190.0,
+    filtered_level_after: 171.8,
+    speed: 0,
+    latitude: 23.2225,
+    longitude: 72.1714,
+  },
+  {
+    id: 103,
+    truck_id: 5,
+    truck_plate: 'DL01 GH 7890',
+    timestamp: new Date(Date.now() - 48 * 3600000).toISOString(),
+    fuel_drop_liters: 30.1,
+    filtered_level_before: 320.0,
+    filtered_level_after: 289.9,
+    speed: 0,
+    latitude: 28.6139,
+    longitude: 77.209,
+  },
+];
+
