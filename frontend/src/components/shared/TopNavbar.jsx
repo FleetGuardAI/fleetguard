@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, Bell, Sun, Moon, User, Settings, LogOut } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -9,9 +9,18 @@ import { getInitials } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 
 export function TopNavbar({ onMenuClick }) {
-  // Decoupled auth: Hardcode user to match FleetGuard dashboard
-  const user = { name: 'Suryansh Chaudhary', role: 'COO' };
-  const logout = () => {};
+  const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
+
+  useEffect(() => {
+    const cached = localStorage.getItem('fleetguard_user');
+    if (cached) {
+      setUser(JSON.parse(cached));
+    }
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem('fleetguard_user');
+  };
 
   const navigate = useNavigate();
   const [theme, setTheme] = useLocalStorage('fleetguard_theme', 'light');

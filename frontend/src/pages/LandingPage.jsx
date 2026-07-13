@@ -54,13 +54,13 @@ export default function LandingPage() {
           </div>
 
           <Link
-            to="/dashboard"
+            to="/login"
             className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700
               text-white text-sm font-semibold
               transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/25"
             id="book-demo-btn"
           >
-            Book Demo
+            Dashboard Login
           </Link>
         </div>
       </nav>
@@ -89,14 +89,14 @@ export default function LandingPage() {
 
             <div className="flex items-center gap-4 mb-12">
               <Link
-                to="/dashboard"
+                to="/login"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full
                   bg-emerald-600 hover:bg-emerald-700 text-white font-semibold
                   transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/25"
                 id="hero-cta"
               >
                 <Mail className="w-4 h-4" />
-                Book Demo
+                Dashboard Login
               </Link>
               <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full
                 bg-white hover:bg-slate-50 border border-slate-200
@@ -132,7 +132,7 @@ export default function LandingPage() {
                   <BarChart3 className="w-16 h-16 text-brand-500 mx-auto mb-4 opacity-60" />
                   <p className="text-sm text-slate-400 font-medium">FleetGuard Dashboard</p>
                   <p className="text-xs text-slate-600 mt-1">Real-time monitoring & fraud detection</p>
-                  <Link to="/dashboard" className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-brand-500/20 text-brand-400 text-xs font-semibold hover:bg-brand-500/30 transition-colors">
+                  <Link to="/login" className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-brand-500/20 text-brand-400 text-xs font-semibold hover:bg-brand-500/30 transition-colors">
                     Open Dashboard <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
@@ -306,7 +306,7 @@ export default function LandingPage() {
             Stop losing money to unverified claims. Start verifying every expense on WhatsApp today.
           </p>
           <Link
-            to="/dashboard"
+            to="/login"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full
               bg-white hover:bg-slate-50 text-emerald-700 font-bold
               transition-all duration-200 hover:shadow-xl hover:shadow-emerald-900/30
@@ -314,7 +314,7 @@ export default function LandingPage() {
             id="cta-btn"
           >
             <Mail className="w-5 h-5" />
-            Book Free Demo
+            Dashboard Login
           </Link>
         </div>
       </section>

@@ -290,42 +290,171 @@ export const mockTrucks = [
   { id: 5, license_plate: 'DL01 GH 7890', make: 'Tata Motors', model: 'Signa 4825.TK', year: 2021, tank_capacity: 450, is_active: true },
 ];
 
-/** @type {Array<{ id: number, truck_id: number, truck_plate: string, timestamp: string, fuel_drop_liters: number, speed: number, latitude: number, longitude: number }>} */
-export const mockFuelAlerts = [
+export const mockTrips = [
   {
-    id: 101,
+    id: 1,
     truck_id: 1,
     truck_plate: 'RJ14 XX 1234',
-    timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
-    fuel_drop_liters: 25.4,
-    filtered_level_before: 285.0,
-    filtered_level_after: 259.6,
-    speed: 0,
-    latitude: 24.9854,
-    longitude: 73.3125,
+    driver_id: 1,
+    driver_name: 'Rajesh Kumar',
+    route_name: 'Jaipur - Mumbai Express',
+    start_point: 'Jaipur, Rajasthan',
+    end_point: 'Mumbai, Maharashtra',
+    status: 'on-trip',
+    start_date: new Date(Date.now() - 24 * 3600000).toISOString(),
+    expected_delivery: new Date(Date.now() + 12 * 3600000).toISOString(),
+    distance_km: 1150,
+    progress: 65,
+    current_lat: 22.5726,
+    current_lng: 72.9777,
+    timeline: [
+      { status: 'Dispatched', time: new Date(Date.now() - 24 * 3600000).toISOString(), description: 'Trip started from Jaipur yard' },
+      { status: 'Toll Crossed', time: new Date(Date.now() - 18 * 3600000).toISOString(), description: 'Kishangarh Toll Plaza' },
+      { status: 'Fuel Stop', time: new Date(Date.now() - 12 * 3600000).toISOString(), description: 'Filled 200L at Jio-bp, Udaipur' },
+      { status: 'Active', time: new Date(Date.now()).toISOString(), description: 'Currently near Vadodara' }
+    ]
   },
   {
-    id: 102,
+    id: 2,
+    truck_id: 2,
+    truck_plate: 'MH12 AB 5678',
+    driver_id: 2,
+    driver_name: 'Suresh Patel',
+    route_name: 'Pune - Bangalore',
+    start_point: 'Pune, Maharashtra',
+    end_point: 'Bangalore, Karnataka',
+    status: 'completed',
+    start_date: new Date(Date.now() - 72 * 3600000).toISOString(),
+    end_date: new Date(Date.now() - 24 * 3600000).toISOString(),
+    distance_km: 840,
+    progress: 100,
+    timeline: [
+      { status: 'Dispatched', time: new Date(Date.now() - 72 * 3600000).toISOString(), description: 'Trip started from Pune warehouse' },
+      { status: 'Completed', time: new Date(Date.now() - 24 * 3600000).toISOString(), description: 'Delivered cargo safely at Bangalore terminal' }
+    ]
+  },
+  {
+    id: 3,
     truck_id: 3,
     truck_plate: 'GJ06 CD 9012',
-    timestamp: new Date(Date.now() - 18 * 3600000).toISOString(),
-    fuel_drop_liters: 18.2,
-    filtered_level_before: 190.0,
-    filtered_level_after: 171.8,
-    speed: 0,
-    latitude: 23.2225,
-    longitude: 72.1714,
+    driver_id: 3,
+    driver_name: 'Amit Singh',
+    route_name: 'Ahmedabad - Delhi Industrial',
+    start_point: 'Ahmedabad, Gujarat',
+    end_point: 'Delhi NCR',
+    status: 'scheduled',
+    start_date: new Date(Date.now() + 18 * 3600000).toISOString(),
+    distance_km: 950,
+    progress: 0,
+    timeline: [
+      { status: 'Scheduled', time: new Date().toISOString(), description: 'Trip planning confirmed' }
+    ]
+  }
+];
+
+export const mockFuelLogs = [
+  { id: 1, truck_id: 1, truck_plate: 'RJ14 XX 1234', date: new Date(Date.now() - 12 * 3600000).toISOString(), quantity_liters: 200, price_per_liter: 94.5, total_amount: 18900, odometer: 124500, station: 'Jio-bp, Udaipur', receipt_url: 'https://example.com/receipt1.jpg', status: 'approved' },
+  { id: 2, truck_id: 2, truck_plate: 'MH12 AB 5678', date: new Date(Date.now() - 48 * 3600000).toISOString(), quantity_liters: 150, price_per_liter: 92.8, total_amount: 13920, odometer: 98600, station: 'Indian Oil, Pune', receipt_url: 'https://example.com/receipt2.jpg', status: 'approved' },
+  { id: 3, truck_id: 3, truck_plate: 'GJ06 CD 9012', date: new Date(Date.now() - 72 * 3600000).toISOString(), quantity_liters: 180, price_per_liter: 93.1, total_amount: 16758, odometer: 45200, station: 'HP Petrol Pump, Ahmedabad', receipt_url: 'https://example.com/receipt3.jpg', status: 'pending' }
+];
+
+export const mockExpenses = [
+  { id: 1001, truck_plate: 'RJ14 XX 1234', driver_name: 'Rajesh Kumar', category: 'repair', title: 'Tyre puncture Udaipur', amount: 850, date: new Date(Date.now() - 2 * 3600000).toISOString(), status: 'pending', receipt_url: 'https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?q=80&w=600', ai_risk: 'High', ai_details: 'Amount exceeds benchmark price of INR 500 for tire repairs in this sector by 70%.' },
+  { id: 1002, truck_plate: 'MH12 AB 5678', driver_name: 'Suresh Patel', category: 'toll', title: 'Khed Shivapur Toll', amount: 375, date: new Date(Date.now() - 12 * 3600000).toISOString(), status: 'approved', receipt_url: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=600', ai_risk: 'Low', ai_details: 'Toll amount matches NHAI transaction database exactly.' },
+  { id: 1003, truck_plate: 'GJ06 CD 9012', driver_name: 'Amit Singh', category: 'fine', title: 'Over-speeding fine NH-8', amount: 2000, date: new Date(Date.now() - 24 * 3600000).toISOString(), status: 'rejected', receipt_url: '', ai_risk: 'Critical', ai_details: 'No supporting challan or receipt uploaded. Vehicle telematics shows speed did not exceed 65 km/h.' }
+];
+
+export const mockPayments = [
+  { id: 'PAY-8921', recipient_name: 'Sharma Tyre Works', type: 'Vendor Payout', amount: 850, method: 'UPI', status: 'pending', date: new Date(Date.now() - 1 * 3600000).toISOString(), description: 'Tire repair payout' },
+  { id: 'PAY-8920', recipient_name: 'Indian Oil Barmer', type: 'Fuel Card Recharge', amount: 15000, method: 'NetBanking', status: 'completed', date: new Date(Date.now() - 5 * 3600000).toISOString(), ref_num: 'TXN-9023481239', description: 'Monthly fuel quota' },
+  { id: 'PAY-8919', recipient_name: 'Rajesh Kumar', type: 'Driver Advance', amount: 3000, method: 'IMPS', status: 'completed', date: new Date(Date.now() - 10 * 3600000).toISOString(), ref_num: 'TXN-9023471004', description: 'Food & toll allowance' }
+];
+
+export const mockMaintenance = [
+  { id: 1, truck_plate: 'RJ14 XX 1234', type: 'Scheduled Service', description: 'Engine Oil and Air Filter replacement', cost: 12500, date: new Date(Date.now() - 10 * 86400000).toISOString(), status: 'completed', odometer: 121000, workshop: 'Tata Authorized Service, Jaipur' },
+  { id: 2, truck_plate: 'MH12 AB 5678', type: 'Breakdown Repair', description: 'Clutch plate replacement on highway', cost: 22000, date: new Date(Date.now() - 2 * 86400000).toISOString(), status: 'completed', odometer: 97800, workshop: 'Highway Garage, Kolhapur' },
+  { id: 3, truck_plate: 'GJ06 CD 9012', type: 'Inspection', description: 'Brake pad wear and air brake check', cost: 1500, date: new Date(Date.now() + 3 * 86400000).toISOString(), status: 'scheduled', odometer: 45500, workshop: 'BharatBenz Service, Surat' }
+];
+
+export const mockDocuments = [
+  { id: 1, name: 'Registration Certificate (RC)', target_type: 'Vehicle', target_name: 'RJ14 XX 1234', category: 'Registration', status: 'active', expiry_date: '2029-10-15', file_url: 'https://example.com/rc_rj14.pdf' },
+  { id: 2, name: 'National Goods Permit', target_type: 'Vehicle', target_name: 'MH12 AB 5678', category: 'Permit', status: 'warning', expiry_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0], file_url: 'https://example.com/permit_mh12.pdf' },
+  { id: 3, name: 'Commercial Driving License', target_type: 'Driver', target_name: 'Rajesh Kumar', category: 'License', status: 'expired', expiry_date: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0], file_url: 'https://example.com/dl_rajesh.pdf' }
+];
+
+export const mockAlerts = [
+  { id: 'ALT-101', type: 'Fuel Theft', level: 'critical', truck_plate: 'RJ14 XX 1234', message: 'Sudden fuel drop of 25.4L detected while stationary', date: new Date(Date.now() - 30 * 60000).toISOString(), resolved: false },
+  { id: 'ALT-102', type: 'Over-speeding', level: 'warning', truck_plate: 'GJ06 CD 9012', message: 'Vehicle exceeded highway speed limit (88 km/h)', date: new Date(Date.now() - 120 * 60000).toISOString(), resolved: false },
+  { id: 'ALT-103', type: 'Doc Expiration', level: 'warning', truck_plate: 'MH12 AB 5678', message: 'National Goods Permit is expiring in 15 days', date: new Date(Date.now() - 360 * 60000).toISOString(), resolved: true, resolved_by: 'Suryansh Chaudhary', resolved_at: new Date().toISOString() }
+];
+
+export const mockNotifications = [
+  { id: 1, title: 'Critical Fuel Theft Alert', message: 'Truck RJ14 XX 1234 reported a stationary fuel drop of 25.4 Liters near Pali.', type: 'alert', read: false, time: new Date(Date.now() - 15 * 60000).toISOString() },
+  { id: 2, title: 'New Claim Received', message: 'Driver Amit Singh uploaded a bill of INR 3,200 for Engine Oil via WhatsApp.', type: 'expense', read: false, time: new Date(Date.now() - 45 * 60000).toISOString() },
+  { id: 3, title: 'License Renewal Warning', message: 'Driver Rajesh Kumar\'s Commercial License is marked as expired.', type: 'document', read: true, time: new Date(Date.now() - 24 * 3600000).toISOString() }
+];
+
+export const mockUsers = [
+  { id: 1, name: 'Suryansh Chaudhary', email: 'suryansh@fleetguard.com', role: 'COO', status: 'active', phone: '+919999988888', department: 'Operations' },
+  { id: 2, name: 'Deepak Rathore', email: 'deepak@fleetguard.com', role: 'Fleet Manager', status: 'active', phone: '+919999977777', department: 'Maintenance' },
+  { id: 3, name: 'Vikash Yadav', email: 'vikash@fleetguard.com', role: 'Dispatcher', status: 'active', phone: '+919999966666', department: 'Logistics' },
+  { id: 4, name: 'Neha Sharma', email: 'neha@fleetguard.com', role: 'Finance Admin', status: 'inactive', phone: '+919999955555', department: 'Finance' }
+];
+
+export const mockAuditLogs = [
+  { id: 'AUD-991', user: 'Suryansh Chaudhary', action: 'Approved Expense Claim', details: 'Approved INR 850 puncture repair claim for RJ14 XX 1234', timestamp: new Date(Date.now() - 15 * 60000).toISOString(), ip: '192.168.1.102' },
+  { id: 'AUD-990', user: 'Deepak Rathore', action: 'Added New Vehicle', details: 'Created vehicle profile GJ06 CD 9012 (BharatBenz)', timestamp: new Date(Date.now() - 4 * 3600000).toISOString(), ip: '192.168.1.105' },
+  { id: 'AUD-989', user: 'Suryansh Chaudhary', action: 'Settings Updated', details: 'Modified fuel telemetry alert sensitivity from 15L to 18L', timestamp: new Date(Date.now() - 24 * 3600000).toISOString(), ip: '103.22.45.18' }
+];
+
+export const mockRoles = [
+  {
+    role: 'COO',
+    description: 'Full administrative control and financial approval authority',
+    permissions: {
+      dashboard: ['view'],
+      vehicles: ['view', 'create', 'edit', 'delete'],
+      drivers: ['view', 'create', 'edit', 'delete'],
+      trips: ['view', 'create', 'edit', 'delete'],
+      fuel: ['view', 'create', 'edit', 'delete'],
+      expenses: ['view', 'approve', 'reject'],
+      payments: ['view', 'create', 'settle'],
+      maintenance: ['view', 'create', 'edit'],
+      documents: ['view', 'upload', 'verify'],
+      system: ['manage_settings', 'view_logs', 'manage_users']
+    }
   },
   {
-    id: 103,
-    truck_id: 5,
-    truck_plate: 'DL01 GH 7890',
-    timestamp: new Date(Date.now() - 48 * 3600000).toISOString(),
-    fuel_drop_liters: 30.1,
-    filtered_level_before: 320.0,
-    filtered_level_after: 289.9,
-    speed: 0,
-    latitude: 28.6139,
-    longitude: 77.209,
+    role: 'Fleet Manager',
+    description: 'Manages drivers, vehicles, and maintenance logs',
+    permissions: {
+      dashboard: ['view'],
+      vehicles: ['view', 'create', 'edit'],
+      drivers: ['view', 'create', 'edit'],
+      trips: ['view', 'create', 'edit'],
+      fuel: ['view', 'create'],
+      expenses: ['view'],
+      payments: ['view'],
+      maintenance: ['view', 'create', 'edit', 'delete'],
+      documents: ['view', 'upload'],
+      system: ['manage_settings']
+    }
   },
+  {
+    role: 'Dispatcher',
+    description: 'Monitors active vehicles, allocates routes, and handles daily trip updates',
+    permissions: {
+      dashboard: ['view'],
+      vehicles: ['view'],
+      drivers: ['view'],
+      trips: ['view', 'create', 'edit'],
+      fuel: ['view'],
+      expenses: ['view', 'create'],
+      payments: ['view'],
+      maintenance: ['view'],
+      documents: ['view'],
+      system: []
+    }
+  }
 ];
+

@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Truck, Users, Route, Fuel, Receipt, Bell, Settings,
-  ChevronLeft, ChevronRight, LogOut, Shield, X,
+  ChevronLeft, ChevronRight, LogOut, Shield, X, CreditCard, Wrench,
+  FileText, AlertTriangle, BarChart3, User, UserCheck, Lock, History
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
@@ -16,41 +18,75 @@ const iconMap = {
   Receipt: <Receipt className="h-5 w-5" />,
   Bell: <Bell className="h-5 w-5" />,
   Settings: <Settings className="h-5 w-5" />,
+  CreditCard: <CreditCard className="h-5 w-5" />,
+  Wrench: <Wrench className="h-5 w-5" />,
+  FileText: <FileText className="h-5 w-5" />,
+  AlertTriangle: <AlertTriangle className="h-5 w-5" />,
+  BarChart3: <BarChart3 className="h-5 w-5" />,
+  User: <User className="h-5 w-5" />,
+  UserCheck: <UserCheck className="h-5 w-5" />,
+  Lock: <Lock className="h-5 w-5" />,
+  History: <History className="h-5 w-5" />,
 };
 
 const navSections = [
   {
     section: 'Overview',
-    items: [{ label: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' }],
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: 'LayoutDashboard' },
+      { label: 'Reports & Analytics', path: '/dashboard/reports', icon: 'BarChart3' },
+    ],
   },
   {
     section: 'Fleet',
     items: [
-      { label: 'Vehicles', path: '/vehicles', icon: 'Truck' },
-      { label: 'Drivers', path: '/drivers', icon: 'Users' },
+      { label: 'Vehicles', path: '/dashboard/vehicles', icon: 'Truck' },
+      { label: 'Drivers', path: '/dashboard/drivers', icon: 'Users' },
     ],
   },
   {
     section: 'Operations',
     items: [
-      { label: 'Trips', path: '/trips', icon: 'Route' },
-      { label: 'Fuel', path: '/fuel', icon: 'Fuel' },
-      { label: 'Expenses', path: '/expenses', icon: 'Receipt' },
+      { label: 'Trips', path: '/dashboard/trips', icon: 'Route' },
+      { label: 'Fuel Management', path: '/dashboard/fuel', icon: 'Fuel' },
+      { label: 'Expense Management', path: '/dashboard/expenses', icon: 'Receipt' },
+      { label: 'Payments', path: '/dashboard/payments', icon: 'CreditCard' },
+      { label: 'Maintenance', path: '/dashboard/maintenance', icon: 'Wrench' },
+      { label: 'Documents', path: '/dashboard/documents', icon: 'FileText' },
     ],
   },
   {
     section: 'System',
     items: [
-      { label: 'Notifications', path: '/notifications', icon: 'Bell' },
-      { label: 'Settings', path: '/settings', icon: 'Settings' },
+      { label: 'Alerts', path: '/dashboard/alerts', icon: 'AlertTriangle' },
+      { label: 'Notifications', path: '/dashboard/notifications', icon: 'Bell' },
+      { label: 'Profile', path: '/dashboard/profile', icon: 'User' },
+      { label: 'Settings', path: '/dashboard/settings', icon: 'Settings' },
+    ],
+  },
+  {
+    section: 'Admin (System)',
+    items: [
+      { label: 'User Management', path: '/dashboard/admin/users', icon: 'UserCheck' },
+      { label: 'Roles & Permissions', path: '/dashboard/admin/roles', icon: 'Lock' },
+      { label: 'Audit Logs', path: '/dashboard/admin/audit', icon: 'History' },
     ],
   },
 ];
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
-  // Decoupled auth: Hardcode user to match FleetGuard dashboard
-  const user = { name: 'Suryansh Chaudhary', role: 'COO' };
-  const logout = () => {};
+  const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
+
+  useEffect(() => {
+    const cached = localStorage.getItem('fleetguard_user');
+    if (cached) {
+      setUser(JSON.parse(cached));
+    }
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem('fleetguard_user');
+  };
   
   const location = useLocation();
   const navigate = useNavigate();
