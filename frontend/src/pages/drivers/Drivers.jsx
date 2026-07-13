@@ -1,10 +1,16 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import DriverList from './DriverList';
+import DriverProfile from './DriverProfile';
+import DriverForm from './DriverForm';
 
 export default function Drivers() {
   return (
-    <div className="card-base p-6">
-      <h1 className="text-xl font-bold">Drivers Directory</h1>
-      <p className="text-sm text-content-secondary mt-1">This module is under construction.</p>
-    </div>
+    <Routes>
+      <Route index element={<DriverList />} />
+      <Route path="new" element={<DriverForm />} />
+      <Route path=":id" element={<DriverProfile />} />
+      <Route path=":id/edit" element={<DriverForm />} />
+    </Routes>
   );
 }
