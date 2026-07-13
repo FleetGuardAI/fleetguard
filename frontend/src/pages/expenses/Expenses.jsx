@@ -1,10 +1,13 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import ExpenseDashboard from './ExpenseDashboard';
+import ExpenseForm from './ExpenseForm';
 
 export default function Expenses() {
   return (
-    <div className="card-base p-6">
-      <h1 className="text-xl font-bold">Expense Claims</h1>
-      <p className="text-sm text-content-secondary mt-1">This module is under construction.</p>
-    </div>
+    <Routes>
+      <Route index element={<ExpenseDashboard />} />
+      <Route path="new" element={<ExpenseForm />} />
+    </Routes>
   );
 }
