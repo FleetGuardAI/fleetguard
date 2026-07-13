@@ -98,13 +98,15 @@ export default function LandingPage() {
                 <Mail className="w-4 h-4" />
                 Dashboard Login
               </Link>
-              <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full
-                bg-white hover:bg-slate-50 border border-slate-200
-                text-slate-700 font-semibold transition-all duration-200"
+              <a
+                href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full
+                  bg-white hover:bg-slate-50 border border-slate-200
+                  text-slate-700 font-semibold transition-all duration-200"
               >
-                <Play className="w-4 h-4 fill-slate-700" />
-                Watch Demo
-              </button>
+                <Mail className="w-4 h-4 text-emerald-600" />
+                Book Demo
+              </a>
             </div>
 
             {/* Stats */}
@@ -251,6 +253,125 @@ export default function LandingPage() {
                   <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{step.desc}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== WHATSAPP LIVE DEMO ===== */}
+      <section className="py-20 px-6 bg-white border-y border-slate-100" id="demo">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-0.5 bg-emerald-500" />
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Live Demo</span>
+            </div>
+            <h2 className="text-4xl font-extrabold mb-4">
+              See FleetGuard <span className="text-emerald-600">in Action</span>
+            </h2>
+            <p className="text-lg text-slate-500 mb-8">
+              A real WhatsApp conversation showing how driver claims get verified before you pay a single rupee.
+            </p>
+            <div className="space-y-4">
+              {[
+                { num: '1️⃣', title: 'Driver Reports Issue', desc: 'The driver messages the FleetGuard bot about an emergency expense.' },
+                { num: '2️⃣', title: 'Bot Collects Proof', desc: 'FleetGuard asks for video, bill photo, location and amount — all on WhatsApp.' },
+                { num: '3️⃣', title: 'Owner Gets Verified Alert', desc: 'You receive a clean, verified summary with all proof before approving payment.' }
+              ].map((w) => (
+                <div key={w.num} className="flex gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-xl">{w.num}</div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-base">{w.title}</h3>
+                    <p className="text-sm text-slate-500 mt-0.5">{w.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* WhatsApp Window Mockup */}
+          <div className="relative">
+            <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-2xl bg-[#efeae2]">
+              {/* Header */}
+              <div className="bg-[#005c4b] text-white p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">
+                  FG
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">FleetGuard Bot</h4>
+                  <p className="text-[10px] text-emerald-200">online</p>
+                </div>
+              </div>
+
+              {/* Chat Body */}
+              <div className="p-4 space-y-4 max-h-[420px] overflow-y-auto font-sans text-xs">
+                {/* Driver message */}
+                <div className="flex justify-end">
+                  <div className="bg-[#d9fdd3] text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm relative">
+                    Puncture issue on highway
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:14 AM</span>
+                  </div>
+                </div>
+
+                {/* Bot message */}
+                <div className="flex justify-start">
+                  <div className="bg-white text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm">
+                    Hello! I'll help verify this expense. Please upload:
+                    <br/><br/>
+                    📹 Repair video<br/>
+                    🧾 Bill photo<br/>
+                    📍 Live location<br/>
+                    💰 Requested amount
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:14 AM</span>
+                  </div>
+                </div>
+
+                {/* Driver uploads video */}
+                <div className="flex justify-end">
+                  <div className="bg-[#d9fdd3] text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm">
+                    📹 <em>video_repair.mp4</em>
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:16 AM</span>
+                  </div>
+                </div>
+
+                {/* Driver uploads bill and location */}
+                <div className="flex justify-end">
+                  <div className="bg-[#d9fdd3] text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm">
+                    🧾 <em>bill_photo.jpg</em><br/>
+                    📍 NH-48, Udaipur<br/>
+                    💰 ₹450
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:17 AM</span>
+                  </div>
+                </div>
+
+                {/* Bot verifies */}
+                <div className="flex justify-start">
+                  <div className="bg-white text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm">
+                    ✅ <strong>Verification Complete</strong><br/><br/>
+                    🚛 Truck: RJ14 XX 1234<br/>
+                    🔧 Issue: Tyre Puncture<br/>
+                    💰 Amount: ₹450<br/>
+                    📍 Location: Verified ✓<br/>
+                    🧾 Bill: Authentic ✓<br/>
+                    ⚠️ Fraud Risk: Low<br/><br/>
+                    Forwarding to fleet owner...
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:19 AM</span>
+                  </div>
+                </div>
+
+                {/* Owner alert */}
+                <div className="flex justify-start">
+                  <div className="bg-[#e1f5fe] border border-blue-200 text-slate-800 p-2.5 rounded-lg max-w-[80%] shadow-sm">
+                    👤 <strong>Owner Alert</strong><br/><br/>
+                    Verified expense request:<br/>
+                    Truck RJ14 XX 1234<br/>
+                    Issue: Puncture — ₹450<br/><br/>
+                    ✅ All checks passed<br/>
+                    📎 View full proof report
+                    <span className="text-[9px] text-slate-400 block text-right mt-1">10:19 AM</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

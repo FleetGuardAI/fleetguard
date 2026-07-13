@@ -202,7 +202,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
 
   return (
     <aside className={cn(
-      'fixed top-0 left-0 bottom-0 bg-slate-900 z-30 transition-all duration-300 relative',
+      'fixed top-0 left-0 bottom-0 bg-slate-900 z-30 transition-all duration-300',
       collapsed ? 'w-[72px]' : 'w-[260px]'
     )}>
       {sidebarContent}
