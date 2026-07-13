@@ -1,10 +1,15 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import TripList from './TripList';
+import TripDetail from './TripDetail';
+import TripForm from './TripForm';
 
 export default function Trips() {
   return (
-    <div className="card-base p-6">
-      <h1 className="text-xl font-bold">Trips Scheduler & Tracking</h1>
-      <p className="text-sm text-content-secondary mt-1">This module is under construction.</p>
-    </div>
+    <Routes>
+      <Route index element={<TripList />} />
+      <Route path="new" element={<TripForm />} />
+      <Route path=":id" element={<TripDetail />} />
+    </Routes>
   );
 }
