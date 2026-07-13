@@ -8,7 +8,7 @@ import { NotificationBell } from '@/components/shared/NotificationDropdown';
 import { getInitials } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 
-export function TopNavbar({ onMenuClick }) {
+export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
 
   useEffect(() => {
@@ -41,9 +41,10 @@ export function TopNavbar({ onMenuClick }) {
   ];
 
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-auto z-20 h-16 bg-surface/80 backdrop-blur-xl border-b border-border flex items-center px-4 md:px-6 gap-4"
-      style={{ width: 'auto' }}
-    >
+    <header className={cn(
+      "fixed top-0 right-0 z-20 h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-border flex items-center px-4 md:px-6 gap-4 transition-all duration-300",
+      isMobile ? 'left-0' : (sidebarCollapsed ? 'left-[72px]' : 'left-[260px]')
+    )}>
       <button onClick={onMenuClick} className="p-2 rounded-lg hover:bg-surface-secondary transition-colors text-content-secondary md:hidden">
         <Menu className="h-5 w-5" />
       </button>

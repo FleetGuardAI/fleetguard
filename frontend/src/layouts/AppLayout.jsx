@@ -24,6 +24,8 @@ export default function AppLayout() {
         isMobile ? 'ml-0' : (sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]')
       )}>
         <TopNavbar
+          sidebarCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
           onMenuClick={() => isMobile ? setMobileMenuOpen(true) : setSidebarCollapsed(!sidebarCollapsed)}
         />
         <main className="p-4 md:p-6 lg:p-8 pt-20 md:pt-24">
