@@ -9,6 +9,7 @@ import { getDashboardData } from '@/api/dashboardApi';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/shared/ErrorState';
 
 export default function DashboardOverview() {
   const [data, setData] = useState(null);
@@ -26,6 +27,7 @@ export default function DashboardOverview() {
       const res = await getDashboardData();
       setData(res);
     } catch (err) {
+      setData(null);
       error('Data Load Error', 'Failed to retrieve fresh dashboard metrics.');
     } finally {
       setLoading(false);
@@ -77,6 +79,16 @@ export default function DashboardOverview() {
     );
   }
 
+  if (!data) {
+    return (
+      <ErrorState
+        title="Failed to Load Operations Dashboard"
+        message="Please check your connection and try again."
+        onRetry={() => loadData()}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Title Header with Refresh action */}
@@ -97,7 +109,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* Metric Cards */}
-      <KPICards />
+      <KPICards kpis={data?.kpis} />
 
       {/* Map telemetry */}
       <div className="w-full">
