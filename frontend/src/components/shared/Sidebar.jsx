@@ -86,6 +86,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
 
   const logout = () => {
     localStorage.removeItem('fleetguard_user');
+    localStorage.removeItem('fleetguard_token');
   };
   
   const location = useLocation();

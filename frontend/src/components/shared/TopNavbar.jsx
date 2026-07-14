@@ -21,6 +21,7 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
 
   const logout = () => {
     localStorage.removeItem('fleetguard_user');
+    localStorage.removeItem('fleetguard_token');
   };
 
   const navigate = useNavigate();

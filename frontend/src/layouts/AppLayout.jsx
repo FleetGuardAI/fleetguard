@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { TopNavbar } from '@/components/shared/TopNavbar';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -9,6 +9,14 @@ export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('fleetguard_token');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-surface-secondary">

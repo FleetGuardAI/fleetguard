@@ -13,16 +13,31 @@ const API_BASE = '/api';
  */
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  
+  const token = localStorage.getItem('fleetguard_token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   };
 
   try {
     const response = await fetch(url, config);
+    if (response.status === 401) {
+      localStorage.removeItem('fleetguard_token');
+      localStorage.removeItem('fleetguard_user');
+      if (!window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
+        window.location.href = '/login?expired=true';
+      }
+      throw new Error('Your session has expired. Please log in again.');
+    }
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       throw new Error(error.detail || `HTTP ${response.status}`);

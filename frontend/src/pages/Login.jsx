@@ -17,9 +17,19 @@ export default function Login() {
   const validate = () => {
     const newErrors = {};
     if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Invalid email address';
+      newErrors.email = 'Email or Mobile Number is required';
+    } else {
+      const isEmail = email.includes('@');
+      if (isEmail) {
+        if (!/\S+@\S+\.\S+/.test(email)) {
+          newErrors.email = 'Invalid email address';
+        }
+      } else {
+        // Allows digits and formats like E.164 (e.g. +919876543210 or 9876543210)
+        if (!/^\+?[0-9\s-]{10,20}$/.test(email)) {
+          newErrors.email = 'Invalid email or mobile number';
+        }
+      }
     }
     if (!password) {
       newErrors.password = 'Password is required';
@@ -75,9 +85,9 @@ export default function Login() {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Email Address"
-            type="email"
-            placeholder="coo@fleetguard.com"
+            label="Email or Mobile Number"
+            type="text"
+            placeholder="coo@fleetguard.com or +919876543210"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={errors.email}
