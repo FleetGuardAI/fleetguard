@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 
 export default function Login() {
-  const [email, setEmail] = useState('coo@fleetguard.com');
-  const [password, setPassword] = useState('admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { success, error } = useToast();
@@ -72,15 +72,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Credentials Tip Card */}
-        <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-lg">
-          <p className="text-xs text-emerald-800 dark:text-emerald-400 font-medium">
-            Demo Credentials:
-          </p>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Email: <span className="font-mono">coo@fleetguard.com</span> / Pass: <span className="font-mono">admin</span>
-          </p>
-        </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,9 +102,6 @@ export default function Login() {
               <input type="checkbox" className="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500/30" defaultChecked />
               Remember me
             </label>
-            <a href="#" className="text-emerald-600 hover:text-emerald-700 font-medium">
-              Forgot password?
-            </a>
           </div>
 
           <Button
