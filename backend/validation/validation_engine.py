@@ -42,14 +42,16 @@ The ``ValidationEngine`` implements ``EventSubscriber`` so it registers with
 the ``EventDispatcher`` and receives events automatically after they are
 persisted.  No router change is required.
 
-The ``OperationalEventService`` dependency is injected at construction time.
+The ``async_sessionmaker`` dependency is injected at construction time.
 The engine is instantiated in ``main.py`` at startup.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Callable
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from dispatchers.event_subscriber import EventSubscriber
 from models.operational_event import VerificationStatus
@@ -71,18 +73,18 @@ class ValidationEngine(EventSubscriber):
 
     Parameters
     ----------
-    service : OperationalEventService
-        The event service used to write validation outcomes back to the store.
+    session_factory : Callable[[], AsyncSession]
+        The async session maker factory used to obtain short-lived db
+        sessions for writing validation outcomes back to the store.
 
     Usage (startup registration in main.py)
     ----------------------------------------
     ::
 
         from validation.validation_engine import ValidationEngine
-        from services.operational_event_service import OperationalEventService
+        from database import async_session_factory
 
-        # Assume db session is available (e.g. via a background session factory)
-        engine = ValidationEngine(service=event_service)
+        engine = ValidationEngine(session_factory=async_session_factory)
         engine.register_validator(FuelQuantityValidator())
         event_dispatcher.register_subscriber(engine)
     """
@@ -94,8 +96,8 @@ class ValidationEngine(EventSubscriber):
     # via their ``applies_to()`` method.
     event_filter = None
 
-    def __init__(self, service: "OperationalEventService") -> None:  # type: ignore[name-defined]
-        self._service = service
+    def __init__(self, session_factory: Callable[[], AsyncSession]) -> None:
+        self._session_factory = session_factory
         self._validators: list[BaseValidator] = []
 
     # -----------------------------------------------------------------------
@@ -328,13 +330,25 @@ class ValidationEngine(EventSubscriber):
         merged_metadata["vee"] = vee_block
 
         try:
-            # Write enriched metadata first
-            await self._service.update_metadata(event.id, merged_metadata)
-            # Then advance the status
-            await self._service.apply_update(
-                event.id,
-                _StatusUpdateOnly(verification_status=final_status),
-            )
+            # We must import OperationalEventService here to avoid circular imports.
+            from services.operational_event_service import OperationalEventService  # noqa: PLC0415
+            
+            # Create a short-lived DB session to run the service methods.
+            async with self._session_factory() as session:
+                service = OperationalEventService(session)
+                
+                # Write enriched metadata first
+                await service.update_metadata(event.id, merged_metadata)
+                
+                # Then advance the status
+                await service.apply_update(
+                    event.id,
+                    _StatusUpdateOnly(verification_status=final_status),
+                )
+                
+                # Commit the transaction because we are bypassing get_db()
+                await session.commit()
+
             logger.info(
                 "Event id=%s advanced to %s after validation.",
                 event.id,

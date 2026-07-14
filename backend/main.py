@@ -16,13 +16,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from database import create_all_tables
+from database import create_all_tables, async_session_factory
 from dispatchers import EventDispatcher
+from validation import ValidationEngine
+from validation.validators import FuelStructuralValidator
 
 # Application-level dispatcher singleton.
 # Subscribers are registered here during startup.
 # Injected into OperationalEventService via get_event_service dependency.
 event_dispatcher = EventDispatcher()
+
+# Initialize Validation & Enrichment Engine
+validation_engine = ValidationEngine(session_factory=async_session_factory)
+validation_engine.register_validator(FuelStructuralValidator())
+
+# Attach ValidationEngine to Dispatcher
+event_dispatcher.register_subscriber(validation_engine)
 
 # Import models so they are registered with Base.metadata before create_all_tables
 import models  # noqa: F401
