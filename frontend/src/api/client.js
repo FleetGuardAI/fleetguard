@@ -76,6 +76,7 @@ const api = {
     },
     get: (id) => request(`/drivers/${id}`),
     create: (data) => request('/drivers', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/drivers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   trucks: {
@@ -85,6 +86,7 @@ const api = {
     },
     get: (id) => request(`/trucks/${id}`),
     create: (data) => request('/trucks', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   fuel: {
