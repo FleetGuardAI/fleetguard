@@ -38,25 +38,25 @@ Usage from a router::
         service = OperationalEventService(db)
         return await service.create_event(payload)
 
-Future integrations
--------------------
-Three clearly-named hooks are prepared as ``pass`` stubs:
+Wired integrations
+------------------
+    _after_create(event)  → EventDispatcher.publish()  (this milestone)
 
-    _after_create(event)        ← Event Dispatcher / Fleet Memory
+Pending stubs
+-------------
     _before_status_change(...)  ← Validation & Enrichment Engine guard
     _on_metadata_update(...)    ← Enrichment Engine audit hook
-
-Replace the ``pass`` bodies when those modules are ready.  No structural
-changes to the service will be required.
 """
 
 from __future__ import annotations
 
 import uuid
 import logging
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from dispatchers.event_dispatcher import EventDispatcher
 
 from models.operational_event import (
     CaptureMethod,
@@ -125,9 +125,14 @@ class OperationalEventService:
         An active SQLAlchemy async session, injected via ``Depends(get_db)``.
     """
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        dispatcher: Optional[EventDispatcher] = None,
+    ) -> None:
         self._db = db
         self._repo = OperationalEventRepository(db)
+        self._dispatcher = dispatcher
 
     # -----------------------------------------------------------------------
     # Write Operations
@@ -495,15 +500,23 @@ class OperationalEventService:
         """
         Hook called after a new event has been successfully persisted.
 
-        Future integrations
-        -------------------
-        • Event Dispatcher — publish the event to downstream processors.
-        • Fleet Memory — update the digital twin state for the entity.
+        Current behaviour
+        -----------------
+        Publishes the event to the ``EventDispatcher`` if one was injected
+        at construction time.  Each registered subscriber receives the event
+        according to its ``event_filter``.
+
+        Pending integrations
+        --------------------
+        • Fleet Memory — subscribe via ``EventDispatcher`` when ready.
 
         Do NOT implement business logic here.  This hook should only
         trigger I/O side-effects.
         """
-        pass  # Not yet implemented — wired in Event Dispatcher milestone
+        if self._dispatcher is None:
+            return
+        response = OperationalEventResponse.model_validate(event)
+        await self._dispatcher.publish(response)
 
     async def _before_status_change(
         self,

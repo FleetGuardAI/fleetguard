@@ -17,6 +17,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import create_all_tables
+from dispatchers import EventDispatcher
+
+# Application-level dispatcher singleton.
+# Subscribers are registered here during startup.
+# Injected into OperationalEventService via get_event_service dependency.
+event_dispatcher = EventDispatcher()
 
 # Import models so they are registered with Base.metadata before create_all_tables
 import models  # noqa: F401
@@ -51,6 +57,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"   Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   WhatsApp configured: {bool(settings.WHATSAPP_API_TOKEN)}")
+    logger.info(f"   Event Dispatcher: {event_dispatcher}")
+    # Future: register subscribers here, e.g.:
+    #   event_dispatcher.register_subscriber(FleetMemorySubscriber())
 
     await create_all_tables()
     logger.info("✅ Database tables created/verified.")
