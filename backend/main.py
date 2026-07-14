@@ -29,6 +29,7 @@ from routers.drivers import router as drivers_router
 from routers.trucks import router as trucks_router
 from routers.fuel import router as fuel_router
 from routers.auth import router as auth_router
+from routers.operational_events import router as operational_events_router
 
 # --- Logging ---
 logging.basicConfig(
@@ -113,7 +114,8 @@ app.include_router(tickets_router, prefix=API_PREFIX)
 app.include_router(drivers_router, prefix=API_PREFIX)
 app.include_router(trucks_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)
-app.include_router(auth_router)
+app.include_router(auth_router)                   # carries its own /api/v1/auth prefix
+app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
 
 logger.info(
     f"📋 Registered routes: "
