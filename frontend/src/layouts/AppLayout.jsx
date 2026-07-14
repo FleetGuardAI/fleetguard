@@ -20,7 +20,7 @@ export default function AppLayout() {
       />
 
       <div className={cn(
-        'transition-all duration-300 min-h-screen',
+        'transition-all duration-300 min-h-screen flex flex-col',
         isMobile ? 'ml-0' : (sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]')
       )}>
         <TopNavbar
@@ -28,7 +28,7 @@ export default function AppLayout() {
           isMobile={isMobile}
           onMenuClick={() => isMobile ? setMobileMenuOpen(true) : setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <main className="p-4 md:p-6 lg:p-8 pt-20 md:pt-24">
+        <main className="p-4 md:p-6 lg:p-8 flex-1">
           <Outlet />
         </main>
       </div>

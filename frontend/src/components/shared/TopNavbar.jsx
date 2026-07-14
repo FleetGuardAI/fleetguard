@@ -5,6 +5,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { NotificationBell } from '@/components/shared/NotificationDropdown';
+import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { getInitials } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 
@@ -41,10 +42,7 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   ];
 
   return (
-    <header className={cn(
-      "fixed top-0 right-0 z-20 h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-border flex items-center px-4 md:px-6 gap-4 transition-all duration-300",
-      isMobile ? 'left-0' : (sidebarCollapsed ? 'left-[72px]' : 'left-[260px]')
-    )}>
+    <header className="sticky top-0 z-20 h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-border flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
       <button onClick={onMenuClick} className="p-2 rounded-lg hover:bg-surface-secondary transition-colors text-content-secondary md:hidden">
         <Menu className="h-5 w-5" />
       </button>
@@ -61,6 +59,9 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
         >
           {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
         </button>
+
+        {/* Language */}
+        <LanguageSelector variant="adaptive" />
 
         {/* Notifications */}
         <NotificationBell />
