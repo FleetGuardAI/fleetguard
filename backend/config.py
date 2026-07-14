@@ -52,5 +52,13 @@ class Settings(BaseSettings):
     # --- Fair Price Risk Threshold ---
     FAIR_PRICE_OVERAGE_PERCENT: float = 20.0
 
+    # --- JWT Authentication ---
+    # IMPORTANT: Override SECRET_KEY with a strong random value in production.
+    # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    SECRET_KEY: str = "change-me-in-production-use-a-strong-random-secret"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+
 
 settings = Settings()
