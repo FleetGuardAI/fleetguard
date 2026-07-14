@@ -12,13 +12,11 @@ Responsibilities:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,12 +35,13 @@ from schemas.auth import (
 
 logger = logging.getLogger("fleetguard.auth")
 
-# ---------------------------------------------------------------------------
-# Security primitives
-# ---------------------------------------------------------------------------
-
-# bcrypt context — auto-selects best available rounds
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from utils.security import (
+    create_access_token,
+    decode_access_token,
+    dummy_verify,
+    hash_password,
+    verify_password,
+)
 
 # OAuth2 bearer scheme — tokenUrl is informational for Swagger UI
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -52,16 +51,6 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # Internal helpers — not exported; used only within this module
 # ---------------------------------------------------------------------------
 
-def _hash_password(plain: str) -> str:
-    """Return a bcrypt hash of *plain*. Never store raw passwords."""
-    return _pwd_context.hash(plain)
-
-
-def _verify_password(plain: str, hashed: str) -> bool:
-    """Return True if *plain* matches *hashed*. Constant-time comparison."""
-    return _pwd_context.verify(plain, hashed)
-
-
 def _build_token_payload(user: User) -> dict:
     """
     Assemble the JWT claims dict for *user*.
@@ -69,26 +58,19 @@ def _build_token_payload(user: User) -> dict:
     Claims kept minimal — only what is needed to authorise a request
     without a DB round-trip on every call.
     """
-    expire = datetime.now(tz=timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
     return {
         "sub": str(user.id),          # subject: user PK (string per JWT spec)
         "company_id": user.company_id,
         "role": user.role.value,
-        "exp": expire,
     }
 
 
 def _create_access_token(user: User) -> str:
     """
     Encode a signed JWT for *user*.
-
-    Algorithm and secret are read from settings so they can be overridden
-    per environment without code changes.
     """
     payload = _build_token_payload(user)
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return create_access_token(payload)
 
 
 def _user_to_out(user: User) -> UserOut:
@@ -200,7 +182,7 @@ async def register_company(
             full_name=payload.owner_name,
             mobile_number=payload.mobile_number,
             email=payload.email or None,
-            password_hash=_hash_password(payload.password),
+            password_hash=hash_password(payload.password),
             role=UserRole.COMPANY_ADMIN,
             is_active=True,
         )
@@ -278,10 +260,10 @@ async def authenticate_user(
 
     if user is None:
         # Run a dummy verify to keep response time constant (timing-attack mitigation)
-        _pwd_context.dummy_verify()
+        dummy_verify()
         raise _INVALID_CREDENTIALS
 
-    if not _verify_password(password, user.password_hash):
+    if not verify_password(password, user.password_hash):
         raise _INVALID_CREDENTIALS
 
     if not user.is_active:
@@ -318,11 +300,7 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
+        payload = decode_access_token(token)
         user_id_str: Optional[str] = payload.get("sub")
         if user_id_str is None:
             raise _CREDENTIALS_EXCEPTION
