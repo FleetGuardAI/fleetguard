@@ -19,6 +19,9 @@ from models.driver import Driver
 from models.ticket import Ticket
 from models.fuel_log import FuelLog
 
+# --- Event-Driven Architecture ---
+from models.operational_event import OperationalEvent
+
 __all__ = [
     # Auth
     "Company",
@@ -30,4 +33,6 @@ __all__ = [
     "Driver",
     "Ticket",
     "FuelLog",
+    # Event-Driven Architecture
+    "OperationalEvent",
 ]
