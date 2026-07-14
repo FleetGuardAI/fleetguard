@@ -18,12 +18,14 @@ import Settings from './Settings';
 import UserManagement from './admin/UserManagement';
 import RolesPermissions from './admin/RolesPermissions';
 import AuditLogs from './admin/AuditLogs';
+import OpportunityFeedPage from './opportunities/OpportunityFeedPage';
 
 export default function Dashboard() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<DashboardOverview />} />
+        <Route path="opportunities" element={<OpportunityFeedPage />} />
         <Route path="reports" element={<Reports />} />
         <Route path="vehicles/*" element={<Vehicles />} />
         <Route path="drivers/*" element={<Drivers />} />
