@@ -7,28 +7,41 @@ thin and delegate entirely to this module.
 Responsibilities:
   - Company registration (atomic: company + admin user + JWT)
   - Dual-identifier login (email OR mobile number)
+    - CAPTCHA verification for public auth endpoints
+    - Remember-me session persistence with company/user mapping
+    - Forgot-password and reset-password token workflows
   - JWT creation and decoding
   - FastAPI dependency: get_current_user()
 """
 
+import hashlib
 import logging
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
+from models.auth_session import AuthSession
 from models.company import Company, CompanyStatus
+from models.password_reset_token import PasswordResetToken
 from models.user import User, UserRole
 from schemas.auth import (
     CompanyOut,
     CompanyRegistrationRequest,
+        ForgotPasswordRequest,
+        ForgotPasswordResponse,
+        GenericMessageResponse,
     RegisterCompanyResponse,
+        ResetPasswordRequest,
     TokenResponse,
     UserOut,
 )
@@ -51,7 +64,15 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # Internal helpers — not exported; used only within this module
 # ---------------------------------------------------------------------------
 
-def _build_token_payload(user: User) -> dict:
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _build_token_payload(user: User, jti: str, remember_me: bool) -> dict:
     """
     Assemble the JWT claims dict for *user*.
 
@@ -62,15 +83,26 @@ def _build_token_payload(user: User) -> dict:
         "sub": str(user.id),          # subject: user PK (string per JWT spec)
         "company_id": user.company_id,
         "role": user.role.value,
+        "jti": jti,
+        "remember_me": remember_me,
     }
 
 
-def _create_access_token(user: User) -> str:
+def _session_expiry(remember_me: bool) -> datetime:
+    if remember_me:
+        return _utcnow() + timedelta(days=settings.REMEMBER_ME_EXPIRE_DAYS)
+    return _utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+
+def _create_access_token(user: User, jti: str, remember_me: bool) -> str:
     """
     Encode a signed JWT for *user*.
     """
-    payload = _build_token_payload(user)
-    return create_access_token(payload)
+    payload = _build_token_payload(user, jti=jti, remember_me=remember_me)
+    return create_access_token(
+        payload,
+        expires_delta=(_session_expiry(remember_me) - _utcnow()),
+    )
 
 
 def _user_to_out(user: User) -> UserOut:
@@ -128,6 +160,104 @@ async def _assert_email_not_taken(
             status_code=status.HTTP_409_CONFLICT,
             detail="This email address is already registered.",
         )
+
+
+async def verify_captcha_token(captcha_token: str, *, context: str) -> None:
+    """
+    Verify CAPTCHA token.
+
+    - If CAPTCHA_SECRET_KEY is configured, validates against Turnstile endpoint.
+    - If not configured, allows local bypass token for dev testing.
+    """
+    recaptcha_project_id = settings.RECAPTCHA_PROJECT_ID
+    recaptcha_api_key = settings.RECAPTCHA_API_KEY
+    recaptcha_site_key = settings.RECAPTCHA_SITE_KEY or settings.CAPTCHA_SITE_KEY
+
+    if recaptcha_project_id and recaptcha_api_key and recaptcha_site_key:
+        url = (
+            f"https://recaptchaenterprise.googleapis.com/v1/projects/"
+            f"{recaptcha_project_id}/assessments?key={recaptcha_api_key}"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    url,
+                    json={
+                        "event": {
+                            "token": captcha_token,
+                            "siteKey": recaptcha_site_key,
+                            "expectedAction": context,
+                        }
+                    },
+                )
+            payload = response.json()
+        except Exception as exc:
+            logger.warning("reCAPTCHA Enterprise network error (%s): %s", context, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Captcha verification service is unavailable. Please try again.",
+            ) from exc
+
+        token_props = payload.get("tokenProperties", {})
+        if not token_props.get("valid", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Captcha verification failed: "
+                    f"{token_props.get('invalidReason', 'INVALID_TOKEN')}"
+                ),
+            )
+
+        token_action = token_props.get("action")
+        if token_action and token_action != context:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Captcha action mismatch.",
+            )
+
+        score = payload.get("riskAnalysis", {}).get("score", 0.0)
+        if score < settings.RECAPTCHA_MIN_SCORE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Captcha risk score too low.",
+            )
+        return
+
+    if settings.CAPTCHA_SECRET_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                response = await client.post(
+                    settings.CAPTCHA_VERIFY_URL,
+                    data={
+                        "secret": settings.CAPTCHA_SECRET_KEY,
+                        "response": captcha_token,
+                    },
+                )
+            payload = response.json()
+        except Exception as exc:
+            logger.warning("CAPTCHA verify network error (%s): %s", context, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Captcha verification service is unavailable. Please try again.",
+            ) from exc
+
+        if not payload.get("success", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Captcha verification failed.",
+            )
+        return
+
+    if captcha_token == settings.CAPTCHA_DEV_BYPASS_TOKEN:
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=(
+            "Captcha is not configured on server. Use local bypass token for dev or "
+            "configure CAPTCHA keys."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +321,7 @@ async def register_company(
         await db.flush()
 
         # 6. Issue token while still in the transaction
-        access_token = _create_access_token(admin_user)
+        token = await create_token_for_user(admin_user, db=db, remember_me=True)
 
         # 7. Commit is handled by get_db on successful exit — nothing to do here.
 
@@ -218,7 +348,7 @@ async def register_company(
     return RegisterCompanyResponse(
         company=CompanyOut.model_validate(company),
         user=_user_to_out(admin_user),
-        token=TokenResponse(access_token=access_token),
+        token=token,
     )
 
 
@@ -276,6 +406,112 @@ async def authenticate_user(
     return user
 
 
+async def create_forgot_password_request(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession,
+) -> ForgotPasswordResponse:
+    """Create one-time password reset token while preserving account privacy."""
+    identifier = payload.identifier.strip()
+    now = _utcnow()
+    generic_message = (
+        "If an account exists for that identifier, password reset instructions were generated."
+    )
+
+    if "@" in identifier:
+        result = await db.execute(select(User).where(User.email == identifier))
+    else:
+        result = await db.execute(select(User).where(User.mobile_number == identifier))
+
+    user = result.scalar_one_or_none()
+    if user is None:
+        dummy_verify()
+        return ForgotPasswordResponse(message=generic_message)
+
+    # Invalidate prior active reset tokens for this user
+    await db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        )
+        .values(used_at=now)
+    )
+
+    raw_token = secrets.token_urlsafe(36)
+    expires_at = now + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
+    reset_entry = PasswordResetToken(
+        user_id=user.id,
+        company_id=user.company_id,
+        token_hash=_hash_token(raw_token),
+        requested_identifier=identifier,
+        expires_at=expires_at,
+    )
+    db.add(reset_entry)
+
+    if settings.DEBUG and settings.PASSWORD_RESET_DEBUG_RETURN_TOKEN:
+        return ForgotPasswordResponse(
+            message=generic_message,
+            reset_token=raw_token,
+            expires_at=expires_at,
+        )
+
+    logger.info(
+        "Password reset requested: user_id=%d company_id=%d",
+        user.id,
+        user.company_id,
+    )
+    return ForgotPasswordResponse(message=generic_message)
+
+
+async def reset_password_with_token(
+    payload: ResetPasswordRequest,
+    db: AsyncSession,
+) -> GenericMessageResponse:
+    """Reset password using valid one-time token and revoke all active sessions."""
+    now = _utcnow()
+    token_hash = _hash_token(payload.reset_token)
+
+    result = await db.execute(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == token_hash,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        )
+    )
+    reset_entry = result.scalar_one_or_none()
+    if reset_entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token is invalid or expired.",
+        )
+
+    user_result = await db.execute(
+        select(User).where(
+            User.id == reset_entry.user_id,
+            User.company_id == reset_entry.company_id,
+        )
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not resolve account for this reset token.",
+        )
+
+    user.password_hash = hash_password(payload.new_password)
+    reset_entry.used_at = now
+
+    await db.execute(
+        update(AuthSession)
+        .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+
+    logger.info("Password reset completed: user_id=%d company_id=%d", user.id, user.company_id)
+    return GenericMessageResponse(message="Password has been reset successfully.")
+
+
 async def get_current_user(
     token: str = Depends(_oauth2_scheme),
     db: AsyncSession = Depends(get_db),
@@ -302,16 +538,35 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
         user_id_str: Optional[str] = payload.get("sub")
+        token_jti: Optional[str] = payload.get("jti")
+        token_company_id: Optional[int] = payload.get("company_id")
         if user_id_str is None:
+            raise _CREDENTIALS_EXCEPTION
+        if token_jti is None:
             raise _CREDENTIALS_EXCEPTION
         user_id = int(user_id_str)
     except (JWTError, ValueError):
+        raise _CREDENTIALS_EXCEPTION
+
+    now = _utcnow()
+    session_result = await db.execute(
+        select(AuthSession).where(
+            AuthSession.session_jti == token_jti,
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
+        )
+    )
+    auth_session = session_result.scalar_one_or_none()
+    if auth_session is None:
         raise _CREDENTIALS_EXCEPTION
 
     result = await db.execute(select(User).where(User.id == user_id))
     user: Optional[User] = result.scalar_one_or_none()
 
     if user is None:
+        raise _CREDENTIALS_EXCEPTION
+    if token_company_id is not None and user.company_id != int(token_company_id):
         raise _CREDENTIALS_EXCEPTION
 
     # Enforce is_active on every authenticated request — catches mid-session deactivation
@@ -321,14 +576,33 @@ async def get_current_user(
             detail="Your account has been deactivated.",
         )
 
+    auth_session.last_seen_at = now
     return user
 
 
-def create_token_for_user(user: User) -> TokenResponse:
+async def create_token_for_user(
+    user: User,
+    db: AsyncSession,
+    *,
+    remember_me: bool = False,
+) -> TokenResponse:
     """
     Generate and return a TokenResponse for *user*.
 
     Exposed as a standalone function so the login router can call it
     without duplicating token-creation logic.
     """
-    return TokenResponse(access_token=_create_access_token(user))
+    jti = secrets.token_urlsafe(24)
+    session = AuthSession(
+        user_id=user.id,
+        company_id=user.company_id,
+        session_jti=jti,
+        remember_me=remember_me,
+        expires_at=_session_expiry(remember_me),
+    )
+    db.add(session)
+
+    return TokenResponse(
+        access_token=_create_access_token(user, jti=jti, remember_me=remember_me),
+        token_type="bearer",
+    )

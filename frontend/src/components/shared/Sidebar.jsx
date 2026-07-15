@@ -82,7 +82,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    const cached = localStorage.getItem('fleetguard_user');
+    const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
     if (cached) {
       setUser(JSON.parse(cached));
     }
@@ -91,6 +91,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const logout = () => {
     localStorage.removeItem('fleetguard_user');
     localStorage.removeItem('fleetguard_token');
+    localStorage.removeItem('fleetguard_token_type');
+
+    sessionStorage.removeItem('fleetguard_user');
+    sessionStorage.removeItem('fleetguard_token');
+    sessionStorage.removeItem('fleetguard_token_type');
   };
   
   const location = useLocation();

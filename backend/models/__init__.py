@@ -10,6 +10,8 @@ Import ORDER matters:
 # --- Auth / Tenant Models (import first — other models will FK to these) ---
 from models.company import Company
 from models.user import User
+from models.auth_session import AuthSession
+from models.password_reset_token import PasswordResetToken
 
 # --- Fleet Models ---
 from models.truck import Truck
@@ -21,6 +23,8 @@ __all__ = [
     # Auth
     "Company",
     "User",
+    "AuthSession",
+    "PasswordResetToken",
     # Fleet
     "Truck",
     "Driver",

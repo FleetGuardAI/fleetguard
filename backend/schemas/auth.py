@@ -88,6 +88,7 @@ class LoginRequest(BaseModel):
     email: Optional[str] = Field(None, description="User's registered email address")
     mobile_number: Optional[str] = Field(None, description="User's registered mobile number")
     password: str = Field(..., description="User's password")
+    remember_me: bool = Field(False, description="Keep session active for longer duration")
 
     @model_validator(mode="after")
     def verify_identifier_supplied(self) -> "LoginRequest":
@@ -101,6 +102,40 @@ class TokenResponse(BaseModel):
 
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field("bearer", description="Token scheme (typically bearer)")
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Start forgot-password flow using email or mobile identifier."""
+
+    identifier: str = Field(..., min_length=3, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    """Complete reset-password flow with one-time reset token."""
+
+    reset_token: str = Field(..., min_length=16)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+    @model_validator(mode="after")
+    def verify_passwords_match(self) -> "ResetPasswordRequest":
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Response payload for forgot-password initiation."""
+
+    message: str
+    reset_token: Optional[str] = None
+    expires_at: Optional[datetime] = None
+
+
+class GenericMessageResponse(BaseModel):
+    """Simple response for mutation endpoints that only return status text."""
+
+    message: str
 
 
 class CompanyOut(BaseModel):

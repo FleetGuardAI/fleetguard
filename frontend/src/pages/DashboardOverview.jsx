@@ -23,6 +23,7 @@ import {
   MOCK_RECENT_AI_ACTIONS,
 } from '@/data/aiOpportunityData';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { WeatherIndicatorCard } from './opportunities/WeatherIndicatorCard';
 
 export default function DashboardOverview() {
   const { t } = useLanguage();
@@ -156,6 +157,7 @@ export default function DashboardOverview() {
 
         {/* Right 30% column: Fleet Health Sidebar & Rails */}
         <div className="lg:col-span-3 space-y-8">
+          <WeatherIndicatorCard />
           <FleetHealthRail health={health} />
           
           <div className="h-px bg-border/40" />

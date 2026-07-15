@@ -14,6 +14,10 @@ from schemas.auth import (
     UserOut,
     RegisterCompanyResponse,
     MeResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    ForgotPasswordResponse,
+    GenericMessageResponse,
 )
 
 __all__ = [
@@ -30,5 +34,9 @@ __all__ = [
     "UserOut",
     "RegisterCompanyResponse",
     "MeResponse",
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
+    "ForgotPasswordResponse",
+    "GenericMessageResponse",
 ]
 

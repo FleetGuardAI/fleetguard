@@ -14,13 +14,19 @@ const API_BASE = '/api';
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   
-  const token = localStorage.getItem('fleetguard_token');
+  const localToken = localStorage.getItem('fleetguard_token');
+  const sessionToken = sessionStorage.getItem('fleetguard_token');
+  const token = localToken || sessionToken;
+
+  const tokenType = localToken
+    ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+    : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `${tokenType} ${token}`;
   }
 
   const config = {
@@ -32,7 +38,12 @@ async function request(endpoint, options = {}) {
     const response = await fetch(url, config);
     if (response.status === 401) {
       localStorage.removeItem('fleetguard_token');
+      localStorage.removeItem('fleetguard_token_type');
       localStorage.removeItem('fleetguard_user');
+
+      sessionStorage.removeItem('fleetguard_token');
+      sessionStorage.removeItem('fleetguard_token_type');
+      sessionStorage.removeItem('fleetguard_user');
       if (!window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
         window.location.href = '/login?expired=true';
       }

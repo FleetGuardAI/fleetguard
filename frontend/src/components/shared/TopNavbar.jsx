@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, Bell, Sun, Moon, User, Settings, LogOut } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
+
 import { NotificationBell } from '@/components/shared/NotificationDropdown';
 import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { getInitials } from '@/utils/formatters';
@@ -13,7 +13,7 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
 
   useEffect(() => {
-    const cached = localStorage.getItem('fleetguard_user');
+    const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
     if (cached) {
       setUser(JSON.parse(cached));
     }
@@ -22,6 +22,11 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   const logout = () => {
     localStorage.removeItem('fleetguard_user');
     localStorage.removeItem('fleetguard_token');
+    localStorage.removeItem('fleetguard_token_type');
+
+    sessionStorage.removeItem('fleetguard_user');
+    sessionStorage.removeItem('fleetguard_token');
+    sessionStorage.removeItem('fleetguard_token_type');
   };
 
   const navigate = useNavigate();
@@ -48,9 +53,7 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <Breadcrumbs className="hidden md:flex flex-1" />
-      <div className="flex-1 md:hidden" />
-
+      <div className="flex-1" />
       <div className="flex items-center gap-2">
         {/* Theme toggle */}
         <button

@@ -101,7 +101,7 @@ export async function getAuditLogs() {
 export async function addAuditLog(action, details) {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const cached = localStorage.getItem('fleetguard_user');
+      const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
       const currentUser = cached ? JSON.parse(cached) : { name: 'System' };
       const newLog = {
         id: `AUD-${Math.floor(1000 + Math.random() * 9000)}`,

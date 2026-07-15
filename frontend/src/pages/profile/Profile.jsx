@@ -43,7 +43,7 @@ export default function Profile() {
         setUser(u);
         if (u) {
           setName(u.name);
-          setPhone(u.phone || '+919999988888');
+          setPhone(u.mobile_number || u.phone || '+919999988888');
           setDepartment(u.department || 'Operations');
         }
       } catch (e) {
@@ -144,10 +144,30 @@ export default function Profile() {
           <div className="text-center sm:text-left space-y-1">
             <h1 className="text-2xl font-bold text-content">{user.name}</h1>
             <p className="text-sm text-content-secondary">{user.email}</p>
+            {user.mobile_number && (
+              <p className="text-xs text-content-secondary">Mobile: {user.mobile_number}</p>
+            )}
+            {user.company?.company_name && (
+              <p className="text-xs text-content-secondary">Company: {user.company.company_name}</p>
+            )}
+            {user.company_id && (
+              <p className="text-xs text-content-secondary">Company ID: {user.company_id}</p>
+            )}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
               <Badge variant="brand">{user.role}</Badge>
+              <Badge variant={user.is_active ? 'success' : 'danger'}>
+                {user.is_active ? 'Active Account' : 'Inactive Account'}
+              </Badge>
               <Badge variant="neutral">{user.department}</Badge>
             </div>
+            {user.last_login && (
+              <p className="text-xs text-content-muted pt-1">
+                Last login: {new Date(user.last_login).toLocaleString()}
+              </p>
+            )}
+            {!user.last_login && (
+              <p className="text-xs text-content-muted pt-1">Last login: not available</p>
+            )}
           </div>
         </div>
       </Card>

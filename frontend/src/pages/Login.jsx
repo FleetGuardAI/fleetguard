@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Mail, Lock } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { login } from '@/api/authApi';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/Toast';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { success, error } = useToast();
@@ -46,7 +48,9 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await login(email, password);
+      const res = await login(email, password, {
+        rememberMe,
+      });
       success('Login Successful', `Welcome back, ${res.user.name}!`);
       navigate('/dashboard');
     } catch (err) {
@@ -88,20 +92,38 @@ export default function Login() {
 
           <Input
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
             icon={<Lock className="h-4 w-4" />}
+            iconRight={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="text-content-muted hover:text-content"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 
           <div className="flex items-center justify-between text-xs">
             <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500/30" defaultChecked />
+              <input
+                type="checkbox"
+                className="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500/30"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
               Remember me
             </label>
+            <Link to="/forgot-password" className="text-emerald-600 hover:underline">
+              Forgot password?
+            </Link>
           </div>
 
           <Button
@@ -114,6 +136,12 @@ export default function Login() {
         </form>
 
         <div className="text-center text-xs text-slate-500 dark:text-slate-400">
+          <p className="mb-2">
+            New company?{' '}
+            <Link to="/register" className="text-emerald-600 hover:underline">
+              Create your account
+            </Link>
+          </p>
           <Link to="/" className="hover:underline">
             Back to public landing page
           </Link>

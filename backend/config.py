@@ -58,6 +58,23 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production-use-a-strong-random-secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    REMEMBER_ME_EXPIRE_DAYS: int = 30
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
+
+    # --- reCAPTCHA Enterprise ---
+    RECAPTCHA_PROJECT_ID: Optional[str] = None
+    RECAPTCHA_API_KEY: Optional[str] = None
+    RECAPTCHA_SITE_KEY: Optional[str] = None
+    RECAPTCHA_MIN_SCORE: float = 0.4
+
+    # --- CAPTCHA (Cloudflare Turnstile compatible) ---
+    CAPTCHA_SITE_KEY: Optional[str] = None
+    CAPTCHA_SECRET_KEY: Optional[str] = None
+    CAPTCHA_VERIFY_URL: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    CAPTCHA_DEV_BYPASS_TOKEN: str = "dev-captcha-pass"
+
+    # In DEBUG this can help local testing of forgot-password without SMS/email integration.
+    PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
 
 
 

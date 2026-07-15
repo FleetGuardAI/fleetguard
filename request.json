@@ -1,0 +1,7 @@
+{
+  "event": {
+    "token": "TOKEN",
+    "siteKey": "RECAPTCHA_SITE_KEY",
+    "expectedAction": "USER_ACTION"
+  }
+}

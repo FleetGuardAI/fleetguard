@@ -13,17 +13,23 @@ from models import User
 from schemas import (
     CompanyOut,
     CompanyRegistrationRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    GenericMessageResponse,
     LoginRequest,
     MeResponse,
     RegisterCompanyResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UserOut,
 )
 from services import (
     authenticate_user,
+    create_forgot_password_request,
     create_token_for_user,
     get_current_user,
     register_company,
+    reset_password_with_token,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
@@ -72,7 +78,39 @@ async def login(
         password=payload.password,
         db=db,
     )
-    return create_token_for_user(user=user)
+    return await create_token_for_user(
+        user=user,
+        db=db,
+        remember_me=payload.remember_me,
+    )
+
+
+@router.post(
+    "/forgot-password/request",
+    response_model=ForgotPasswordResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Start forgot-password flow",
+)
+async def forgot_password_request(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ForgotPasswordResponse:
+    """Generate one-time password reset token for an account identifier."""
+    return await create_forgot_password_request(payload=payload, db=db)
+
+
+@router.post(
+    "/forgot-password/reset",
+    response_model=GenericMessageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reset password using one-time token",
+)
+async def forgot_password_reset(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> GenericMessageResponse:
+    """Finalize password reset and revoke active sessions for the account."""
+    return await reset_password_with_token(payload=payload, db=db)
 
 
 @router.get(

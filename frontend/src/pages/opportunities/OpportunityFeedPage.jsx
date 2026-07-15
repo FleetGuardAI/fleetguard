@@ -14,6 +14,7 @@ import { OpportunityEmptyState } from './OpportunityEmptyState';
 import { OpportunityErrorState } from './OpportunityErrorState';
 import { OpportunityDrawer } from './OpportunityDrawer';
 import { OpportunitySidebar } from './OpportunitySidebar';
+
 import {
   fetchOpportunities,
   fetchOpportunityById,
