@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== CSS Variables — Light/Dark Theme ===== */
+:root {
+  --surface: #ffffff;
+  --surface-secondary: #f8fafc;
+  --surface-tertiary: #f1f5f9;
+  --content: #0f172a;
+  --content-secondary: #475569;
+  --content-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #22c55e;
+}
+
+.dark {
+  --surface: #0f172a;
+  --surface-secondary: #1e293b;
+  --surface-tertiary: #334155;
+  --content: #f1f5f9;
+  --content-secondary: #94a3b8;
+  --content-muted: #64748b;
+  --border-color: #334155;
+  --sidebar-bg: #020617;
+  --sidebar-text: #64748b;
+  --sidebar-active: #4ade80;
+}
+
 /* === Reset / Global Styles === */
 * {
   margin: 0;
@@ -96,3 +123,120 @@ body {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.3); opacity: 0.7; }
 }
+
+/* ===== RoutePay Custom styles & Components ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl;
+  }
+
+  .card-base {
+    @apply bg-surface border border-border rounded-xl shadow-card transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply hover:shadow-elevated hover:-translate-y-0.5;
+  }
+
+  .gradient-brand {
+    @apply bg-gradient-to-br from-brand-500 to-brand-700;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-500 to-brand-600 bg-clip-text text-transparent;
+  }
+}
+
+/* 3D Animations & Premium Dark Glow Effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.glass-dark {
+  background: rgba(6, 10, 20, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-dark-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.45) 0%, rgba(9, 13, 22, 0.7) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glass-dark-card:hover {
+  border-color: rgba(0, 200, 83, 0.4);
+  box-shadow: 0 0 25px rgba(0, 200, 83, 0.2);
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.scanner-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(to right, transparent, #00c853, transparent);
+  box-shadow: 0 0 12px 2px #00c853;
+  animation: scan 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes laser-glow {
+  0%, 100% { opacity: 0.3; filter: drop-shadow(0 0 1px #00c853); }
+  50% { opacity: 0.8; filter: drop-shadow(0 0 6px #00c853); }
+}
+
+.laser-connection {
+  animation: laser-glow 2s infinite;
+}
+
+@keyframes slow-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-slow-rotate {
+  animation: slow-rotate 25s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 200, 83, 0.4);
+}
+
+

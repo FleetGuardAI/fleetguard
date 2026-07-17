@@ -9,8 +9,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models.truck import Truck
-from models.driver import Driver
+from models.vehicle_domain import Vehicle
+from models.driver_domain import Driver
 from models.ticket import Ticket, TicketStatus, RiskLevel
 from models.fuel_log import FuelLog
 from schemas.ticket import DashboardKPIs
@@ -29,11 +29,11 @@ async def get_dashboard_kpis(db: AsyncSession = Depends(get_db)) -> DashboardKPI
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # Active trucks
-    active_trucks_result = await db.execute(
-        select(func.count(Truck.id)).where(Truck.is_active == True)  # noqa: E712
+    # Active trucks (now vehicles)
+    active_vehicles_result = await db.execute(
+        select(func.count(Vehicle.id)).where(Vehicle.status == "ACTIVE")  # noqa: E712
     )
-    active_trucks = active_trucks_result.scalar() or 0
+    active_trucks = active_vehicles_result.scalar() or 0
 
     # Pending approvals
     pending_result = await db.execute(
@@ -51,14 +51,8 @@ async def get_dashboard_kpis(db: AsyncSession = Depends(get_db)) -> DashboardKPI
     )
     theft_alerts = theft_result.scalar() or 0
 
-    # Flagged drivers (risk_score > 50)
-    flagged_result = await db.execute(
-        select(func.count(Driver.id)).where(
-            Driver.risk_score > 50,
-            Driver.is_active == True,  # noqa: E712
-        )
-    )
-    flagged_drivers = flagged_result.scalar() or 0
+    # Flagged drivers (risk_score > 50) - Temporarily disabled for Driver Domain Foundation refactor
+    flagged_drivers = 0
 
     # Total approved expenses — today
     expenses_today_result = await db.execute(
@@ -98,9 +92,9 @@ async def get_recent_activity(
     Returns the most recent tickets with driver and truck info.
     """
     result = await db.execute(
-        select(Ticket, Driver.name, Truck.license_plate)
+        select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
-        .join(Truck, Ticket.truck_id == Truck.id)
+        .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
         .order_by(Ticket.created_at.desc())
         .limit(limit)
     )
@@ -114,8 +108,8 @@ async def get_recent_activity(
             "status": ticket.status.value,
             "risk_level": ticket.risk_level.value,
             "driver_name": driver_name,
-            "truck_plate": truck_plate,
+            "truck_plate": vehicle_reg,
             "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
         }
-        for ticket, driver_name, truck_plate in rows
+        for ticket, driver_name, vehicle_reg in rows
     ]

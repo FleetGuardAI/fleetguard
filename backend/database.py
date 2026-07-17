@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any
 
 from config import settings
 
@@ -56,6 +56,16 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+async def get_uow() -> AsyncGenerator[Any, None]:
+    """
+    FastAPI dependency that yields a UnitOfWork.
+    """
+    from infrastructure.uow import SqlAlchemyUnitOfWork
+    async with SqlAlchemyUnitOfWork(async_session_factory) as uow:
+        yield uow
+        # We DO NOT auto-commit UoW here to force explicit commits by services/routers
+        # Note: Depending on strategy, some teams auto-commit. For now, we yield UoW.
 
 
 # --- Table Management ---
