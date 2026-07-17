@@ -31,3 +31,6 @@ orjson==3.10.13
 # --- Authentication ---
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
+
+# --- Event Bus (Kafka) ---
+aiokafka==0.14.0
