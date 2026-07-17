@@ -6,6 +6,7 @@ to a single registered EventSubscriber.
 
 import asyncio
 import logging
+from config import settings
 from typing import Any
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer
