@@ -39,6 +39,7 @@ class DriverUpdate(BaseModel):
 class DriverResponse(DriverBase):
     """Schema for driver API responses."""
     id: int
+    company_id: int
     risk_score: float = Field(description="Risk score 0-100")
     rating: float = Field(description="Performance rating 0-5")
     total_trips: int

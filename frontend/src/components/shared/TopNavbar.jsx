@@ -13,10 +13,15 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
 
   useEffect(() => {
-    const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
-    if (cached) {
-      setUser(JSON.parse(cached));
-    }
+    const handleUserUpdate = () => {
+      const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+      if (cached) {
+        setUser(JSON.parse(cached));
+      }
+    };
+    handleUserUpdate();
+    window.addEventListener('storage', handleUserUpdate);
+    return () => window.removeEventListener('storage', handleUserUpdate);
   }, []);
 
   const logout = () => {
@@ -41,8 +46,8 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const userMenuItems = [
-    { label: 'Profile', icon: <User className="h-4 w-4" />, onClick: () => navigate('/profile') },
-    { label: 'Settings', icon: <Settings className="h-4 w-4" />, onClick: () => navigate('/settings') },
+    { label: 'Profile', icon: <User className="h-4 w-4" />, onClick: () => navigate('/dashboard/profile') },
+    { label: 'Settings', icon: <Settings className="h-4 w-4" />, onClick: () => navigate('/dashboard/settings') },
     { divider: true, label: '' },
     { label: 'Sign Out', icon: <LogOut className="h-4 w-4" />, onClick: handleLogout, danger: true },
   ];

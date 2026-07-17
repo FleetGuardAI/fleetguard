@@ -10,7 +10,9 @@ from typing import Optional
 
 from database import get_db
 from models.driver import Driver
+from models.user import User
 from schemas.driver import DriverCreate, DriverUpdate, DriverResponse
+from services.auth_service import get_current_user
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
 
@@ -23,9 +25,10 @@ async def list_drivers(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[DriverResponse]:
-    """List all drivers with optional filters and sorting."""
-    query = select(Driver)
+    """List all drivers for the logged-in user's company."""
+    query = select(Driver).where(Driver.company_id == current_user.company_id)
 
     if is_active is not None:
         query = query.where(Driver.is_active == is_active)
@@ -48,10 +51,14 @@ async def list_drivers(
 
 
 @router.get("/{driver_id}", response_model=DriverResponse)
-async def get_driver(driver_id: int, db: AsyncSession = Depends(get_db)) -> DriverResponse:
-    """Get a single driver by ID."""
+async def get_driver(
+    driver_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DriverResponse:
+    """Get a single driver by ID for the logged-in user's company."""
     driver = await db.get(Driver, driver_id)
-    if not driver:
+    if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(404, f"Driver {driver_id} not found")
     return DriverResponse.model_validate(driver)
 
@@ -60,16 +67,21 @@ async def get_driver(driver_id: int, db: AsyncSession = Depends(get_db)) -> Driv
 async def create_driver(
     payload: DriverCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DriverResponse:
-    """Register a new driver."""
-    # Check for duplicate phone number
+    """Register a new driver for the logged-in user's company."""
+    # Check for duplicate phone number within the system (or company)
     existing = await db.execute(
-        select(Driver).where(Driver.phone_number == payload.phone_number)
+        select(Driver).where(
+            Driver.phone_number == payload.phone_number,
+            Driver.company_id == current_user.company_id
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(409, f"Driver with phone {payload.phone_number} already exists")
 
     driver = Driver(
+        company_id=current_user.company_id,
         name=payload.name,
         phone_number=payload.phone_number,
         avatar_url=payload.avatar_url,
@@ -86,10 +98,11 @@ async def update_driver(
     driver_id: int,
     payload: DriverUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DriverResponse:
-    """Update driver information."""
+    """Update driver information for the logged-in user's company."""
     driver = await db.get(Driver, driver_id)
-    if not driver:
+    if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(404, f"Driver {driver_id} not found")
 
     update_data = payload.model_dump(exclude_unset=True)

@@ -183,7 +183,6 @@ export default function HomePage() {
               { icon: '⛽', title: 'Inflated Fuel Requests', desc: 'Fuel amounts overstated with no receipts or verifiable proof.' },
               { icon: '📵', title: 'No Proof Before Payment', desc: 'Owners pay blindly over phone calls with zero documentation.' },
               { icon: '📞', title: 'Pressure Calls from Drivers', desc: 'Urgent calls create pressure to send money immediately without checks.' },
-              { icon: '📊', title: 'Poor Expense Tracking', desc: 'No centralized records. Expenses scattered across calls, messages and memory.' },
             ].map(p => (
               <div key={p.title} className="problem-card reveal">
                 <div className="pc-icon">{p.icon}</div>

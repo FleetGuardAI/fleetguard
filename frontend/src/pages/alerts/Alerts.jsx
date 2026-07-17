@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, CheckCircle, Search, Clock, ShieldX, MapPin, Send, MessageSquare } from 'lucide-react';
+import { ShieldAlert, CheckCircle, Search, Clock, ShieldX, MapPin, Send, MessageSquare, Eye } from 'lucide-react';
 import { getAlerts, resolveAlert } from '@/api/alertApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';

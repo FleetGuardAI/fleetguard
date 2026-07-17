@@ -185,3 +185,13 @@ class MeResponse(BaseModel):
     role: UserRole
 
     model_config = {"from_attributes": True}
+
+
+class CompanyUpdateRequest(BaseModel):
+    """Request payload for updating company details."""
+
+    company_name: Optional[str] = None
+    owner_name: Optional[str] = None
+    mobile_number: Optional[str] = None
+    email: Optional[str] = None
+

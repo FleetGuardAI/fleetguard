@@ -57,7 +57,7 @@ async function request(endpoint, options = {}) {
     return await response.json();
   } catch (err) {
     console.warn(`[FleetGuard API] ${endpoint} failed:`, err.message);
-    return null;
+    throw err;
   }
 }
 

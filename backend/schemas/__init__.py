@@ -18,6 +18,7 @@ from schemas.auth import (
     ResetPasswordRequest,
     ForgotPasswordResponse,
     GenericMessageResponse,
+    CompanyUpdateRequest,
 )
 
 __all__ = [
@@ -38,5 +39,6 @@ __all__ = [
     "ResetPasswordRequest",
     "ForgotPasswordResponse",
     "GenericMessageResponse",
+    "CompanyUpdateRequest",
 ]
 

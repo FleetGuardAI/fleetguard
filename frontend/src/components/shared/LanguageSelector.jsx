@@ -49,6 +49,8 @@ export function LanguageSelector({ variant = 'dark', className }) {
     light: 'text-white/80 hover:text-white hover:bg-white/10',
     dark: 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
     adaptive: 'text-content-secondary hover:text-content hover:bg-surface-secondary',
+    'glass-transparent': 'text-white/90 hover:text-white bg-white/10 dark:bg-white/5 hover:bg-white/15 dark:hover:bg-white/10 border border-white/15 dark:border-white/10 rounded-full shadow-sm backdrop-blur-md',
+    'glass-scrolled': 'text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-900/50 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800/80 rounded-full shadow-sm backdrop-blur-md',
   };
 
   return (
@@ -56,12 +58,12 @@ export function LanguageSelector({ variant = 'dark', className }) {
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-          triggerColors[variant]
+          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200',
+          triggerColors[variant] || triggerColors['glass-transparent']
         )}
         aria-label="Select language"
       >
-        <Globe className="w-4 h-4" />
+        <Globe className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">{current.flag} {current.label}</span>
         <span className="sm:hidden">{current.flag}</span>
         <ChevronDown className={cn('w-3 h-3 transition-transform duration-200', open && 'rotate-180')} />
@@ -72,7 +74,8 @@ export function LanguageSelector({ variant = 'dark', className }) {
           className={cn(
             'absolute top-full right-0 mt-2 z-50 w-52 py-1.5 rounded-xl shadow-xl border animate-fade-in',
             'bg-white border-slate-200 overflow-hidden',
-            variant === 'adaptive' && 'bg-surface border-border'
+            variant === 'adaptive' && 'bg-surface border-border',
+            variant.startsWith('glass') && 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200/80 dark:border-slate-800/80 shadow-2xl'
           )}
         >
           <div className={cn(

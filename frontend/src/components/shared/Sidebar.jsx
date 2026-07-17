@@ -82,10 +82,15 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
-    if (cached) {
-      setUser(JSON.parse(cached));
-    }
+    const handleUserUpdate = () => {
+      const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+      if (cached) {
+        setUser(JSON.parse(cached));
+      }
+    };
+    handleUserUpdate();
+    window.addEventListener('storage', handleUserUpdate);
+    return () => window.removeEventListener('storage', handleUserUpdate);
   }, []);
 
   const logout = () => {
@@ -118,8 +123,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
         !isFullyOpen && !isMobile && 'justify-center px-2'
       )}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center flex-shrink-0">
-            <Shield className="h-4.5 w-4.5 text-white" />
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
           </div>
           <AnimatePresence initial={false}>
             {(isFullyOpen || isMobile) && (

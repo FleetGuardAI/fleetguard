@@ -12,12 +12,14 @@ from database import get_db
 from models.ticket import Ticket, TicketStatus, RiskLevel
 from models.driver import Driver
 from models.truck import Truck
+from models.user import User
 from schemas.ticket import (
     TicketCreate,
     TicketUpdate,
     TicketResponse,
     TicketApproval,
 )
+from services.auth_service import get_current_user
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
@@ -59,12 +61,14 @@ async def list_tickets(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[TicketResponse]:
-    """List all tickets with optional filters. Returns joined driver/truck names."""
+    """List all tickets with optional filters. Returns joined driver/truck names for the user's company."""
     query = (
         select(Ticket, Driver.name, Truck.license_plate)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Truck, Ticket.truck_id == Truck.id)
+        .where(Truck.company_id == current_user.company_id)
     )
 
     if status:
@@ -97,13 +101,17 @@ async def list_tickets(
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
-async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketResponse:
-    """Get a single ticket by ID."""
+async def get_ticket(
+    ticket_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TicketResponse:
+    """Get a single ticket by ID for the logged-in user's company."""
     result = await db.execute(
         select(Ticket, Driver.name, Truck.license_plate)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Truck, Ticket.truck_id == Truck.id)
-        .where(Ticket.id == ticket_id)
+        .where(Ticket.id == ticket_id, Truck.company_id == current_user.company_id)
     )
     row = result.first()
     if not row:
@@ -117,15 +125,16 @@ async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Tick
 async def create_ticket(
     payload: TicketCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TicketResponse:
-    """Create a new expense ticket."""
-    # Verify truck and driver exist
+    """Create a new expense ticket in the user's company."""
+    # Verify truck and driver exist and belong to the user's company
     truck = await db.get(Truck, payload.truck_id)
-    if not truck:
+    if not truck or truck.company_id != current_user.company_id:
         raise HTTPException(404, f"Truck {payload.truck_id} not found")
 
     driver = await db.get(Driver, payload.driver_id)
-    if not driver:
+    if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(404, f"Driver {payload.driver_id} not found")
 
     ticket = Ticket(
@@ -156,23 +165,14 @@ async def approve_or_reject_ticket(
     ticket_id: int,
     payload: TicketApproval,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TicketResponse:
-    """
-    Approve or reject a ticket.
-
-    On approval:
-    - Simulates a UPI payout (generates a mock transaction ID)
-    - Phase 2 will send a WhatsApp confirmation to the driver
-
-    On rejection:
-    - Records the rejection reason
-    - Phase 2 will notify the driver via WhatsApp
-    """
+    """Approve or reject a ticket for the user's company."""
     result = await db.execute(
         select(Ticket, Driver.name, Truck.license_plate)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Truck, Ticket.truck_id == Truck.id)
-        .where(Ticket.id == ticket_id)
+        .where(Ticket.id == ticket_id, Truck.company_id == current_user.company_id)
     )
     row = result.first()
     if not row:

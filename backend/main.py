@@ -29,6 +29,7 @@ from routers.drivers import router as drivers_router
 from routers.trucks import router as trucks_router
 from routers.fuel import router as fuel_router
 from routers.auth import router as auth_router
+from routers.receipts import router as receipts_router
 
 # --- Logging ---
 logging.basicConfig(
@@ -113,6 +114,7 @@ app.include_router(tickets_router, prefix=API_PREFIX)
 app.include_router(drivers_router, prefix=API_PREFIX)
 app.include_router(trucks_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)
+app.include_router(receipts_router, prefix=API_PREFIX)
 app.include_router(auth_router)
 
 logger.info(

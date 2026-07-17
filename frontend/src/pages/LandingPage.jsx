@@ -8,7 +8,6 @@ import {
   FileWarning,
   Fuel,
   Phone,
-  ClipboardList,
   Upload,
   Bot,
   BadgeCheck,
@@ -27,10 +26,14 @@ import {
   AlertTriangle,
   Zap,
   Sun,
-  Moon
+  Moon,
+  Trash2,
+  X
 } from 'lucide-react';
 import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { cn } from '@/utils/cn';
+
 
 /**
  * 3D Mouse Tilt Card Wrapper
@@ -214,37 +217,194 @@ function InteractiveNetworkBackground() {
  */
 function InteractiveScanner() {
   const [trackingCode, setTrackingCode] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanStep, setScanStep] = useState(0);
+  const [telemetryLogs, setTelemetryLogs] = useState([]);
   const [scanResult, setScanResult] = useState(null);
+  
+  const fileInputRef = useRef(null);
 
-  const startScan = (e) => {
+  // Setup preview URL for selected file
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    if (selectedFile.type.startsWith('image/')) {
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [selectedFile]);
+
+  // Global Ctrl + V paste listener for receipt image
+  useEffect(() => {
+    const handlePaste = (e) => {
+      // Don't intercept text pastes in inputs unless they contain files
+      if (document.activeElement?.tagName === 'INPUT' && document.activeElement?.type === 'text') {
+        const items = e.clipboardData?.items;
+        let hasImage = false;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+              hasImage = true;
+              break;
+            }
+          }
+        }
+        if (!hasImage) return; // Proceed with text paste
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            if (file.size > 20 * 1024 * 1024) {
+              alert('File size exceeds the 20MB limit.');
+              return;
+            }
+            setSelectedFile(file);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const handleDrag = (e) => {
     e.preventDefault();
-    if (isScanning) return;
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.size > 20 * 1024 * 1024) {
+        alert("File size exceeds the 20MB limit.");
+        return;
+      }
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+      if (!validTypes.includes(file.type)) {
+        alert("Invalid file format. Please upload JPG, PNG, WEBP, or PDF.");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 20 * 1024 * 1024) {
+        alert("File size exceeds the 20MB limit.");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const startScan = async (e) => {
+    e.preventDefault();
+    if (isScanning || !selectedFile || !trackingCode) return;
+
     setIsScanning(true);
     setScanResult(null);
-    setScanStep(1);
+    setTelemetryLogs([]);
 
-    setTimeout(() => {
-      setScanStep(2);
-    }, 900);
+    const formData = new FormData();
+    formData.append('receipt_image', selectedFile);
+    formData.append('claim_id', trackingCode);
+    formData.append('driver_id', 'DRIVER-9921');
+    formData.append('truck_id', 'RJ14-XX-1234');
 
-    setTimeout(() => {
-      setScanStep(3);
-    }, 1800);
-
-    setTimeout(() => {
-      setIsScanning(false);
-      setScanStep(4);
-      setScanResult({
-        status: 'VERIFIED & APPROVED',
-        vendor: 'National Highway Tyres, Udaipur',
-        amount: '₹450',
-        telematics: 'RJ14 XX 1234 — GPS matched NH-48 (0.2km radius)',
-        ocr: 'Receipt #NHT-8831 OCR Valid — Puncture repairs matching standard rate list.',
-        risk: 'Low (1.8% Risk Index)',
+    try {
+      const response = await fetch('/api/v1/receipts/analyze', {
+        method: 'POST',
+        body: formData,
       });
-    }, 2800);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const lines = part.split('\n');
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (cleanLine.startsWith('data: ')) {
+              const rawJson = cleanLine.substring(6).trim();
+              try {
+                const data = JSON.parse(rawJson);
+                if (data.type === 'telemetry') {
+                  setTelemetryLogs((prev) => [...prev, data.step]);
+                } else if (data.type === 'result') {
+                  setScanResult(data);
+                } else if (data.type === 'error') {
+                  setTelemetryLogs((prev) => [...prev, `❌ Error: ${data.detail}`]);
+                }
+              } catch (err) {
+                console.warn('Error parsing JSON from SSE chunk:', err, rawJson);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      setTelemetryLogs((prev) => [...prev, `❌ Analysis failed: ${error.message}`]);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -267,25 +427,101 @@ function InteractiveScanner() {
           Test live verification capability. Watch FleetGuard parse receipts, query telematics, and audit risk instantly.
         </p>
 
-        {/* Input Bar */}
-        <form onSubmit={startScan} className="flex gap-2 mb-5">
-          <input
-            type="text"
-            value={trackingCode}
-            onChange={(e) => setTrackingCode(e.target.value)}
-            placeholder="Enter receipt code e.g. CLAIM-8831..."
-            className="flex-1 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-605 focus:outline-none focus:border-[#00c853] transition-all duration-300"
-            disabled={isScanning}
-          />
+        {/* Input Bar & Upload */}
+        <form onSubmit={startScan} className="space-y-4 mb-5 text-left">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Claim ID</label>
+            <input
+              type="text"
+              value={trackingCode}
+              onChange={(e) => setTrackingCode(e.target.value)}
+              placeholder="Enter receipt code e.g. CLAIM-8831..."
+              className="w-full bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-[#00c853] transition-all duration-300"
+              disabled={isScanning}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Receipt Upload</label>
+            <div
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              onClick={handleUploadClick}
+              className={`w-full border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 text-center relative overflow-hidden ${
+                selectedFile 
+                  ? "border-[#00c853]/50 bg-[#00c853]/5 dark:bg-[#00c853]/3" 
+                  : isDragActive
+                    ? "border-[#00c853] bg-[#00c853]/10 dark:bg-[#00c853]/5 shadow-lg shadow-[#00c853]/5"
+                    : "border-slate-200 dark:border-slate-800/80 hover:border-[#00c853]/40 bg-slate-50 dark:bg-slate-950/30"
+              }`}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                className="hidden"
+                disabled={isScanning}
+              />
+              
+              {!selectedFile ? (
+                <div className="flex flex-col items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                  <Upload className="w-5 h-5 text-[#00c853]" />
+                  <span className="text-[11px] font-bold">Drag & drop, paste, or click to upload</span>
+                  <span className="text-[9px] opacity-60">JPG, PNG, WEBP, PDF (Max 20MB)</span>
+                </div>
+              ) : (
+                <div className="w-full flex items-center justify-between gap-3 text-left" onClick={(e) => e.stopPropagation()}>
+                  {/* Thumbnail Preview */}
+                  <div className="flex items-center gap-3">
+                    {previewUrl ? (
+                      <img src={previewUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-800" alt="receipt preview" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-[#00c853]/10 border border-[#00c853]/20 flex items-center justify-center">
+                        <span className="text-[9px] font-black text-[#00c853]">PDF</span>
+                      </div>
+                    )}
+                    <div className="overflow-hidden max-w-[120px] sm:max-w-[160px]">
+                      <p className="text-[10px] font-bold text-slate-850 dark:text-slate-200 truncate">{selectedFile.name}</p>
+                      <p className="text-[9px] text-slate-500 font-semibold">{formatSize(selectedFile.size)}</p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleUploadClick}
+                      className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-bold transition-colors active:scale-95"
+                      disabled={isScanning}
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 text-[10px] font-bold transition-colors active:scale-95"
+                      disabled={isScanning}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <button
             type="submit"
-            disabled={isScanning}
-            className="bg-[#00c853] hover:bg-[#00b848] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-200 shadow-md shadow-green-500/20 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-1.5"
+            disabled={isScanning || !trackingCode || !selectedFile}
+            className="w-full bg-[#00c853] hover:bg-[#00b848] text-white text-xs font-bold py-3 rounded-xl transition-all duration-200 shadow-md shadow-green-500/20 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:shadow-none flex items-center justify-center gap-1.5"
           >
             {isScanning ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Scanning
+                Auditing Receipt...
               </>
             ) : (
               <>
@@ -297,7 +533,7 @@ function InteractiveScanner() {
         </form>
 
         {/* Simulated Document Scanning Window */}
-        <div className="bg-slate-100 dark:bg-slate-950/95 rounded-xl border border-slate-200 dark:border-slate-900 aspect-[16/10] relative overflow-hidden flex flex-col justify-between p-4 font-mono text-[9px] text-slate-600 dark:text-slate-500 transition-colors duration-300">
+        <div className="bg-slate-100 dark:bg-slate-950/95 rounded-xl border border-slate-200 dark:border-slate-900 aspect-[16/10] relative overflow-hidden flex flex-col justify-between p-4 font-mono text-[9px] text-slate-650 dark:text-slate-550 transition-colors duration-300">
           
           {/* Laser Scan line overlay */}
           {isScanning && <div className="scanner-line" />}
@@ -305,73 +541,34 @@ function InteractiveScanner() {
           {/* Top Panel */}
           <div className="flex justify-between items-center text-slate-500 dark:text-slate-600 border-b border-slate-200 dark:border-slate-900/60 pb-2 transition-colors duration-300">
             <span>SECURE_PAY_TELEMETRY</span>
-            <span className={isScanning ? 'text-green-650 dark:text-green-500 animate-pulse font-bold' : 'text-slate-400 dark:text-slate-700'}>
-              ● {isScanning ? 'SCANNING_PROOF' : 'STANDBY'}
+            <span className={isScanning ? 'text-green-650 dark:text-green-500 animate-pulse font-bold' : 'text-slate-450 dark:text-slate-700'}>
+              ● {isScanning ? 'PROCESSING_PROOF' : 'STANDBY'}
             </span>
           </div>
 
           {/* Middle Section */}
-          <div className="flex-1 py-3 flex flex-col gap-1.5 overflow-hidden">
-            {!isScanning && !scanResult && (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-slate-600 text-center gap-2 transition-colors duration-300">
-                <Truck className="w-7 h-7 opacity-30 dark:opacity-20 text-slate-650 dark:text-slate-405" />
-                <span className="max-w-[200px] leading-relaxed">Enter a mock ID above or click Audit to trigger the telemetry audit simulator.</span>
+          <div className="flex-1 py-3 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar text-left scroll-smooth">
+            {telemetryLogs.length === 0 && !scanResult && (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-slate-655 text-center gap-2 transition-colors duration-300">
+                <Truck className="w-7 h-7 opacity-30 dark:opacity-20 text-slate-600 dark:text-slate-400" />
+                <span className="max-w-[200px] leading-relaxed">Enter a mock ID above, upload a receipt, or click Audit to trigger the telemetry audit simulator.</span>
               </div>
             )}
 
-            {isScanning && (
-              <div className="space-y-1.5 text-left">
-                <div className="text-slate-650 dark:text-slate-400 flex items-center gap-1.5 transition-colors duration-300">
-                  <span className="text-[#00c853] animate-pulse">❯</span> OCR: LOADING IMAGE ATTACHMENT...
-                </div>
-                {scanStep >= 1 && (
-                  <div className="text-slate-800 dark:text-slate-300 flex items-center gap-1.5 animate-fade-in transition-colors duration-300">
-                    <span className="text-[#00c853]">✓</span> OCR EXTRACTED: Udaipur Spares, Puncture Repair ₹450
-                  </div>
-                )}
-                {scanStep >= 2 && (
-                  <div className="text-slate-800 dark:text-slate-300 flex items-center gap-1.5 animate-fade-in transition-colors duration-300">
-                    <span className="text-[#00c853]">✓</span> GPS: Telematics match Udaipur NH-48 coordinates
-                  </div>
-                )}
-                {scanStep >= 3 && (
-                  <div className="text-yellow-605 dark:text-yellow-400 flex items-center gap-1.5 animate-fade-in transition-colors duration-300">
-                    <span className="text-yellow-600 dark:text-yellow-500">⚡</span> AUDITING: Cross-checking invoice metadata...
-                  </div>
-                )}
-              </div>
-            )}
+            {telemetryLogs.map((log, index) => {
+              const isSuccess = log.includes('✓') || log.includes('passed') || log.includes('success') || log.includes('validated') || log.includes('verified') || log.includes('complete') || log.includes('matches') || log.includes('identified');
+              const isPending = log.includes('...') || log.includes('Running') || log.includes('Calculating') || log.includes('Generating') || log.includes('Initializing') || log.includes('Loading');
+              const isError = log.includes('❌') || log.includes('Error') || log.includes('failed');
 
-            {scanResult && (
-              <div className="space-y-1.5 animate-fade-in text-left">
-                <div className="flex justify-between border-b border-slate-205 dark:border-slate-900 pb-1 transition-colors duration-300">
-                  <span className="text-slate-800 dark:text-slate-300 font-bold text-[#00c853]">{scanResult.status}</span>
-                  <span className="text-slate-500 dark:text-slate-600">AUDIT OK</span>
+              return (
+                <div key={index} className="flex items-center gap-1.5 animate-fade-in text-slate-800 dark:text-slate-300 transition-colors duration-300">
+                  <span className={isSuccess ? "text-[#00c853]" : isPending ? "text-yellow-500" : isError ? "text-red-500" : "text-[#00c853]"}>
+                    {isSuccess ? '✓' : isPending ? '⚡' : isError ? '❌' : '❯'}
+                  </span>
+                  <span>{log}</span>
                 </div>
-                <div className="space-y-1 text-slate-600 dark:text-slate-400 transition-colors duration-300">
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-600 font-bold uppercase mr-1">[Vendor]:</span>
-                    <span className="text-slate-800 dark:text-slate-200">{scanResult.vendor}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-600 font-bold uppercase mr-1">[Amount]:</span>
-                    <span className="text-[#00c853] font-bold">{scanResult.amount}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-600 font-bold uppercase mr-1">[GPS Coordinates]:</span>
-                    <span className="text-slate-800 dark:text-slate-200">{scanResult.telematics}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-600 font-bold uppercase mr-1">[OCR Validation]:</span>
-                    <span className="text-slate-800 dark:text-slate-200 block truncate">{scanResult.ocr}</span>
-                  </div>
-                </div>
-                <div className="pt-1 border-t border-slate-200 dark:border-slate-900 flex justify-between items-center text-[8px] transition-colors duration-300">
-                  <span>RISK EVALUATION:</span>
-                  <span className="px-1.5 py-0.5 rounded bg-green-500/10 text-[#00c853] font-bold border border-green-500/20">{scanResult.risk}</span>
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
 
           {/* Bottom Panel */}
@@ -379,8 +576,158 @@ function InteractiveScanner() {
             <span>PIPELINE: ACTIVE_RUNNER_v2.0</span>
             <span>SHIELD: READY</span>
           </div>
-
         </div>
+
+        {/* Final Analysis Result Card */}
+        {scanResult && (
+          <div className="mt-6 border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/90 rounded-2xl p-5 shadow-xl animate-fade-in text-left transition-colors duration-300">
+            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 dark:border-slate-900 pb-3">
+              <Shield className="w-5 h-5 text-[#00c853]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">AI Fraud Audit Result</h4>
+            </div>
+
+            {/* Fraud Risk Indicator */}
+            <div className="grid grid-cols-12 gap-4 items-center mb-6 bg-white dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-900/80 transition-colors duration-300">
+              
+              <div className="col-span-4 flex flex-col items-center justify-center border-r border-slate-200 dark:border-slate-905 pr-4">
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-slate-200 dark:text-slate-800"
+                      strokeWidth="3.5"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path
+                      className={
+                        scanResult.fraud_assessment.risk_score <= 30
+                          ? "text-green-500"
+                          : scanResult.fraud_assessment.risk_score <= 50
+                            ? "text-yellow-500"
+                            : scanResult.fraud_assessment.risk_score <= 80
+                              ? "text-orange-500"
+                              : "text-red-500"
+                      }
+                      strokeDasharray={`${scanResult.fraud_assessment.risk_score}, 100`}
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">{scanResult.fraud_assessment.risk_score}%</span>
+                    <span className="text-[6px] text-slate-500 uppercase tracking-wider font-bold">Risk</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-8 flex flex-col justify-center">
+                <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wide text-slate-500">Risk Level:</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
+                    scanResult.fraud_assessment.risk_level === 'Low'
+                      ? "bg-green-500/10 text-green-500 border-green-500/20"
+                      : scanResult.fraud_assessment.risk_level === 'Medium'
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                        : scanResult.fraud_assessment.risk_level === 'High'
+                          ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                          : "bg-red-500/10 text-red-500 border-red-500/20"
+                  }`}>
+                    {scanResult.fraud_assessment.risk_level}
+                  </span>
+                </div>
+                <div className="text-[9px] text-slate-600 dark:text-slate-400 space-y-0.5 font-semibold">
+                  <p>Confidence: <strong className="text-slate-800 dark:text-slate-200">{scanResult.fraud_assessment.confidence}%</strong></p>
+                  <p>Recommendation: <strong className={
+                    scanResult.fraud_assessment.recommendation === 'Approve' ? 'text-[#00c853]' : 'text-red-500'
+                  }>{scanResult.fraud_assessment.recommendation}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid of details */}
+            <div className="space-y-4 text-[10px]">
+              
+              {/* Receipt Summary */}
+              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">Receipt Summary</h5>
+                <div className="grid grid-cols-3 gap-y-1 text-slate-600 dark:text-slate-400 font-semibold">
+                  <span>Merchant:</span><span className="col-span-2 text-slate-800 dark:text-slate-200 font-bold">{scanResult.receipt.merchant}</span>
+                  <span>Category:</span><span className="col-span-2 text-slate-800 dark:text-slate-200">{scanResult.receipt.category}</span>
+                  <span>Purpose:</span><span className="col-span-2 text-slate-800 dark:text-slate-200">{scanResult.receipt.purpose}</span>
+                  <span>Amount:</span><span className="col-span-2 text-[#00c853] font-bold">₹{scanResult.receipt.amount}</span>
+                  <span>GSTIN:</span><span className="col-span-2 font-mono text-slate-800 dark:text-slate-200">{scanResult.receipt.gst}</span>
+                  <span>Invoice No:</span><span className="col-span-2 font-mono text-slate-800 dark:text-slate-200">{scanResult.receipt.invoice_number}</span>
+                </div>
+              </div>
+
+              {/* Image & Business Analysis */}
+              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">AI Analysis Checks</h5>
+                <div className="space-y-1.5 text-slate-655 dark:text-slate-455 font-semibold">
+                  <div className="flex justify-between items-center">
+                    <span>Tampering / Manipulation:</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
+                      scanResult.image_analysis.edited
+                        ? "bg-red-500/10 text-red-500 border-red-500/20"
+                        : "bg-green-500/10 text-green-500 border-green-500/20"
+                    }`}>
+                      {scanResult.image_analysis.edited ? "Possible manipulation detected" : "No manipulation detected"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Merchant Verification:</span>
+                    <span className={scanResult.business_validation.merchant_verified ? "text-[#00c853]" : "text-red-500"}>
+                      {scanResult.business_validation.merchant_verified ? "Verified ✓" : "Unverified ✗"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>GST Format & Status:</span>
+                    <span className={scanResult.business_validation.gst_valid ? "text-[#00c853]" : "text-red-500"}>
+                      {scanResult.business_validation.gst_valid ? "Valid ✓" : "Invalid ✗"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Price Deviation:</span>
+                    <span className={`px-1 rounded text-[8px] font-bold ${
+                      scanResult.price_analysis.status === 'Normal' ? 'text-[#00c853] bg-green-500/10' : 'text-red-500 bg-red-500/10'
+                    }`}>
+                      {scanResult.price_analysis.status} ({scanResult.price_analysis.deviation_percent}% deviation)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* History Intelligence */}
+              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">History & Duplicate Checks</h5>
+                <div className="grid grid-cols-2 gap-y-1 text-slate-600 dark:text-slate-400 font-semibold">
+                  <span>Truck Previous Repairs:</span><span className="text-slate-800 dark:text-slate-200 font-bold">{scanResult.truck_history.previous_repairs} repairs</span>
+                  <span>Days Since Last Repair:</span><span className="text-slate-800 dark:text-slate-200">{scanResult.truck_history.last_repair_days} days ago</span>
+                  <span>Driver Claims This Month:</span><span className="text-slate-800 dark:text-slate-200">{scanResult.driver_history.claims_this_month} claims</span>
+                  <span>Duplicate Claims:</span><span className={scanResult.business_validation.duplicate ? "text-red-500 font-bold" : "text-[#00c853]"}>
+                    {scanResult.business_validation.duplicate ? "Duplicate Found" : "No duplicates"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Reasoning */}
+              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">AI Reasonings</h5>
+                <ul className="list-disc list-inside space-y-1 text-slate-650 dark:text-slate-400 text-[9px] font-semibold leading-relaxed">
+                  {scanResult.reasoning.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -620,13 +967,13 @@ export default function LandingPage() {
       {/* ===== NAVBAR ===== */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
         isScrolled 
-          ? "bg-white/80 dark:bg-[#070a13]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-900/80 shadow-sm" 
+          ? "bg-white/70 dark:bg-[#070a13]/70 backdrop-blur-lg border-b border-slate-200/50 dark:border-slate-900/60 shadow-sm" 
           : "bg-transparent border-b border-transparent"
       }`} id="navbar">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#00e676] to-[#00c853] flex items-center justify-center shadow-lg shadow-green-500/20 group-hover:scale-105 transition-transform duration-200">
-              <Shield className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+              <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tight">
               <span className="text-slate-900 dark:text-white transition-colors duration-300">Fleet </span>
@@ -635,15 +982,24 @@ export default function LandingPage() {
           </Link>
 
           {/* Nav Items */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className={cn(
+            "hidden md:flex items-center gap-1.5 border rounded-full px-2 py-1 transition-all duration-300 shadow-sm",
+            isScrolled
+              ? "bg-slate-100/85 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-black/5"
+              : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 shadow-black/10"
+          )}>
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="text-xs font-bold text-slate-900 dark:text-slate-100 hover:text-[#00c853] dark:hover:text-[#00c853] transition-colors relative group py-1"
+                className={cn(
+                  "text-[11px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 relative group",
+                  isScrolled
+                    ? "text-slate-700 dark:text-slate-200 hover:text-[#00c853] dark:hover:text-[#00c853] hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                )}
               >
                 {item.label}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#00c853] transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
           </div>
@@ -652,15 +1008,25 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-white/70 hover:bg-white/90 dark:bg-slate-900/80 dark:hover:bg-slate-800 border border-slate-300/80 dark:border-slate-800 text-slate-900 dark:text-white transition-all duration-200 active:scale-95 backdrop-blur-sm"
+              className={cn(
+                "p-2 rounded-full border transition-all duration-300 active:scale-95 backdrop-blur-md shadow-sm",
+                isScrolled
+                  ? "bg-slate-100/80 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 text-slate-700 dark:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+                  : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-white hover:bg-white/15 dark:hover:bg-white/10"
+              )}
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-500" />}
             </button>
-            <LanguageSelector variant={isDark ? "light" : "dark"} />
+            <LanguageSelector variant={isScrolled ? "glass-scrolled" : "glass-transparent"} />
             <Link
               to="/login"
-              className="px-4 py-2 rounded-xl bg-white/75 hover:bg-white/95 dark:bg-slate-950/40 dark:hover:bg-slate-950/80 border border-slate-300/80 dark:border-slate-800/80 text-slate-900 dark:text-white text-xs font-bold transition-all duration-200 hidden sm:inline-flex items-center gap-2 backdrop-blur-sm"
+              className={cn(
+                "px-4 py-2 rounded-full border transition-all duration-300 hidden sm:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
+                isScrolled
+                  ? "bg-slate-100/80 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 text-slate-700 dark:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+                  : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-white hover:bg-white/15 dark:hover:bg-white/10"
+              )}
               id="dashboard-login-btn"
             >
               <LayoutDashboard className="w-3.5 h-3.5 text-[#00c853]" />
@@ -668,10 +1034,7 @@ export default function LandingPage() {
             </Link>
             <a
               href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
-              className="px-4 py-2 rounded-xl bg-[#00c853] hover:bg-[#00b848]
-                text-white text-xs font-bold
-                transition-all duration-200 hover:shadow-lg hover:shadow-green-500/20
-                inline-flex items-center gap-1.5 active:scale-95"
+              className="px-4 py-2 rounded-full bg-[#00c853]/85 hover:bg-[#00b848]/95 border border-[#00c853]/20 hover:border-[#00c853]/40 text-white text-xs font-bold transition-all duration-200 hover:shadow-lg hover:shadow-green-500/20 backdrop-blur-md inline-flex items-center gap-1.5 active:scale-95"
               id="book-demo-btn"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -685,11 +1048,32 @@ export default function LandingPage() {
         
         {/* Full-Screen Background Image */}
         <div className="absolute inset-0 z-0 opacity-100 pointer-events-none">
-          <img
-            src="/assets/full_page_truck.png"
-            alt="Hero background"
-            className="w-full h-full object-cover object-center"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcSet="/assets/hero_bg_640.webp 640w,
+                      /assets/hero_bg_1200.webp 1200w,
+                      /assets/hero_bg_1920.webp 1920w,
+                      /assets/hero_bg_3840.webp 3840w"
+              sizes="100vw"
+            />
+            <source
+              type="image/jpeg"
+              srcSet="/assets/hero_bg_640.jpg 640w,
+                      /assets/hero_bg_1200.jpg 1200w,
+                      /assets/hero_bg_1920.jpg 1920w,
+                      /assets/hero_bg_3840.jpg 3840w"
+              sizes="100vw"
+            />
+            <img
+              src="/assets/hero_bg_1920.jpg"
+              alt="Hero background"
+              className="w-full h-full object-cover object-center"
+              style={{ imageRendering: 'auto' }}
+              loading="eager"
+              fetchpriority="high"
+            />
+          </picture>
           {/* Subtle overlay to guarantee high-contrast text readability */}
           <div className="absolute inset-0 bg-black/30 dark:bg-black/55 transition-colors duration-300" />
           {/* Top scrim overlay to make navbar options pop against sky */}
@@ -810,21 +1194,6 @@ export default function LandingPage() {
                 </div>
               </TiltCard>
             ))}
-          </div>
-
-          {/* Extra centering Card */}
-          <div className="mt-8 flex justify-center">
-            <TiltCard className="w-full max-w-md">
-              <div className="p-6 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-900 shadow-lg dark:shadow-2xl flex items-start gap-4 transition-colors duration-300">
-                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 w-fit shrink-0">
-                  <ClipboardList className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 tracking-wide transition-colors duration-300">{t('problem.tracking.title')}</h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed transition-colors duration-300">{t('problem.tracking.desc')}</p>
-                </div>
-              </div>
-            </TiltCard>
           </div>
 
         </div>
@@ -1009,8 +1378,8 @@ export default function LandingPage() {
           
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#00e676] to-[#00c853] flex items-center justify-center shadow-lg shadow-green-500/10">
-                <Shield className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 flex items-center justify-center">
+                <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-lg font-bold tracking-tight">
                 <span className="text-slate-900 dark:text-white font-sans transition-colors duration-300">Fleet </span>

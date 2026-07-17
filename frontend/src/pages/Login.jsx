@@ -65,8 +65,8 @@ export default function Login() {
       <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden p-8 space-y-6">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Shield className="h-6 w-6 text-white" />
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             Fleet<span className="text-emerald-600">Guard</span> ERP

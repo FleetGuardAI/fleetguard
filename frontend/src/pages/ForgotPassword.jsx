@@ -80,8 +80,8 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Shield className="h-6 w-6 text-white" />
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             Forgot <span className="text-emerald-600">Password</span>

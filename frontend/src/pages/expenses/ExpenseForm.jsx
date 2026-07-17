@@ -95,6 +95,8 @@ export default function ExpenseForm() {
     const selectedDriver = drivers.find(d => d.id === Number(driverId));
 
     const payload = {
+      truck_id: selectedTruck?.id,
+      driver_id: selectedDriver?.id,
       truck_plate: selectedTruck?.license_plate || '',
       driver_name: selectedDriver?.name || '',
       category,

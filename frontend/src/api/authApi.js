@@ -258,6 +258,39 @@ export async function getCurrentUser(preferredRememberMe = true) {
   }
 }
 
+/**
+ * Update the details of the company for the active session.
+ * 
+ * @param {{ company_name?: string, owner_name?: string, mobile_number?: string, email?: string }} payload
+ * @returns {Promise<{ success: boolean, user: object }>}
+ */
+export async function updateCompany(payload) {
+  const tokenBundle = getTokenBundle();
+  if (!tokenBundle) throw new Error('No active session.');
+
+  const { token, tokenType, rememberMe } = tokenBundle;
+
+  const response = await fetch('/api/v1/auth/company', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `${tokenType} ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to update company profile.' }));
+    throw new Error(errorData.detail || 'Failed to update company profile.');
+  }
+
+  const data = await response.json();
+  const user = mapAuthUser(data);
+
+  persistUser(user, rememberMe);
+  return { success: true, user };
+}
+
 export function getStoredUser() {
   return getCachedUser();
 }

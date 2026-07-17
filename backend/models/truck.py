@@ -3,7 +3,7 @@ FleetGuard — Truck ORM Model
 Represents a truck/vehicle in the fleet.
 """
 
-from sqlalchemy import Integer, String, Float
+from sqlalchemy import Integer, String, Float, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, TYPE_CHECKING
 
@@ -12,12 +12,20 @@ from database import Base
 if TYPE_CHECKING:
     from models.ticket import Ticket
     from models.fuel_log import FuelLog
+    from models.company import Company
 
 
 class Truck(Base):
     __tablename__ = "trucks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="The company this vehicle belongs to"
+    )
     license_plate: Mapped[str] = mapped_column(
         String(20), unique=True, nullable=False, index=True
     )

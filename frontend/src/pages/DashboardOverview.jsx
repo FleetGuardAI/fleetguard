@@ -36,6 +36,26 @@ export default function DashboardOverview() {
   
   const { success, error, info } = useToast();
 
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+    if (cached) {
+      setUser(JSON.parse(cached));
+    }
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return 'Good morning';
+    } else if (hour >= 12 && hour < 16) {
+      return 'Good afternoon';
+    } else {
+      return 'Good evening';
+    }
+  };
+
   const loadData = async (isSilent = false) => {
     if (isSilent) setRefreshing(true);
     else setLoading(true);
@@ -108,7 +128,7 @@ export default function DashboardOverview() {
             {t("Operations Workspace")}
           </span>
           <h1 className="text-3xl font-light text-content tracking-tight mb-2">
-            {t("Good Morning, ")}<span className="font-medium text-brand-600 dark:text-brand-400">Rudra</span>
+            {t(getGreeting())}, <span className="font-medium text-brand-600 dark:text-brand-400">{user?.name || 'User'}</span>
           </h1>
           <p className="text-sm text-content-secondary max-w-2xl leading-relaxed">
             {t("Operations Engine identified")}{' '}

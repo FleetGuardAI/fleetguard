@@ -1,78 +1,89 @@
-import { mockDrivers, mockTrucks } from '@/data/mockData';
+import api from './client';
 
-let localDrivers = [...mockDrivers];
-
+/**
+ * Fetch all drivers from the backend.
+ * Filters by status and search terms.
+ * 
+ * @param {object} params
+ * @returns {Promise<Array>}
+ */
 export async function getDrivers(params = {}) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let filtered = [...localDrivers];
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(d =>
-          d.name.toLowerCase().includes(q) ||
-          d.phone_number.includes(q)
-        );
-      }
-      if (params.status) {
-        const active = params.status === 'active';
-        filtered = filtered.filter(d => d.is_active === active);
-      }
-      resolve(filtered);
-    }, 500);
-  });
+  const listParams = {};
+  if (params.status) {
+    listParams.is_active = params.status === 'active';
+  }
+  
+  const drivers = await api.drivers.list(listParams) || [];
+
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    return drivers.filter(d =>
+      (d.name && d.name.toLowerCase().includes(q)) ||
+      (d.phone_number && d.phone_number.includes(q))
+    );
+  }
+
+  return drivers;
 }
 
+/**
+ * Fetch details of a single driver by ID.
+ * 
+ * @param {string|number} id
+ * @returns {Promise<object>}
+ */
 export async function getDriverById(id) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const driver = localDrivers.find(d => d.id === Number(id));
-      if (driver) {
-        // Find assigned truck
-        const assignedTruck = mockTrucks[driver.id % mockTrucks.length]; // dummy relation
-        resolve({ ...driver, assignedTruck });
-      } else {
-        reject(new Error('Driver not found'));
-      }
-    }, 400);
-  });
+  const driver = await api.drivers.get(id);
+  if (!driver) {
+    throw new Error('Driver not found');
+  }
+  
+  // Return driver; assignTruck is null for backend compatibility
+  return { ...driver, assignedTruck: null };
 }
 
+/**
+ * Register a new driver in the fleet.
+ * 
+ * @param {object} data
+ * @returns {Promise<object>}
+ */
 export async function createDriver(data) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newDriver = {
-        id: localDrivers.length + 1,
-        risk_score: Math.floor(Math.random() * 50),
-        rating: 4.0,
-        total_trips: 0,
-        total_expenses: 0,
-        is_active: true,
-        ...data
-      };
-      localDrivers.unshift(newDriver);
-      resolve(newDriver);
-    }, 600);
-  });
+  const payload = {
+    name: data.name,
+    phone_number: data.phone_number,
+    avatar_url: data.avatar_url || null,
+  };
+  return await api.drivers.create(payload);
 }
 
+/**
+ * Update driver profile details.
+ * 
+ * @param {string|number} id
+ * @param {object} data
+ * @returns {Promise<object>}
+ */
 export async function updateDriver(id, data) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const index = localDrivers.findIndex(d => d.id === Number(id));
-      if (index !== -1) {
-        localDrivers[index] = { ...localDrivers[index], ...data };
-        resolve(localDrivers[index]);
-      } else {
-        reject(new Error('Driver not found'));
-      }
-    }, 500);
-  });
+  const payload = {};
+  if (data.name !== undefined) payload.name = data.name;
+  if (data.phone_number !== undefined) payload.phone_number = data.phone_number;
+  if (data.avatar_url !== undefined) payload.avatar_url = data.avatar_url;
+  if (data.risk_score !== undefined) payload.risk_score = Number(data.risk_score);
+  if (data.rating !== undefined) payload.rating = Number(data.rating);
+  if (data.is_active !== undefined) payload.is_active = data.is_active;
+
+  return await api.drivers.update(id, payload);
 }
 
+/**
+ * Assign a vehicle to a driver.
+ * Placeholder mock for frontend compatibility.
+ * 
+ * @param {string|number} driverId
+ * @param {string|number} vehicleId
+ * @returns {Promise<object>}
+ */
 export async function assignVehicle(driverId, vehicleId) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: `Vehicle ID ${vehicleId} assigned to driver ID ${driverId}.` });
-    }, 600);
-  });
+  return { success: true, message: `Vehicle ID ${vehicleId} assigned to driver ID ${driverId}.` };
 }

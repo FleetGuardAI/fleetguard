@@ -22,6 +22,7 @@ from schemas import (
     ResetPasswordRequest,
     TokenResponse,
     UserOut,
+    CompanyUpdateRequest,
 )
 from services import (
     authenticate_user,
@@ -132,3 +133,48 @@ async def get_me(
         company=CompanyOut.model_validate(current_user.company),
         role=current_user.role,
     )
+
+
+@router.patch(
+    "/company",
+    response_model=MeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update details of the company for the active session",
+)
+async def update_company(
+    payload: CompanyUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MeResponse:
+    """
+    Update company registration details.
+    Restricted to COMPANY_ADMIN.
+    Updates both the company record and the admin user profile to maintain integrity.
+    """
+    company = current_user.company
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    # Update company record
+    if "company_name" in update_data:
+        company.company_name = update_data["company_name"]
+    if "owner_name" in update_data:
+        company.owner_name = update_data["owner_name"]
+        current_user.full_name = update_data["owner_name"]
+    if "mobile_number" in update_data:
+        company.mobile_number = update_data["mobile_number"]
+        current_user.mobile_number = update_data["mobile_number"]
+    if "email" in update_data:
+        company.email = update_data["email"] or None
+        current_user.email = update_data["email"] or None
+
+    await db.flush()
+    await db.refresh(company)
+    await db.refresh(current_user)
+
+    return MeResponse(
+        user=UserOut.model_validate(current_user),
+        company=CompanyOut.model_validate(company),
+        role=current_user.role,
+    )
+
