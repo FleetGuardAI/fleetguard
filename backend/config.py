@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     WHATSAPP_VERIFY_TOKEN: str = "fleetguard_webhook_verify_2026"
 
+    # Validation Pipeline
+    KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
+    
+    # Outbox Pattern
+    OUTBOX_POLL_INTERVAL_MS: int = 2000
+    OUTBOX_BATCH_SIZE: int = 50
+
+    # -----------------------------------------------------------------------
     # --- CORS ---
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
@@ -76,6 +84,13 @@ class Settings(BaseSettings):
     # In DEBUG this can help local testing of forgot-password without SMS/email integration.
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
 
+    # --- Kafka (Event Bus) ---
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_OPERATIONAL_EVENTS_TOPIC: str = "operational-events"
+    
+    # --- Dead Letter Queue (DLQ) ---
+    DLQ_TOPIC_NAME: str = "fleetguard.dlq"
+    DLQ_INCLUDE_STACK_TRACE: bool = True
 
 
 settings = Settings()

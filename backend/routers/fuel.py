@@ -11,7 +11,7 @@ from typing import Optional
 
 from database import get_db
 from models.fuel_log import FuelLog
-from models.truck import Truck
+from models.vehicle_domain import Vehicle
 from schemas.fuel_log import FuelLogCreate, FuelLogResponse, FuelAlertResponse, FuelChartData
 
 router = APIRouter(prefix="/fuel", tags=["Fuel Monitoring"])
@@ -25,16 +25,16 @@ async def get_fuel_logs(
     db: AsyncSession = Depends(get_db),
 ) -> list[FuelLogResponse]:
     """Get fuel log entries for a specific truck within a time window."""
-    truck = await db.get(Truck, truck_id)
-    if not truck:
-        raise HTTPException(404, f"Truck {truck_id} not found")
+    vehicle = await db.get(Vehicle, truck_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {truck_id} not found")
 
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
     result = await db.execute(
         select(FuelLog)
         .where(
-            FuelLog.truck_id == truck_id,
+            FuelLog.vehicle_id == truck_id,
             FuelLog.timestamp >= since,
         )
         .order_by(FuelLog.timestamp.asc())
@@ -55,16 +55,16 @@ async def get_fuel_chart_data(
     Returns expected burn curve vs actual EMA-filtered level,
     shaped specifically for the Recharts LineChart component.
     """
-    truck = await db.get(Truck, truck_id)
-    if not truck:
-        raise HTTPException(404, f"Truck {truck_id} not found")
+    vehicle = await db.get(Vehicle, truck_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {truck_id} not found")
 
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
     result = await db.execute(
         select(FuelLog)
         .where(
-            FuelLog.truck_id == truck_id,
+            FuelLog.vehicle_id == truck_id,
             FuelLog.timestamp >= since,
         )
         .order_by(FuelLog.timestamp.asc())
@@ -94,8 +94,8 @@ async def get_fuel_alerts(
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = (
-        select(FuelLog, Truck.license_plate)
-        .join(Truck, FuelLog.truck_id == Truck.id)
+        select(FuelLog, Vehicle.registration_number)
+        .join(Vehicle, FuelLog.vehicle_id == Vehicle.id)
         .where(
             FuelLog.is_theft_alert == True,  # noqa: E712
             FuelLog.timestamp >= since,
@@ -103,7 +103,7 @@ async def get_fuel_alerts(
     )
 
     if truck_id is not None:
-        query = query.where(FuelLog.truck_id == truck_id)
+        query = query.where(FuelLog.vehicle_id == truck_id)
 
     query = query.order_by(FuelLog.timestamp.desc()).limit(limit)
     result = await db.execute(query)
@@ -145,13 +145,13 @@ async def ingest_fuel_reading(
     - Theft detection (speed==0 + fuel drop > threshold)
     - Alert creation
     """
-    truck = await db.get(Truck, payload.truck_id)
-    if not truck:
-        raise HTTPException(404, f"Truck {payload.truck_id} not found")
+    vehicle = await db.get(Vehicle, payload.truck_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {payload.truck_id} not found")
 
     # For now, filtered_level = raw_level (Phase 3 adds EMA smoothing)
     fuel_log = FuelLog(
-        truck_id=payload.truck_id,
+        vehicle_id=payload.truck_id,
         timestamp=payload.timestamp,
         raw_level=payload.raw_level,
         filtered_level=payload.raw_level,  # Will be EMA-smoothed in Phase 3

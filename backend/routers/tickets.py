@@ -8,10 +8,14 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from database import get_db
+from database import get_db, get_uow
 from models.ticket import Ticket, TicketStatus, RiskLevel
-from models.driver import Driver
-from models.truck import Truck
+from models.operational_event import EventType, EntityType, CaptureMethod
+from schemas.operational_event import OperationalEventCreate
+from routers.operational_events import get_event_service
+from services.operational_event_service import OperationalEventService
+from models.driver_domain import Driver
+from models.vehicle_domain import Vehicle
 from schemas.ticket import (
     TicketCreate,
     TicketUpdate,
@@ -26,7 +30,7 @@ def _ticket_to_response(ticket: Ticket, driver_name: str = None, truck_plate: st
     """Convert a Ticket ORM instance to a TicketResponse schema."""
     return TicketResponse(
         id=ticket.id,
-        truck_id=ticket.truck_id,
+        truck_id=ticket.vehicle_id,
         driver_id=ticket.driver_id,
         issue_type=ticket.issue_type,
         vendor_name=ticket.vendor_name,
@@ -58,13 +62,13 @@ async def list_tickets(
     truck_id: Optional[int] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow),
 ) -> list[TicketResponse]:
     """List all tickets with optional filters. Returns joined driver/truck names."""
     query = (
-        select(Ticket, Driver.name, Truck.license_plate)
+        select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
-        .join(Truck, Ticket.truck_id == Truck.id)
+        .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
     )
 
     if status:
@@ -84,7 +88,7 @@ async def list_tickets(
     if driver_id:
         query = query.where(Ticket.driver_id == driver_id)
     if truck_id:
-        query = query.where(Ticket.truck_id == truck_id)
+        query = query.where(Ticket.vehicle_id == truck_id)
 
     query = query.order_by(Ticket.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
@@ -97,12 +101,12 @@ async def list_tickets(
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
-async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketResponse:
+async def get_ticket(ticket_id: int, uow = Depends(get_uow)) -> TicketResponse:
     """Get a single ticket by ID."""
     result = await db.execute(
-        select(Ticket, Driver.name, Truck.license_plate)
+        select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
-        .join(Truck, Ticket.truck_id == Truck.id)
+        .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
         .where(Ticket.id == ticket_id)
     )
     row = result.first()
@@ -116,20 +120,20 @@ async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Tick
 @router.post("", response_model=TicketResponse, status_code=201)
 async def create_ticket(
     payload: TicketCreate,
-    db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow),
 ) -> TicketResponse:
     """Create a new expense ticket."""
     # Verify truck and driver exist
-    truck = await db.get(Truck, payload.truck_id)
-    if not truck:
-        raise HTTPException(404, f"Truck {payload.truck_id} not found")
+    vehicle = await db.get(Vehicle, payload.truck_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {payload.truck_id} not found")
 
     driver = await db.get(Driver, payload.driver_id)
     if not driver:
         raise HTTPException(404, f"Driver {payload.driver_id} not found")
 
     ticket = Ticket(
-        truck_id=payload.truck_id,
+        vehicle_id=payload.truck_id,
         driver_id=payload.driver_id,
         issue_type=payload.issue_type,
         vendor_name=payload.vendor_name,
@@ -148,14 +152,15 @@ async def create_ticket(
     await db.flush()
     await db.refresh(ticket)
 
-    return _ticket_to_response(ticket, driver.name, truck.license_plate)
+    return _ticket_to_response(ticket, driver.name, vehicle.registration_number)
 
 
 @router.post("/{ticket_id}/action", response_model=TicketResponse)
 async def approve_or_reject_ticket(
     ticket_id: int,
     payload: TicketApproval,
-    db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow),
+    event_service: OperationalEventService = Depends(get_event_service),
 ) -> TicketResponse:
     """
     Approve or reject a ticket.
@@ -169,9 +174,9 @@ async def approve_or_reject_ticket(
     - Phase 2 will notify the driver via WhatsApp
     """
     result = await db.execute(
-        select(Ticket, Driver.name, Truck.license_plate)
+        select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
-        .join(Truck, Ticket.truck_id == Truck.id)
+        .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
         .where(Ticket.id == ticket_id)
     )
     row = result.first()
@@ -188,6 +193,34 @@ async def approve_or_reject_ticket(
         # Simulate UPI payout
         import uuid
         ticket.payout_reference = f"UPI-{uuid.uuid4().hex[:12].upper()}"
+        
+        # Flush here to get updated ticket state (though we don't strictly need it for the payload)
+        await db.flush()
+        
+        # Emit an Unverified event for the new Expense Domain to pick up.
+        # This bridges the legacy Ticket flow to the new Architecture.
+        event_payload = OperationalEventCreate(
+            entity_type=EntityType.EXPENSE,
+            entity_id=f"TICKET-{ticket.id}",
+            event_type=EventType.EXPENSE_RECORDED,
+            capture_method=CaptureMethod.SYSTEM_INTERNAL,
+            payload={
+                "category": ticket.issue_type,
+                "amount": ticket.amount,
+                "currency": "INR",
+                "description": ticket.description,
+                "receipt_reference": ticket.receipt_url,
+                "vehicle_id": ticket.vehicle_id,
+                "driver_id": ticket.driver_id,
+                "expense_date": ticket.expense_date.isoformat() if ticket.expense_date else None
+            },
+            notes=f"Auto-generated from approved Ticket {ticket.id}"
+        )
+        
+        # This will save the event, and the validation engine will mark it VERIFIED, 
+        # which dispatches it to the ProcessingEngine, which routes to ExpenseService.
+        await event_service.create_event(event_payload)
+        
     else:
         ticket.status = TicketStatus.REJECTED
         if payload.rejection_reason:

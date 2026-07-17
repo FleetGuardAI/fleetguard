@@ -55,8 +55,8 @@ import logging
 from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from dispatchers.event_dispatcher import EventDispatcher
+from infrastructure.uow import AbstractUnitOfWork
+from config import settings
 
 from models.operational_event import (
     CaptureMethod,
@@ -127,12 +127,9 @@ class OperationalEventService:
 
     def __init__(
         self,
-        db: AsyncSession,
-        dispatcher: Optional[EventDispatcher] = None,
+        uow: AbstractUnitOfWork,
     ) -> None:
-        self._db = db
-        self._repo = OperationalEventRepository(db)
-        self._dispatcher = dispatcher
+        self.uow = uow
 
     # -----------------------------------------------------------------------
     # Write Operations
@@ -183,7 +180,7 @@ class OperationalEventService:
         )
 
         try:
-            persisted = await self._repo.create_event(event)
+            persisted = await self.uow.repositories.operational_event.create_event(event)
         except EventPersistenceError as exc:
             logger.error("create_event failed: %s", exc.detail)
             raise EventWriteError(exc.detail) from exc
@@ -196,8 +193,13 @@ class OperationalEventService:
             persisted.entity_id,
         )
 
-        # Extension point — Event Dispatcher / Fleet Memory (not yet implemented)
-        await self._after_create(persisted)
+        # Stage the event in the Outbox to guarantee delivery
+        outbox_payload = OperationalEventResponse.model_validate(persisted).model_dump(mode="json")
+        await self.uow.repositories.outbox.create_event(
+            topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
+            payload=outbox_payload,
+            event_id=str(persisted.id)
+        )
 
         return OperationalEventResponse.model_validate(persisted)
 
@@ -229,7 +231,7 @@ class OperationalEventService:
             If the update cannot be persisted.
         """
         try:
-            updated = await self._repo.update_event_notes(event_id, notes)
+            updated = await self.uow.repositories.operational_event.update_event_notes(event_id, notes)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
         except EventPersistenceError as exc:
@@ -272,7 +274,7 @@ class OperationalEventService:
             If the update cannot be persisted.
         """
         try:
-            updated = await self._repo.update_event_metadata(event_id, event_metadata)
+            updated = await self.uow.repositories.operational_event.update_event_metadata(event_id, event_metadata)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
         except EventPersistenceError as exc:
@@ -321,14 +323,14 @@ class OperationalEventService:
             if update.verification_status is not None:
                 # Extension point — Validation Engine guard (not yet implemented)
                 await self._before_status_change(event_id, update.verification_status)
-                await self._repo.update_verification_status(
+                await self.uow.repositories.operational_event.update_verification_status(
                     event_id, update.verification_status
                 )
 
             if update.notes is not None:
-                await self._repo.update_event_notes(event_id, update.notes)
+                await self.uow.repositories.operational_event.update_event_notes(event_id, update.notes)
 
-            event = await self._repo.get_event_by_id(event_id)
+            event = await self.uow.repositories.operational_event.get_event_by_id(event_id)
 
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
@@ -364,7 +366,7 @@ class OperationalEventService:
             If no event with the given UUID exists.
         """
         try:
-            event = await self._repo.get_event_by_id(event_id)
+            event = await self.uow.repositories.operational_event.get_event_by_id(event_id)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
 
@@ -391,7 +393,7 @@ class OperationalEventService:
         Sequence[OperationalEventResponse]
             Ordered list of event responses.
         """
-        events = await self._repo.list_events(limit=limit, offset=offset)
+        events = await self.uow.repositories.operational_event.list_events(limit=limit, offset=offset)
         return [OperationalEventResponse.model_validate(e) for e in events]
 
     async def list_events_by_entity(
@@ -423,7 +425,7 @@ class OperationalEventService:
         Sequence[OperationalEventResponse]
             Events for the entity, ordered by ``occurred_at`` desc.
         """
-        events = await self._repo.list_events_by_entity(
+        events = await self.uow.repositories.operational_event.list_events_by_entity(
             entity_type, entity_id, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
@@ -454,7 +456,7 @@ class OperationalEventService:
         Sequence[OperationalEventResponse]
             Matching events ordered by ``occurred_at`` desc.
         """
-        events = await self._repo.list_events_by_type(
+        events = await self.uow.repositories.operational_event.list_events_by_type(
             event_type, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
@@ -487,36 +489,12 @@ class OperationalEventService:
         Sequence[OperationalEventResponse]
             Matching events ordered by ``occurred_at`` desc.
         """
-        events = await self._repo.list_events_by_verification_status(
+        events = await self.uow.repositories.operational_event.list_events_by_verification_status(
             status, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
 
     # -----------------------------------------------------------------------
-    # Extension Points (Future Integrations — not yet implemented)
-    # -----------------------------------------------------------------------
-
-    async def _after_create(self, event: OperationalEvent) -> None:
-        """
-        Hook called after a new event has been successfully persisted.
-
-        Current behaviour
-        -----------------
-        Publishes the event to the ``EventDispatcher`` if one was injected
-        at construction time.  Each registered subscriber receives the event
-        according to its ``event_filter``.
-
-        Pending integrations
-        --------------------
-        • Fleet Memory — subscribe via ``EventDispatcher`` when ready.
-
-        Do NOT implement business logic here.  This hook should only
-        trigger I/O side-effects.
-        """
-        if self._dispatcher is None:
-            return
-        response = OperationalEventResponse.model_validate(event)
-        await self._dispatcher.publish(response)
 
     async def _before_status_change(
         self,
