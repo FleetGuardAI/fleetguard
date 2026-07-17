@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     WHATSAPP_VERIFY_TOKEN: str = "fleetguard_webhook_verify_2026"
 
+    # Validation Pipeline
+    KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
+    
+    # Outbox Pattern
+    OUTBOX_POLL_INTERVAL_MS: int = 2000
+    OUTBOX_BATCH_SIZE: int = 50
+
+    # -----------------------------------------------------------------------
     # --- CORS ---
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
@@ -51,6 +59,38 @@ class Settings(BaseSettings):
 
     # --- Fair Price Risk Threshold ---
     FAIR_PRICE_OVERAGE_PERCENT: float = 20.0
+
+    # --- JWT Authentication ---
+    # IMPORTANT: Override SECRET_KEY with a strong random value in production.
+    # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    SECRET_KEY: str = "change-me-in-production-use-a-strong-random-secret"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    REMEMBER_ME_EXPIRE_DAYS: int = 30
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
+
+    # --- reCAPTCHA Enterprise ---
+    RECAPTCHA_PROJECT_ID: Optional[str] = None
+    RECAPTCHA_API_KEY: Optional[str] = None
+    RECAPTCHA_SITE_KEY: Optional[str] = None
+    RECAPTCHA_MIN_SCORE: float = 0.4
+
+    # --- CAPTCHA (Cloudflare Turnstile compatible) ---
+    CAPTCHA_SITE_KEY: Optional[str] = None
+    CAPTCHA_SECRET_KEY: Optional[str] = None
+    CAPTCHA_VERIFY_URL: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    CAPTCHA_DEV_BYPASS_TOKEN: str = "dev-captcha-pass"
+
+    # In DEBUG this can help local testing of forgot-password without SMS/email integration.
+    PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
+
+    # --- Kafka (Event Bus) ---
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_OPERATIONAL_EVENTS_TOPIC: str = "operational-events"
+    
+    # --- Dead Letter Queue (DLQ) ---
+    DLQ_TOPIC_NAME: str = "fleetguard.dlq"
+    DLQ_INCLUDE_STACK_TRACE: bool = True
 
 
 settings = Settings()

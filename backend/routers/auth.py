@@ -1,0 +1,134 @@
+"""
+FleetGuard — Authentication Router
+
+Handles public tenant registration, dual-identifier login (email or mobile),
+and retrieval of current user profile context.
+"""
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_db
+from models import User
+from schemas import (
+    CompanyOut,
+    CompanyRegistrationRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    GenericMessageResponse,
+    LoginRequest,
+    MeResponse,
+    RegisterCompanyResponse,
+    ResetPasswordRequest,
+    TokenResponse,
+    UserOut,
+)
+from services import (
+    authenticate_user,
+    create_forgot_password_request,
+    create_token_for_user,
+    get_current_user,
+    register_company,
+    reset_password_with_token,
+)
+
+router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
+
+
+@router.post(
+    "/register",
+    response_model=RegisterCompanyResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new company and its admin user",
+)
+async def register(
+    payload: CompanyRegistrationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> RegisterCompanyResponse:
+    """
+    Register a new transport company.
+
+    Atomically creates a new Company tenant and the first primary Admin user,
+    hashes the password, generates a JWT access token, and returns the context.
+    """
+    return await register_company(payload=payload, db=db)
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Authenticate a user and return a JWT access token",
+)
+async def login(
+    payload: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """
+    Log in using email OR mobile number.
+
+    The router resolves the provided identifier and delegates verification to the
+    auth service. Returns a JWT access token.
+    """
+    # Guaranteed by schemas/auth.py validation that at least one is present
+    login_identifier = payload.email if payload.email is not None else payload.mobile_number
+    
+    user = await authenticate_user(
+        login_identifier=login_identifier,
+        password=payload.password,
+        db=db,
+    )
+    return await create_token_for_user(
+        user=user,
+        db=db,
+        remember_me=payload.remember_me,
+    )
+
+
+@router.post(
+    "/forgot-password/request",
+    response_model=ForgotPasswordResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Start forgot-password flow",
+)
+async def forgot_password_request(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ForgotPasswordResponse:
+    """Generate one-time password reset token for an account identifier."""
+    return await create_forgot_password_request(payload=payload, db=db)
+
+
+@router.post(
+    "/forgot-password/reset",
+    response_model=GenericMessageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reset password using one-time token",
+)
+async def forgot_password_reset(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> GenericMessageResponse:
+    """Finalize password reset and revoke active sessions for the account."""
+    return await reset_password_with_token(payload=payload, db=db)
+
+
+@router.get(
+    "/me",
+    response_model=MeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get details of the currently logged-in user",
+)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+) -> MeResponse:
+    """
+    Retrieve profile details, role, and company details for the active session.
+
+    Requires a valid Bearer JWT token in the Authorization header.
+    """
+    return MeResponse(
+        user=UserOut.model_validate(current_user),
+        company=CompanyOut.model_validate(current_user.company),
+        role=current_user.role,
+    )

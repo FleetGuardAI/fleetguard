@@ -1,11 +1,11 @@
 import React from 'react';
 import { Truck, Navigation, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-export default function KPICards() {
+export default function KPICards({ kpis }) {
   const cards = [
     {
       label: 'ACTIVE TRUCKS',
-      value: 148,
+      value: kpis?.active_trucks ?? 24,
       icon: Truck,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
@@ -13,30 +13,30 @@ export default function KPICards() {
       sparkline: [20, 25, 23, 28, 35, 32, 40]
     },
     {
-      label: 'EN-ROUTE',
-      value: 112,
+      label: 'PENDING APPROVALS',
+      value: kpis?.pending_approvals ?? 7,
       icon: Navigation,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
-      trend: 'On-schedule',
+      trend: 'Awaiting review',
       sparkline: [15, 18, 22, 21, 25, 28, 30]
     },
     {
-      label: 'MAINTENANCE',
-      value: 18,
+      label: 'THEFT ALERTS',
+      value: kpis?.theft_alerts ?? 3,
       icon: AlertTriangle,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      trend: '2 scheduled',
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50',
+      trend: 'Stationary drops',
       sparkline: [5, 4, 3, 5, 4, 3, 2]
     },
     {
-      label: 'VERIFICATION RATE',
-      value: '98.4%',
+      label: 'TOTAL EXPENSES (TODAY)',
+      value: `₹${(kpis?.total_expenses_today ?? 14750).toLocaleString()}`,
       icon: ShieldCheck,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
-      trend: '+1.2% increase',
+      trend: 'Direct from WhatsApp',
       sparkline: [92, 94, 95, 96, 98, 97, 98.4]
     }
   ];

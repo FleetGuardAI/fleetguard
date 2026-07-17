@@ -44,10 +44,15 @@ export default function WhatsAppChatFeed() {
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   const handleSend = (e) => {
@@ -101,7 +106,7 @@ export default function WhatsAppChatFeed() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 custom-scrollbar bg-surface-900/20">
+      <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-3 min-h-0 custom-scrollbar bg-surface-900/20">
         {messages.map((msg) => {
           const isOwner = msg.sender === 'owner';
           const isBot = msg.sender === 'bot';
@@ -157,7 +162,6 @@ export default function WhatsAppChatFeed() {
             </div>
           );
         })}
-        <div ref={chatEndRef} />
       </div>
 
       {/* Input */}

@@ -13,16 +13,42 @@ const API_BASE = '/api';
  */
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  
+  const localToken = localStorage.getItem('fleetguard_token');
+  const sessionToken = sessionStorage.getItem('fleetguard_token');
+  const token = localToken || sessionToken;
+
+  const tokenType = localToken
+    ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+    : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  if (token) {
+    headers['Authorization'] = `${tokenType} ${token}`;
+  }
+
   const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   };
 
   try {
     const response = await fetch(url, config);
+    if (response.status === 401) {
+      localStorage.removeItem('fleetguard_token');
+      localStorage.removeItem('fleetguard_token_type');
+      localStorage.removeItem('fleetguard_user');
+
+      sessionStorage.removeItem('fleetguard_token');
+      sessionStorage.removeItem('fleetguard_token_type');
+      sessionStorage.removeItem('fleetguard_user');
+      if (!window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
+        window.location.href = '/login?expired=true';
+      }
+      throw new Error('Your session has expired. Please log in again.');
+    }
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
       throw new Error(error.detail || `HTTP ${response.status}`);
@@ -61,6 +87,7 @@ const api = {
     },
     get: (id) => request(`/drivers/${id}`),
     create: (data) => request('/drivers', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/drivers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   trucks: {
@@ -70,6 +97,7 @@ const api = {
     },
     get: (id) => request(`/trucks/${id}`),
     create: (data) => request('/trucks', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   fuel: {
