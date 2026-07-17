@@ -16,8 +16,8 @@ from typing import Optional, TYPE_CHECKING
 from database import Base
 
 if TYPE_CHECKING:
-    from models.truck import Truck
-    from models.driver import Driver
+    from models.vehicle_domain import Vehicle
+    from models.driver_domain import Driver
 
 
 class TicketStatus(str, enum.Enum):
@@ -39,8 +39,8 @@ class Ticket(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # --- Foreign Keys ---
-    truck_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("trucks.id"), nullable=False, index=True
+    vehicle_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("vehicles.id"), nullable=True, index=True
     )
     driver_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("drivers.id"), nullable=False, index=True
@@ -109,7 +109,7 @@ class Ticket(Base):
     )
 
     # --- Relationships ---
-    truck: Mapped["Truck"] = relationship("Truck", back_populates="tickets")
+    vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", back_populates="tickets")
     driver: Mapped["Driver"] = relationship("Driver", back_populates="tickets")
 
     def __repr__(self) -> str:

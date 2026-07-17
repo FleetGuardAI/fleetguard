@@ -2,8 +2,13 @@
 FleetGuard Pydantic Schemas Package.
 """
 
-from schemas.truck import TruckCreate, TruckUpdate, TruckResponse
-from schemas.driver import DriverCreate, DriverUpdate, DriverResponse
+from schemas.vehicle_domain import VehicleResponse
+from schemas.driver_domain import DriverResponse
+from schemas.trip_domain import TripResponse
+from schemas.maintenance_domain import MaintenanceRecordResponse
+from schemas.tyre_domain import TyreResponse
+from schemas.asset_domain import AssetResponse
+from schemas.expense_domain import ExpenseResponse
 from schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApproval
 from schemas.fuel_log import FuelLogCreate, FuelLogResponse, FuelAlertResponse
 from schemas.auth import (
@@ -21,15 +26,35 @@ from schemas.auth import (
 )
 from schemas.operational_event import (
     OperationalEventCreate,
-    OperationalEventUpdate,
     OperationalEventResponse,
+    OperationalEventUpdate,
+)
+from schemas.document import (
+    DocumentCreate,
+    DocumentResponse,
+    DocumentUpdate,
+)
+from schemas.evidence import (
+    EvidenceCreate,
+    EvidenceResponse,
+    EvidenceStatusUpdate,
 )
 
 __all__ = [
-    "TruckCreate", "TruckUpdate", "TruckResponse",
-    "DriverCreate", "DriverUpdate", "DriverResponse",
-    "TicketCreate", "TicketUpdate", "TicketResponse", "TicketApproval",
-    "FuelLogCreate", "FuelLogResponse", "FuelAlertResponse",
+    "VehicleResponse",
+    "DriverResponse",
+    "TripResponse",
+    "MaintenanceRecordResponse",
+    "TyreResponse",
+    "AssetResponse",
+    "ExpenseResponse",
+    "TicketCreate",
+    "TicketUpdate",
+    "TicketResponse",
+    "TicketApproval",
+    "FuelLogCreate",
+    "FuelLogResponse",
+    "FuelAlertResponse",
 
     # Auth Schemas
     "CompanyRegistrationRequest",
@@ -39,5 +64,23 @@ __all__ = [
     "UserOut",
     "RegisterCompanyResponse",
     "MeResponse",
-]
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
+    "ForgotPasswordResponse",
+    "GenericMessageResponse",
 
+    # Event-Driven Architecture Schemas
+    "OperationalEventCreate",
+    "OperationalEventResponse",
+    "OperationalEventUpdate",
+
+    # Document Intelligence
+    "DocumentCreate",
+    "DocumentResponse",
+    "DocumentUpdate",
+
+    # Evidence Framework
+    "EvidenceCreate",
+    "EvidenceResponse",
+    "EvidenceStatusUpdate",
+]

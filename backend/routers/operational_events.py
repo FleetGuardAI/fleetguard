@@ -48,7 +48,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
+from database import get_db, get_uow
 from models.operational_event import EntityType, EventType, VerificationStatus
 from schemas.operational_event import (
     OperationalEventCreate,
@@ -72,7 +72,7 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 
 def get_event_service(
-    db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow),
 ) -> OperationalEventService:
     """
     FastAPI dependency that constructs an ``OperationalEventService``.
@@ -84,8 +84,8 @@ def get_event_service(
     Inject with ``Depends(get_event_service)`` in endpoint signatures.
     """
     # Late import avoids circular dependency: main → router → main.
-    from main import event_dispatcher  # noqa: PLC0415
-    return OperationalEventService(db, dispatcher=event_dispatcher)
+    from main import event_bus  # noqa: PLC0415
+    return OperationalEventService(db, event_bus=event_bus)
 
 
 # ---------------------------------------------------------------------------
