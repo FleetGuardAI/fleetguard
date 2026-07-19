@@ -7,7 +7,7 @@ It is NOT enabled by default.
 
 from models.operational_event import EventType
 from infrastructure.validation.rule import BaseValidationRule
-from schemas.validation_sdk import ValidationContext, RuleResult, RuleSeverity, RuleCategory
+from schemas.validation_sdk import ValidationContext, RuleResult, RuleSeverity, RuleCategory, RuleStatus
 
 
 class ExampleFuelStructuralRule(BaseValidationRule):
@@ -41,7 +41,7 @@ class ExampleFuelStructuralRule(BaseValidationRule):
         if not payload:
             return RuleResult(
                 rule_name=self.name, 
-                passed=False, 
+                status=RuleStatus.FAIL, 
                 severity=RuleSeverity.CRITICAL,
                 message="Payload is entirely missing."
             )
@@ -49,7 +49,7 @@ class ExampleFuelStructuralRule(BaseValidationRule):
         if not isinstance(payload, dict):
             return RuleResult(
                 rule_name=self.name, 
-                passed=False, 
+                status=RuleStatus.FAIL, 
                 severity=RuleSeverity.CRITICAL,
                 message="Payload must be a JSON object."
             )
@@ -85,7 +85,7 @@ class ExampleFuelStructuralRule(BaseValidationRule):
         if reasons:
             return RuleResult(
                 rule_name=self.name, 
-                passed=False, 
+                status=RuleStatus.FAIL, 
                 severity=RuleSeverity.CRITICAL,
                 message=" | ".join(reasons),
                 recommendation="Ensure the event publisher adheres to the Fuel event schema."
@@ -93,7 +93,7 @@ class ExampleFuelStructuralRule(BaseValidationRule):
 
         return RuleResult(
             rule_name=self.name, 
-            passed=True,
+            status=RuleStatus.PASS,
             severity=RuleSeverity.INFO,
             message="Payload structure is valid."
         )

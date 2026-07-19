@@ -77,15 +77,9 @@ def get_event_service(
     """
     FastAPI dependency that constructs an ``OperationalEventService``.
 
-    Injects the application-level ``EventDispatcher`` singleton so that
-    newly created events are automatically dispatched to all registered
-    subscribers.
-
     Inject with ``Depends(get_event_service)`` in endpoint signatures.
     """
-    # Late import avoids circular dependency: main → router → main.
-    from main import event_bus  # noqa: PLC0415
-    return OperationalEventService(db, event_bus=event_bus)
+    return OperationalEventService(uow)
 
 
 # ---------------------------------------------------------------------------

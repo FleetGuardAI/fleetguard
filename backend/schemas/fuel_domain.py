@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from models.fuel_domain import FuelTransactionType
+from models.fuel_domain import FuelTransactionType, FuelSource, FuelStateReliability
 
 
 # ===========================================================================
@@ -16,7 +16,7 @@ from models.fuel_domain import FuelTransactionType
 
 class FuelFill(BaseModel):
     """Internal value object representing a fuel fill action."""
-    truck_id: int
+    vehicle_id: int
     amount_liters: float = Field(..., gt=0)
     timestamp: datetime
     description: Optional[str] = None
@@ -24,7 +24,7 @@ class FuelFill(BaseModel):
 
 class FuelAdjustment(BaseModel):
     """Internal value object representing a manual fuel adjustment."""
-    truck_id: int
+    vehicle_id: int
     amount_liters: float = Field(..., description="Can be positive or negative")
     timestamp: datetime
     description: Optional[str] = None
@@ -36,7 +36,7 @@ class FuelAdjustment(BaseModel):
 
 class FuelTransactionResponse(BaseModel):
     id: int
-    truck_id: int
+    vehicle_id: int
     transaction_type: FuelTransactionType
     amount_liters: float
     origin_type: Optional[str] = None
@@ -50,16 +50,31 @@ class FuelTransactionResponse(BaseModel):
 
 class FuelStateResponse(BaseModel):
     id: int
-    truck_id: int
+    vehicle_id: int
     current_level: float
-    origin_type: Optional[str] = None
-    origin_id: Optional[str] = None
+    source: FuelSource
+    reliability: FuelStateReliability
+    last_operational_event_id: Optional[str] = None
     last_updated_at: datetime
 
     model_config = {"from_attributes": True}
 
 
+class CurrentFuelState(BaseModel):
+    """
+    Domain object used by Validation Engine and business logic.
+    Provides a complete view of the current fuel state without requiring DB queries.
+    """
+    vehicle_id: int
+    current_fuel_liters: float
+    capacity_liters: float
+    source: FuelSource
+    reliability: FuelStateReliability
+    last_updated: datetime
+    last_operational_event_id: Optional[str] = None
+
+
 class FuelHistoryResponse(BaseModel):
     """Wraps a list of transactions to form the history."""
-    truck_id: int
+    vehicle_id: int
     history: list[FuelTransactionResponse]

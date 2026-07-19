@@ -11,6 +11,13 @@ from schemas.operational_event import OperationalEventResponse
 from schemas.evidence_package import EvidencePackage
 
 
+class RuleStatus(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    SKIPPED = "SKIPPED"
+    ERROR = "ERROR"
+
+
 class RuleSeverity(str, Enum):
     """Severity level of a rule failure."""
     CRITICAL = "CRITICAL"
@@ -49,7 +56,7 @@ class RuleResult(BaseModel):
     Standardized output from a Validation Rule.
     """
     rule_name: str
-    passed: bool
+    status: RuleStatus
     severity: RuleSeverity
     confidence: float = 1.0
     message: str

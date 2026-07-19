@@ -8,12 +8,9 @@ Independent of FastAPI, HTTP exceptions, and database models.
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from config import settings
-
-# Configure password hashing context using bcrypt
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def dummy_verify() -> None:
@@ -21,17 +18,19 @@ def dummy_verify() -> None:
     Perform a dummy verify to simulate a password check workload.
     Helps prevent timing-attack user-enumeration.
     """
-    _pwd_context.dummy_verify()
+    try:
+        bcrypt.checkpw(b"dummy", b"$2b$12$KIXz8XvB4e.9c.OQ1Q8P5O9Z2R3S4T5U6V7W8X9Y0Z1A2B3C4D5E6")
+    except Exception:
+        pass
 
 
 def hash_password(plain: str) -> str:
-
     """
     Hash a plain text password using bcrypt.
 
     Returns the secure password hash string.
     """
-    return _pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -40,7 +39,10 @@ def verify_password(plain: str, hashed: str) -> bool:
 
     Returns True if valid, False otherwise.
     """
-    return _pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:

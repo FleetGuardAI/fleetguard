@@ -22,6 +22,19 @@ class FuelTransactionType(str, enum.Enum):
     ADJUSTMENT = "ADJUSTMENT"
 
 
+class FuelSource(str, enum.Enum):
+    SENSOR = "SENSOR"
+    ESTIMATED = "ESTIMATED"
+    MANUAL = "MANUAL"
+
+
+class FuelStateReliability(str, enum.Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+    UNKNOWN = "UNKNOWN"
+
+
 class FuelState(Base):
     """
     Represents the latest known business state of a vehicle's fuel.
@@ -38,11 +51,19 @@ class FuelState(Base):
     )
     
     # Traceability
-    origin_type: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True,
-        comment="Origin of this state (e.g., 'verified_event', 'sensor', 'manual')"
+    source: Mapped[FuelSource] = mapped_column(
+        Enum(FuelSource, name="fuel_source"),
+        nullable=False,
+        default=FuelSource.ESTIMATED,
+        comment="Origin of this state"
     )
-    origin_id: Mapped[Optional[str]] = mapped_column(
+    reliability: Mapped[FuelStateReliability] = mapped_column(
+        Enum(FuelStateReliability, name="fuel_state_reliability"),
+        nullable=False,
+        default=FuelStateReliability.UNKNOWN,
+        comment="Business-oriented reliability of the measurement"
+    )
+    last_operational_event_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True,
         comment="Reference ID from the origin (e.g., OperationalEvent ID)"
     )
@@ -55,7 +76,7 @@ class FuelState(Base):
     vehicle: Mapped["Vehicle"] = relationship("Vehicle")
 
     def __repr__(self) -> str:
-        return f"<FuelState(vehicle={self.vehicle_id}, level={self.current_level}L, origin={self.origin_type})>"
+        return f"<FuelState(vehicle={self.vehicle_id}, level={self.current_level}L, source={self.source.value}, reliability={self.reliability.value})>"
 
 
 class FuelTransaction(Base):

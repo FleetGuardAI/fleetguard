@@ -31,6 +31,7 @@ class UserRole(str, enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
     COMPANY_ADMIN = "COMPANY_ADMIN"
     FLEET_MANAGER = "FLEET_MANAGER"
+    ADMIN = "ADMIN"
 
 
 class User(Base):
