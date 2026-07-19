@@ -35,8 +35,8 @@ async def get_vehicle_fuel_state(
     db: AsyncSession = Depends(get_db)
 ) -> FuelStateResponse:
     """Get the current known fuel state for a vehicle."""
-    truck = await db.get(Truck, vehicle_id)
-    if not truck:
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
         
     repo = FuelRepository(db)
@@ -55,8 +55,8 @@ async def get_vehicle_fuel_history(
     db: AsyncSession = Depends(get_db)
 ) -> FuelHistoryResponse:
     """Get the fuel transaction history for a vehicle."""
-    truck = await db.get(Truck, vehicle_id)
-    if not truck:
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
         
     repo = FuelRepository(db)

@@ -7,7 +7,7 @@ from typing import List
 
 from infrastructure.validation.registry import ValidationRuleRegistry
 from infrastructure.validation.executor import RuleExecutor
-from schemas.validation_sdk import ValidationContext, RuleResult, RuleSeverity
+from schemas.validation_sdk import ValidationContext, RuleResult, RuleSeverity, RuleStatus
 from schemas.validation_result import ValidationResult, ValidationVerdict
 
 logger = logging.getLogger("fleetguard.infrastructure.validation.engine")
@@ -42,9 +42,11 @@ class ValidationEngine:
             logger.info(f"No validation rules applicable for Event {context.event.id}.")
         
         for result in results:
-            if result.passed:
+            if result.status == RuleStatus.PASS:
                 passed_rules.append(result.rule_name)
-            else:
+            elif result.status == RuleStatus.SKIPPED:
+                logger.info(f"Rule {result.rule_name} was skipped: {result.message}")
+            elif result.status == RuleStatus.FAIL or result.status == RuleStatus.ERROR:
                 if result.severity == RuleSeverity.CRITICAL:
                     failed_rules.append(result)
                     verdict = ValidationVerdict.REJECTED

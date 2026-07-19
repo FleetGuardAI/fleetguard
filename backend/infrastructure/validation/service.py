@@ -12,6 +12,7 @@ from schemas.operational_event import OperationalEventCreate, OperationalEventRe
 from schemas.evidence_package import EvidencePackage
 from schemas.validation_result import ValidationVerdict
 from schemas.validation_sdk import ValidationContext
+from infrastructure.validation.context_factory import ValidationContextFactory
 from services.operational_event_service import OperationalEventService
 from repositories.evidence_repository import EvidenceRepository
 
@@ -58,13 +59,12 @@ class ValidationService:
                     for e in evidence_records_models
                 ]
                 
-                # Build context
-                context = ValidationContext(
+                # Build context using the factory
+                context_factory = ValidationContextFactory(db)
+                context = await context_factory.build(
                     event=event_response,
-                    evidence_package=package,
-                    evidence_records=evidence_records,
-                    business_state={}, # Fetch business state here if needed
-                    configuration={}
+                    package=package,
+                    evidence_records=evidence_records
                 )
                 
                 # 3. Evaluate using the Validation Engine

@@ -14,6 +14,7 @@ from repositories.driver_repository import DriverRepository
 from repositories.evidence_repository import EvidenceRepository
 from repositories.expense_repository import ExpenseRepository
 from repositories.fuel_repository import FuelRepository
+from repositories.fuel_state_repository import FuelStateRepository
 from repositories.maintenance_repository import MaintenanceRepository
 from repositories.operational_event_repository import OperationalEventRepository
 from repositories.processing_repository import ProcessingRepository
@@ -35,6 +36,7 @@ class RepositoryRegistry:
         self.evidence = EvidenceRepository(db)
         self.expense = ExpenseRepository(db)
         self.fuel = FuelRepository(db)
+        self.fuel_state = FuelStateRepository(db)
         self.maintenance = MaintenanceRepository(db)
         self.operational_event = OperationalEventRepository(db)
         self.processing = ProcessingRepository(db)

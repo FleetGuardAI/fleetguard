@@ -31,13 +31,16 @@ event_bus = KafkaEventBus(settings.KAFKA_BOOTSTRAP_SERVERS)
 
 # Initialize Validation & Enrichment Engine
 from infrastructure.validation.registry import ValidationRuleRegistry
-
+from infrastructure.validation.rules.example_fuel_structural_rule import ExampleFuelStructuralRule
+from infrastructure.validation.rules.tank_capacity_rule import TankCapacityRule
 from infrastructure.validation.engine import ValidationEngine
 from infrastructure.validation.service import ValidationService
 from infrastructure.validation.consumer import ValidationConsumer
 
-# Initialize Validation Engine
+# Initialize Validation & Register Rules
 validation_registry = ValidationRuleRegistry()
+validation_registry.register(ExampleFuelStructuralRule())
+validation_registry.register(TankCapacityRule())
 
 validation_engine = ValidationEngine(validation_registry)
 
@@ -177,27 +180,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("✅ Database tables created/verified.")
     
     # Start Kafka Producer
-    await event_bus.start()
+    # await event_bus.start()
     
     # Start Kafka Consumers
-    await validation_consumer.start()
-    await processing_consumer.start()
-    await evidence_consumer_runner.start()
+    # await validation_consumer.start()
+    # await processing_consumer.start()
+    # await evidence_consumer_runner.start()
     
     # Start Outbox Worker
-    await outbox_worker.start()
+    # await outbox_worker.start()
 
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
     
     # Stop Outbox Worker
-    await outbox_worker.stop()
+    # await outbox_worker.stop()
     
     # Stop Kafka Consumers
-    await evidence_consumer_runner.stop()
-    await processing_consumer.stop()
-    await validation_consumer.stop()
+    # await evidence_consumer_runner.stop()
+    # await processing_consumer.stop()
+    # await validation_consumer.stop()
     
     # Stop Kafka Producer
     await event_bus.stop()
