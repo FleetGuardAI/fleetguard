@@ -13,7 +13,6 @@ from database import Base
 if TYPE_CHECKING:
     from models.ticket import Ticket
     from models.fuel_log import FuelLog
-    from models.fuel_domain import FuelState, FuelTransaction
 
 
 class VehicleStatus(str, enum.Enum):

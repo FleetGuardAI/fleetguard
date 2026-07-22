@@ -140,8 +140,8 @@ import models  # noqa: F401
 from routers.whatsapp import router as whatsapp_router
 from routers.dashboard import router as dashboard_router
 from routers.tickets import router as tickets_router
-from routers.driver_domain import router as driver_domain_router
-from routers.trip_domain import router as trip_domain_router
+from routers.assignment_domain import router as assignment_domain_router
+from domain.fuel.api import router as fuel_domain_router
 from routers.maintenance_domain import router as maintenance_domain_router
 from routers.tyre_domain import router as tyre_domain_router
 from routers.asset_domain import router as asset_domain_router
