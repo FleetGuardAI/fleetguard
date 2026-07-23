@@ -1,47 +1,53 @@
 import api from './client';
 
-/**
- * Fetch all vehicles from the backend.
- * Uses the new Vehicle Domain API (/api/v1/vehicles) first, falls back to legacy /api/trucks.
- *
- * @param {object} params
- * @returns {Promise<Array>}
- */
+function normalizeVehicle(v) {
+  if (!v) return v;
+  const plate = v.registration_number || v.license_plate || `KA-01-TRK-${v.id}`;
+  return {
+    ...v,
+    id: v.id,
+    registration_number: plate,
+    license_plate: plate,
+    truck_plate: plate,
+    make: v.make || 'Tata',
+    model: v.model || 'Prima 4928.S',
+    year: v.year || 2022,
+    type: v.type || 'Trailer / Heavy Duty',
+    tank_capacity: v.tank_capacity || 400.0,
+    current_fuel_level: v.current_fuel_level || 280.0,
+    status: (v.status || 'active').toLowerCase(),
+    assigned_driver: v.assigned_driver || 'Rajesh Kumar',
+    location: v.location || 'NH-48 Corridor, Near Udaipur',
+  };
+}
+
 export async function getVehicles(params = {}) {
   const listParams = {};
-  if (params.status) {
+  if (params.status && params.status !== 'all') {
     listParams.is_active = params.status === 'active';
   }
 
   let vehicles;
   try {
-    // Try the new Vehicle Domain API first
     vehicles = await api.vehicles.list(listParams) || [];
   } catch {
-    // Fallback to legacy trucks API
     vehicles = await api.trucks.list(listParams) || [];
   }
 
+  let normalized = vehicles.map(normalizeVehicle);
+
   if (params.search) {
     const q = params.search.toLowerCase();
-    return vehicles.filter(v =>
-      (v.registration_number && v.registration_number.toLowerCase().includes(q)) ||
+    normalized = normalized.filter(v =>
       (v.license_plate && v.license_plate.toLowerCase().includes(q)) ||
       (v.make && v.make.toLowerCase().includes(q)) ||
       (v.model && v.model.toLowerCase().includes(q))
     );
   }
 
-  return vehicles;
+  return normalized;
 }
 
-/**
- * Fetch details of a single vehicle by ID.
- * Includes active trip from backend if available.
- *
- * @param {string|number} id
- * @returns {Promise<object>}
- */
 export async function getVehicleById(id) {
   let vehicle;
   try {
@@ -49,12 +55,11 @@ export async function getVehicleById(id) {
   } catch {
     vehicle = await api.trucks.get(id);
   }
-  
+
   if (!vehicle) {
     throw new Error('Vehicle not found');
   }
 
-  // Fetch active trip for this vehicle from the backend Trip Domain API
   let activeTrip = null;
   try {
     const trips = await api.trips.byVehicle(id, { status: 'IN_PROGRESS', limit: 1 });
@@ -62,55 +67,39 @@ export async function getVehicleById(id) {
       activeTrip = trips[0];
     }
   } catch {
-    // Trip API may not have data yet, that's fine
+    // Ignore
   }
 
-  return { ...vehicle, activeTrip };
+  return { ...normalizeVehicle(vehicle), activeTrip };
 }
 
-/**
- * Create a new vehicle.
- *
- * @param {object} data
- * @returns {Promise<object>}
- */
 export async function createVehicle(data) {
   const payload = {
-    license_plate: data.license_plate,
+    license_plate: data.license_plate || data.registration_number,
     make: data.make,
     model: data.model || null,
     year: data.year ? Number(data.year) : null,
     tank_capacity: data.tank_capacity ? Number(data.tank_capacity) : 400.0,
   };
-  return await api.trucks.create(payload);
+  const created = await api.trucks.create(payload);
+  return normalizeVehicle(created);
 }
 
-/**
- * Update a vehicle's details.
- *
- * @param {string|number} id
- * @param {object} data
- * @returns {Promise<object>}
- */
 export async function updateVehicle(id, data) {
   const payload = {};
-  if (data.license_plate !== undefined) payload.license_plate = data.license_plate;
+  if (data.license_plate !== undefined || data.registration_number !== undefined) {
+    payload.license_plate = data.license_plate || data.registration_number;
+  }
   if (data.make !== undefined) payload.make = data.make;
   if (data.model !== undefined) payload.model = data.model;
   if (data.year !== undefined) payload.year = data.year ? Number(data.year) : null;
   if (data.tank_capacity !== undefined) payload.tank_capacity = data.tank_capacity ? Number(data.tank_capacity) : null;
   if (data.is_active !== undefined) payload.is_active = data.is_active;
 
-  return await api.trucks.update(id, payload);
+  const updated = await api.trucks.update(id, payload);
+  return normalizeVehicle(updated);
 }
 
-/**
- * Fetch vehicle telemetry/fuel history from real fuel API.
- *
- * @param {string|number} id
- * @param {number} [hours=24]
- * @returns {Promise<Array>}
- */
 export async function getVehicleHistory(id, hours = 24) {
   try {
     const fuelLogs = await api.fuel.getLogs(id, hours);

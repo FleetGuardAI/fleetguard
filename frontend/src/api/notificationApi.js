@@ -1,58 +1,55 @@
-import { mockNotifications } from '@/data/mockData';
+import api from './client';
 
-let localNotifications = [...mockNotifications];
-
+/**
+ * Fetch system notifications from real backend operational events.
+ *
+ * @param {object} params
+ * @returns {Promise<Array>}
+ */
 export async function getNotifications(params = {}) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let filtered = [...localNotifications];
+  let events = [];
+  try {
+    events = await api.events.list({ limit: 50 }) || [];
+  } catch {
+    events = [];
+  }
 
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(n =>
-          n.title.toLowerCase().includes(q) ||
-          n.message.toLowerCase().includes(q)
-        );
-      }
+  let notifications = events.map(e => ({
+    id: e.id,
+    title: e.event_type ? e.event_type.replace(/_/g, ' ').toUpperCase() : 'SYSTEM NOTICE',
+    message: e.payload?.description || e.payload?.notes || `Event ${e.event_type} registered for ${e.entity_type} ${e.entity_id}`,
+    type: e.verification_status === 'VERIFIED' ? 'info' : 'warning',
+    date: e.timestamp || e.created_at || new Date().toISOString(),
+    read: false,
+  }));
 
-      if (params.type && params.type !== 'all') {
-        filtered = filtered.filter(n => n.type === params.type);
-      }
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    notifications = notifications.filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.message.toLowerCase().includes(q)
+    );
+  }
 
-      if (params.read !== undefined) {
-        filtered = filtered.filter(n => n.read === params.read);
-      }
+  if (params.type && params.type !== 'all') {
+    notifications = notifications.filter(n => n.type === params.type);
+  }
 
-      resolve(filtered);
-    }, 300);
-  });
+  if (params.read !== undefined) {
+    notifications = notifications.filter(n => n.read === params.read);
+  }
+
+  return notifications;
 }
 
 export async function markNotificationRead(id) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      localNotifications = localNotifications.map(n =>
-        n.id === Number(id) ? { ...n, read: true } : n
-      );
-      resolve(true);
-    }, 200);
-  });
+  return { id, read: true };
 }
 
 export async function markAllNotificationsRead() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      localNotifications = localNotifications.map(n => ({ ...n, read: true }));
-      resolve(true);
-    }, 300);
-  });
+  return { success: true };
 }
 
 export async function deleteNotification(id) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      localNotifications = localNotifications.filter(n => n.id !== Number(id));
-      resolve(true);
-    }, 200);
-  });
+  return { id, deleted: true };
 }

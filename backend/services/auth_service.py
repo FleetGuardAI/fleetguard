@@ -128,19 +128,24 @@ async def _assert_mobile_not_taken(
     mobile: str, db: AsyncSession, *, exclude_user_id: Optional[int] = None
 ) -> None:
     """
-    Raise HTTP 409 if *mobile* already exists in the users table.
-
-    *exclude_user_id* is reserved for future "update profile" use-cases
-    where the mobile owner is the user being updated.
+    Raise HTTP 409 if *mobile* already exists in users or companies table.
     """
-    q = select(User).where(User.mobile_number == mobile)
+    q1 = select(User).where(User.mobile_number == mobile)
     if exclude_user_id is not None:
-        q = q.where(User.id != exclude_user_id)
-    result = await db.execute(q)
-    if result.scalar_one_or_none() is not None:
+        q1 = q1.where(User.id != exclude_user_id)
+    res1 = await db.execute(q1)
+    if res1.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This mobile number is already registered.",
+            detail="User already registered with this mobile number. Please log in.",
+        )
+
+    q2 = select(Company).where(Company.mobile_number == mobile)
+    res2 = await db.execute(q2)
+    if res2.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User already registered with this mobile number. Please log in.",
         )
 
 
@@ -148,17 +153,26 @@ async def _assert_email_not_taken(
     email: str, db: AsyncSession, *, exclude_user_id: Optional[int] = None
 ) -> None:
     """
-    Raise HTTP 409 if *email* already exists in the users table.
-    Only called when an email is actually provided.
+    Raise HTTP 409 if *email* already exists in users or companies table.
     """
-    q = select(User).where(User.email == email)
+    if not email:
+        return
+    q1 = select(User).where(User.email == email)
     if exclude_user_id is not None:
-        q = q.where(User.id != exclude_user_id)
-    result = await db.execute(q)
-    if result.scalar_one_or_none() is not None:
+        q1 = q1.where(User.id != exclude_user_id)
+    res1 = await db.execute(q1)
+    if res1.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This email address is already registered.",
+            detail="User already registered with this email address. Please log in.",
+        )
+
+    q2 = select(Company).where(Company.email == email)
+    res2 = await db.execute(q2)
+    if res2.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User already registered with this email address. Please log in.",
         )
 
 
