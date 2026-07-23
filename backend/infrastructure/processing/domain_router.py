@@ -11,7 +11,7 @@ from infrastructure.uow import AbstractUnitOfWork
 from models.operational_event import EventType
 from schemas.operational_event import OperationalEventResponse
 
-from services.assignment_service import AssignmentService
+from services.vehicle_service import VehicleService
 from domain.fuel.service import FuelService
 from services.driver_service import DriverService
 from services.trip_service import TripService

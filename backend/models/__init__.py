@@ -25,7 +25,6 @@ from models.ticket import Ticket
 from models.fuel_log import FuelLog
 from models.operational_event import OperationalEvent
 from models.evidence import Evidence
-from models.assignment_domain import DriverAssignment
 from models.processing_record import ProcessingRecord
 from models.processed_event import ProcessedEvent
 from models.outbox_event import OutboxEvent, OutboxStatus
@@ -55,8 +54,6 @@ __all__ = [
     # Event-Driven Architecture
     "OperationalEvent",
     "Evidence",
-    "FuelState",
-    "FuelTransaction",
     "ProcessingRecord",
     "ProcessedEvent",
     "OutboxEvent",
