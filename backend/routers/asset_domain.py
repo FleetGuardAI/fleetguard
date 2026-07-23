@@ -5,10 +5,10 @@ Provides Read-Only REST APIs for the Asset Business Domain.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
-from database import get_db
+from database import get_read_uow
+from infrastructure.uow import AbstractUnitOfWork
 from models.asset_domain import AssetInstallationStatus, AssetOperationalStatus
 from services.asset_service import AssetService
 from schemas.asset_domain import AssetResponse
@@ -22,10 +22,10 @@ async def list_assets(
     operational_status: Optional[AssetOperationalStatus] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    uow: AbstractUnitOfWork = Depends(get_read_uow),
 ) -> List[AssetResponse]:
     """List all assets with optional status filters."""
-    service = AssetService(db)
+    service = AssetService(uow)
     assets = await service.search_assets(
         installation_status=installation_status, 
         operational_status=operational_status, 
@@ -41,10 +41,10 @@ async def search_assets(
     operational_status: Optional[AssetOperationalStatus] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    uow: AbstractUnitOfWork = Depends(get_read_uow),
 ) -> List[AssetResponse]:
     """Search for assets based on criteria."""
-    service = AssetService(db)
+    service = AssetService(uow)
     assets = await service.search_assets(
         installation_status=installation_status, 
         operational_status=operational_status, 
@@ -57,10 +57,10 @@ async def search_assets(
 @router.get("/assets/{asset_id}", response_model=AssetResponse)
 async def get_asset(
     asset_id: int, 
-    db: AsyncSession = Depends(get_db)
+    uow: AbstractUnitOfWork = Depends(get_read_uow),
 ) -> AssetResponse:
     """Get a single asset by internal ID."""
-    service = AssetService(db)
+    service = AssetService(uow)
     asset = await service.get_asset(asset_id)
     if not asset:
         raise HTTPException(404, f"Asset {asset_id} not found")
@@ -72,9 +72,9 @@ async def get_assets_by_vehicle(
     vehicle_id: int, 
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db)
+    uow: AbstractUnitOfWork = Depends(get_read_uow),
 ) -> List[AssetResponse]:
     """Get all assets currently mounted on a specific vehicle."""
-    service = AssetService(db)
+    service = AssetService(uow)
     assets = await service.get_assets_by_vehicle(vehicle_id, limit=limit, offset=offset)
     return [AssetResponse.model_validate(a) for a in assets]

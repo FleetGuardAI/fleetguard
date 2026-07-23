@@ -11,7 +11,7 @@ from infrastructure.uow import AbstractUnitOfWork
 from models.operational_event import EventType
 from schemas.operational_event import OperationalEventResponse
 
-from services.assignment_service import AssignmentService
+#from services.assignment_service import AssignmentService
 from domain.fuel.service import FuelService
 from services.driver_service import DriverService
 from services.trip_service import TripService
@@ -19,6 +19,7 @@ from services.maintenance_service import MaintenanceService
 from services.tyre_service import TyreService
 from services.asset_service import AssetService
 from services.expense_service import ExpenseService
+from services.vehicle_service import VehicleService
 
 
 # A Domain Handler is a factory that takes an AbstractUnitOfWork and returns a service instance

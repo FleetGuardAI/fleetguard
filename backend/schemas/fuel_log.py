@@ -33,7 +33,7 @@ class FuelLogCreate(BaseModel):
 class FuelLogResponse(BaseModel):
     """Schema for fuel log API responses."""
     id: int
-    truck_id: int
+    vehicle_id: int
     timestamp: datetime
     raw_level: float
     filtered_level: float
