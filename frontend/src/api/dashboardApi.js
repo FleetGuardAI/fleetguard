@@ -1,9 +1,8 @@
 import api from './client';
-import { generateMockFuelData } from '@/data/mockData';
 
 /**
  * Fetch and aggregate dashboard KPI blocks and feeds from the backend.
- * Fallback to mock fuel chart telematics data.
+ * Fuel chart data now comes from the backend fuel API.
  * 
  * @returns {Promise<object>}
  */
@@ -48,10 +47,28 @@ export async function getDashboardData() {
 
   const flaggedDrivers = (drivers || []).filter(d => d.risk_score > 40);
 
+  // Fetch real fuel chart data from backend
+  // Use first active vehicle's chart data, or return empty
+  let fuelChart = [];
+  try {
+    const vehicles = await api.trucks.list({ is_active: true });
+    if (vehicles && vehicles.length > 0) {
+      const chartData = await api.fuel.getChartData(vehicles[0].id, 24);
+      fuelChart = (chartData || []).map(point => ({
+        time: point.timestamp,
+        expected: point.expected_level,
+        actual: point.actual_filtered_level,
+        raw: point.raw_level,
+      }));
+    }
+  } catch {
+    // No fuel data available yet, return empty chart
+  }
+
   return {
     kpis: mappedKPIs,
     recentActivity: mappedRecentActivity,
     flaggedDrivers,
-    fuelChart: generateMockFuelData(),
+    fuelChart,
   };
 }

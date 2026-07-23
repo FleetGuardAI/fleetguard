@@ -1,59 +1,71 @@
-import { mockAlerts } from '@/data/mockData';
+import api from './client';
 
-let localAlerts = [...mockAlerts];
-
+/**
+ * Fetch alerts from the backend fuel alerts API.
+ * Maps fuel theft alerts to the generic alert structure.
+ *
+ * @param {object} params
+ * @returns {Promise<Array>}
+ */
 export async function getAlerts(params = {}) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let filtered = [...localAlerts];
+  const queryParams = {};
+  if (params.days) queryParams.days = params.days;
+  if (params.truck_id) queryParams.truck_id = params.truck_id;
 
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(a =>
-          a.truck_plate.toLowerCase().includes(q) ||
-          a.type.toLowerCase().includes(q) ||
-          a.message.toLowerCase().includes(q)
-        );
-      }
+  const fuelAlerts = await api.fuel.getAlerts(queryParams) || [];
 
-      if (params.severity) {
-        filtered = filtered.filter(a => a.level === params.severity);
-      }
+  let alerts = fuelAlerts.map(a => ({
+    id: a.id,
+    type: 'fuel_theft',
+    level: a.fuel_drop_liters > 30 ? 'critical' : a.fuel_drop_liters > 15 ? 'warning' : 'info',
+    severity: a.fuel_drop_liters > 30 ? 'critical' : a.fuel_drop_liters > 15 ? 'warning' : 'info',
+    message: `Fuel drop of ${a.fuel_drop_liters?.toFixed(1)}L detected`,
+    truck_id: a.truck_id,
+    truck_plate: a.truck_plate,
+    timestamp: a.timestamp,
+    fuel_drop_liters: a.fuel_drop_liters,
+    latitude: a.latitude,
+    longitude: a.longitude,
+    speed: a.speed,
+    resolved: false,
+  }));
 
-      if (params.resolved !== undefined) {
-        filtered = filtered.filter(a => a.resolved === params.resolved);
-      }
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    alerts = alerts.filter(a =>
+      (a.truck_plate && a.truck_plate.toLowerCase().includes(q)) ||
+      (a.type && a.type.toLowerCase().includes(q)) ||
+      (a.message && a.message.toLowerCase().includes(q))
+    );
+  }
 
-      // Map level -> severity in view if needed, or unify
-      const normalized = filtered.map(a => ({
-        ...a,
-        severity: a.level // map level field to severity for consistent naming
-      }));
+  if (params.severity) {
+    alerts = alerts.filter(a => a.level === params.severity);
+  }
 
-      resolve(normalized);
-    }, 400);
-  });
+  if (params.resolved !== undefined) {
+    alerts = alerts.filter(a => a.resolved === params.resolved);
+  }
+
+  return alerts;
 }
 
+/**
+ * Resolve an alert.
+ * Since there's no dedicated alerts backend, this is a client-side action.
+ *
+ * @param {string|number} id
+ * @param {string} comment
+ * @returns {Promise<object>}
+ */
 export async function resolveAlert(id, comment) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const idx = localAlerts.findIndex(a => String(a.id) === String(id));
-      if (idx !== -1) {
-        localAlerts[idx] = {
-          ...localAlerts[idx],
-          resolved: true,
-          resolutionComment: comment,
-          resolved_by: 'Suryansh Chaudhary',
-          resolved_at: new Date().toISOString()
-        };
-        resolve({
-          ...localAlerts[idx],
-          severity: localAlerts[idx].level
-        });
-      } else {
-        reject(new Error('Alert not found'));
-      }
-    }, 400);
-  });
+  // Fuel alerts are read from fuel_log; resolving is a local/UI action for now.
+  // In Phase 3 this would post a resolution event.
+  return {
+    id,
+    resolved: true,
+    resolutionComment: comment,
+    resolved_by: 'Current User',
+    resolved_at: new Date().toISOString(),
+  };
 }

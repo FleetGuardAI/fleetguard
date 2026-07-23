@@ -1,10 +1,9 @@
 import api from './client';
-import { mockTrips } from '@/data/mockData';
 
 /**
  * Fetch all vehicles from the backend.
- * Filters by status and search terms on the client/server.
- * 
+ * Uses the new Vehicle Domain API (/api/v1/vehicles) first, falls back to legacy /api/trucks.
+ *
  * @param {object} params
  * @returns {Promise<Array>}
  */
@@ -13,42 +12,65 @@ export async function getVehicles(params = {}) {
   if (params.status) {
     listParams.is_active = params.status === 'active';
   }
-  
-  const trucks = await api.trucks.list(listParams) || [];
 
-  // Filter client-side by search query since backend list_trucks does not filter search queries
+  let vehicles;
+  try {
+    // Try the new Vehicle Domain API first
+    vehicles = await api.vehicles.list(listParams) || [];
+  } catch {
+    // Fallback to legacy trucks API
+    vehicles = await api.trucks.list(listParams) || [];
+  }
+
   if (params.search) {
     const q = params.search.toLowerCase();
-    return trucks.filter(v =>
+    return vehicles.filter(v =>
+      (v.registration_number && v.registration_number.toLowerCase().includes(q)) ||
       (v.license_plate && v.license_plate.toLowerCase().includes(q)) ||
       (v.make && v.make.toLowerCase().includes(q)) ||
       (v.model && v.model.toLowerCase().includes(q))
     );
   }
 
-  return trucks;
+  return vehicles;
 }
 
 /**
  * Fetch details of a single vehicle by ID.
- * 
+ * Includes active trip from backend if available.
+ *
  * @param {string|number} id
  * @returns {Promise<object>}
  */
 export async function getVehicleById(id) {
-  const truck = await api.trucks.get(id);
-  if (!truck) {
-    throw new Error('Vehicle not found');
+  let vehicle;
+  try {
+    vehicle = await api.vehicles.get(id);
+  } catch {
+    vehicle = await api.trucks.get(id);
   }
   
-  // Find associated active trip if any from mockData (since backend has no Trip model/endpoints)
-  const activeTrip = mockTrips.find(tr => tr.truck_id === truck.id && tr.status === 'on-trip');
-  return { ...truck, activeTrip };
+  if (!vehicle) {
+    throw new Error('Vehicle not found');
+  }
+
+  // Fetch active trip for this vehicle from the backend Trip Domain API
+  let activeTrip = null;
+  try {
+    const trips = await api.trips.byVehicle(id, { status: 'IN_PROGRESS', limit: 1 });
+    if (trips && trips.length > 0) {
+      activeTrip = trips[0];
+    }
+  } catch {
+    // Trip API may not have data yet, that's fine
+  }
+
+  return { ...vehicle, activeTrip };
 }
 
 /**
  * Create a new vehicle.
- * 
+ *
  * @param {object} data
  * @returns {Promise<object>}
  */
@@ -65,7 +87,7 @@ export async function createVehicle(data) {
 
 /**
  * Update a vehicle's details.
- * 
+ *
  * @param {string|number} id
  * @param {object} data
  * @returns {Promise<object>}
@@ -83,16 +105,26 @@ export async function updateVehicle(id, data) {
 }
 
 /**
- * Fetch vehicle location/telemetry history.
- * Placeholder mock as there is no backend equivalent.
- * 
+ * Fetch vehicle telemetry/fuel history from real fuel API.
+ *
  * @param {string|number} id
+ * @param {number} [hours=24]
  * @returns {Promise<Array>}
  */
-export async function getVehicleHistory(id) {
-  return [
-    { id: 1, date: new Date(Date.now() - 3600000).toISOString(), status: 'moving', speed: 65, location: 'Near Udaipur, NH-48', fuelLevel: 280 },
-    { id: 2, date: new Date(Date.now() - 7200000).toISOString(), status: 'moving', speed: 70, location: 'Near Pali, NH-48', fuelLevel: 295 },
-    { id: 3, date: new Date(Date.now() - 10800000).toISOString(), status: 'stopped', speed: 0, location: 'Dhaba Midway, Ajmer', fuelLevel: 300 }
-  ];
+export async function getVehicleHistory(id, hours = 24) {
+  try {
+    const fuelLogs = await api.fuel.getLogs(id, hours);
+    return (fuelLogs || []).map((log, idx) => ({
+      id: log.id || idx + 1,
+      date: log.timestamp,
+      status: log.speed > 0 ? 'moving' : 'stopped',
+      speed: log.speed || 0,
+      location: log.latitude && log.longitude
+        ? `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}`
+        : 'Unknown',
+      fuelLevel: log.filtered_level || log.raw_level || 0,
+    }));
+  } catch {
+    return [];
+  }
 }
