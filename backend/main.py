@@ -141,6 +141,8 @@ from routers.whatsapp import router as whatsapp_router
 from routers.dashboard import router as dashboard_router
 from routers.tickets import router as tickets_router
 from routers.assignment_domain import router as assignment_domain_router
+from routers.driver_domain import router as driver_domain_router
+from routers.trip_domain import router as trip_domain_router
 from domain.fuel.api import router as fuel_domain_router
 from routers.maintenance_domain import router as maintenance_domain_router
 from routers.tyre_domain import router as tyre_domain_router
@@ -148,7 +150,6 @@ from routers.asset_domain import router as asset_domain_router
 from routers.expense_domain import router as expense_router
 from routers.vehicle_domain import router as vehicle_domain_router
 from routers.fuel import router as fuel_router
-from routers.fuel_domain import router as fuel_domain_router
 from routers.auth import router as auth_router
 from routers.operational_events import router as operational_events_router
 from routers.documents import router as documents_router
