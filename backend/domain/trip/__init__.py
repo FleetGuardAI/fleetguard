@@ -1,0 +1,3 @@
+"""
+Trip Management Domain
+"""
