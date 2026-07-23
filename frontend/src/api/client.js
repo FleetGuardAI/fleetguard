@@ -257,6 +257,11 @@ const api = {
     get: (id) => request(`/v1/events/${id}`),
     create: (data) => request('/v1/events', { method: 'POST', body: JSON.stringify(data) }),
   },
+
+  // ── Auth (NEW - /api/v1/auth) ──────────────────────────────
+  auth: {
+    updateCompany: (data) => request('/v1/auth/company', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
 };
 
 export default api;
