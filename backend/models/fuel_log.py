@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from database import Base
 
 if TYPE_CHECKING:
-    from models.truck import Truck
+    from models.vehicle_domain import Vehicle
 
 
 class FuelLog(Base):
@@ -22,8 +22,8 @@ class FuelLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # --- Foreign Key ---
-    truck_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("trucks.id"), nullable=False, index=True
+    vehicle_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("vehicles.id"), nullable=False, index=True
     )
 
     # --- Telemetry Data ---
@@ -64,11 +64,11 @@ class FuelLog(Base):
     )
 
     # --- Relationship ---
-    truck: Mapped["Truck"] = relationship("Truck", back_populates="fuel_logs")
+    vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="fuel_logs")
 
     def __repr__(self) -> str:
         return (
-            f"<FuelLog(id={self.id}, truck={self.truck_id}, "
+            f"<FuelLog(id={self.id}, vehicle={self.vehicle_id}, "
             f"raw={self.raw_level}L, filtered={self.filtered_level}L, "
             f"theft={self.is_theft_alert})>"
         )
