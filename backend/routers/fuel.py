@@ -116,7 +116,7 @@ async def get_fuel_alerts(
         alerts.append(
             FuelAlertResponse(
                 id=log.id,
-                truck_id=log.truck_id,
+                truck_id=log.vehicle_id,
                 truck_plate=truck_plate,
                 timestamp=log.timestamp,
                 fuel_drop_liters=abs(log.raw_level - log.filtered_level),

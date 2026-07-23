@@ -68,6 +68,39 @@ async def get_uow() -> AsyncGenerator[Any, None]:
         # Note: Depending on strategy, some teams auto-commit. For now, we yield UoW.
 
 
+async def get_read_uow() -> AsyncGenerator[Any, None]:
+    """
+    FastAPI dependency that yields a UnitOfWork for read-only routes.
+    Creates a session, wraps it in a RepositoryRegistry-compatible UoW,
+    and auto-commits on success (like get_db).
+    """
+    from infrastructure.uow import AbstractUnitOfWork, RepositoryRegistry
+
+    class _SessionUoW(AbstractUnitOfWork):
+        """Lightweight UoW wrapping a single session for read-only API endpoints."""
+        def __init__(self, session: AsyncSession):
+            self._session = session
+            self.repositories = RepositoryRegistry(session)
+
+        async def commit(self):
+            await self._session.commit()
+
+        async def rollback(self):
+            await self._session.rollback()
+
+    async with async_session_factory() as session:
+        uow = _SessionUoW(session)
+        try:
+            yield uow
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+
 # --- Table Management ---
 async def create_all_tables() -> None:
     """Create all tables defined by ORM models. Called on app startup."""

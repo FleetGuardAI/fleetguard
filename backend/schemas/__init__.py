@@ -13,6 +13,7 @@ from schemas.ticket import TicketCreate, TicketUpdate, TicketResponse, TicketApp
 from schemas.fuel_log import FuelLogCreate, FuelLogResponse, FuelAlertResponse
 from schemas.auth import (
     CompanyRegistrationRequest,
+    CompanyUpdateRequest,
     LoginRequest,
     TokenResponse,
     CompanyOut,
@@ -58,6 +59,7 @@ __all__ = [
 
     # Auth Schemas
     "CompanyRegistrationRequest",
+    "CompanyUpdateRequest",
     "LoginRequest",
     "TokenResponse",
     "CompanyOut",
