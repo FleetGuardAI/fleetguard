@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Eye, Trash2, Star, ShieldAlert } from 'lucide-react';
-import { getDrivers } from '@/api/driverApi';
+import { getDrivers, deleteDriver } from '@/api/driverApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -37,7 +37,7 @@ export default function DriverList() {
     setErr(null);
     try {
       const data = await getDrivers({ search, status: statusFilter !== 'all' ? statusFilter : undefined });
-      setDrivers(data);
+      setDrivers(data || []);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve drivers directory.');
@@ -73,12 +73,12 @@ export default function DriverList() {
     if (!driverToDelete) return;
     setDeleting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await deleteDriver(driverToDelete.id);
       setDrivers(prev => prev.filter(d => d.id !== driverToDelete.id));
-      success('Driver Removed', `Successfully archived profile for ${driverToDelete.name}.`);
+      success('Driver Removed', `Successfully archived profile for ${driverToDelete.name || 'Driver'}.`);
       setDeleteModalOpen(false);
     } catch (e) {
-      error('Delete Error', 'Failed to remove driver.');
+      error('Delete Error', e.message || 'Failed to remove driver.');
     } finally {
       setDeleting(false);
       setDriverToDelete(null);
@@ -86,6 +86,7 @@ export default function DriverList() {
   };
 
   const getRiskVariant = (score) => {
+    if (score == null) return 'neutral';
     if (score > 60) return 'danger';
     if (score > 30) return 'warning';
     return 'success';
@@ -96,11 +97,12 @@ export default function DriverList() {
       key: 'name',
       label: 'Driver Name',
       sortable: true,
-      render: (d) => <span className="font-semibold text-content">{d.name}</span>
+      render: (d) => <span className="font-semibold text-content">{d.name || `Driver ID: ${d.id}`}</span>
     },
     {
       key: 'phone_number',
-      label: 'Phone Number'
+      label: 'Phone Number',
+      render: (d) => <span>{d.phone_number || 'N/A'}</span>
     },
     {
       key: 'risk_score',
@@ -108,7 +110,7 @@ export default function DriverList() {
       sortable: true,
       render: (d) => (
         <Badge variant={getRiskVariant(d.risk_score)}>
-          {d.risk_score} / 100
+          {d.risk_score != null ? `${d.risk_score} / 100` : 'N/A'}
         </Badge>
       )
     },
@@ -119,18 +121,21 @@ export default function DriverList() {
       render: (d) => (
         <div className="flex items-center gap-1">
           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          <span className="text-sm font-medium">{d.rating.toFixed(1)}</span>
+          <span className="text-sm font-medium">{d.rating != null ? Number(d.rating).toFixed(1) : 'N/A'}</span>
         </div>
       )
     },
     {
       key: 'is_active',
       label: 'Status',
-      render: (d) => (
-        <Badge variant={d.is_active ? 'success' : 'neutral'} dot>
-          {d.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      )
+      render: (d) => {
+        const isActive = d.status === 'active' || d.is_active === true;
+        return (
+          <Badge variant={isActive ? 'success' : 'neutral'} dot>
+            {isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'actions',
@@ -218,7 +223,7 @@ export default function DriverList() {
       <Card padding="none" className="overflow-hidden">
         {loading ? (
           <div className="p-6">
-            <SkeletonTable rows={5} cols={5} />
+            <SkeletonTable rows={5} cols={6} />
           </div>
         ) : drivers.length === 0 ? (
           <EmptyState
@@ -272,10 +277,10 @@ export default function DriverList() {
             <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
             <div>
               <p className="text-sm font-semibold text-red-950 dark:text-red-400">
-                Removing {driverToDelete.name}
+                Removing {driverToDelete.name || 'Driver'}
               </p>
               <p className="text-xs text-red-700 dark:text-red-300">
-                Phone: {driverToDelete.phone_number} • Safety Score: {driverToDelete.risk_score}/100
+                Phone: {driverToDelete.phone_number || 'N/A'} • Safety Score: {driverToDelete.risk_score != null ? `${driverToDelete.risk_score}/100` : 'N/A'}
               </p>
             </div>
           </div>

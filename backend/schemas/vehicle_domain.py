@@ -32,8 +32,19 @@ class VehicleResponse(BaseModel):
 
 
 # ===========================================================================
-# Value Objects / Internal Commands
+# Write Models / Commands
 # ===========================================================================
+
+class VehicleCreate(BaseModel):
+    license_plate: Optional[str] = Field(None, description="Registration license plate")
+    registration_number: Optional[str] = Field(None, description="Registration number")
+    make: str = Field(..., description="Manufacturer make")
+    model: Optional[str] = None
+    year: Optional[int] = None
+    vin: Optional[str] = None
+    engine_number: Optional[str] = None
+    tank_capacity: Optional[float] = 400.0
+
 
 class VehicleRegistered(BaseModel):
     registration_number: str
@@ -43,6 +54,10 @@ class VehicleRegistered(BaseModel):
 
 
 class VehicleUpdated(BaseModel):
+    license_plate: Optional[str] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
     tank_capacity: Optional[float] = None
     ownership_info: Optional[str] = None
 

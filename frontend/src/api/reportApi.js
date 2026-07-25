@@ -1,18 +1,21 @@
 import api from './client';
 
 /**
- * Dynamically aggregate fleet report data from backend endpoints.
+ * Dynamically aggregate fleet report data from real backend endpoints.
+ * No hardcoded fallback data — returns empty arrays when no data is available.
  *
  * @returns {Promise<object>}
  */
 export async function getFleetReportData() {
-  const [kpis, drivers, tickets] = await Promise.all([
+  const [kpis, tickets, trips, vehicles, maintenance] = await Promise.all([
     api.dashboard.getKPIs().catch(() => null),
-    api.drivers.list().catch(() => []),
     api.tickets.list().catch(() => []),
+    api.trips.list({ limit: 200 }).catch(() => []),
+    api.vehicles.list().catch(() => []),
+    api.maintenance.list().catch(() => []),
   ]);
 
-  // Aggregate expenses by issue type / category
+  // Aggregate expenses by issue type / category from tickets
   const categoryTotals = {};
   let totalExpense = 0;
   (tickets || []).forEach(t => {
@@ -27,33 +30,60 @@ export async function getFleetReportData() {
         name,
         value: totalExpense > 0 ? Math.round((val / totalExpense) * 100) : 0,
       }))
-    : [
-        { name: 'Fuel', value: 65 },
-        { name: 'Repair', value: 18 },
-        { name: 'Toll', value: 12 },
-        { name: 'Fines/Other', value: 5 }
-      ];
+    : [];
 
-  const driverSafetyStats = (drivers || []).map(d => ({
-    name: d.name,
-    safetyScore: Math.max(100 - (d.risk_score || 10), 60),
-    rating: d.rating || 4.5,
-  }));
+  // Compute mileage trend from real trip data (group by month)
+  const mileageTrend = [];
+  const tripsByMonth = {};
+  (trips || []).forEach(t => {
+    if (t.actual_distance && (t.actual_start_time || t.planned_start_time)) {
+      const date = new Date(t.actual_start_time || t.planned_start_time);
+      const monthKey = date.toLocaleString('en', { month: 'short' });
+      if (!tripsByMonth[monthKey]) {
+        tripsByMonth[monthKey] = { totalDist: 0, count: 0 };
+      }
+      tripsByMonth[monthKey].totalDist += t.actual_distance;
+      tripsByMonth[monthKey].count += 1;
+    }
+  });
+  Object.entries(tripsByMonth).forEach(([month, data]) => {
+    mileageTrend.push({
+      month,
+      avg_mileage: data.count > 0 ? Math.round((data.totalDist / data.count) * 10) / 10 : 0,
+    });
+  });
+
+  // Compute driver safety from real driver data (derived from risk_score if available)
+  let driverSafetyStats = [];
+  try {
+    const drivers = await api.driversDomain.list().catch(() => api.drivers.list().catch(() => []));
+    driverSafetyStats = (drivers || []).map(d => ({
+      name: d.name || (d.id ? `Driver ID: ${d.id}` : 'Unassigned'),
+      safetyScore: d.risk_score != null ? Math.max(100 - d.risk_score, 0) : null,
+      rating: d.rating || null,
+    })).filter(d => d.safetyScore !== null);
+  } catch {
+    // No driver data available
+  }
+
+  // Compute maintenance cost by vehicle from real maintenance records
+  const maintenanceCostByVehicle = {};
+  (maintenance || []).forEach(m => {
+    if (m.vehicle_id && m.cost) {
+      const key = m.vehicle_id;
+      maintenanceCostByVehicle[key] = (maintenanceCostByVehicle[key] || 0) + m.cost;
+    }
+  });
 
   return {
-    mileageTrend: [
-      { month: 'Jan', avg_mileage: 4.2 },
-      { month: 'Feb', avg_mileage: 4.3 },
-      { month: 'Mar', avg_mileage: 4.1 },
-      { month: 'Apr', avg_mileage: 4.5 },
-      { month: 'May', avg_mileage: 4.6 },
-      { month: 'Jun', avg_mileage: 4.4 }
-    ],
+    kpis: kpis || {},
+    mileageTrend,
     expenseDistribution,
-    driverSafetyStats: driverSafetyStats.length > 0 ? driverSafetyStats : [
-      { name: 'Rajesh Kumar', safetyScore: 92, rating: 4.8 },
-      { name: 'Suresh Patel', safetyScore: 95, rating: 4.6 },
-    ],
+    driverSafetyStats,
+    maintenanceCostByVehicle,
+    totalVehicles: (vehicles || []).length,
+    totalTrips: (trips || []).length,
+    totalExpense,
   };
 }
 

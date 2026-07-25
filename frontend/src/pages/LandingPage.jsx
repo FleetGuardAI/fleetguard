@@ -33,6 +33,9 @@ import {
 import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/utils/cn';
+import useLenis from '@/hooks/useLenis';
+import useScrollAnimations from '@/hooks/useScrollAnimations';
+import CinematicHeroBackground from '@/components/CinematicHeroBackground';
 
 
 /**
@@ -924,6 +927,11 @@ export default function LandingPage() {
   });
   const [isScrolled, setIsScrolled] = useState(false);
 
+  // ——— Smooth Scrolling & Scroll Animations ———
+  const pageRef = useRef(null);
+  useLenis();
+  useScrollAnimations(pageRef);
+
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
@@ -954,7 +962,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#070a13] font-sans text-slate-700 dark:text-slate-300 overflow-x-hidden relative selection:bg-[#00c853]/30 selection:text-white transition-colors duration-300">
+    <div ref={pageRef} className="min-h-screen bg-slate-50 dark:bg-[#070a13] font-sans text-slate-700 dark:text-slate-300 overflow-x-hidden relative selection:bg-[#00c853]/30 selection:text-white transition-colors duration-300">
       
       {/* Interactive nodes and lines backdrop */}
       <InteractiveNetworkBackground />
@@ -1046,8 +1054,8 @@ export default function LandingPage() {
 
       <section className="relative min-h-[90vh] flex items-center overflow-hidden z-10 pt-32 pb-24" id="hero">
         
-        {/* Full-Screen Background Image */}
-        <div className="absolute inset-0 z-0 opacity-100 pointer-events-none">
+        {/* Full-Screen Background Image with Ken Burns */}
+        <div data-hero-bg className="absolute inset-0 z-0 opacity-100 pointer-events-none">
           <picture>
             <source
               type="image/webp"
@@ -1068,19 +1076,21 @@ export default function LandingPage() {
             <img
               src="/assets/hero_bg_1920.jpg"
               alt="Hero background"
-              className="w-full h-full object-cover object-center"
+              className="w-full h-full object-cover object-center cinematic-ken-burns"
               style={{ imageRendering: 'auto' }}
               loading="eager"
               fetchpriority="high"
             />
           </picture>
+          {/* Cinematic Canvas Overlay — god rays, mist, water shimmer, dust */}
+          <CinematicHeroBackground />
           {/* Subtle overlay to guarantee high-contrast text readability */}
-          <div className="absolute inset-0 bg-black/30 dark:bg-black/55 transition-colors duration-300" />
+          <div className="absolute inset-0 bg-black/30 dark:bg-black/55 transition-colors duration-300" style={{ zIndex: 3 }} />
           {/* Top scrim overlay to make navbar options pop against sky */}
-          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/15 to-transparent dark:from-black/35 pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/15 to-transparent dark:from-black/35 pointer-events-none" style={{ zIndex: 4 }} />
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 w-full px-6">
+        <div data-hero-content className="max-w-7xl mx-auto relative z-10 w-full px-6">
           {/* Left - Typography & Buttons */}
           <div className="max-w-2xl flex flex-col items-start text-left">
             {/* Main Header */}
@@ -1124,7 +1134,7 @@ export default function LandingPage() {
             </div>
 
             {/* Stats list with glowing text */}
-            <div className="grid grid-cols-3 gap-6 md:gap-10 border-t border-white/20 pt-8 w-full max-w-md">
+            <div data-animate="hero-stats" className="grid grid-cols-3 gap-6 md:gap-10 border-t border-white/20 pt-8 w-full max-w-md">
               <div>
                 <p className="text-2xl md:text-3xl font-black text-[#00c853] drop-shadow-[0_0_8px_rgba(0,200,83,0.3)]">40%</p>
                 <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-1">{t('hero.stat1Label')}</p>
@@ -1146,8 +1156,8 @@ export default function LandingPage() {
       {/* ===== INTEGRATIONS BAR ===== */}
       <section className="py-8 bg-slate-100/60 dark:bg-slate-950/40 border-y border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Compatible Fleet Telematics Systems</p>
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-40">
+          <p data-animate="fade-in" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Compatible Fleet Telematics Systems</p>
+          <div data-animate="logos-stagger" className="flex flex-wrap items-center justify-center gap-8 md:gap-16" style={{opacity: 0}}>
             {['Volvo', 'Scania', 'Tata Fleets', 'Daimler', 'BharatBenz'].map((logo, i) => (
               <span key={i} className="text-sm md:text-base font-black tracking-widest text-slate-850 dark:text-slate-300 font-mono select-none transition-colors duration-300">
                 {logo.toUpperCase()}
@@ -1161,7 +1171,7 @@ export default function LandingPage() {
       <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="problem">
         <div className="max-w-7xl mx-auto">
           
-          <div className="mb-16 text-center md:text-left">
+          <div data-animate="fade-up" className="mb-16 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#00c853]" />
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('problem.label')}</span>
@@ -1175,7 +1185,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div data-animate="stagger-children" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { icon: FileWarning, title: t('problem.fake.title'), desc: t('problem.fake.desc'), color: 'text-red-500 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
               { icon: Fuel, title: t('problem.fuel.title'), desc: t('problem.fuel.desc'), color: 'text-rose-500 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
@@ -1203,24 +1213,24 @@ export default function LandingPage() {
       <section className="py-24 px-6 bg-slate-100/40 dark:bg-slate-950/30 border-y border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300" id="how-it-works">
         <div className="max-w-5xl mx-auto text-center">
           
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div data-animate="fade-up" className="flex items-center justify-center gap-3 mb-4">
             <div className="w-8 h-0.5 bg-[#00c853]" />
             <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('how.label')}</span>
             <div className="w-8 h-0.5 bg-[#00c853]" />
           </div>
           
-          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 transition-colors duration-300">
+          <h2 data-animate="fade-up" data-animate-delay="0.1" className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 transition-colors duration-300">
             {t('how.title1')} <span className="text-[#00c853] italic font-black">{t('how.title2')}</span>
           </h2>
-          <p className="text-sm md:text-base text-slate-650 dark:text-slate-400 mb-16 max-w-xl mx-auto leading-relaxed transition-colors duration-300">
+          <p data-animate="fade-up" data-animate-delay="0.2" className="text-sm md:text-base text-slate-650 dark:text-slate-400 mb-16 max-w-xl mx-auto leading-relaxed transition-colors duration-300">
             {t('how.desc')}
           </p>
 
           {/* Pipeline milestones */}
-          <div className="relative">
+          <div data-animate="pin-section" className="relative">
             
             {/* Glowing Connecting Pipeline Laser Line */}
-            <div className="absolute top-10 left-[12%] right-[12%] h-[2px] bg-gradient-to-r from-green-500/20 via-[#00c853] to-green-500/20 hidden md:block laser-connection" />
+            <div data-animate-laser className="absolute top-10 left-[12%] right-[12%] h-[2px] bg-gradient-to-r from-green-500/20 via-[#00c853] to-green-500/20 hidden md:block laser-connection" />
 
             <div className="grid md:grid-cols-3 gap-12">
               {[
@@ -1228,7 +1238,7 @@ export default function LandingPage() {
                 { num: 2, title: t('how.step2.title'), desc: t('how.step2.desc'), glow: 'shadow-green-500/30', color: 'from-[#00c853] to-[#00a844]' },
                 { num: 3, title: t('how.step3.title'), desc: t('how.step3.desc'), glow: 'shadow-green-500/40', color: 'from-[#00a844] to-[#008837]' },
               ].map((step) => (
-                <div key={step.num} className="flex flex-col items-center group font-sans">
+                <div key={step.num} data-pin-step className="flex flex-col items-center group font-sans">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.color}
                     flex items-center justify-center text-white text-base font-black mb-6
                     shadow-lg ${step.glow} relative z-10 group-hover:scale-110 transition-transform duration-200`}
@@ -1243,7 +1253,7 @@ export default function LandingPage() {
           </div>
 
           {/* Inline Live Scanner Simulator Widget inside pipeline context */}
-          <div className="mt-20">
+          <div data-animate="scale-in" className="mt-20">
             <InteractiveScanner />
           </div>
 
@@ -1255,7 +1265,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto grid md:grid-cols-12 gap-12 items-center">
           
           {/* Left - Narrative */}
-          <div className="md:col-span-6 text-center md:text-left">
+          <div data-animate="slide-left" className="md:col-span-6 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#00c853]" />
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('demo.label')}</span>
@@ -1289,7 +1299,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right - Live Self-typing Simulator (3D perspective tilt) */}
-          <div className="md:col-span-6 flex justify-center relative">
+          <div data-animate="slide-right" className="md:col-span-6 flex justify-center relative">
             
             {/* Pulsing light rings behind simulated phone */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00c853]/5 rounded-full blur-2xl pointer-events-none" />
@@ -1306,7 +1316,7 @@ export default function LandingPage() {
       <section className="py-24 px-6 bg-slate-100/30 dark:bg-slate-950/30 border-t border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300" id="features">
         <div className="max-w-7xl mx-auto">
           
-          <div className="text-center mb-16">
+          <div data-animate="fade-up" className="text-center mb-16">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#00c853]" />
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('features.label')}</span>
@@ -1317,7 +1327,7 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div data-animate="stagger-children" data-stagger-delay="0.1" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: MessageSquare, title: t('features.whatsapp.title'), desc: t('features.whatsapp.desc') },
               { icon: Eye, title: t('features.ocr.title'), desc: t('features.ocr.desc') },
@@ -1345,20 +1355,21 @@ export default function LandingPage() {
 
       {/* ===== CALL TO ACTION (CTA Banner with Pulsing Backdrops) ===== */}
       <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="cta">
-        <div className="max-w-4xl mx-auto rounded-3xl border border-[#00c853]/20 bg-white dark:bg-slate-950/60 p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-green-500/5 transition-colors duration-300">
+        <div data-animate="cta-reveal" className="max-w-4xl mx-auto rounded-3xl border border-[#00c853]/20 bg-white dark:bg-slate-950/60 p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-green-500/5 transition-colors duration-300">
           
           {/* Radial green glow */}
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
           <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
 
-          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-5 italic font-sans transition-colors duration-300">
+          <h2 data-cta-child className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-5 italic font-sans transition-colors duration-300">
             {t('cta.title1')} <span className="not-italic text-[#00c853] font-sans">{t('cta.title2')}</span>
           </h2>
-          <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 mb-8 max-w-xl mx-auto leading-relaxed font-sans transition-colors duration-300">
+          <p data-cta-child className="text-sm md:text-base text-slate-600 dark:text-slate-400 mb-8 max-w-xl mx-auto leading-relaxed font-sans transition-colors duration-300">
             {t('cta.desc')}
           </p>
           
           <a
+            data-cta-child
             href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl
               bg-[#00c853] hover:bg-[#00b848] text-white font-bold text-sm
@@ -1374,7 +1385,7 @@ export default function LandingPage() {
 
       {/* ===== FOOTER (Clean Slate Dark) ===== */}
       <footer className="bg-slate-100 dark:bg-slate-950/90 text-slate-500 py-16 px-6 border-t border-slate-200 dark:border-slate-900/60 relative z-10 transition-colors duration-300" id="about">
-        <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div data-animate="footer-stagger" className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
           
           <div>
             <div className="flex items-center gap-2.5 mb-4">
@@ -1429,7 +1440,7 @@ export default function LandingPage() {
 
         </div>
 
-        <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 dark:border-slate-900 flex items-center justify-between transition-colors duration-300">
+        <div data-animate="fade-in" className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 dark:border-slate-900 flex items-center justify-between transition-colors duration-300">
           <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-600 font-sans transition-colors duration-300">{t('footer.copyright')}</p>
           <div className="flex items-center gap-4 text-slate-450 dark:text-slate-700 transition-colors duration-300">
             <Truck className="w-4 h-4" />

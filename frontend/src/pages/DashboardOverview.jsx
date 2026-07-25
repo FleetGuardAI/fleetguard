@@ -17,11 +17,7 @@ import {
   dismissOpportunity,
   scheduleOpportunity,
 } from '@/services/aiOpportunities';
-import {
-  MOCK_FLEET_HEALTH,
-  MOCK_UPCOMING_ALERTS,
-  MOCK_RECENT_AI_ACTIONS,
-} from '@/data/aiOpportunityData';
+import { getFleetHealth, getUpcomingAlerts, getRecentActions } from '@/api/dashboardApi';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { WeatherIndicatorCard } from './opportunities/WeatherIndicatorCard';
 
@@ -30,9 +26,9 @@ export default function DashboardOverview() {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [health, setHealth] = useState(MOCK_FLEET_HEALTH);
-  const [alerts, setAlerts] = useState(MOCK_UPCOMING_ALERTS);
-  const [actions, setActions] = useState(MOCK_RECENT_AI_ACTIONS);
+  const [health, setHealth] = useState({});
+  const [alerts, setAlerts] = useState([]);
+  const [actions, setActions] = useState([]);
   
   const { success, error, info } = useToast();
 
@@ -61,8 +57,16 @@ export default function DashboardOverview() {
     else setLoading(true);
 
     try {
-      const res = await fetchAiOpportunities();
-      setOpportunities(res.data);
+      const [res, healthData, alertsData, actionsData] = await Promise.all([
+        fetchAiOpportunities().catch(() => ({ data: [] })),
+        getFleetHealth().catch(() => ({})),
+        getUpcomingAlerts().catch(() => []),
+        getRecentActions().catch(() => []),
+      ]);
+      setOpportunities(res?.data || []);
+      setHealth(healthData || {});
+      setAlerts(alertsData || []);
+      setActions(actionsData || []);
     } catch (err) {
       error('Data Load Error', 'Failed to retrieve operational signals.');
     } finally {
@@ -115,8 +119,8 @@ export default function DashboardOverview() {
     info('Diagnostics Loaded', `Loaded full telematics log workspace for ${id}`);
   };
 
-  const activeOpportunities = opportunities.filter(o => o.status === 'new' || o.status === 'investigating');
-  const totalSavingsIdentified = activeOpportunities.reduce((sum, o) => sum + o.potentialSaving, 0);
+  const activeOpportunities = (opportunities || []).filter(o => o && (o.status === 'new' || o.status === 'investigating'));
+  const totalSavingsIdentified = activeOpportunities.reduce((sum, o) => sum + (o?.potentialSaving || 0), 0);
 
   return (
     <div className="space-y-10 py-4 max-w-[1400px] mx-auto transition-colors duration-300">
@@ -177,7 +181,6 @@ export default function DashboardOverview() {
 
         {/* Right 30% column: Fleet Health Sidebar & Rails */}
         <div className="lg:col-span-3 space-y-8">
-          <WeatherIndicatorCard />
           <FleetHealthRail health={health} />
           
           <div className="h-px bg-border/40" />

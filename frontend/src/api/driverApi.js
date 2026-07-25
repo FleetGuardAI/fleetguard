@@ -1,20 +1,28 @@
 import api from './client';
 
+/**
+ * Normalize a raw backend Driver response to the UI structure.
+ * No hardcoded fallbacks — uses actual backend values.
+ */
 function normalizeDriver(d) {
   if (!d) return d;
   return {
     ...d,
     id: d.id,
-    name: d.name || 'Fleet Driver',
-    driver_name: d.name || 'Fleet Driver',
-    phone_number: d.phone_number || '+91 98765 43210',
-    employee_id: d.employee_id || `EMP-${d.id}`,
-    license_number: d.license_number || 'DL-1420110012345',
-    status: (d.status || 'active').toLowerCase(),
-    rating: d.rating ?? 4.6,
-    risk_score: d.risk_score ?? 15,
-    assigned_truck: d.assigned_truck || 'KA-01-HH-1234',
-    experience_years: d.experience_years || 5,
+    name: d.name || null,
+    driver_name: d.name || null,
+    phone_number: d.phone_number || null,
+    employee_id: d.employee_id || null,
+    license_number: d.license_number || null,
+    license_valid_until: d.license_valid_until || null,
+    status: (d.status || d.employment_status || 'unknown').toLowerCase(),
+    employment_status: d.employment_status || null,
+    avatar_url: d.avatar_url || null,
+    // These fields don't exist in the Driver Domain schema — only pass through if present
+    rating: d.rating ?? null,
+    risk_score: d.risk_score ?? null,
+    assigned_truck: d.assigned_truck || null,
+    experience_years: d.experience_years || null,
   };
 }
 
@@ -81,6 +89,10 @@ export async function updateDriver(id, data) {
 
   const updated = await api.drivers.update(id, payload);
   return normalizeDriver(updated);
+}
+
+export async function deleteDriver(id) {
+  return await api.drivers.delete(id);
 }
 
 export async function assignVehicle(driverId, vehicleId) {

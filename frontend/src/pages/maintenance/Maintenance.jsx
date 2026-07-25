@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Wrench, Plus, Eye, CheckCircle, Calendar, Compass, FileText, Check, Settings, ShieldAlert, Package } from 'lucide-react';
 import { getMaintenanceLogs, scheduleMaintenance } from '@/api/maintenanceApi';
 import { getVehicles } from '@/api/vehicleApi';
+import { getTyres } from '@/api/tyreApi';
+import { getAssets } from '@/api/assetApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -23,6 +25,7 @@ export default function Maintenance() {
   const [activeTab, setActiveTab] = useState('logs'); // logs, inventory
   const [logs, setLogs] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [inventoryParts, setInventoryParts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
@@ -45,25 +48,38 @@ export default function Maintenance() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Mock inventory parts
-  const inventoryParts = [
-    { sku: 'PART-901', name: 'Engine Oil 15W-40 (20L)', stock: 12, reorder: 5, unit: 'Cans', price: 6500 },
-    { sku: 'PART-902', name: 'Air Filter Prima Series', stock: 8, reorder: 4, unit: 'Units', price: 2200 },
-    { sku: 'PART-903', name: 'Brake Pads (Rear Axle)', stock: 4, reorder: 6, unit: 'Sets', price: 4500 },
-    { sku: 'PART-904', name: 'Clutch Plate Kit Tata 4825', stock: 2, reorder: 2, unit: 'Kits', price: 18500 },
-    { sku: 'PART-905', name: 'Premium Truck Tyre 295/80', stock: 14, reorder: 8, unit: 'Tyres', price: 24000 }
-  ];
-
   const loadMaintenanceData = async () => {
     setLoading(true);
     setErr(null);
     try {
-      const [lData, vData] = await Promise.all([
+      const [lData, vData, tData, aData] = await Promise.all([
         getMaintenanceLogs({ search }),
-        getVehicles()
+        getVehicles(),
+        getTyres().catch(() => []),
+        getAssets().catch(() => [])
       ]);
       setLogs(lData);
       setVehicles(vData);
+
+      const parts = [
+        ...tData.map(t => ({
+          sku: t.serial_number || `TYRE-${t.id}`,
+          name: [t.manufacturer, t.brand, t.size, 'Tyre'].filter(Boolean).join(' '),
+          stock: t.current_status === 'available' || t.current_status === 'in_stock' ? 1 : 0,
+          reorder: 1,
+          unit: 'Units',
+          price: t.purchase_information?.price || 0,
+        })),
+        ...aData.map(a => ({
+          sku: a.business_id || `AST-${a.id}`,
+          name: [a.manufacturer, a.model, a.asset_type?.replace(/_/g, ' ')].filter(Boolean).join(' '),
+          stock: a.installation_status === 'uninstalled' ? 1 : 0,
+          reorder: 1,
+          unit: 'Units',
+          price: a.purchase_information?.price || 0,
+        }))
+      ];
+      setInventoryParts(parts);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve maintenance data.');

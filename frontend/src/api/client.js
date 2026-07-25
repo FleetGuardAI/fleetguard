@@ -80,26 +80,28 @@ const api = {
       request(`/tickets/${id}/action`, { method: 'POST', body: JSON.stringify(payload) }),
   },
 
-  // ── Legacy Drivers (existing /api/drivers) ─────────────────
+  // ── Drivers (/api/v1/drivers) ─────────────────
   drivers: {
     list: (params = {}) => {
       const query = new URLSearchParams(params).toString();
-      return request(`/drivers${query ? `?${query}` : ''}`);
+      return request(`/v1/drivers${query ? `?${query}` : ''}`);
     },
-    get: (id) => request(`/drivers/${id}`),
-    create: (data) => request('/drivers', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id, data) => request(`/drivers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    get: (id) => request(`/v1/drivers/${id}`),
+    create: (data) => request('/v1/drivers', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/v1/drivers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/v1/drivers/${id}`, { method: 'DELETE' }),
   },
 
-  // ── Legacy Trucks (existing /api/trucks) ───────────────────
+  // ── Vehicles (/api/v1/vehicles) ───────────────────
   trucks: {
     list: (params = {}) => {
       const query = new URLSearchParams(params).toString();
-      return request(`/trucks${query ? `?${query}` : ''}`);
+      return request(`/v1/vehicles${query ? `?${query}` : ''}`);
     },
-    get: (id) => request(`/trucks/${id}`),
-    create: (data) => request('/trucks', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id, data) => request(`/trucks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    get: (id) => request(`/v1/vehicles/${id}`),
+    create: (data) => request('/v1/vehicles', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/v1/vehicles/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/v1/vehicles/${id}`, { method: 'DELETE' }),
   },
 
   // ── Fuel Monitoring (existing) ─────────────────────────────

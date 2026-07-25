@@ -37,8 +37,17 @@ class DriverResponse(BaseModel):
 
 
 # ===========================================================================
-# Value Objects / Internal Commands
+# Write Models / Commands
 # ===========================================================================
+
+class DriverCreate(BaseModel):
+    name: str = Field(..., min_length=1, description="Driver's full name")
+    phone_number: str = Field(..., min_length=5, description="Driver's mobile number")
+    avatar_url: Optional[str] = Field(None, description="Optional avatar URL")
+    employee_id: Optional[str] = None
+    license_number: Optional[str] = None
+    employment_status: Optional[EmploymentStatus] = None
+
 
 class DriverRegistered(BaseModel):
     name: str

@@ -1,16 +1,20 @@
 """
 FleetGuard — Vehicle Domain API Router
-Provides Read-Only REST APIs for the Vehicle Business Domain.
-(Write operations are processed asynchronously via Operational Events).
+Provides REST APIs for Vehicle Business Domain CRUD operations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_read_uow
+from database import get_db, get_read_uow
 from infrastructure.uow import AbstractUnitOfWork
 from services.vehicle_service import VehicleService
-from schemas.vehicle_domain import VehicleResponse
+from models.vehicle_domain import Vehicle, VehicleStatus
+from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+from schemas.vehicle_domain import VehicleResponse, VehicleCreate, VehicleUpdated
 
 router = APIRouter(prefix="/v1", tags=["Vehicle Domain"])
 
@@ -39,3 +43,91 @@ async def get_vehicle(
     if not vehicle:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
     return VehicleResponse.model_validate(vehicle)
+
+
+@router.post("/vehicles", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
+async def create_vehicle(
+    payload: VehicleCreate,
+    db: AsyncSession = Depends(get_db),
+) -> VehicleResponse:
+    """Register a new vehicle in the database."""
+    reg_num = payload.registration_number or payload.license_plate
+    if not reg_num:
+        raise HTTPException(status_code=400, detail="License plate / registration number is required")
+
+    existing = await db.execute(select(Vehicle).where(Vehicle.registration_number == reg_num))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Vehicle with plate {reg_num} is already registered")
+
+    vehicle = Vehicle(
+        registration_number=reg_num,
+        make=payload.make,
+        model=payload.model,
+        year=payload.year,
+        vin=payload.vin,
+        engine_number=payload.engine_number,
+        tank_capacity=payload.tank_capacity or 400.0,
+        status=VehicleStatus.ACTIVE,
+        origin_type="rest_api",
+    )
+    db.add(vehicle)
+    await db.commit()
+    await db.refresh(vehicle)
+
+    # Log operational event
+    event = OperationalEvent(
+        event_type=EventType.VEHICLE_REGISTERED,
+        entity_type=EntityType.VEHICLE,
+        entity_id=vehicle.registration_number,
+        occurred_at=datetime.now(timezone.utc),
+        capture_method=CaptureMethod.API_INTEGRATION,
+        payload={"make": vehicle.make, "registration_number": vehicle.registration_number},
+    )
+    db.add(event)
+    await db.commit()
+
+    return VehicleResponse.model_validate(vehicle)
+
+
+@router.patch("/vehicles/{vehicle_id}", response_model=VehicleResponse)
+async def update_vehicle(
+    vehicle_id: int,
+    payload: VehicleUpdated,
+    db: AsyncSession = Depends(get_db),
+) -> VehicleResponse:
+    """Update vehicle details."""
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found")
+
+    if payload.license_plate:
+        vehicle.registration_number = payload.license_plate
+    if payload.make:
+        vehicle.make = payload.make
+    if payload.model:
+        vehicle.model = payload.model
+    if payload.year is not None:
+        vehicle.year = payload.year
+    if payload.tank_capacity is not None:
+        vehicle.tank_capacity = payload.tank_capacity
+    if payload.ownership_info:
+        vehicle.ownership_info = payload.ownership_info
+
+    await db.commit()
+    await db.refresh(vehicle)
+    return VehicleResponse.model_validate(vehicle)
+
+
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_200_OK)
+async def delete_vehicle(
+    vehicle_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete/archive a vehicle."""
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found")
+
+    await db.delete(vehicle)
+    await db.commit()
+    return {"message": f"Vehicle {vehicle_id} deleted successfully"}

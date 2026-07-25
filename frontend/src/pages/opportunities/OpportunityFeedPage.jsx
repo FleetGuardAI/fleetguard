@@ -24,7 +24,7 @@ import {
   exportOpportunities,
   assignTruck,
 } from '@/services/opportunities';
-import { MOCK_RECENT_ACTIVITY } from '@/data/opportunityMockData';
+import { getRecentActions } from '@/api/dashboardApi';
 
 const EMPTY_FILTERS = {
   search: '',
@@ -47,6 +47,7 @@ const EMPTY_FILTERS = {
 export default function OpportunityFeedPage() {
   // ─── State ─────────────────────────────────────────
   const [opportunities, setOpportunities] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,9 +65,12 @@ export default function OpportunityFeedPage() {
       else setLoading(true);
       setError(null);
 
-      // TODO: Replace with real API call
-      const result = await fetchOpportunities(filters);
+      const [result, activityData] = await Promise.all([
+        fetchOpportunities(filters),
+        getRecentActions().catch(() => []),
+      ]);
       setOpportunities(result.data);
+      setRecentActivity(activityData);
     } catch (err) {
       setError(err.message || 'Failed to load opportunities');
     } finally {
@@ -312,7 +316,7 @@ export default function OpportunityFeedPage() {
         <div className="hidden xl:block w-[300px] flex-shrink-0 sticky top-6 self-start">
           <OpportunitySidebar
             opportunities={opportunities}
-            recentActivity={MOCK_RECENT_ACTIVITY}
+            recentActivity={recentActivity}
           />
         </div>
       </div>

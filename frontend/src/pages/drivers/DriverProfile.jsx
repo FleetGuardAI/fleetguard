@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw } from 'lucide-react';
 import { getDriverById, assignVehicle } from '@/api/driverApi';
 import { getVehicles } from '@/api/vehicleApi';
+import { getDocuments } from '@/api/documentApi';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -30,22 +31,28 @@ export default function DriverProfile() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Mock doc list
-  const [documents, setDocuments] = useState([
-    { id: 1, name: 'Commercial Driving License', status: 'verified', expiry: '2028-11-20' },
-    { id: 2, name: 'Medical Fitness Certificate', status: 'warning', expiry: '2026-08-15' },
-    { id: 3, name: 'Aadhaar Card Copy', status: 'verified', expiry: 'N/A' }
-  ]);
+  const [documents, setDocuments] = useState([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     setErr(null);
     try {
-      const d = await getDriverById(id);
+      const [d, v, docsData] = await Promise.all([
+        getDriverById(id),
+        getVehicles(),
+        getDocuments().catch(() => [])
+      ]);
       setDriver(d);
-      const v = await getVehicles();
       setVehicles(v);
+
+      const mappedDocs = (docsData || []).map(doc => ({
+        id: doc.id,
+        name: doc.original_filename || doc.filename || `Document #${doc.id}`,
+        status: doc.storage_status === 'uploaded' ? 'verified' : 'pending',
+        expiry: doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'N/A'
+      }));
+      setDocuments(mappedDocs);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve driver profile.');
@@ -180,9 +187,9 @@ export default function DriverProfile() {
         <Card className="flex flex-col justify-between p-4">
           <span className="text-[10px] font-bold text-content-muted tracking-wider uppercase">Safety Score</span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-extrabold text-content">{driver.risk_score} / 100</span>
+            <span className="text-2xl font-extrabold text-content">{driver.risk_score != null ? `${driver.risk_score} / 100` : 'N/A'}</span>
             <Badge variant={getRiskVariant(driver.risk_score)}>
-              {driver.risk_score > 60 ? 'High Risk' : driver.risk_score > 30 ? 'Medium' : 'Excellent'}
+              {driver.risk_score > 60 ? 'High Risk' : driver.risk_score > 30 ? 'Medium' : driver.risk_score != null ? 'Excellent' : 'Unrated'}
             </Badge>
           </div>
         </Card>
@@ -192,7 +199,7 @@ export default function DriverProfile() {
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-1">
               <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-              <span className="text-2xl font-extrabold text-content">{driver.rating.toFixed(1)}</span>
+              <span className="text-2xl font-extrabold text-content">{driver.rating != null ? Number(driver.rating).toFixed(1) : 'N/A'}</span>
             </div>
             <span className="text-xs text-content-secondary">Based on safety telemetry</span>
           </div>

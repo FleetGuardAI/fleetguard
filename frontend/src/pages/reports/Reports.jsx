@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Download, BarChart2, Calendar, FileSpreadsheet, DownloadCloud, TrendingUp, ShieldCheck, Filter } from 'lucide-react';
 import { getFleetReportData, exportReport } from '@/api/reportApi';
 import { getVehicles } from '@/api/vehicleApi';
+import { getDocuments } from '@/api/documentApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -17,6 +18,7 @@ export default function Reports() {
 
   const [reportData, setReportData] = useState(null);
   const [vehicles, setVehicles] = useState([]);
+  const [readyReports, setReadyReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
@@ -26,23 +28,27 @@ export default function Reports() {
   const [selectedVehicle, setSelectedVehicle] = useState('all');
   const [exporting, setExporting] = useState(false);
 
-  // Mock list of ready reports
-  const readyReports = [
-    { id: 'REP-001', name: 'Q2 Logistics Mileage Report', type: 'Mileage', date: '2026-07-01', size: '2.4 MB', format: 'pdf' },
-    { id: 'REP-002', name: 'June Driver Safety Telematics Audit', type: 'Safety', date: '2026-06-30', size: '1.8 MB', format: 'csv' },
-    { id: 'REP-003', name: 'H1 Fleet Repairs & Fuel Cost ledger', type: 'Expenses', date: '2026-06-15', size: '4.2 MB', format: 'pdf' }
-  ];
-
   const loadData = async () => {
     setLoading(true);
     setErr(null);
     try {
-      const [rData, vData] = await Promise.all([
+      const [rData, vData, docsData] = await Promise.all([
         getFleetReportData(),
-        getVehicles()
+        getVehicles(),
+        getDocuments().catch(() => [])
       ]);
       setReportData(rData);
       setVehicles(vData);
+
+      const docs = (docsData || []).map(d => ({
+        id: d.id,
+        name: d.original_filename || d.filename || `Report ${d.id}`,
+        type: d.category || 'Archive',
+        date: d.created_at || new Date().toISOString(),
+        size: d.file_size ? `${(d.file_size / (1024 * 1024)).toFixed(1)} MB` : '1.2 MB',
+        format: (d.original_filename || '').endsWith('.csv') ? 'csv' : 'pdf',
+      }));
+      setReadyReports(docs);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve analytics.');

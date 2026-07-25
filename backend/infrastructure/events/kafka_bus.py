@@ -5,7 +5,10 @@ Implementation of the EventBus interface using aiokafka.
 
 import logging
 from typing import Any
-from aiokafka import AIOKafkaProducer
+try:
+    from aiokafka import AIOKafkaProducer
+except ImportError:
+    AIOKafkaProducer = None
 
 from infrastructure.events.bus import EventBus
 from infrastructure.events.serialization import EventSerializer

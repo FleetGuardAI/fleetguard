@@ -34,14 +34,9 @@ export function WeatherIndicatorCard() {
           weatherData = await weatherRes.json();
           forecastData = forecastRes && forecastRes.ok ? await forecastRes.json() : null;
         } else {
-          console.warn('Using fallback weather data.');
-          weatherData = {
-            name: 'Local Weather',
-            main: { temp: 32 },
-            wind: { speed: 3.8 },
-            weather: [{ description: 'partly cloudy' }]
-          };
-          forecastData = null;
+          setError('Live weather service unavailable.');
+          setLoading(false);
+          return;
         }
 
         const city = weatherData.name || 'Current location';
