@@ -9,7 +9,10 @@ import logging
 from config import settings
 from typing import Any
 from datetime import datetime, timezone
-from aiokafka import AIOKafkaConsumer
+try:
+    from aiokafka import AIOKafkaConsumer
+except ImportError:
+    AIOKafkaConsumer = None
 
 from dispatchers.event_subscriber import EventSubscriber
 from infrastructure.events.serialization import EventSerializer

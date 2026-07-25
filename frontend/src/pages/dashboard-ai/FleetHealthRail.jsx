@@ -25,7 +25,7 @@ export function FleetHealthRail({ health = {} }) {
       <div className="grid grid-cols-1 gap-3.5">
         {metrics.map((metric) => {
           const item = health[metric.key];
-          if (!item) return null;
+          if (!item || item.value == null) return null;
           const Icon = metric.icon;
           
           // Calculate fill width percentage

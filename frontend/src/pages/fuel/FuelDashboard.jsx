@@ -117,49 +117,47 @@ export default function FuelDashboard() {
     {
       key: 'truck_plate',
       label: 'Vehicle',
-      render: (item) => <span className="font-mono text-xs font-semibold">{item.truck_plate}</span>
+      render: (item) => <span className="font-mono text-xs font-semibold">{item.truck_plate || `Vehicle ID: ${item.truck_id}`}</span>
     },
     {
       key: 'date',
-      label: 'Refuel Date',
-      render: (item) => <span>{new Date(item.date).toLocaleDateString()}</span>
+      label: 'Timestamp',
+      sortable: true,
+      render: (item) => (
+        <span className="text-xs text-content-secondary">
+          {item.date ? new Date(item.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+        </span>
+      )
+    },
+    {
+      key: 'station',
+      label: 'Fuel Station / Location',
+      render: (item) => <span className="text-xs font-medium text-content">{item.station || 'Depot'}</span>
     },
     {
       key: 'quantity_liters',
       label: 'Volume (L)',
-      render: (item) => <span>{item.quantity_liters} L</span>
-    },
-    {
-      key: 'price_per_liter',
-      label: 'Rate',
-      render: (item) => <span>₹{item.price_per_liter}/L</span>
+      sortable: true,
+      render: (item) => <span className="font-mono text-xs text-content">{item.quantity_liters != null ? `${item.quantity_liters} L` : 'N/A'}</span>
     },
     {
       key: 'total_amount',
-      label: 'Total Paid',
-      render: (item) => <span className="font-semibold">₹{item.total_amount.toLocaleString()}</span>
-    },
-    {
-      key: 'station',
-      label: 'Station Location'
+      label: 'Total Amount',
+      sortable: true,
+      render: (item) => (
+        <span className="font-mono text-xs font-semibold text-content">
+          {item.total_amount != null ? `₹${item.total_amount.toLocaleString('en-IN')}` : 'N/A'}
+        </span>
+      )
     },
     {
       key: 'status',
       label: 'Status',
       render: (item) => (
-        <Badge variant={item.status === 'approved' ? 'success' : 'warning'}>
-          {item.status.toUpperCase()}
+        <Badge variant={(item.status || 'LOGGED').toUpperCase() === 'APPROVED' || (item.status || 'LOGGED').toUpperCase() === 'COMPLETED' ? 'success' : 'warning'}>
+          {(item.status || 'LOGGED').toUpperCase()}
         </Badge>
       )
-    },
-    {
-      key: 'receipt',
-      label: 'Receipt',
-      render: (item) => item.receipt_url ? (
-        <a href={item.receipt_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline flex items-center gap-1">
-          <FileText className="h-3.5 w-3.5" /> View
-        </a>
-      ) : <span className="text-content-muted text-xs">No bill</span>
     }
   ];
 
@@ -167,29 +165,29 @@ export default function FuelDashboard() {
     {
       key: 'truck_plate',
       label: 'Vehicle Plate',
-      render: (item) => <span className="font-mono text-xs font-semibold text-rose-600">{item.truck_plate}</span>
+      render: (item) => <span className="font-mono text-xs font-semibold text-rose-600">{item.truck_plate || (item.truck_id ? `Vehicle ID: ${item.truck_id}` : 'Vehicle')}</span>
     },
     {
       key: 'timestamp',
       label: 'Alert Time',
-      render: (item) => <span>{new Date(item.timestamp).toLocaleString()}</span>
+      render: (item) => <span>{item.timestamp ? new Date(item.timestamp).toLocaleString() : 'N/A'}</span>
     },
     {
       key: 'fuel_drop_liters',
       label: 'Theft Volume',
-      render: (item) => <span className="font-bold text-rose-600">-{item.fuel_drop_liters} Liters</span>
+      render: (item) => <span className="font-bold text-rose-600">-{item.fuel_drop_liters != null ? `${item.fuel_drop_liters} Liters` : 'N/A'}</span>
     },
     {
       key: 'telemetry',
       label: 'Sensor Bounds',
-      render: (item) => <span className="text-xs text-content-secondary">{item.filtered_level_before}L → {item.filtered_level_after}L</span>
+      render: (item) => <span className="text-xs text-content-secondary">{item.filtered_level_before ?? 'N/A'}L → {item.filtered_level_after ?? 'N/A'}L</span>
     },
     {
       key: 'gps',
       label: 'Coordinates Location',
       render: (item) => (
         <span className="text-xs text-content-secondary flex items-center gap-1">
-          <Compass className="h-3 w-3" /> Lat {item.latitude}, Lng {item.longitude}
+          <Compass className="h-3 w-3" /> Lat {item.latitude ?? '0'}, Lng {item.longitude ?? '0'}
         </span>
       )
     }

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { login } from '@/api/authApi';
+import { login, getCurrentUser } from '@/api/authApi';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
@@ -15,6 +15,16 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const { success, error } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    async function checkSession() {
+      const user = await getCurrentUser();
+      if (user) {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+    checkSession();
+  }, [navigate]);
 
   const validate = () => {
     const newErrors = {};

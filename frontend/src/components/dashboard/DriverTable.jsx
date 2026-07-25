@@ -55,7 +55,7 @@ function StarRating({ rating }) {
           }`}
         />
       ))}
-      <span className="text-xs text-slate-500 ml-1 tabular-nums">{rating.toFixed(1)}</span>
+      <span className="text-xs text-slate-500 ml-1 tabular-nums">{rating != null ? Number(rating).toFixed(1) : 'N/A'}</span>
     </div>
   );
 }

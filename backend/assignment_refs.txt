@@ -1,0 +1,548 @@
+./.venv/Lib/site-packages/alembic/autogenerate/api.py:315:    imports: Set[str] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/api.py:329:    migration_context: MigrationContext = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:476:            conn_uniques = inspector.get_unique_constraints(  # type:ignore[assignment] # noqa
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:488:            conn_uniques = [  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:501:            conn_indexes = inspector.get_indexes(  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:507:            conn_indexes = [  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:521:            conn_uniques = set()  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:523:            conn_uniques = {  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/compare.py:528:        conn_indexes = {  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/render.py:705:        rendered = _render_server_default(  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/autogenerate/render.py:993:                colname = _ident(col.name)  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/config.py:135:    config_ini_section: str = None  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/ddl/impl.py:75:            _impls[dict_["__dialect__"]] = cls  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/runtime/environment.py:176:    config: Config = None  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/runtime/environment.py:181:    script: ScriptDirectory = None  # type:ignore[assignment]
+./.venv/Lib/site-packages/alembic/script/base.py:46:    ZoneInfo = None  # type: ignore[assignment, misc]
+./.venv/Lib/site-packages/alembic/script/revision.py:1554:    revision: str = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/script/revision.py:1575:    branch_labels: Set[str] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/util/pyfiles.py:64:        fname = file_manager.enter_context(  # type: ignore[assignment]
+./.venv/Lib/site-packages/alembic/util/sqla_compat.py:172:    from sqlalchemy.util import symbol as _NoneName  # type: ignore[assignment]
+./.venv/Lib/site-packages/anyio/from_thread.py:280:            scope = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/anyio/_backends/_trio.py:220:        self.cancel_scope = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/asyncpg/serverversion.py:41:    version: _VersionDict = version_match.groupdict()  # type: ignore[assignment]  # noqa: E501
+./.venv/Lib/site-packages/asyncpg/_version.py:1:# This file MUST NOT contain anything but the __version__ assignment.
+./.venv/Lib/site-packages/click/core.py:1174:            self._help_option = self.params.pop()  # type: ignore[assignment]
+./.venv/Lib/site-packages/click/core.py:3445:                multi_rv = batch(multi_rv, self.nargs)  # type: ignore[assignment]
+./.venv/Lib/site-packages/click/testing.py:562:        pdb.Pdb.__init__ = _patched_pdb_init  # type: ignore[assignment]
+./.venv/Lib/site-packages/cryptography-49.0.0.dist-info/sboms/cryptography-rust.cyclonedx.json:506:      "description": "Single assignment cells and lazy values.",
+./.venv/Lib/site-packages/distro/distro.py:1127:            # * variable assignments: var=value
+./.venv/Lib/site-packages/distro/distro.py:1129:            # Ignore any tokens that are not variable assignments
+./.venv/Lib/site-packages/ecdsa/ellipticcurve.py:597:        # depend on atomicity of the last assignment to switch from empty
+./.venv/Lib/site-packages/ecdsa/ellipticcurve.py:753:    # multiple assignments at the same time (`x1, x2 = self.x1, self.x2` is
+./.venv/Lib/site-packages/ecdsa/ellipticcurve.py:1367:        # depend on atomicity of the last assignment to switch from empty
+./.venv/Lib/site-packages/fastapi/_compat.py:293:    from pydantic import (  # type: ignore[assignment]
+./.venv/Lib/site-packages/fastapi/_compat.py:343:    GetJsonSchemaHandler = Any  # type: ignore[assignment,misc]
+./.venv/Lib/site-packages/fastapi/_compat.py:345:    CoreSchema = Any  # type: ignore[assignment,misc]
+./.venv/Lib/site-packages/greenlet/tests/test_contextvars.py:142:    def test_context_assignment_while_running(self):
+./.venv/Lib/site-packages/greenlet/tests/test_contextvars.py:214:    def test_context_assignment_different_thread(self):
+./.venv/Lib/site-packages/greenlet/tests/test_contextvars.py:280:    def test_context_assignment_wrong_type(self):
+./.venv/Lib/site-packages/greenlet/TGreenlet.hpp:163:        // or bases, we get a trivial assignment operator generated
+./.venv/Lib/site-packages/greenlet/TGreenlet.hpp:165:        // So we declare an assignment operator that only works if we
+./.venv/Lib/site-packages/httptools/_version.py:1:# This file MUST NOT contain anything but the __version__ assignment.
+./.venv/Lib/site-packages/jiter-0.16.0.dist-info/sboms/jiter-python.cyclonedx.json:517:      "description": "Single assignment cells and lazy values.",
+./.venv/Lib/site-packages/jose/jwe.py:29:            See http://www.iana.org/assignments/media-types/media-types.xhtml
+./.venv/Lib/site-packages/mako/ast.py:28:        # assignment, if any
+./.venv/Lib/site-packages/mako/codegen.py:459:        which don't otherwise have any explicit assignment
+./.venv/Lib/site-packages/mako/codegen.py:491:        # i.e. assignment to a variable within a block
+./.venv/Lib/site-packages/mako/codegen.py:1070:        # assignments made in explicit python blocks.
+./.venv/Lib/site-packages/mako/testing/fixtures.py:87:            f"local variable {var} referenced before assignment",
+./.venv/Lib/site-packages/openai/types/chat/parsed_chat_completion.py:26:    tool_calls: Optional[List[ParsedFunctionToolCall]] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/openai/types/chat/parsed_chat_completion.py:36:    choices: List[ParsedChoice[ContentType]]  # type: ignore[assignment]
+./.venv/Lib/site-packages/openai/_models.py:262:        # type checkers incorrectly complain about this assignment
+./.venv/Lib/site-packages/openai/_models.py:834:        # type checkers incorrectly complain about this assignment
+./.venv/Lib/site-packages/passlib/crypto/digest.py:73:    # (as of 2012-03 - http://www.iana.org/assignments/hash-function-text-names)
+./.venv/Lib/site-packages/passlib/handlers/scram.py:55:        use :mod:`!hashlib` or `IANA <http://www.iana.org/assignments/hash-function-text-names>`_
+./.venv/Lib/site-packages/pip/_internal/network/auth.py:233:        self.keyring_provider = keyring_provider  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_internal/network/auth.py:522:        # The result of the assignment isn't used, it's just needed to consume
+./.venv/Lib/site-packages/pip/_internal/utils/unpacking.py:242:                    member.mode = None  # type: ignore [assignment]
+./.venv/Lib/site-packages/pip/_vendor/cachecontrol/adapter.py:128:                response._fp = CallbackFileWrapper(  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/cachecontrol/serialize.py:35:            response._fp = io.BytesIO(body)  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/distro/distro.py:1127:            # * variable assignments: var=value
+./.venv/Lib/site-packages/pip/_vendor/distro/distro.py:1129:            # Ignore any tokens that are not variable assignments
+./.venv/Lib/site-packages/pip/_vendor/pkg_resources/__init__.py:541:        dist = get_provider(dist)  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/pkg_resources/__init__.py:1907:    module_path: str | None = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/requests/cookies.py:211:        # support client code that unsets cookies by assignment of a None value:
+./.venv/Lib/site-packages/pip/_vendor/rich/repr.py:93:        cls.__repr__ = auto_repr  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_api.py:53:        urllib3_ssl.SSLContext = _original_SSLContext  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_api.py:68:    def __init__(self, protocol: int = None) -> None:  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_api.py:306:    sslobj: ssl.SSLObject = sock_or_sslobj  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_macos.py:276:Security.SecTrustCreateWithCertificates.errcheck = _handle_osstatus  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_macos.py:277:Security.SecTrustSetAnchorCertificates.errcheck = _handle_osstatus  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_macos.py:278:Security.SecTrustSetAnchorCertificatesOnly.errcheck = _handle_osstatus  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_macos.py:279:Security.SecTrustGetTrustResult.errcheck = _handle_osstatus  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/truststore/_macos.py:280:Security.SecTrustEvaluate.errcheck = _handle_osstatus  # type: ignore[assignment]
+./.venv/Lib/site-packages/pip/_vendor/typing_extensions.py:1418:        """Special marker indicating that an assignment should
+./.venv/Lib/site-packages/pip/_vendor/typing_extensions.py:1433:        doc="""Special marker indicating that an assignment should
+./.venv/Lib/site-packages/pyasn1/type/univ.py:1871:        Equivalent to Python sequence item assignment operation (e.g. `[]`)
+./.venv/Lib/site-packages/pyasn1/type/univ.py:2399:        Equivalent to Python :class:`dict` item assignment operation (e.g. `[]`).
+./.venv/Lib/site-packages/pyasn1/type/univ.py:2539:        Equivalent to Python sequence item assignment operation (e.g. `[]`).
+./.venv/Lib/site-packages/pyasn1/type/univ.py:3105:        Equivalent to Python sequence item assignment operation (e.g. `[]`).
+./.venv/Lib/site-packages/pycparser/c_parser.py:597:    def _is_assignment_op(self) -> bool:
+./.venv/Lib/site-packages/pycparser/c_parser.py:1288:    # BNF: array_decl : '[' array_specifiers? assignment_expression? ']'
+./.venv/Lib/site-packages/pycparser/c_parser.py:1315:            dim = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1323:                dim = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1333:                dim = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1345:            dim = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1536:    # BNF: abstract_array_base : '[' array_specifiers? assignment_expression? ']'
+./.venv/Lib/site-packages/pycparser/c_parser.py:1751:    # BNF: expression : assignment_expression (',' assignment_expression)*
+./.venv/Lib/site-packages/pycparser/c_parser.py:1753:        expr = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1756:        exprs = [expr, self._parse_assignment_expression()]
+./.venv/Lib/site-packages/pycparser/c_parser.py:1758:            exprs.append(self._parse_assignment_expression())
+./.venv/Lib/site-packages/pycparser/c_parser.py:1761:    # BNF: assignment_expression : conditional_expression
+./.venv/Lib/site-packages/pycparser/c_parser.py:1762:    #                            | unary_expression assignment_op assignment_expression
+./.venv/Lib/site-packages/pycparser/c_parser.py:1763:    def _parse_assignment_expression(self) -> c_ast.Node:
+./.venv/Lib/site-packages/pycparser/c_parser.py:1771:        if self._is_assignment_op():
+./.venv/Lib/site-packages/pycparser/c_parser.py:1773:            rhs = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1978:    # BNF: argument_expression_list : assignment_expression (',' assignment_expression)*
+./.venv/Lib/site-packages/pycparser/c_parser.py:1980:        expr = self._parse_assignment_expression()
+./.venv/Lib/site-packages/pycparser/c_parser.py:1983:            exprs.append(self._parse_assignment_expression())
+./.venv/Lib/site-packages/pycparser/c_parser.py:2060:    # BNF: initializer : assignment_expression
+./.venv/Lib/site-packages/pycparser/c_parser.py:2073:        return self._parse_assignment_expression()
+./.venv/Lib/site-packages/pydantic/config.py:246:    validate_assignment: bool
+./.venv/Lib/site-packages/pydantic/config.py:271:    In case you want to revalidate the model when the data is changed, you can use `validate_assignment=True`:
+./.venv/Lib/site-packages/pydantic/config.py:276:    class User(BaseModel, validate_assignment=True):  # (1)!
+./.venv/Lib/site-packages/pydantic/config.py:293:    1. You can either use class keyword arguments, or `model_config` to set `validate_assignment=True`.
+./.venv/Lib/site-packages/pydantic/config.py:512:    2. The assignment is not validated, unless you set `validate_assignment` to `True` in the model's config.
+./.venv/Lib/site-packages/pydantic/fields.py:185:        '_original_assignment',
+./.venv/Lib/site-packages/pydantic/fields.py:260:        self._original_assignment: Any = PydanticUndefined
+./.venv/Lib/site-packages/pydantic/fields.py:710:                '_original_assignment',
+./.venv/Lib/site-packages/pydantic/main.py:104:    'validate_assignment': lambda model, name, val: model.__pydantic_validator__.validate_assignment(model, name, val),  # pyright: ignore[reportAssignmentType]
+./.venv/Lib/site-packages/pydantic/main.py:1032:            elif cls.model_config.get('validate_assignment'):
+./.venv/Lib/site-packages/pydantic/main.py:1033:                return _SIMPLE_SETATTR_HANDLERS['validate_assignment']
+./.venv/Lib/site-packages/pydantic/main.py:1296:        encoder: Callable[[Any], Any] | None = PydanticUndefined,  # type: ignore[assignment]
+./.venv/Lib/site-packages/pydantic/main.py:1297:        models_as_dict: bool = PydanticUndefined,  # type: ignore[assignment]
+./.venv/Lib/site-packages/pydantic/mypy.py:634:        for stmt in self._get_assignment_statements_from_block(cls.defs):
+./.venv/Lib/site-packages/pydantic/mypy.py:653:    def _get_assignment_statements_from_if_statement(self, stmt: IfStmt) -> Iterator[AssignmentStmt]:
+./.venv/Lib/site-packages/pydantic/mypy.py:656:                yield from self._get_assignment_statements_from_block(body)
+./.venv/Lib/site-packages/pydantic/mypy.py:658:            yield from self._get_assignment_statements_from_block(stmt.else_body)
+./.venv/Lib/site-packages/pydantic/mypy.py:660:    def _get_assignment_statements_from_block(self, block: Block) -> Iterator[AssignmentStmt]:
+./.venv/Lib/site-packages/pydantic/mypy.py:665:                yield from self._get_assignment_statements_from_if_statement(stmt)
+./.venv/Lib/site-packages/pydantic/mypy.py:702:            # The assignment does not have an annotation, and it's not anything else we recognize
+./.venv/Lib/site-packages/pydantic/mypy.py:762:            # This is a special case, assignment like x: Final = 42 is classified
+./.venv/Lib/site-packages/pydantic/v1/config.py:59:        validate_assignment: bool
+./.venv/Lib/site-packages/pydantic/v1/config.py:94:    validate_assignment: bool = False
+./.venv/Lib/site-packages/pydantic/v1/dataclasses.py:359:    if dc_cls.__pydantic_model__.__config__.validate_assignment and not dc_cls.__dataclass_params__.frozen:
+./.venv/Lib/site-packages/pydantic/v1/dataclasses.py:360:        setattr(dc_cls, '__setattr__', _dataclass_validate_assignment_setattr)
+./.venv/Lib/site-packages/pydantic/v1/dataclasses.py:452:def _dataclass_validate_assignment_setattr(self: 'Dataclass', name: str, value: Any) -> None:
+./.venv/Lib/site-packages/pydantic/v1/fields.py:293:      assigned on an instance.  The BaseModel Config must set validate_assignment to True
+./.venv/Lib/site-packages/pydantic/v1/fields.py:502:        annotation = get_annotation_from_field_info(annotation, field_info, name, config.validate_assignment)
+./.venv/Lib/site-packages/pydantic/v1/main.py:359:            raise TypeError(f'"{self.__class__.__name__}" is immutable and does not support item assignment')
+./.venv/Lib/site-packages/pydantic/v1/main.py:362:                f'"{self.__class__.__name__}" object "{name}" field is final and does not support reassignment'
+./.venv/Lib/site-packages/pydantic/v1/main.py:364:        elif self.__config__.validate_assignment:
+./.venv/Lib/site-packages/pydantic/v1/schema.py:1002:    annotation: Any, field_info: FieldInfo, field_name: str, validate_assignment: bool = False
+./.venv/Lib/site-packages/pydantic/v1/schema.py:1009:    :param validate_assignment: default False, flag for BaseModel Config value of validate_assignment
+./.venv/Lib/site-packages/pydantic/v1/schema.py:1016:    if validate_assignment:
+./.venv/Lib/site-packages/pydantic/_internal/_config.py:53:    validate_assignment: bool
+./.venv/Lib/site-packages/pydantic/_internal/_config.py:273:    validate_assignment=False,
+./.venv/Lib/site-packages/pydantic/_internal/_dataclasses.py:189:    if config_wrapper.validate_assignment:
+./.venv/Lib/site-packages/pydantic/_internal/_dataclasses.py:193:            validator.validate_assignment(instance, field, value)
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:204:        if assigned_value is PydanticUndefined:  # no assignment, just a plain annotation
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:234:            original_assignment = (
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:241:                # Store the original annotation and assignment value that should be used to rebuild
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:244:                field_info._original_assignment = original_assignment
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:329:                if (assign := field_info._original_assignment) is PydanticUndefined:
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:389:                    # TODO: We should probably do something with this so that validate_assignment behaves properly
+./.venv/Lib/site-packages/pydantic/_internal/_fields.py:401:                        # TODO: same note as above re validate_assignment
+./.venv/Lib/site-packages/pydantic/_internal/_typing_extra.py:214:    such as assignments inside a function. Using the standard library tools, it is currently not possible to resolve
+./.venv/Lib/site-packages/pydantic_core/core_schema.py:3358:            and while validating assignment
+./.venv/Lib/site-packages/pydantic_core/_pydantic_core.pyi:224:    def validate_assignment(
+./.venv/Lib/site-packages/pydantic_core/_pydantic_core.pyi:237:        Validate an assignment to a field on a model.
+./.venv/Lib/site-packages/pydantic_core/_pydantic_core.pyi:241:            field_name: The name of the field to validate assignment for.
+./.venv/Lib/site-packages/sqlalchemy/dialects/mysql/dml.py:137:         Passing a list of 2-tuples indicates that the parameter assignments
+./.venv/Lib/site-packages/sqlalchemy/dialects/postgresql/base.py:2049:        # create a list of column assignment clauses as tuples
+./.venv/Lib/site-packages/sqlalchemy/dialects/sqlite/base.py:1471:        # create a list of column assignment clauses as tuples
+./.venv/Lib/site-packages/sqlalchemy/engine/default.py:1427:        ] = processors  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/engine/reflection.py:332:            conn = self.bind  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:94:    create_on_none_assignment: bool = False,
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:161:    :param create_on_none_assignment: when True, indicates that setting
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:246:        create_on_none_assignment=create_on_none_assignment,
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:333:    create_on_none_assignment: bool
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:372:        create_on_none_assignment: bool = False,
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:391:        if cascade_scalar_deletes and create_on_none_assignment:
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:393:                "The cascade_scalar_deletes and create_on_none_assignment "
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:397:        self.create_on_none_assignment = create_on_none_assignment
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:618:    Intercepted append/set/assignment events will result
+./.venv/Lib/site-packages/sqlalchemy/ext/associationproxy.py:909:                    and not self.parent.create_on_none_assignment
+./.venv/Lib/site-packages/sqlalchemy/ext/hybrid.py:1418:                name = attributes._UNKNOWN_ATTR_KEY  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/apply.py:98:def re_apply_declarative_assignments(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/apply.py:191:    declarative assignment statement.
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:48:def scan_declarative_assignments_and_apply_types(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:80:            apply.re_apply_declarative_assignments(cls, api, mapped_attributes)
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:97:                _scan_declarative_assignment_stmt(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:246:        # __mapper_args__ etc., rewrite these as simple assignment
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:359:def _scan_declarative_assignment_stmt(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:365:    """Extract mapping information from an assignment statement in a
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:450:        # annotation without assignment and Mapped is present
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/decl_class.py:513:        scan_declarative_assignments_and_apply_types(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/infer.py:484:            "Left hand assignment '{}: {}' not compatible "
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:156:        decl_class.scan_declarative_assignments_and_apply_types(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:222:                # type inference for its assignment in this one case.
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:227:                    "annotate the registry assignment, e.g. "
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:247:    decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:258:    decl_class.scan_declarative_assignments_and_apply_types(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:266:    decl_class.scan_declarative_assignments_and_apply_types(
+./.venv/Lib/site-packages/sqlalchemy/ext/mypy/plugin.py:277:    decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+./.venv/Lib/site-packages/sqlalchemy/orm/attributes.py:1974:            # ignore re-assignment of the current collection, as happens
+./.venv/Lib/site-packages/sqlalchemy/orm/collections.py:1163:                # slice assignment requires __delitem__, insert, __len__
+./.venv/Lib/site-packages/sqlalchemy/orm/decl_api.py:1249:                search = (  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/decl_api.py:1266:            python_type_type = python_type_to_check  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/decl_base.py:1566:                        # assignment
+./.venv/Lib/site-packages/sqlalchemy/orm/dynamic.py:85:    query_class: Type[AppenderMixin[Any]]  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/dynamic.py:206:        # here without any assignment capabilities; the class of this
+./.venv/Lib/site-packages/sqlalchemy/orm/events.py:724:                        # assignment, instead of using the generic propagate
+./.venv/Lib/site-packages/sqlalchemy/orm/events.py:888:                    arg = list(arg)  # type: ignore [assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/events.py:1663:                        target = state  # type: ignore [assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/events.py:2558:                    target = target.obj()  # type: ignore [assignment]
+./.venv/Lib/site-packages/sqlalchemy/orm/interfaces.py:369:# as descriptors by typing tools, which are misled by this as assignment /
+./.venv/Lib/site-packages/sqlalchemy/orm/mapped_collection.py:426:                f"To skip this assignment entirely, "
+./.venv/Lib/site-packages/sqlalchemy/orm/mapped_collection.py:441:                f"To skip this assignment entirely, "
+./.venv/Lib/site-packages/sqlalchemy/orm/properties.py:692:            column = self.column = supercls_mapper.local_table.c.get(  # type: ignore[assignment] # noqa: E501
+./.venv/Lib/site-packages/sqlalchemy/pool/base.py:1498:            # can't get the descriptor assignment to work here
+./.venv/Lib/site-packages/sqlalchemy/pool/impl.py:65:    _is_asyncio = False  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/pool/impl.py:274:    _is_asyncio = True  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/pool/impl.py:361:    _is_asyncio = False  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/sql/crud.py:262:    # create a list of column assignment clauses as tuples
+./.venv/Lib/site-packages/sqlalchemy/sql/elements.py:4046:        # nulltype assignment issue
+./.venv/Lib/site-packages/sqlalchemy/sql/visitors.py:1069:    clone = None  # type: ignore[assignment]  # remove gc cycles
+./.venv/Lib/site-packages/sqlalchemy/sql/visitors.py:1164:    clone = None  # type: ignore[assignment]  # remove gc cycles
+./.venv/Lib/site-packages/sqlalchemy/sql/_typing.py:265:There's also edge cases like JSON expression assignment, which we would want
+./.venv/Lib/site-packages/sqlalchemy/util/langhelpers.py:1171:    # of a property, meaning assignment needs to be disallowed
+./.venv/Lib/site-packages/sqlalchemy/util/langhelpers.py:1884:            frame = frame.f_back  # type: ignore[assignment]
+./.venv/Lib/site-packages/sqlalchemy/util/typing.py:574:    to the descriptor assignment as an instance variable. See
+./.venv/Lib/site-packages/starlette/schemas.py:14:    yaml = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/starlette/status.py:4:https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+./.venv/Lib/site-packages/starlette/status.py:161:https://www.iana.org/assignments/websocket/websocket.xml#close-code-number
+./.venv/Lib/site-packages/starlette/templating.py:25:    jinja2 = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/starlette/testclient.py:418:            app = typing.cast(ASGI2App, app)  # type: ignore[assignment]
+./.venv/Lib/site-packages/typing_extensions.py:1739:        """Special marker indicating that an assignment should
+./.venv/Lib/site-packages/typing_extensions.py:2065:            # Cannot use `super().__init__` here because of the `__class__` assignment
+./.venv/Lib/site-packages/typing_extensions.py:2626:            # Cannot use `super().__getitem__` here because of the `__class__` assignment
+./.venv/Lib/site-packages/typing_extensions.py:4166:        # (unless they are shadowed by assignments *in* the local namespace),
+./.venv/Lib/site-packages/typing_extensions.py:4230:            # (unless they are shadowed by assignments *in* the local namespace),
+./.venv/Lib/site-packages/typing_inspection/introspection.py:233:    """An annotation used in an assignment or variable annotation:
+./.venv/Lib/site-packages/uvicorn/middleware/wsgi.py:122:        message: HTTPRequestEvent = await receive()  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/middleware/wsgi.py:129:                    await receive()  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/middleware/wsgi.py:200:    WSGIMiddleware = _WSGIMiddleware  # type: ignore[misc, assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/h11_impl.py:76:        self.transport: asyncio.Transport = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/h11_impl.py:77:        self.flow: FlowControl = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/h11_impl.py:83:        self.scope: HTTPScope = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/h11_impl.py:84:        self.headers: list[tuple[bytes, bytes]] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/h11_impl.py:85:        self.cycle: RequestResponseCycle = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/httptools_impl.py:84:        self.transport: asyncio.Transport = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/httptools_impl.py:85:        self.flow: FlowControl = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/httptools_impl.py:92:        self.scope: HTTPScope = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/httptools_impl.py:93:        self.headers: list[tuple[bytes, bytes]] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/http/httptools_impl.py:95:        self.cycle: RequestResponseCycle = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/websockets/websockets_impl.py:83:        self.transport: asyncio.Transport = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/websockets/websockets_impl.py:86:        self.scheme: Literal["wss", "ws"] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/websockets/websockets_impl.py:98:        self.ws_server: Server = Server()  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/websockets/wsproto_impl.py:62:        self.transport: asyncio.Transport = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/protocols/websockets/wsproto_impl.py:65:        self.scheme: Literal["wss", "ws"] = None  # type: ignore[assignment]
+./.venv/Lib/site-packages/uvicorn/server.py:134:                    sock = _share_socket(sock)  # type: ignore[assignment]
+./.venv/Lib/site-packages/watchfiles-1.2.0.dist-info/sboms/watchfiles_rust_notify.cyclonedx.json:388:      "description": "Single assignment cells and lazy values.",
+./.venv/Lib/site-packages/websockets/frames.py:77:# See https://www.iana.org/assignments/websocket/websocket.xhtml
+./.venv/Lib/site-packages/websockets/legacy/protocol.py:51:# between the check and the assignment.
+./docs/assignment_domain.md:3:The Assignment Management Domain is the authoritative source of truth for human resource assignments within FleetGuard.
+./docs/assignment_domain.md:10:- **In Scope:** `DRIVER_TO_VEHICLE` assignments.
+./docs/assignment_domain.md:11:- **Out of Scope:** Hardware assignments (GPS trackers, Fuel sensors), which are handled by the `device_registry`.
+./docs/assignment_domain.md:29:- A Driver can only have **one** active vehicle assignment at a time.
+./docs/assignment_domain.md:30:- A Vehicle can only have **one** active driver assignment at a time.
+./docs/assignment_domain.md:32:- Historical assignments are immutable.
+./domain/assignment/aggregate.py:8:from domain.assignment.models import Assignment, AssignmentStatus
+./domain/assignment/aggregate.py:9:from domain.assignment.events import (
+./domain/assignment/aggregate.py:17:from domain.assignment.errors import InvalidAssignmentState
+./domain/assignment/aggregate.py:18:from domain.assignment.validators import validate_state_transition
+./domain/assignment/aggregate.py:27:    def create_assignment(cls, assignment: Assignment) -> Tuple[Assignment, List[DomainEvent]]:
+./domain/assignment/aggregate.py:29:        Creates a new assignment and registers its creation event.
+./domain/assignment/aggregate.py:31:        if assignment.status != AssignmentStatus.PENDING:
+./domain/assignment/aggregate.py:32:            assignment = assignment.model_copy(update={"status": AssignmentStatus.PENDING})
+./domain/assignment/aggregate.py:35:            assignment_id=assignment.assignment_id,
+./domain/assignment/aggregate.py:36:            organization_id=assignment.organization_id,
+./domain/assignment/aggregate.py:37:            assignment_type=assignment.assignment_type,
+./domain/assignment/aggregate.py:38:            source_entity_id=assignment.source_entity_id,
+./domain/assignment/aggregate.py:39:            target_entity_id=assignment.target_entity_id,
+./domain/assignment/aggregate.py:40:            effective_from=assignment.effective_from,
+./domain/assignment/aggregate.py:41:            metadata=assignment.metadata
+./domain/assignment/aggregate.py:43:        return assignment, [event]
+./domain/assignment/aggregate.py:46:    def activate_assignment(cls, assignment: Assignment, reason: Optional[str] = None) -> Tuple[Assignment, List[DomainEvent]]:
+./domain/assignment/aggregate.py:47:        if assignment.status == AssignmentStatus.ACTIVE:
+./domain/assignment/aggregate.py:48:            return assignment, []
+./domain/assignment/aggregate.py:50:        validate_state_transition(assignment.status, AssignmentStatus.ACTIVE)
+./domain/assignment/aggregate.py:52:        updated = assignment.model_copy(update={"status": AssignmentStatus.ACTIVE})
+./domain/assignment/aggregate.py:53:        event = AssignmentActivated(assignment_id=assignment.assignment_id, reason=reason)
+./domain/assignment/aggregate.py:57:    def suspend_assignment(cls, assignment: Assignment, reason: Optional[str] = None) -> Tuple[Assignment, List[DomainEvent]]:
+./domain/assignment/aggregate.py:58:        if assignment.status == AssignmentStatus.SUSPENDED:
+./domain/assignment/aggregate.py:59:            return assignment, []
+./domain/assignment/aggregate.py:61:        validate_state_transition(assignment.status, AssignmentStatus.SUSPENDED)
+./domain/assignment/aggregate.py:63:        updated = assignment.model_copy(update={"status": AssignmentStatus.SUSPENDED})
+./domain/assignment/aggregate.py:64:        event = AssignmentSuspended(assignment_id=assignment.assignment_id, reason=reason)
+./domain/assignment/aggregate.py:68:    def end_assignment(cls, assignment: Assignment, reason: Optional[str] = None) -> Tuple[Assignment, List[DomainEvent]]:
+./domain/assignment/aggregate.py:69:        if assignment.status == AssignmentStatus.ENDED:
+./domain/assignment/aggregate.py:70:            return assignment, []
+./domain/assignment/aggregate.py:72:        validate_state_transition(assignment.status, AssignmentStatus.ENDED)
+./domain/assignment/aggregate.py:75:        updated = assignment.model_copy(update={
+./domain/assignment/aggregate.py:80:        event = AssignmentEnded(assignment_id=assignment.assignment_id, ended_at=now, reason=reason)
+./domain/assignment/aggregate.py:84:    def transfer_assignment(
+./domain/assignment/aggregate.py:86:        current_assignment: Assignment, 
+./domain/assignment/aggregate.py:87:        new_assignment: Assignment,
+./domain/assignment/aggregate.py:91:        Ends the current assignment and creates a new one, emitting a transfer event.
+./domain/assignment/aggregate.py:92:        Returns (ended_assignment, new_assignment, events).
+./domain/assignment/aggregate.py:94:        if current_assignment.source_entity_id != new_assignment.source_entity_id:
+./domain/assignment/aggregate.py:97:        ended_assignment, end_events = cls.end_assignment(current_assignment, reason=f"Transferred to {new_assignment.target_entity_id}")
+./domain/assignment/aggregate.py:98:        created_assignment, create_events = cls.create_assignment(new_assignment)
+./domain/assignment/aggregate.py:101:            old_assignment_id=current_assignment.assignment_id,
+./domain/assignment/aggregate.py:102:            new_assignment_id=new_assignment.assignment_id,
+./domain/assignment/aggregate.py:103:            source_entity_id=current_assignment.source_entity_id,
+./domain/assignment/aggregate.py:104:            old_target_entity_id=current_assignment.target_entity_id,
+./domain/assignment/aggregate.py:105:            new_target_entity_id=new_assignment.target_entity_id,
+./domain/assignment/aggregate.py:110:        return ended_assignment, created_assignment, all_events
+./domain/assignment/api.py:10:from domain.assignment.models import Assignment, AssignmentStatus
+./domain/assignment/api.py:11:from domain.assignment.schemas import (
+./domain/assignment/api.py:17:from domain.assignment.service import AssignmentService
+./domain/assignment/api.py:18:from domain.assignment.queries import AssignmentQueryService
+./domain/assignment/api.py:19:from domain.assignment.repository import InMemoryAssignmentRepository
+./domain/assignment/api.py:20:from domain.assignment.errors import AssignmentDomainError, AssignmentNotFound
+./domain/assignment/api.py:22:router = APIRouter(prefix="/assignments", tags=["assignments"])
+./domain/assignment/api.py:30:def get_assignment_service() -> AssignmentService:
+./domain/assignment/api.py:33:def get_assignment_queries() -> AssignmentQueryService:
+./domain/assignment/api.py:38:def create_assignment(
+./domain/assignment/api.py:40:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:43:        assignment = Assignment(
+./domain/assignment/api.py:45:            assignment_type=request.assignment_type,
+./domain/assignment/api.py:53:            assignment = assignment.model_copy(update={"effective_from": request.effective_from})
+./domain/assignment/api.py:55:        created = service.create_assignment(assignment)
+./domain/assignment/api.py:62:def list_assignments(
+./domain/assignment/api.py:64:    queries: AssignmentQueryService = Depends(get_assignment_queries)
+./domain/assignment/api.py:67:    summaries = queries.assignment_history()
+./domain/assignment/api.py:71:@router.get("/{assignment_id}", response_model=AssignmentResponse)
+./domain/assignment/api.py:72:def get_assignment(
+./domain/assignment/api.py:73:    assignment_id: uuid.UUID,
+./domain/assignment/api.py:74:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:77:        return service._get_assignment(assignment_id)
+./domain/assignment/api.py:86:@router.post("/{assignment_id}/activate", response_model=AssignmentResponse)
+./domain/assignment/api.py:87:def activate_assignment(
+./domain/assignment/api.py:88:    assignment_id: uuid.UUID,
+./domain/assignment/api.py:90:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:93:        return service.activate_assignment(assignment_id, request.reason)
+./domain/assignment/api.py:100:@router.post("/{assignment_id}/suspend", response_model=AssignmentResponse)
+./domain/assignment/api.py:101:def suspend_assignment(
+./domain/assignment/api.py:102:    assignment_id: uuid.UUID,
+./domain/assignment/api.py:104:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:107:        return service.suspend_assignment(assignment_id, request.reason)
+./domain/assignment/api.py:114:@router.post("/{assignment_id}/end", response_model=AssignmentResponse)
+./domain/assignment/api.py:115:def end_assignment(
+./domain/assignment/api.py:116:    assignment_id: uuid.UUID,
+./domain/assignment/api.py:118:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:121:        return service.end_assignment(assignment_id, request.reason)
+./domain/assignment/api.py:133:@router.post("/{assignment_id}/transfer", response_model=AssignmentResponse)
+./domain/assignment/api.py:134:def transfer_assignment(
+./domain/assignment/api.py:135:    assignment_id: uuid.UUID,
+./domain/assignment/api.py:137:    service: AssignmentService = Depends(get_assignment_service)
+./domain/assignment/api.py:140:        return service.transfer_assignment(assignment_id, request.new_target_entity_id, request.reason)
+./domain/assignment/errors.py:6:    """Base class for assignment domain errors."""
+./domain/assignment/errors.py:11:    """Raised when an assignment transition is invalid."""
+./domain/assignment/errors.py:16:    """Raised when an assignment violates conflict invariants (e.g., driver already assigned to an active vehicle)."""
+./domain/assignment/errors.py:21:    """Raised when an assignment cannot be found."""
+./domain/assignment/errors.py:26:    """Raised when an assignment fails validation constraints."""
+./domain/assignment/events.py:19:    assignment_id: uuid.UUID
+./domain/assignment/events.py:21:    assignment_type: str
+./domain/assignment/events.py:29:    assignment_id: uuid.UUID
+./domain/assignment/events.py:34:    assignment_id: uuid.UUID
+./domain/assignment/events.py:39:    assignment_id: uuid.UUID
+./domain/assignment/events.py:46:    Emitted when an assignment ends specifically because the source entity was transferred to a new target.
+./domain/assignment/events.py:48:    old_assignment_id: uuid.UUID
+./domain/assignment/events.py:49:    new_assignment_id: uuid.UUID
+./domain/assignment/models.py:11:from domain.assignment.value_objects import AssignmentId, AssignmentPeriod
+./domain/assignment/models.py:30:    assignment_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+./domain/assignment/models.py:32:    assignment_type: AssignmentType
+./domain/assignment/projections.py:10:from domain.assignment.models import AssignmentStatus, AssignmentType
+./domain/assignment/projections.py:14:    assignment_id: uuid.UUID
+./domain/assignment/projections.py:15:    assignment_type: AssignmentType
+./domain/assignment/projections.py:26:    assignment_id: Optional[uuid.UUID] = None
+./domain/assignment/projections.py:33:    assignment_id: Optional[uuid.UUID] = None
+./domain/assignment/queries.py:7:from domain.assignment.repository import BaseAssignmentRepository
+./domain/assignment/queries.py:8:from domain.assignment.projections import (
+./domain/assignment/queries.py:13:from domain.assignment.models import AssignmentStatus, AssignmentType
+./domain/assignment/queries.py:23:    def active_vehicle_assignments(self, organization_id: uuid.UUID) -> List[VehicleAssignmentSummary]:
+./domain/assignment/queries.py:24:        active = self._repository.find_active_assignments(organization_id)
+./domain/assignment/queries.py:27:        for assignment in active:
+./domain/assignment/queries.py:28:            if assignment.assignment_type == AssignmentType.DRIVER_TO_VEHICLE:
+./domain/assignment/queries.py:30:                    vehicle_id=assignment.target_entity_id,
+./domain/assignment/queries.py:31:                    active_driver_id=assignment.source_entity_id,
+./domain/assignment/queries.py:32:                    assignment_id=assignment.assignment_id,
+./domain/assignment/queries.py:33:                    effective_from=assignment.effective_from
+./domain/assignment/queries.py:37:    def active_driver_assignments(self, organization_id: uuid.UUID) -> List[DriverAssignmentSummary]:
+./domain/assignment/queries.py:38:        active = self._repository.find_active_assignments(organization_id)
+./domain/assignment/queries.py:41:        for assignment in active:
+./domain/assignment/queries.py:42:            if assignment.assignment_type == AssignmentType.DRIVER_TO_VEHICLE:
+./domain/assignment/queries.py:44:                    driver_id=assignment.source_entity_id,
+./domain/assignment/queries.py:45:                    active_vehicle_id=assignment.target_entity_id,
+./domain/assignment/queries.py:46:                    assignment_id=assignment.assignment_id,
+./domain/assignment/queries.py:47:                    effective_from=assignment.effective_from
+./domain/assignment/queries.py:51:    def assignment_history(self, source_entity_id: str = None, target_entity_id: str = None) -> List[AssignmentSummary]:
+./domain/assignment/queries.py:61:                assignment_id=a.assignment_id,
+./domain/assignment/queries.py:62:                assignment_type=a.assignment_type,
+./domain/assignment/repository.py:8:from domain.assignment.models import Assignment, AssignmentStatus
+./domain/assignment/repository.py:13:    def create(self, assignment: Assignment) -> None:
+./domain/assignment/repository.py:17:    def update(self, assignment: Assignment) -> None:
+./domain/assignment/repository.py:21:    def find_by_id(self, assignment_id: uuid.UUID) -> Optional[Assignment]:
+./domain/assignment/repository.py:33:    def find_active_assignments(self, organization_id: uuid.UUID) -> List[Assignment]:
+./domain/assignment/repository.py:37:    def find_assignments_by_vehicle(self, vehicle_id: str) -> List[Assignment]:
+./domain/assignment/repository.py:41:    def find_assignments_by_driver(self, driver_id: str) -> List[Assignment]:
+./domain/assignment/repository.py:45:    def exists(self, assignment_id: uuid.UUID) -> bool:
+./domain/assignment/repository.py:51:        self._assignments = {}
+./domain/assignment/repository.py:53:    def create(self, assignment: Assignment) -> None:
+./domain/assignment/repository.py:54:        self._assignments[assignment.assignment_id] = assignment
+./domain/assignment/repository.py:56:    def update(self, assignment: Assignment) -> None:
+./domain/assignment/repository.py:57:        self._assignments[assignment.assignment_id] = assignment
+./domain/assignment/repository.py:59:    def find_by_id(self, assignment_id: uuid.UUID) -> Optional[Assignment]:
+./domain/assignment/repository.py:60:        return self._assignments.get(assignment_id)
+./domain/assignment/repository.py:63:        return list(self._assignments.values())
+./domain/assignment/repository.py:66:        results = list(self._assignments.values())
+./domain/assignment/repository.py:69:        if "assignment_type" in kwargs:
+./domain/assignment/repository.py:70:            results = [a for a in results if a.assignment_type == kwargs["assignment_type"]]
+./domain/assignment/repository.py:79:    def find_active_assignments(self, organization_id: uuid.UUID) -> List[Assignment]:
+./domain/assignment/repository.py:81:            a for a in self._assignments.values() 
+./domain/assignment/repository.py:85:    def find_assignments_by_vehicle(self, vehicle_id: str) -> List[Assignment]:
+./domain/assignment/repository.py:86:        return [a for a in self._assignments.values() if a.target_entity_id == vehicle_id]
+./domain/assignment/repository.py:88:    def find_assignments_by_driver(self, driver_id: str) -> List[Assignment]:
+./domain/assignment/repository.py:89:        return [a for a in self._assignments.values() if a.source_entity_id == driver_id]
+./domain/assignment/repository.py:91:    def exists(self, assignment_id: uuid.UUID) -> bool:
+./domain/assignment/repository.py:92:        return assignment_id in self._assignments
+./domain/assignment/schemas.py:10:from domain.assignment.models import AssignmentStatus, AssignmentType
+./domain/assignment/schemas.py:15:    assignment_type: AssignmentType
+./domain/assignment/schemas.py:28:    assignment_id: uuid.UUID
+./domain/assignment/schemas.py:30:    assignment_type: AssignmentType
+./domain/assignment/schemas.py:43:    assignment_id: uuid.UUID
+./domain/assignment/schemas.py:44:    assignment_type: AssignmentType
+./domain/assignment/service.py:8:from domain.assignment.models import Assignment, AssignmentStatus
+./domain/assignment/service.py:9:from domain.assignment.aggregate import AssignmentAggregate
+./domain/assignment/service.py:10:from domain.assignment.repository import BaseAssignmentRepository
+./domain/assignment/service.py:11:from domain.assignment.errors import AssignmentNotFound, AssignmentValidationFailed
+./domain/assignment/service.py:12:from domain.assignment.validators import validate_driver_assignment_conflict
+./domain/assignment/service.py:23:    def create_assignment(self, assignment: Assignment) -> Assignment:
+./domain/assignment/service.py:25:        active_assignments = self._repository.find_active_assignments(assignment.organization_id)
+./domain/assignment/service.py:26:        validate_driver_assignment_conflict(
+./domain/assignment/service.py:27:            assignment.source_entity_id, 
+./domain/assignment/service.py:28:            assignment.target_entity_id, 
+./domain/assignment/service.py:29:            active_assignments
+./domain/assignment/service.py:37:        new_assignment, events = AssignmentAggregate.create_assignment(assignment)
+./domain/assignment/service.py:38:        self._repository.create(new_assignment)
+./domain/assignment/service.py:42:        return new_assignment
+./domain/assignment/service.py:44:    def activate_assignment(self, assignment_id: uuid.UUID, reason: Optional[str] = None) -> Assignment:
+./domain/assignment/service.py:45:        assignment = self._get_assignment(assignment_id)
+./domain/assignment/service.py:48:        active_assignments = self._repository.find_active_assignments(assignment.organization_id)
+./domain/assignment/service.py:49:        validate_driver_assignment_conflict(
+./domain/assignment/service.py:50:            assignment.source_entity_id, 
+./domain/assignment/service.py:51:            assignment.target_entity_id, 
+./domain/assignment/service.py:52:            active_assignments
+./domain/assignment/service.py:55:        updated_assignment, events = AssignmentAggregate.activate_assignment(assignment, reason)
+./domain/assignment/service.py:56:        self._repository.update(updated_assignment)
+./domain/assignment/service.py:57:        return updated_assignment
+./domain/assignment/service.py:59:    def suspend_assignment(self, assignment_id: uuid.UUID, reason: Optional[str] = None) -> Assignment:
+./domain/assignment/service.py:60:        assignment = self._get_assignment(assignment_id)
+./domain/assignment/service.py:61:        updated_assignment, events = AssignmentAggregate.suspend_assignment(assignment, reason)
+./domain/assignment/service.py:62:        self._repository.update(updated_assignment)
+./domain/assignment/service.py:63:        return updated_assignment
+./domain/assignment/service.py:65:    def end_assignment(self, assignment_id: uuid.UUID, reason: Optional[str] = None) -> Assignment:
+./domain/assignment/service.py:66:        assignment = self._get_assignment(assignment_id)
+./domain/assignment/service.py:67:        updated_assignment, events = AssignmentAggregate.end_assignment(assignment, reason)
+./domain/assignment/service.py:68:        self._repository.update(updated_assignment)
+./domain/assignment/service.py:69:        return updated_assignment
+./domain/assignment/service.py:71:    def transfer_assignment(self, current_assignment_id: uuid.UUID, new_target_entity_id: str, reason: Optional[str] = None) -> Assignment:
+./domain/assignment/service.py:72:        current = self._get_assignment(current_assignment_id)
+./domain/assignment/service.py:75:            raise AssignmentValidationFailed("Can only transfer active assignments.")
+./domain/assignment/service.py:77:        new_assignment = current.model_copy(
+./domain/assignment/service.py:79:                "assignment_id": uuid.uuid4(),
+./domain/assignment/service.py:87:        active_assignments = self._repository.find_active_assignments(current.organization_id)
+./domain/assignment/service.py:88:        validate_driver_assignment_conflict(
+./domain/assignment/service.py:89:            new_assignment.source_entity_id, 
+./domain/assignment/service.py:90:            new_assignment.target_entity_id, 
+./domain/assignment/service.py:91:            [a for a in active_assignments if a.assignment_id != current.assignment_id]
+./domain/assignment/service.py:94:        ended_current, created_new, events = AssignmentAggregate.transfer_assignment(current, new_assignment, reason)
+./domain/assignment/service.py:100:    def _get_assignment(self, assignment_id: uuid.UUID) -> Assignment:
+./domain/assignment/service.py:101:        assignment = self._repository.find_by_id(assignment_id)
+./domain/assignment/service.py:102:        if not assignment:
+./domain/assignment/service.py:103:            raise AssignmentNotFound(f"Assignment with ID {assignment_id} not found.")
+./domain/assignment/service.py:104:        return assignment
+./domain/assignment/validators.py:6:from domain.assignment.models import Assignment, AssignmentStatus, AssignmentType
+./domain/assignment/validators.py:7:from domain.assignment.errors import InvalidAssignmentState, AssignmentConflictError, AssignmentValidationFailed
+./domain/assignment/validators.py:12:    Validates if an assignment can transition from current to target status.
+./domain/assignment/validators.py:22:        raise InvalidAssignmentState(f"Cannot transition assignment from {current} to {target}.")
+./domain/assignment/validators.py:25:def validate_driver_assignment_conflict(
+./domain/assignment/validators.py:28:    active_assignments: List[Assignment]
+./domain/assignment/validators.py:31:    Validates that a driver does not have multiple active assignments,
+./domain/assignment/validators.py:34:    for assignment in active_assignments:
+./domain/assignment/validators.py:35:        if assignment.status != AssignmentStatus.ACTIVE:
+./domain/assignment/validators.py:38:        if assignment.assignment_type == AssignmentType.DRIVER_TO_VEHICLE:
+./domain/assignment/validators.py:39:            if assignment.source_entity_id == driver_id and assignment.target_entity_id != vehicle_id:
+./domain/assignment/validators.py:41:                    f"Driver {driver_id} is already actively assigned to vehicle {assignment.target_entity_id}."
+./domain/assignment/validators.py:43:            if assignment.target_entity_id == vehicle_id and assignment.source_entity_id != driver_id:
+./domain/assignment/validators.py:45:                    f"Vehicle {vehicle_id} already has an active driver {assignment.source_entity_id}."
+./domain/assignment/value_objects.py:22:    Represents the temporal bounds of an assignment.
+./domain/device_registry/base.py:31:    def validate_assignments(self, device: Device, entity_type: EntityType, entity_id: str) -> None:
+./domain/device_registry/mapping_service.py:19:    Manages the assignment of devices to FleetGuard entities.
+./domain/device_registry/mapping_service.py:28:        Validates assignment rules before creating the mapping.
+./domain/device_registry/mapping_service.py:30:        self.validate_assignments(device, entity_type, entity_id)
+./domain/device_registry/mapping_service.py:71:    def validate_assignments(self, device: Device, entity_type: EntityType, entity_id: str) -> None:
+./domain/device_registry/validators.py:25:    Validates assignment rules:
+./domain/fuel/aggregate.py:59:            driver_assignment_id=driver_id,
+./domain/fuel/aggregate.py:71:            driver_assignment_id=driver_id,
+./domain/fuel/aggregate.py:84:            driver_assignment_id=driver_id,
+./domain/fuel/aggregate.py:96:            driver_assignment_id=driver_id,
+./domain/fuel/events.py:19:    driver_assignment_id: uuid.UUID | None = None
+./domain/fuel/events.py:27:    driver_assignment_id: uuid.UUID | None = None
+./domain/fuel/event_handler.py:42:        driver_str = payload.get("driver_assignment_id")
+./domain/fuel/event_handler.py:63:        driver_str = payload.get("driver_assignment_id")
+./domain/fuel/models.py:25:    driver_assignment_id: Optional[uuid.UUID] = None
+./domain/fuel/projections.py:21:    driver_assignment_id: Optional[uuid.UUID] = None
+./domain/fuel/queries.py:31:                driver_assignment_id=tx.driver_assignment_id,
+./domain/trip/aggregate.py:41:    def start_trip(cls, trip: Trip, origin: Location, driver_assignment_id: Optional[uuid.UUID] = None) -> Tuple[Trip, List[DomainEvent]]:
+./domain/trip/aggregate.py:49:            "driver_assignment_id": driver_assignment_id
+./domain/trip/api.py:63:            driver_assignment_id=trip.driver_assignment_id,
+./domain/trip/event_handler.py:48:        # In a real system, the event processor or this handler would lookup the active driver assignment
+./domain/trip/event_handler.py:50:        driver_assignment_id_str = payload.get("driver_assignment_id")
+./domain/trip/event_handler.py:51:        driver_assignment_id = uuid.UUID(driver_assignment_id_str) if driver_assignment_id_str else None
+./domain/trip/event_handler.py:63:                driver_assignment_id=driver_assignment_id
+./domain/trip/models.py:28:    driver_assignment_id: Optional[uuid.UUID] = None
+./domain/trip/projections.py:26:    driver_assignment_id: Optional[uuid.UUID] = None
+./domain/trip/queries.py:61:    def trips_by_driver(self, driver_assignment_id: uuid.UUID) -> List[DriverTripSummary]:
+./domain/trip/queries.py:70:                driver_assignment_id=t.driver_assignment_id
+./domain/trip/queries.py:71:            ) for t in trips if t.driver_assignment_id == driver_assignment_id
+./domain/trip/schemas.py:24:    driver_assignment_id: Optional[uuid.UUID] = None
+./domain/trip/service.py:24:    def handle_ignition_started(self, organization_id: uuid.UUID, vehicle_id: str, location: Location, driver_assignment_id: Optional[uuid.UUID] = None) -> Trip:
+./domain/trip/service.py:41:        started_trip, start_events = TripAggregate.start_trip(created_trip, location, driver_assignment_id)
+./infrastructure/intelligence/evidence/package.py:77:    # Prevent dynamic attribute assignment to enforce immutability
+./infrastructure/processing/domain_router.py:14:from services.assignment_service import AssignmentService
+./main.py:143:# from routers.assignment_domain import router as assignment_domain_router
+./models/__init__.py:28:#from models.assignment_domain import DriverAssignment
+./tests/assignment/test_assignment_domain.py:5:from domain.assignment.models import Assignment, AssignmentType, AssignmentStatus
+./tests/assignment/test_assignment_domain.py:6:from domain.assignment.service import AssignmentService
+./tests/assignment/test_assignment_domain.py:7:from domain.assignment.repository import InMemoryAssignmentRepository
+./tests/assignment/test_assignment_domain.py:8:from domain.assignment.errors import InvalidAssignmentState, AssignmentConflictError, AssignmentNotFound
+./tests/assignment/test_assignment_domain.py:16:    def test_create_and_activate_assignment(self):
+./tests/assignment/test_assignment_domain.py:17:        assignment = Assignment(
+./tests/assignment/test_assignment_domain.py:19:            assignment_type=AssignmentType.DRIVER_TO_VEHICLE,
+./tests/assignment/test_assignment_domain.py:25:        created = self.service.create_assignment(assignment)
+./tests/assignment/test_assignment_domain.py:28:        activated = self.service.activate_assignment(created.assignment_id, "Start shift")
+./tests/assignment/test_assignment_domain.py:32:        active = self.repo.find_active_assignments(self.org_id)
+./tests/assignment/test_assignment_domain.py:35:    def test_prevent_driver_double_assignment(self):
+./tests/assignment/test_assignment_domain.py:39:            assignment_type=AssignmentType.DRIVER_TO_VEHICLE,
+./tests/assignment/test_assignment_domain.py:44:        c1 = self.service.create_assignment(a1)
+./tests/assignment/test_assignment_domain.py:45:        self.service.activate_assignment(c1.assignment_id)
+./tests/assignment/test_assignment_domain.py:50:            assignment_type=AssignmentType.DRIVER_TO_VEHICLE,
+./tests/assignment/test_assignment_domain.py:57:            c2 = self.service.create_assignment(a2)
+./tests/assignment/test_assignment_domain.py:58:            self.service.activate_assignment(c2.assignment_id)
+./tests/assignment/test_assignment_domain.py:60:    def test_transfer_assignment(self):
+./tests/assignment/test_assignment_domain.py:63:            assignment_type=AssignmentType.DRIVER_TO_VEHICLE,
+./tests/assignment/test_assignment_domain.py:68:        c1 = self.service.create_assignment(a1)
+./tests/assignment/test_assignment_domain.py:69:        self.service.activate_assignment(c1.assignment_id)
+./tests/assignment/test_assignment_domain.py:72:        new_assignment = self.service.transfer_assignment(c1.assignment_id, "veh-2", "Vehicle breakdown")
+./tests/assignment/test_assignment_domain.py:74:        self.assertEqual(new_assignment.status, AssignmentStatus.PENDING)
+./tests/assignment/test_assignment_domain.py:75:        self.assertEqual(new_assignment.target_entity_id, "veh-2")
+./tests/assignment/test_assignment_domain.py:77:        old_assignment = self.repo.find_by_id(c1.assignment_id)
+./tests/assignment/test_assignment_domain.py:78:        self.assertEqual(old_assignment.status, AssignmentStatus.ENDED)
+./tests/device_registry/test_pipeline.py:41:        # 7. Now assignment of the second GPS tracker should succeed
+./tests/intelligence/evidence/test_evidence_framework.py:53:        # Pydantic v2 frozen models raise ValidationError on assignment
+./tests/trip/test_trip_domain.py:35:            "driver_assignment_id": str(uuid.uuid4())

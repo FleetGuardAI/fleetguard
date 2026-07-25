@@ -1,20 +1,27 @@
 import api from './client';
 
+/**
+ * Normalize a raw backend Maintenance response to the UI structure.
+ * No hardcoded fallbacks — uses actual backend values.
+ */
 function normalizeMaintenance(m) {
   if (!m) return m;
   return {
     ...m,
     id: m.id,
-    business_id: m.business_id || `MNT-${m.id}`,
-    truck_plate: m.truck_plate || (m.vehicle_id ? `Vehicle #${m.vehicle_id}` : 'MH-12-PQ-5678'),
-    type: m.category || m.type || 'PREVENTIVE',
-    description: m.description || m.workshop || 'Scheduled Maintenance Checkup',
-    workshop: m.workshop || 'Fleet Central Workshop',
-    service_provider: m.service_provider || 'Authorized Dealer',
-    cost: m.cost || 12500,
-    date: m.scheduled_date || m.completed_date || new Date().toISOString(),
-    scheduled_date: m.scheduled_date || new Date().toISOString(),
-    status: (m.status || 'scheduled').toLowerCase(),
+    business_id: m.business_id || null,
+    truck_plate: m.truck_plate || (m.vehicle_id ? `Vehicle ID: ${m.vehicle_id}` : null),
+    vehicle_id: m.vehicle_id || null,
+    type: m.category || m.type || null,
+    description: m.description || m.workshop || null,
+    workshop: m.workshop || null,
+    service_provider: m.service_provider || null,
+    cost: m.cost ?? null,
+    date: m.scheduled_date || m.completed_date || null,
+    scheduled_date: m.scheduled_date || null,
+    completed_date: m.completed_date || null,
+    status: (m.status || 'unknown').toLowerCase(),
+    tasks: m.tasks || [],
   };
 }
 

@@ -61,7 +61,7 @@ function CustomTooltip({ active, payload, label }) {
  * Plots Expected Burn vs Actual Filtered Level with theft markers.
  * @param {{ data: Array<{ timestamp: string, expected_level: number, actual_filtered_level: number, raw_level: number, is_theft_alert: boolean }>, truckPlate?: string }} props
  */
-export default function FuelChart({ data, truckPlate = 'RJ14 XX 1234' }) {
+export default function FuelChart({ data, truckPlate = 'Select Vehicle' }) {
   const theftPoints = useMemo(
     () => data?.filter((d) => d.is_theft_alert) ?? [],
     [data]

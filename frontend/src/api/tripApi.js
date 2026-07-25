@@ -1,12 +1,13 @@
 import api from './client';
 
 /**
- * Maps raw backend Trip object to UI trip structure expected by TripList, TripDetail, etc.
+ * Normalize a raw backend Trip response to the UI structure.
+ * No hardcoded fallbacks — uses actual backend values.
  */
 function normalizeTrip(t) {
   if (!t) return t;
-  const origin = t.origin_location || t.origin || t.start_point || 'Mumbai Port';
-  const dest = t.destination_location || t.destination || t.end_point || 'Delhi Logistics Hub';
+  const origin = t.origin_location || t.origin || t.start_point || null;
+  const dest = t.destination_location || t.destination || t.end_point || null;
 
   let status = (t.status || 'scheduled').toLowerCase();
   if (status === 'in_progress' || status === 'in-progress') status = 'on-trip';
@@ -16,19 +17,21 @@ function normalizeTrip(t) {
     ...t,
     id: t.id,
     trip_id: t.trip_id || `TRIP-${t.id}`,
-    route_name: t.route_name || `${origin} → ${dest}`,
+    route_name: t.route_name || (origin && dest ? `${origin} → ${dest}` : null),
     start_point: origin,
     end_point: dest,
-    truck_id: t.vehicle_id || t.truck_id || 1,
-    driver_id: t.driver_id || 1,
-    truck_plate: t.truck_plate || (t.vehicle_id ? `Vehicle #${t.vehicle_id}` : 'KA-01-HH-1234'),
-    driver_name: t.driver_name || (t.driver_id ? `Driver #${t.driver_id}` : 'Rajesh Kumar'),
-    start_date: t.actual_start_time || t.planned_start_time || t.created_at || new Date().toISOString(),
-    expected_delivery: t.planned_end_time || new Date(Date.now() + 86400000).toISOString(),
+    truck_id: t.vehicle_id || t.truck_id || null,
+    driver_id: t.driver_id || null,
+    truck_plate: t.truck_plate || (t.vehicle_id ? `Vehicle ID: ${t.vehicle_id}` : null),
+    driver_name: t.driver_name || (t.driver_id ? `Driver ID: ${t.driver_id}` : null),
+    start_date: t.actual_start_time || t.planned_start_time || t.created_at || null,
+    expected_delivery: t.planned_end_time || null,
     end_date: t.actual_end_time || null,
+    planned_distance: t.planned_distance || null,
+    actual_distance: t.actual_distance || null,
     progress: t.progress ?? (status === 'completed' ? 100 : status === 'on-trip' ? 50 : 0),
     status: status,
-    cargo_weight: t.cargo_weight || '18 Tons',
+    cargo_weight: t.cargo_weight || null,
     timeline: t.timeline || [
       { status: status.toUpperCase(), time: t.created_at || new Date().toISOString(), description: `Trip status is ${status}` }
     ]

@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Truck, Users, Route, Fuel, Receipt, Bell, Settings,
   ChevronLeft, ChevronRight, LogOut, Shield, X, CreditCard, Wrench,
-  FileText, AlertTriangle, BarChart3, User, UserCheck, Lock, History, Pin, PinOff
+  FileText, AlertTriangle, BarChart3, User, UserCheck, Lock, History, Pin, PinOff,
+  Disc, Cpu
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
@@ -29,6 +30,8 @@ const iconMap = {
   UserCheck: <UserCheck className="h-5 w-5" />,
   Lock: <Lock className="h-5 w-5" />,
   History: <History className="h-5 w-5" />,
+  Disc: <Disc className="h-5 w-5" />,
+  Cpu: <Cpu className="h-5 w-5" />,
 };
 
 const navSections = [
@@ -44,6 +47,8 @@ const navSections = [
     items: [
       { label: 'Vehicles', path: '/dashboard/vehicles', icon: 'Truck' },
       { label: 'Drivers', path: '/dashboard/drivers', icon: 'Users' },
+      { label: 'Tyres', path: '/dashboard/tyres', icon: 'Disc' },
+      { label: 'Hardware Assets', path: '/dashboard/assets', icon: 'Cpu' },
     ],
   },
   {
@@ -76,9 +81,11 @@ const navSections = [
   },
 ];
 
+import { logout } from '@/api/authApi';
+
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const { t } = useLanguage();
-  const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
+  const [user, setUser] = useState({ name: 'User', role: 'Fleet Manager' });
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
@@ -93,22 +100,12 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
     return () => window.removeEventListener('storage', handleUserUpdate);
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('fleetguard_user');
-    localStorage.removeItem('fleetguard_token');
-    localStorage.removeItem('fleetguard_token_type');
-
-    sessionStorage.removeItem('fleetguard_user');
-    sessionStorage.removeItem('fleetguard_token');
-    sessionStorage.removeItem('fleetguard_token_type');
-  };
-  
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

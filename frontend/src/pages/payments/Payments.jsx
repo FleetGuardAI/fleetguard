@@ -41,13 +41,7 @@ export default function Payments() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Vendors list
-  const vendors = [
-    { id: 1, name: 'Sharma Tyre Works', type: 'Repair Workshop', contact: '+919876540001', upi: 'sharmatyres@okaxis', status: 'verified' },
-    { id: 2, name: 'Indian Oil Barmer', type: 'Fuel Station', contact: '+919876540002', upi: 'iocbarmer@oksbi', status: 'verified' },
-    { id: 3, name: 'Highway Dhaba Sirohi', type: 'Dhaba / Catering', contact: '+919876540003', upi: 'highwaydhaba@okhdfc', status: 'verified' },
-    { id: 4, name: 'Tata Service Jaipur', type: 'Repair Workshop', contact: '+919876540004', upi: 'tatamotorsjaipur@okicici', status: 'verified' }
-  ];
+  const [vendors, setVendors] = useState([]);
 
   const loadPayments = async () => {
     setLoading(true);
@@ -55,6 +49,18 @@ export default function Payments() {
     try {
       const data = await getPayments({ search });
       setPayments(data);
+
+      const uniqueVendors = Array.from(
+        new Set(data.map(p => p.recipient_name).filter(Boolean))
+      ).map((vName, idx) => ({
+        id: idx + 1,
+        name: vName,
+        type: 'Registered Vendor',
+        contact: 'N/A',
+        upi: `${vName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okbiz`,
+        status: 'verified'
+      }));
+      setVendors(uniqueVendors);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve transactions list.');

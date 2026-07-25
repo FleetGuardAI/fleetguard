@@ -2,32 +2,54 @@ import api from './client';
 
 /**
  * Fetch fuel logs from the backend.
- * Uses the fuel chart endpoint with the first available vehicle, or all alerts.
+ * Normalizes entries into a standardized fuel log structure for UI display.
  *
  * @param {object} params
  * @returns {Promise<Array>}
  */
 export async function getFuelLogs(params = {}) {
+  let records = [];
+
   if (params.truck_id) {
-    const logs = await api.fuel.getLogs(params.truck_id, params.hours || 24) || [];
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      return logs.filter(l =>
-        (l.vehicle_id && String(l.vehicle_id).includes(q))
-      );
-    }
-    return logs;
+    const raw = await api.fuel.getLogs(params.truck_id, params.hours || 24) || [];
+    records = raw.map(l => ({
+      id: l.id,
+      truck_id: l.vehicle_id,
+      truck_plate: l.truck_plate || (l.vehicle_id ? `Vehicle ID: ${l.vehicle_id}` : 'Unassigned'),
+      date: l.timestamp,
+      quantity_liters: l.quantity_liters || l.volume_liters || 0,
+      price_per_liter: l.price_per_liter || 0,
+      total_amount: l.total_amount || l.amount || 0,
+      station: l.station || l.vendor_name || 'Station',
+      status: (l.status || 'COMPLETED').toUpperCase(),
+      receipt_url: null,
+    }));
+  } else {
+    // If no truck_id specified, return fuel alerts normalized as fuel directory entries
+    const alerts = await api.fuel.getAlerts({ days: 30 }) || [];
+    records = alerts.map(a => ({
+      id: a.id,
+      truck_id: a.truck_id,
+      truck_plate: a.truck_plate || (a.truck_id ? `Vehicle ID: ${a.truck_id}` : 'Vehicle'),
+      date: a.timestamp || a.created_at,
+      quantity_liters: a.fuel_drop_liters ? Number(a.fuel_drop_liters.toFixed(1)) : 0,
+      price_per_liter: 95.0,
+      total_amount: Math.round((a.fuel_drop_liters || 0) * 95),
+      station: a.latitude && a.longitude ? `GPS (${a.latitude.toFixed(2)}, ${a.longitude.toFixed(2)})` : 'Telematics Event',
+      status: 'flagged',
+      receipt_url: null,
+    }));
   }
 
-  // If no truck_id specified, return fuel alerts as a log-like list
-  const alerts = await api.fuel.getAlerts({ days: 30 }) || [];
   if (params.search) {
     const q = params.search.toLowerCase();
-    return alerts.filter(a =>
-      (a.truck_plate && a.truck_plate.toLowerCase().includes(q))
+    records = records.filter(r =>
+      (r.truck_plate && r.truck_plate.toLowerCase().includes(q)) ||
+      (r.station && r.station.toLowerCase().includes(q))
     );
   }
-  return alerts;
+
+  return records;
 }
 
 /**

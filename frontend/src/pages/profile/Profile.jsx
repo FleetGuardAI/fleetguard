@@ -30,11 +30,34 @@ export default function Profile() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
 
-  // Mock session list
-  const [sessions, setSessions] = useState([
-    { id: 1, device: 'Chrome / Windows 11', ip: '192.168.1.102', location: 'Jaipur, Rajasthan', current: true },
-    { id: 2, device: 'Firefox / macOS Sequoia', ip: '103.22.45.18', location: 'Mumbai, Maharashtra', current: false }
-  ]);
+  // Dynamic active session details
+  const [sessions, setSessions] = useState([]);
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    let browserName = 'Browser';
+    if (userAgent.includes('Chrome')) browserName = 'Chrome';
+    else if (userAgent.includes('Firefox')) browserName = 'Firefox';
+    else if (userAgent.includes('Safari')) browserName = 'Safari';
+    else if (userAgent.includes('Edg')) browserName = 'Edge';
+
+    let osName = 'Desktop Device';
+    if (userAgent.includes('Windows')) osName = 'Windows';
+    else if (userAgent.includes('Macintosh')) osName = 'macOS';
+    else if (userAgent.includes('Linux')) osName = 'Linux';
+    else if (userAgent.includes('Android')) osName = 'Android';
+    else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) osName = 'iOS';
+
+    setSessions([
+      {
+        id: 1,
+        device: `${browserName} / ${osName}`,
+        ip: 'Current Connection',
+        location: 'Active Session',
+        current: true,
+      }
+    ]);
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {

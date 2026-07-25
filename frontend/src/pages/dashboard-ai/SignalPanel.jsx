@@ -24,7 +24,7 @@ function getBusinessImpact(category) {
     case 'fuel_waste':
     case 'idle_time':
     case 'duplicate_fuel':
-      return 'Immediate Cash Leakage';
+      return 'Financial Risk';
     case 'route_optimization':
       return 'Operational Optimization';
     case 'high_maintenance':
@@ -41,7 +41,7 @@ function getBusinessImpact(category) {
 function getConversationalNarrative(o) {
   const truckPlate = o.truck ? `**${o.truck.plate}**` : '';
   const driverName = o.driver ? `**${o.driver.name}**` : '';
-  const savingFormatted = `**₹${o.potentialSaving.toLocaleString('en-IN')}**`;
+  const savingFormatted = `**₹${(o.potentialSaving || 0).toLocaleString('en-IN')}**`;
 
   switch (o.category) {
     case 'fuel_waste':

@@ -9,8 +9,10 @@ import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { getInitials } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 
+import { logout } from '@/api/authApi';
+
 export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
-  const [user, setUser] = useState({ name: 'Suryansh Chaudhary', role: 'COO' });
+  const [user, setUser] = useState({ name: 'User', role: 'Fleet Manager' });
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -24,16 +26,6 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
     return () => window.removeEventListener('storage', handleUserUpdate);
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('fleetguard_user');
-    localStorage.removeItem('fleetguard_token');
-    localStorage.removeItem('fleetguard_token_type');
-
-    sessionStorage.removeItem('fleetguard_user');
-    sessionStorage.removeItem('fleetguard_token');
-    sessionStorage.removeItem('fleetguard_token_type');
-  };
-
   const navigate = useNavigate();
   const [theme, setTheme] = useLocalStorage('fleetguard_theme', 'light');
 
@@ -43,7 +35,10 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
     document.documentElement.classList.toggle('dark', next === 'dark');
   };
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const userMenuItems = [
     { label: 'Profile', icon: <User className="h-4 w-4" />, onClick: () => navigate('/dashboard/profile') },

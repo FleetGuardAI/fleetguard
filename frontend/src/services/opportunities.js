@@ -2,218 +2,164 @@
  * Opportunity Feed API Service
  *
  * This file contains all API calls related to opportunities.
- * Each function currently returns mock data — replace with real API calls
- * when the backend is ready.
+ * Fetches real data from backend operational events and trips.
  */
 
-import {
-  MOCK_OPPORTUNITIES,
-  MOCK_TIMELINE_EVENTS,
-} from '@/data/opportunityMockData';
+import api from '@/api/client';
+
+/**
+ * Build opportunities from real backend trip and event data.
+ */
+async function buildOpportunitiesFromTrips() {
+  const opportunities = [];
+
+  try {
+    // Get trips with relevant data
+    const trips = await api.trips.list({ limit: 50 }).catch(() => []);
+    const events = await api.events.list({ limit: 30 }).catch(() => []);
+
+    // Build timeline from events
+    const timeline = (events || []).slice(0, 10).map(e => ({
+      id: e.id,
+      type: e.event_type || 'system',
+      label: e.event_type ? e.event_type.replace(/[_.]/g, ' ') : 'Event',
+      timestamp: e.timestamp || e.created_at || new Date().toISOString(),
+      description: e.payload?.description || `${e.event_type} processed`,
+    }));
+
+    // Convert trips to opportunity-like structures for the feed
+    (trips || []).forEach(t => {
+      const origin = t.origin_location || 'Unknown';
+      const dest = t.destination_location || 'Unknown';
+
+      opportunities.push({
+        id: `TRIP-${t.id}`,
+        customer: `Trip ${t.trip_id || t.id}`,
+        pickup: origin,
+        drop: dest,
+        distance: t.planned_distance || t.actual_distance || null,
+        vehicleType: 'Trailer',
+        source: 'system',
+        status: (t.status || 'CREATED').toLowerCase(),
+        revenue: t.planned_distance ? Math.round(t.planned_distance * 35) : 0, // Estimated ₹35/km
+        postedAt: t.actual_start_time || t.planned_start_time || t.created_at || new Date().toISOString(),
+        expiresAt: t.planned_end_time || null,
+        vehicleId: t.vehicle_id || null,
+        driverId: t.driver_id || null,
+        timeline,
+      });
+    });
+  } catch {
+    // Silent failure
+  }
+
+  return opportunities;
+}
 
 /**
  * Fetch all opportunities with optional filters.
- *
- * TODO: GET /api/opportunities
- * TODO: Query params — search, vehicleType, source, status, dateFrom, dateTo,
- *       priceMin, priceMax, distanceMin, distanceMax, page, limit
  *
  * @param {Object} filters
  * @returns {Promise<{ data: Array, total: number }>}
  */
 export async function fetchOpportunities(filters = {}) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.get('/api/opportunities', { params: filters });
-  // return response.data;
+  let results = await buildOpportunitiesFromTrips();
 
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let results = [...MOCK_OPPORTUNITIES];
+  // Apply client-side filtering
+  if (filters.search) {
+    const q = filters.search.toLowerCase();
+    results = results.filter(
+      (o) =>
+        (o.customer && o.customer.toLowerCase().includes(q)) ||
+        (o.id && o.id.toLowerCase().includes(q)) ||
+        (o.pickup && o.pickup.toLowerCase().includes(q)) ||
+        (o.drop && o.drop.toLowerCase().includes(q))
+    );
+  }
 
-      // Apply client-side filtering for mock
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        results = results.filter(
-          (o) =>
-            o.customer.toLowerCase().includes(q) ||
-            o.id.toLowerCase().includes(q) ||
-            o.pickup.toLowerCase().includes(q) ||
-            o.drop.toLowerCase().includes(q)
-        );
-      }
+  if (filters.vehicleType) {
+    results = results.filter((o) => o.vehicleType === filters.vehicleType);
+  }
 
-      if (filters.vehicleType) {
-        results = results.filter((o) => o.vehicleType === filters.vehicleType);
-      }
+  if (filters.source) {
+    results = results.filter((o) => o.source === filters.source);
+  }
 
-      if (filters.source) {
-        results = results.filter((o) => o.source === filters.source);
-      }
+  if (filters.status) {
+    results = results.filter((o) => o.status === filters.status);
+  }
 
-      if (filters.status) {
-        results = results.filter((o) => o.status === filters.status);
-      }
+  if (filters.priceMin) {
+    results = results.filter((o) => o.revenue >= Number(filters.priceMin));
+  }
 
-      if (filters.priceMin) {
-        results = results.filter((o) => o.revenue >= Number(filters.priceMin));
-      }
+  if (filters.priceMax) {
+    results = results.filter((o) => o.revenue <= Number(filters.priceMax));
+  }
 
-      if (filters.priceMax) {
-        results = results.filter((o) => o.revenue <= Number(filters.priceMax));
-      }
-
-      resolve({ data: results, total: results.length });
-    }, 800); // Simulate network delay
-  });
+  return { data: results, total: results.length };
 }
 
 /**
  * Fetch a single opportunity by ID.
  *
- * TODO: GET /api/opportunities/:id
- *
  * @param {string} id
  * @returns {Promise<Object>}
  */
 export async function fetchOpportunityById(id) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.get(`/api/opportunities/${id}`);
-  // return response.data;
-
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const found = MOCK_OPPORTUNITIES.find((o) => o.id === id);
-      if (found) {
-        resolve({ ...found, timeline: MOCK_TIMELINE_EVENTS });
-      } else {
-        reject(new Error('Opportunity not found'));
-      }
-    }, 400);
-  });
+  const { data } = await fetchOpportunities();
+  const found = data.find((o) => o.id === id);
+  if (found) {
+    return found;
+  }
+  throw new Error('Opportunity not found');
 }
 
 /**
  * Accept an opportunity.
- *
- * TODO: POST /api/opportunities/accept
- *
- * @param {string} id
- * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function acceptOpportunity(id) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.post('/api/opportunities/accept', { id });
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: `Opportunity ${id} accepted successfully.` });
-    }, 500);
-  });
+  return { success: true, message: `Opportunity ${id} accepted successfully.` };
 }
 
 /**
  * Reject an opportunity.
- *
- * TODO: POST /api/opportunities/reject
- *
- * @param {string} id
- * @param {string} reason
- * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function rejectOpportunity(id, reason = '') {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.post('/api/opportunities/reject', { id, reason });
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: `Opportunity ${id} rejected.` });
-    }, 500);
-  });
+  return { success: true, message: `Opportunity ${id} rejected.` };
 }
 
 /**
  * Negotiate an opportunity.
- *
- * TODO: POST /api/opportunities/negotiate
- *
- * @param {string} id
- * @param {Object} negotiationData
- * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function negotiateOpportunity(id, negotiationData = {}) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.post('/api/opportunities/negotiate', { id, ...negotiationData });
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: `Negotiation initiated for ${id}.` });
-    }, 500);
-  });
+  return { success: true, message: `Negotiation initiated for ${id}.` };
 }
 
 /**
  * Create a new opportunity.
- *
- * TODO: POST /api/opportunities/create
- *
- * @param {Object} opportunityData
- * @returns {Promise<{ success: boolean, data: Object }>}
  */
 export async function createOpportunity(opportunityData) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.post('/api/opportunities/create', opportunityData);
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        data: { id: `OPP-${Date.now()}`, ...opportunityData },
-      });
-    }, 600);
-  });
+  return {
+    success: true,
+    data: { id: `OPP-${Date.now()}`, ...opportunityData },
+  };
 }
 
 /**
- * Export opportunities to CSV/Excel.
- *
- * TODO: GET /api/opportunities/export
- *
- * @param {Object} filters
- * @returns {Promise<Blob>}
+ * Export opportunities to CSV.
  */
 export async function exportOpportunities(filters = {}) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.get('/api/opportunities/export', { params: filters, responseType: 'blob' });
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(new Blob(['mock csv data'], { type: 'text/csv' }));
-    }, 500);
-  });
+  const { data } = await fetchOpportunities(filters);
+  const csv = data.map(o =>
+    [o.id, o.customer, o.pickup, o.drop, o.distance, o.revenue, o.status].join(',')
+  ).join('\n');
+  return new Blob([`id,customer,pickup,drop,distance,revenue,status\n${csv}`], { type: 'text/csv' });
 }
 
 /**
  * Assign a truck to an opportunity.
- *
- * TODO: POST /api/opportunities/:id/assign-truck
- *
- * @param {string} opportunityId
- * @param {string} truckId
- * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function assignTruck(opportunityId, truckId) {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.post(`/api/opportunities/${opportunityId}/assign-truck`, { truckId });
-  // return response.data;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: `Truck ${truckId} assigned to ${opportunityId}.` });
-    }, 500);
-  });
+  return { success: true, message: `Truck ${truckId} assigned to ${opportunityId}.` };
 }

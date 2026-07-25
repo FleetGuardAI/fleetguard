@@ -13,7 +13,7 @@ import {
   VEHICLE_TYPES,
   SOURCE_OPTIONS,
   STATUS_OPTIONS,
-} from '@/data/opportunityMockData';
+} from '@/data/opportunityConfig';
 
 /**
  * Comprehensive filter bar for the opportunity feed.

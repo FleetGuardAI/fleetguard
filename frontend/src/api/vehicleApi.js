@@ -1,23 +1,30 @@
 import api from './client';
 
+/**
+ * Normalize a raw backend Vehicle response to the UI structure.
+ * No hardcoded fallbacks — uses actual backend values.
+ */
 function normalizeVehicle(v) {
   if (!v) return v;
-  const plate = v.registration_number || v.license_plate || `KA-01-TRK-${v.id}`;
+  const plate = v.registration_number || v.license_plate || null;
   return {
     ...v,
     id: v.id,
     registration_number: plate,
     license_plate: plate,
     truck_plate: plate,
-    make: v.make || 'Tata',
-    model: v.model || 'Prima 4928.S',
-    year: v.year || 2022,
-    type: v.type || 'Trailer / Heavy Duty',
-    tank_capacity: v.tank_capacity || 400.0,
-    current_fuel_level: v.current_fuel_level || 280.0,
-    status: (v.status || 'active').toLowerCase(),
-    assigned_driver: v.assigned_driver || 'Rajesh Kumar',
-    location: v.location || 'NH-48 Corridor, Near Udaipur',
+    vin: v.vin || null,
+    engine_number: v.engine_number || null,
+    make: v.make || null,
+    model: v.model || null,
+    year: v.year || null,
+    type: v.type || null,
+    tank_capacity: v.tank_capacity ?? null,
+    current_fuel_level: v.current_fuel_level ?? null,
+    status: (v.status || 'unknown').toLowerCase(),
+    ownership_info: v.ownership_info || null,
+    assigned_driver: v.assigned_driver || null,
+    location: v.location || null,
   };
 }
 
@@ -110,7 +117,7 @@ export async function getVehicleHistory(id, hours = 24) {
       speed: log.speed || 0,
       location: log.latitude && log.longitude
         ? `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}`
-        : 'Unknown',
+        : null,
       fuelLevel: log.filtered_level || log.raw_level || 0,
     }));
   } catch {

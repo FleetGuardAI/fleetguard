@@ -59,10 +59,10 @@ export function FleetHealthSidebar({ health = {}, alerts = [], recentActions = [
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-content tabular-nums">
                     {metric.key === 'monthlySavings'
-                      ? `₹${data.value.toLocaleString('en-IN')}`
-                      : `${data.value}${data.unit}`}
+                      ? `₹${(data.value || 0).toLocaleString('en-IN')}`
+                      : `${data.value ?? 'N/A'}${data.unit || ''}`}
                   </span>
-                  {data.trend !== 0 && (
+                  {data.trend != null && data.trend !== 0 && (
                     <TrendIcon className={cn('w-3 h-3', trendColor)} />
                   )}
                 </div>

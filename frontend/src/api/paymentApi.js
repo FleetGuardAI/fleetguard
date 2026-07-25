@@ -16,8 +16,8 @@ export async function getPayments(params = {}) {
 
   let payments = tickets.map(t => ({
     id: `PAY-${t.id}`,
-    recipient_name: t.driver_name || `Driver #${t.driver_id}`,
-    truck_plate: t.truck_plate || `Truck #${t.truck_id}`,
+    recipient_name: t.driver_name || (t.driver_id ? `Driver ID: ${t.driver_id}` : 'Unassigned'),
+    truck_plate: t.truck_plate || (t.truck_id ? `Vehicle ID: ${t.truck_id}` : 'Unassigned'),
     category: t.issue_type || 'Expense Claim',
     amount: t.amount,
     date: t.updated_at || t.created_at || new Date().toISOString(),
