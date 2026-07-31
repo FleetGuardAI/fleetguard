@@ -1,0 +1,440 @@
+# FleetGuard Driver Mobile Application — Implementation Plan
+
+Build a production-ready Flutter driver application integrated with the existing FleetGuard FastAPI backend and React dashboard.
+
+## Existing Codebase Analysis
+
+The current FleetGuard system has:
+- **Backend**: FastAPI with async SQLAlchemy, JWT auth, Kafka event bus, UoW pattern, operational events
+- **Models**: `User`, `Company`, `Driver`, `Vehicle`, `Trip`, `Expense`, `Ticket`, `MaintenanceRecord`, `Document` + event-driven architecture
+- **Auth**: JWT-based with sessions, company-scoped tenancy, bcrypt passwords, CAPTCHA
+- **API Routers**: Auth (`/api/v1/auth`), Drivers (`/api/v1/drivers`), Trips (`/api/v1/trips`), Vehicles (`/api/v1/vehicles`), Expenses (`/api/v1/expenses`), etc.
+- **Dashboard**: React + Vite + TailwindCSS frontend
+- **Infrastructure**: Kafka for events, SQLite for dev (PostgreSQL ready), outbox pattern
+
+> [!IMPORTANT]
+> The existing backend has **no driver-specific auth** (drivers share the `User` model with `UserRole`), **no location tracking**, **no WebSocket support**, **no mobile-specific endpoints**, and **no fleet invite/QR system**. Significant backend work is required.
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Google Maps API Key**: Do you already have a Google Maps Platform API key with Maps SDK for Android/iOS enabled? This is required for map integration.
+
+> [!IMPORTANT]
+> **Firebase Project**: Do you have an existing Firebase project for FCM push notifications, or should I create configuration placeholders?
+
+> [!IMPORTANT]
+> **Storage Backend**: The requirements mention AWS S3 or Cloudflare R2 for document storage. Which do you prefer? For now, I'll implement with S3-compatible interface (works with both) and local file storage as fallback.
+
+> [!IMPORTANT]
+> **SMS/OTP Provider**: Which SMS provider should be used for OTP verification? (e.g., Twilio, MSG91, etc.) I'll implement with a pluggable provider interface.
+
+## Proposed Changes
+
+The implementation is divided into 6 phases, each producing committable, buildable increments.
+
+---
+
+### Phase 1: Git Setup + Flutter Project Scaffolding + Clean Architecture
+
+#### Git Operations
+- Create and switch to `feature/driver_app` branch from latest `develop`
+
+#### [NEW] Flutter Project — `driver_app/`
+
+Full clean architecture with feature-based folder structure:
+
+```
+driver_app/
+├── android/
+├── ios/
+├── lib/
+│   ├── main.dart
+│   ├── app.dart
+│   ├── core/
+│   │   ├── config/
+│   │   │   ├── app_config.dart          — API URLs, env constants
+│   │   │   └── theme/
+│   │   │       ├── app_theme.dart       — Material 3 light + dark
+│   │   │       └── app_colors.dart      — Color palette
+│   │   ├── network/
+│   │   │   ├── api_client.dart          — Dio instance, interceptors, cert pinning
+│   │   │   ├── api_endpoints.dart       — All endpoint constants
+│   │   │   ├── auth_interceptor.dart    — JWT token attachment
+│   │   │   └── connectivity_service.dart
+│   │   ├── storage/
+│   │   │   ├── secure_storage.dart      — flutter_secure_storage wrapper
+│   │   │   ├── local_database.dart      — Drift/SQLite for offline
+│   │   │   └── sync_manager.dart        — Offline queue + auto-sync
+│   │   ├── routing/
+│   │   │   └── app_router.dart          — GoRouter with auth guards
+│   │   ├── security/
+│   │   │   ├── root_detection.dart      — Root/Jailbreak check
+│   │   │   └── certificate_pinning.dart
+│   │   ├── services/
+│   │   │   ├── location_service.dart    — Background GPS tracking
+│   │   │   ├── notification_service.dart — FCM integration
+│   │   │   ├── websocket_service.dart   — WS with auto-reconnect
+│   │   │   └── permission_service.dart  — All permission handling
+│   │   ├── utils/
+│   │   │   ├── logger.dart
+│   │   │   └── validators.dart
+│   │   └── widgets/                     — Shared UI components
+│   │       ├── loading_overlay.dart
+│   │       ├── error_widget.dart
+│   │       ├── photo_capture.dart
+│   │       └── animated_button.dart
+│   │
+│   └── features/
+│       ├── auth/                        — Phase 2
+│       ├── onboarding/                  — Phase 2
+│       ├── permissions/                 — Phase 2
+│       ├── dashboard/                   — Phase 3
+│       ├── vehicle/                     — Phase 3
+│       ├── trip/                        — Phase 4
+│       ├── tracking/                    — Phase 4
+│       ├── expense/                     — Phase 5
+│       ├── pod/                         — Phase 5
+│       ├── inspection/                  — Phase 5
+│       ├── documents/                   — Phase 5
+│       ├── wallet/                      — Phase 5
+│       ├── emergency/                   — Phase 5
+│       └── notifications/              — Phase 5
+│
+├── test/
+│   ├── unit/
+│   ├── widget/
+│   └── integration/
+├── pubspec.yaml
+└── analysis_options.yaml
+```
+
+**Commit**: `feat: scaffold Flutter driver app with clean architecture`
+
+---
+
+### Phase 2: Backend — Driver Mobile Auth + Fleet Invite + Location APIs
+
+#### [MODIFY] [config.py](file:///c:/Users/ratho/fleetguard/backend/config.py)
+- Add `OTP_SECRET`, `OTP_EXPIRE_MINUTES`, `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `REDIS_URL`, `FCM_SERVER_KEY` settings
+
+#### [MODIFY] [user.py](file:///c:/Users/ratho/fleetguard/backend/models/user.py)
+- Add `DRIVER` to `UserRole` enum — drivers authenticate as users with role=DRIVER
+
+#### [MODIFY] [driver_domain.py](file:///c:/Users/ratho/fleetguard/backend/models/driver_domain.py)
+- Add `company_id` FK (multi-tenant), `user_id` FK (link to User), `aadhaar_number`, `selfie_url`, `license_front_url`, `license_back_url`, `aadhaar_front_url`, `aadhaar_back_url`, `verification_status` (PENDING_APPROVAL / APPROVED / REJECTED), `fcm_token`, `last_known_lat`, `last_known_lng`, `duty_status` (OFF_DUTY / ON_DUTY / ON_BREAK)
+
+#### [NEW] Fleet Invite Model — `backend/models/fleet_invite.py`
+- `FleetInvite` table: `id`, `company_id`, `invite_token` (UUID), `qr_data`, `created_at`, `is_active`
+
+#### [NEW] Location Tracking Models — `backend/models/location_tracking.py`
+- `DriverLocation`: `id`, `driver_id`, `company_id`, `latitude`, `longitude`, `speed`, `heading`, `accuracy`, `timestamp`, `battery_percent`, `activity_state`, `source` (PHONE_GPS / HARDWARE_GPS)
+- `LocationAlert`: `id`, `driver_id`, `alert_type`, `details`, `created_at`
+
+#### [NEW] Driver Wallet Model — `backend/models/driver_wallet.py`
+- `DriverWallet`: `id`, `driver_id`, `balance`
+- `WalletTransaction`: `id`, `wallet_id`, `type` (SALARY/ADVANCE/INCENTIVE/DEDUCTION), `amount`, `status`, `description`, `created_at`
+
+#### [NEW] Vehicle Inspection Model — `backend/models/vehicle_inspection.py`
+- `VehicleInspection`: `id`, `driver_id`, `vehicle_id`, `type` (PRE_TRIP/POST_TRIP), `items` (JSON), `overall_status`, `created_at`
+
+#### [NEW] POD Model — `backend/models/proof_of_delivery.py`
+- `ProofOfDelivery`: `id`, `trip_id`, `driver_id`, `signature_url`, `photos` (JSON), `invoice_url`, `remarks`, `created_at`
+
+#### [NEW] SOS/Emergency Model — `backend/models/emergency.py`
+- `EmergencyAlert`: `id`, `driver_id`, `company_id`, `vehicle_id`, `trip_id`, `latitude`, `longitude`, `status`, `created_at`, `resolved_at`
+
+#### [NEW] Driver Mobile Auth Router — `backend/routers/driver_mobile.py`
+New endpoints specifically for the driver app:
+- `POST /api/v1/driver-app/verify-invite` — Validate QR invite token, return fleet info
+- `POST /api/v1/driver-app/send-otp` — Send OTP to phone
+- `POST /api/v1/driver-app/verify-otp` — Verify OTP, create/login user with DRIVER role
+- `POST /api/v1/driver-app/register` — Create driver profile with documents
+- `POST /api/v1/driver-app/upload-document` — Upload license/aadhaar/selfie
+- `POST /api/v1/driver-app/face-verify` — Selfie-to-license comparison
+- `GET /api/v1/driver-app/profile` — Get driver profile + approval status
+- `PATCH /api/v1/driver-app/profile` — Update profile
+- `PUT /api/v1/driver-app/fcm-token` — Update FCM token
+
+#### [NEW] Location Tracking Router — `backend/routers/location_tracking.py`
+- `POST /api/v1/driver-app/location/batch` — Bulk GPS update (offline sync)
+- `GET /api/v1/tracking/driver/{id}/live` — Get driver's latest location (for dashboard)
+- `GET /api/v1/tracking/driver/{id}/history` — Location history
+- `GET /api/v1/tracking/fleet/live` — All active drivers' locations (dashboard map)
+- `POST /api/v1/tracking/compare-gps` — Compare truck GPS vs phone GPS
+
+#### [NEW] Trip Management Router Extensions — `backend/routers/driver_trips.py`
+- `POST /api/v1/driver-app/duty/start` — Start duty
+- `POST /api/v1/driver-app/duty/end` — End duty
+- `POST /api/v1/driver-app/duty/break` — Start break
+- `POST /api/v1/driver-app/duty/resume` — Resume from break
+- `GET /api/v1/driver-app/trips/today` — Today's assigned trips
+- `POST /api/v1/driver-app/trips/{id}/start` — Start trip
+- `POST /api/v1/driver-app/trips/{id}/pause` — Pause trip
+- `POST /api/v1/driver-app/trips/{id}/resume` — Resume trip
+- `POST /api/v1/driver-app/trips/{id}/complete` — Complete trip
+- `GET /api/v1/driver-app/vehicle` — Currently assigned vehicle
+
+#### [NEW] Driver Expense Router — `backend/routers/driver_expenses.py`
+- `POST /api/v1/driver-app/expenses` — Create expense with receipt
+- `POST /api/v1/driver-app/expenses/ocr` — Process receipt image via AI OCR
+- `GET /api/v1/driver-app/expenses` — List driver's expenses
+
+#### [NEW] Driver Inspection Router — `backend/routers/driver_inspection.py`
+- `POST /api/v1/driver-app/inspections` — Submit inspection report
+- `GET /api/v1/driver-app/inspections` — List driver's inspections
+
+#### [NEW] POD Router — `backend/routers/driver_pod.py`
+- `POST /api/v1/driver-app/pod/{trip_id}` — Submit POD
+
+#### [NEW] Emergency Router — `backend/routers/driver_emergency.py`
+- `POST /api/v1/driver-app/sos` — Trigger SOS
+- `GET /api/v1/driver-app/sos/active` — Get active SOS
+
+#### [NEW] Driver Wallet Router — `backend/routers/driver_wallet.py`
+- `GET /api/v1/driver-app/wallet` — Get wallet balance + transactions
+- `POST /api/v1/driver-app/wallet/advance-request` — Request advance
+
+#### [NEW] WebSocket Endpoint — `backend/routers/ws_driver.py`
+- `WS /api/v1/ws/driver/{driver_id}` — Real-time updates (vehicle assignment, trip changes, notifications)
+
+#### [NEW] Fleet Invite Router (Dashboard) — `backend/routers/fleet_invite.py`
+- `POST /api/v1/fleet/invite` — Generate QR invite (dashboard admin)
+- `GET /api/v1/fleet/invite/{id}/qr` — Get QR code image
+- `GET /api/v1/fleet/invites` — List all invites
+
+#### [NEW] Notification Service — `backend/services/notification_service.py`
+- FCM push notification sender
+- Notification templating for all event types
+
+#### [NEW] File Upload Service — `backend/services/file_upload_service.py`
+- S3-compatible upload (works with AWS S3 and Cloudflare R2)
+- Local filesystem fallback for development
+
+#### [NEW] OTP Service — `backend/services/otp_service.py`
+- TOTP generation and verification
+- Pluggable SMS provider interface
+
+#### [MODIFY] [__init__.py](file:///c:/Users/ratho/fleetguard/backend/models/__init__.py)
+- Register all new models
+
+#### [MODIFY] [main.py](file:///c:/Users/ratho/fleetguard/backend/main.py)
+- Mount all new routers
+- Add WebSocket support
+
+**Commit**: `feat(backend): add driver mobile auth, location tracking, fleet invite APIs`
+
+---
+
+### Phase 3: Flutter — Auth, Onboarding, Permissions & Dashboard
+
+#### [NEW] `driver_app/lib/features/auth/`
+```
+auth/
+├── data/
+│   ├── datasources/auth_remote_datasource.dart
+│   ├── models/auth_models.dart
+│   └── repositories/auth_repository_impl.dart
+├── domain/
+│   ├── entities/driver_entity.dart
+│   ├── repositories/auth_repository.dart
+│   └── usecases/
+│       ├── verify_invite.dart
+│       ├── send_otp.dart
+│       ├── verify_otp.dart
+│       └── register_driver.dart
+└── presentation/
+    ├── providers/auth_provider.dart
+    ├── screens/
+    │   ├── qr_scan_screen.dart         — QR scanner for fleet invite
+    │   ├── phone_verification_screen.dart — OTP entry
+    │   ├── profile_creation_screen.dart — Name, photo
+    │   ├── document_upload_screen.dart  — License + Aadhaar
+    │   ├── selfie_verification_screen.dart — Face verify
+    │   └── pending_approval_screen.dart
+    └── widgets/
+        ├── otp_input_field.dart
+        └── document_card.dart
+```
+
+#### [NEW] `driver_app/lib/features/permissions/`
+- Permission request flow with clear explanations
+- Camera, Notifications, Location (foreground + background), Activity Recognition, Battery Optimization
+
+#### [NEW] `driver_app/lib/features/dashboard/`
+```
+dashboard/
+├── data/
+│   ├── datasources/dashboard_remote_datasource.dart
+│   └── repositories/dashboard_repository_impl.dart
+├── domain/
+│   ├── entities/dashboard_entity.dart
+│   └── repositories/dashboard_repository.dart
+└── presentation/
+    ├── providers/dashboard_provider.dart
+    ├── screens/dashboard_screen.dart
+    └── widgets/
+        ├── driver_profile_card.dart
+        ├── vehicle_info_card.dart
+        ├── trip_summary_card.dart
+        ├── duty_status_widget.dart
+        ├── driver_score_widget.dart
+        └── notification_badge.dart
+```
+
+#### [NEW] `driver_app/lib/features/vehicle/`
+- Vehicle assignment display with WebSocket live updates
+- Registration, insurance, fitness, PUC, permit, fuel type, dispatcher
+
+**Commit**: `feat(driver_app): implement auth, onboarding, permissions, dashboard`
+
+---
+
+### Phase 4: Flutter — Trip Management, Maps & Location Tracking
+
+#### [NEW] `driver_app/lib/features/trip/`
+```
+trip/
+├── data/
+│   ├── datasources/trip_remote_datasource.dart
+│   └── repositories/trip_repository_impl.dart
+├── domain/
+│   ├── entities/trip_entity.dart
+│   └── usecases/
+│       ├── start_trip.dart
+│       ├── pause_trip.dart
+│       ├── complete_trip.dart
+│       └── get_today_trips.dart
+└── presentation/
+    ├── providers/trip_provider.dart
+    ├── screens/
+    │   ├── trip_list_screen.dart
+    │   ├── trip_detail_screen.dart
+    │   └── active_trip_screen.dart  — With map, ETA, stops
+    └── widgets/
+        ├── trip_progress_bar.dart
+        ├── stop_list.dart
+        ├── navigate_button.dart    — Opens Google Maps
+        └── duty_controls.dart      — Start/End/Break buttons
+```
+
+#### [NEW] `driver_app/lib/features/tracking/`
+- Background location service (GPS every 5-10 seconds)
+- Offline GPS queue with automatic sync
+- Battery-aware tracking intervals
+- Activity recognition integration
+
+#### Google Maps Integration
+- Map display on active trip screen
+- "Navigate" button opens Google Maps with destination coordinates
+- Multi-stop support
+- Auto-update on trip changes
+
+**Commit**: `feat(driver_app): implement trip management, maps, background tracking`
+
+---
+
+### Phase 5: Flutter — Expenses, POD, Inspection, Wallet, Emergency, Documents, Notifications
+
+#### [NEW] `driver_app/lib/features/expense/`
+- Camera receipt capture
+- OCR processing via backend AI
+- Expense categories: Fuel, Toll, Parking, Repair, Food
+- Fraud detection status display
+
+#### [NEW] `driver_app/lib/features/pod/`
+- Signature capture widget
+- Delivery photo capture
+- Invoice upload
+- Remarks field
+
+#### [NEW] `driver_app/lib/features/inspection/`
+- Pre-trip and post-trip inspection checklists
+- Photo capture per item (Tyres, Brakes, Mirrors, Horn, Lights, Leaks, Battery)
+- Auto-generate maintenance tickets for failed items
+
+#### [NEW] `driver_app/lib/features/wallet/`
+- Wallet balance display
+- Transaction history (Salary, Advances, Incentives, Pending)
+- Advance request form
+
+#### [NEW] `driver_app/lib/features/emergency/`
+- Large SOS button with haptic feedback
+- Instant location + driver + vehicle + trip sharing
+- Fleet manager notification
+
+#### [NEW] `driver_app/lib/features/documents/`
+- Secure document storage
+- Offline viewing with cached files
+- Expiry reminders
+
+#### [NEW] `driver_app/lib/features/notifications/`
+- FCM integration
+- In-app notification center
+- All 9 notification types
+
+**Commit**: `feat(driver_app): implement expenses, POD, inspection, wallet, emergency, docs, notifications`
+
+---
+
+### Phase 6: Offline Mode, AI Features, Testing & Polish
+
+#### Offline Synchronization
+- Drift SQLite database for all offline data
+- Queue system for pending syncs
+- Automatic sync when connectivity returns
+- Conflict resolution strategy
+
+#### AI Features
+- Receipt OCR integration (calls backend AI service)
+- Voice trip updates (speech-to-text)
+- Driver fatigue detection (camera-based drowsiness — via device camera, alerts only)
+- Smart driver score display
+- Document expiry reminders (local notifications)
+- Geofence-based auto arrival/departure detection
+
+#### Testing
+- Unit tests for all providers/services
+- Widget tests for key screens
+- Integration tests for auth flow
+
+#### Polish
+- Smooth page transitions and animations
+- Dark mode parity
+- Performance optimization
+- Security hardening (cert pinning, root detection)
+
+**Commit**: `feat(driver_app): implement offline sync, AI features, tests, polish`
+
+---
+
+## Verification Plan
+
+### Automated Tests
+```bash
+# Backend
+cd backend && python -m pytest tests/ -v
+
+# Flutter
+cd driver_app && flutter analyze
+cd driver_app && flutter test
+```
+
+### Build Verification
+```bash
+# Flutter builds
+cd driver_app && flutter build apk --debug
+cd driver_app && flutter build ios --no-codesign  # if on macOS
+
+# Backend starts without errors
+cd backend && python -c "from main import app; print('OK')"
+```
+
+### Manual Verification
+- QR scan flow: Generate invite → Scan → OTP → Register → Pending approval
+- Trip management: Start duty → Start trip → Navigate → Complete trip → End duty
+- Location tracking: Verify GPS data flows to backend
+- Offline mode: Disable network → Create expense → Re-enable → Verify sync
+- WebSocket: Assign vehicle in dashboard → Verify driver app updates
+- SOS: Trigger emergency → Verify fleet manager notification
+- Document upload: Upload license → Verify stored in backend
