@@ -15,7 +15,7 @@ from models.password_reset_token import PasswordResetToken
 
 # --- Fleet Models ---
 from models.vehicle_domain import Vehicle
-from models.driver_domain import Driver
+from models.driver_domain import Driver, VerificationStatus, DutyStatus
 from models.trip_domain import Trip
 from models.maintenance_domain import MaintenanceRecord, MaintenanceTask
 from models.tyre_domain import Tyre, TyreLifecycleRecord
@@ -33,6 +33,14 @@ from models.outbox_event import OutboxEvent, OutboxStatus
 # --- Document Intelligence ---
 from models.document import Document
 
+# --- Driver App Models ---
+from models.fleet_invite import FleetInvite
+from models.location_tracking import DriverLocation, LocationAlert
+from models.vehicle_inspection import VehicleInspection
+from models.proof_of_delivery import ProofOfDelivery
+from models.emergency import EmergencyAlert
+from models.driver_wallet import WalletTransaction
+
 __all__ = [
     # Auth
     "Company",
@@ -42,6 +50,8 @@ __all__ = [
     # Fleet
     "Vehicle",
     "Driver",
+    "VerificationStatus",
+    "DutyStatus",
     "Trip",
     "MaintenanceRecord",
     "MaintenanceTask",
@@ -55,12 +65,18 @@ __all__ = [
     # Event-Driven Architecture
     "OperationalEvent",
     "Evidence",
-    "FuelState",
-    "FuelTransaction",
     "ProcessingRecord",
     "ProcessedEvent",
     "OutboxEvent",
     "OutboxStatus",
     # Document Intelligence
     "Document",
+    # Driver App
+    "FleetInvite",
+    "DriverLocation",
+    "LocationAlert",
+    "VehicleInspection",
+    "ProofOfDelivery",
+    "EmergencyAlert",
+    "WalletTransaction",
 ]

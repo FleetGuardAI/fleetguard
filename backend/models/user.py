@@ -26,12 +26,14 @@ class UserRole(str, enum.Enum):
     - SUPER_ADMIN   : Platform-level admin (FleetGuard internal team only).
     - COMPANY_ADMIN : Primary admin of a single company; created at registration.
     - FLEET_MANAGER : Operational user; manages day-to-day fleet activities.
+    - DRIVER        : Driver using the mobile app; limited access.
     """
 
     SUPER_ADMIN = "SUPER_ADMIN"
     COMPANY_ADMIN = "COMPANY_ADMIN"
     FLEET_MANAGER = "FLEET_MANAGER"
     ADMIN = "ADMIN"
+    DRIVER = "DRIVER"
 
 
 class User(Base):
