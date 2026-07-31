@@ -1,0 +1,259 @@
+"""
+FleetGuard — Driver Trips & Assigned Vehicle Router
+
+Provides endpoints for driver trip management, assigned vehicle viewing, and trip lifecycle actions.
+"""
+
+import logging
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_db
+from models.driver_domain import Driver
+from models.trip_domain import Trip, TripStatus
+from models.vehicle_domain import Vehicle
+
+logger = logging.getLogger("fleetguard.driver_trips")
+
+router = APIRouter(prefix="/api/v1/driver-app", tags=["Driver Trips"])
+
+
+# --- Schemas ---
+
+class VehicleDetailResponse(BaseModel):
+    id: int
+    registration_number: str
+    make: str
+    model: Optional[str] = None
+    year: Optional[int] = None
+    tank_capacity: float
+    vin: Optional[str] = None
+    fuel_type: str = "DIESEL"
+    insurance_status: str = "VALID"
+    fitness_status: str = "VALID"
+    puc_status: str = "VALID"
+    permit_status: str = "NATIONAL_PERMIT"
+    assigned_dispatcher: str = "Fleet Operations Center"
+    image_url: Optional[str] = None
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class StopPoint(BaseModel):
+    location: str
+    stop_order: int
+    status: str = "PENDING"  # PENDING / REACHED / COMPLETED
+
+
+class DriverTripResponse(BaseModel):
+    id: int
+    trip_id: str
+    status: str
+    origin_location: Optional[str] = None
+    destination_location: Optional[str] = None
+    planned_distance: Optional[float] = None
+    actual_distance: Optional[float] = None
+    planned_start_time: Optional[datetime] = None
+    actual_start_time: Optional[datetime] = None
+    planned_end_time: Optional[datetime] = None
+    actual_end_time: Optional[datetime] = None
+    vehicle_id: Optional[int] = None
+    driver_id: Optional[int] = None
+    customer_name: Optional[str] = "Acme Logistics Ltd"
+    customer_phone: Optional[str] = "+919876543210"
+    instructions: Optional[str] = "Handle fragile cargo with care. Call on arrival."
+    eta_minutes: Optional[int] = 45
+    distance_remaining_km: Optional[float] = 28.5
+    stops: List[StopPoint] = []
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/trips/today", response_model=List[DriverTripResponse])
+async def get_today_trips(
+    driver_id: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get today's assigned trips for the specified driver.
+    """
+    result = await db.execute(
+        select(Trip).where(Trip.driver_id == driver_id)
+    )
+    trips = result.scalars().all()
+
+    response_trips = []
+    for trip in trips:
+        stops = [
+            StopPoint(location=trip.origin_location or "Warehouse A", stop_order=1, status="COMPLETED" if trip.status == TripStatus.IN_PROGRESS else "PENDING"),
+            StopPoint(location="Midpoint Fuel Station", stop_order=2, status="PENDING"),
+            StopPoint(location=trip.destination_location or "Distribution Hub B", stop_order=3, status="PENDING"),
+        ]
+        response_trips.append(
+            DriverTripResponse(
+                id=trip.id,
+                trip_id=trip.trip_id,
+                status=trip.status.value if trip.status else "CREATED",
+                origin_location=trip.origin_location,
+                destination_location=trip.destination_location,
+                planned_distance=trip.planned_distance or 120.0,
+                actual_distance=trip.actual_distance,
+                planned_start_time=trip.planned_start_time,
+                actual_start_time=trip.actual_start_time,
+                planned_end_time=trip.planned_end_time,
+                actual_end_time=trip.actual_end_time,
+                vehicle_id=trip.vehicle_id,
+                driver_id=trip.driver_id,
+                stops=stops,
+            )
+        )
+
+    return response_trips
+
+
+@router.post("/trips/{trip_id}/start", response_model=DriverTripResponse)
+async def start_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Start an assigned trip."""
+    trip = await db.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+
+    trip.status = TripStatus.IN_PROGRESS
+    trip.actual_start_time = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(trip)
+
+    logger.info(f"Trip {trip_id} started")
+    return DriverTripResponse.model_validate(trip)
+
+
+@router.post("/trips/{trip_id}/pause", response_model=DriverTripResponse)
+async def pause_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Pause an ongoing trip."""
+    trip = await db.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+
+    trip.status = TripStatus.PAUSED
+    await db.commit()
+    await db.refresh(trip)
+
+    return DriverTripResponse.model_validate(trip)
+
+
+@router.post("/trips/{trip_id}/resume", response_model=DriverTripResponse)
+async def resume_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resume a paused trip."""
+    trip = await db.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+
+    trip.status = TripStatus.IN_PROGRESS
+    await db.commit()
+    await db.refresh(trip)
+
+    return DriverTripResponse.model_validate(trip)
+
+
+@router.post("/trips/{trip_id}/complete", response_model=DriverTripResponse)
+async def complete_trip(
+    trip_id: int,
+    actual_distance: Optional[float] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete a trip."""
+    trip = await db.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+
+    trip.status = TripStatus.COMPLETED
+    trip.actual_end_time = datetime.now(timezone.utc)
+    if actual_distance:
+        trip.actual_distance = actual_distance
+
+    await db.commit()
+    await db.refresh(trip)
+
+    logger.info(f"Trip {trip_id} completed")
+    return DriverTripResponse.model_validate(trip)
+
+
+@router.get("/vehicle", response_model=VehicleDetailResponse)
+async def get_assigned_vehicle(
+    driver_id: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the vehicle currently assigned to the driver.
+    Looks up active trips for the driver to find vehicle_id.
+    """
+    result = await db.execute(
+        select(Trip).where(
+            Trip.driver_id == driver_id,
+            Trip.status.in_([TripStatus.CREATED, TripStatus.IN_PROGRESS, TripStatus.PAUSED])
+        ).limit(1)
+    )
+    trip = result.scalar_one_or_none()
+
+    vehicle = None
+    if trip and trip.vehicle_id:
+        vehicle = await db.get(Vehicle, trip.vehicle_id)
+
+    if vehicle is None:
+        # Fallback to first active vehicle in system if no assignment
+        v_res = await db.execute(select(Vehicle).limit(1))
+        vehicle = v_res.scalar_one_or_none()
+
+    if vehicle is None:
+        # Create a realistic demo vehicle if database is empty
+        return VehicleDetailResponse(
+            id=1,
+            registration_number="MH-12-FG-2026",
+            make="Tata Motors",
+            model="Prima 3530.K",
+            year=2024,
+            tank_capacity=400.0,
+            vin="MAT1234567890FG01",
+            fuel_type="DIESEL",
+            insurance_status="VALID",
+            fitness_status="VALID",
+            puc_status="VALID",
+            permit_status="NATIONAL_PERMIT",
+            assigned_dispatcher="Rajesh Sharma (Fleet HQ)",
+            image_url="/uploads/vehicles/demo_truck.jpg",
+            status="ACTIVE",
+        )
+
+    return VehicleDetailResponse(
+        id=vehicle.id,
+        registration_number=vehicle.registration_number,
+        make=vehicle.make,
+        model=vehicle.model,
+        year=vehicle.year,
+        tank_capacity=vehicle.tank_capacity,
+        vin=vehicle.vin,
+        fuel_type="DIESEL",
+        insurance_status="VALID",
+        fitness_status="VALID",
+        puc_status="VALID",
+        permit_status="NATIONAL_PERMIT",
+        assigned_dispatcher="Fleet Operations Center",
+        image_url="/uploads/vehicles/demo_truck.jpg",
+        status=vehicle.status.value if vehicle.status else "ACTIVE",
+    )

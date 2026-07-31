@@ -155,6 +155,18 @@ from routers.operational_events import router as operational_events_router
 from routers.documents import router as documents_router
 from routers.evidence import router as evidence_router
 
+# Import Driver Mobile App routers
+from routers.driver_mobile import router as driver_mobile_router
+from routers.location_tracking import router as location_tracking_router
+from routers.fleet_invite import router as fleet_invite_router
+from routers.driver_trips import router as driver_trips_router
+from routers.driver_expenses import router as driver_expenses_router
+from routers.driver_inspection import router as driver_inspection_router
+from routers.driver_pod import router as driver_pod_router
+from routers.driver_emergency import router as driver_emergency_router
+from routers.driver_wallet import router as driver_wallet_router
+from routers.ws_driver import router as ws_driver_router
+
 # --- Logging ---
 logging.basicConfig(
     level=logging.INFO,
@@ -180,30 +192,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await create_all_tables()
     logger.info("✅ Database tables created/verified.")
     
-    # Start Kafka Producer
-    # await event_bus.start()
-    
-    # Start Kafka Consumers
-    # await validation_consumer.start()
-    # await processing_consumer.start()
-    # await evidence_consumer_runner.start()
-    
-    # Start Outbox Worker
-    # await outbox_worker.start()
-
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
-    
-    # Stop Outbox Worker
-    # await outbox_worker.stop()
-    
-    # Stop Kafka Consumers
-    # await evidence_consumer_runner.stop()
-    # await processing_consumer.stop()
-    # await validation_consumer.stop()
-    
-    # Stop Kafka Producer
     await event_bus.stop()
 
 
@@ -219,6 +210,13 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# --- Mount Static Files (Uploads) ---
+import os
+from fastapi.staticfiles import StaticFiles
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # --- CORS Middleware ---
 app.add_middleware(
@@ -271,6 +269,18 @@ app.include_router(auth_router)                   # carries its own /api/v1/auth
 app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
 app.include_router(evidence_router)               # carries its own /api/v1/events/{event_id}/evidence prefix
+
+# Mount Driver Mobile App Routers
+app.include_router(driver_mobile_router)
+app.include_router(location_tracking_router)
+app.include_router(fleet_invite_router)
+app.include_router(driver_trips_router)
+app.include_router(driver_expenses_router)
+app.include_router(driver_inspection_router)
+app.include_router(driver_pod_router)
+app.include_router(driver_emergency_router)
+app.include_router(driver_wallet_router)
+app.include_router(ws_driver_router)
 
 logger.info(
     f"📋 Registered routes: "
