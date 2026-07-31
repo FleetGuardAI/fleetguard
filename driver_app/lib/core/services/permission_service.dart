@@ -6,7 +6,7 @@ import '../utils/logger.dart';
 /// Handles all permission requests with clear explanations
 class PermissionService {
   /// Permission metadata with explanations
-  static const Map<Permission, PermissionInfo> permissionInfo = {
+  static final Map<Permission, PermissionInfo> permissionInfo = {
     Permission.camera: PermissionInfo(
       title: 'Camera Access',
       description: 'Required to scan QR codes, capture receipts, take inspection photos, and verify your identity.',

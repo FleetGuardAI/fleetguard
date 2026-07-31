@@ -20,15 +20,22 @@ class ConnectivityService {
 
   ConnectivityService() {
     _connectivity.onConnectivityChanged.listen((results) {
-      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      final isOnline = _checkIsOnline(results);
       _controller.add(isOnline);
       AppLogger.info('Connectivity changed: ${isOnline ? "ONLINE" : "OFFLINE"}');
     });
   }
 
+  static bool _checkIsOnline(dynamic results) {
+    if (results is List) {
+      return results.any((r) => r != ConnectivityResult.none);
+    }
+    return results != ConnectivityResult.none;
+  }
+
   Future<bool> checkConnectivity() async {
     final results = await _connectivity.checkConnectivity();
-    return results.any((r) => r != ConnectivityResult.none);
+    return _checkIsOnline(results);
   }
 
   void dispose() {

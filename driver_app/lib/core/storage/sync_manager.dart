@@ -18,7 +18,9 @@ class SyncManager {
 
   SyncManager(this._apiClient) {
     _connectivity.onConnectivityChanged.listen((results) {
-      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      final isOnline = results is List
+          ? results.any((r) => r != ConnectivityResult.none)
+          : results != ConnectivityResult.none;
       if (isOnline) {
         AppLogger.info('Back online — triggering sync');
         syncAll();
