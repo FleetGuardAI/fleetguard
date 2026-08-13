@@ -17,7 +17,7 @@ class SyncManager {
   final Connectivity _connectivity = Connectivity();
 
   SyncManager(this._apiClient) {
-    _connectivity.onConnectivityChanged.listen((results) {
+    _connectivity.onConnectivityChanged.listen((dynamic results) {
       final isOnline = results is List
           ? results.any((r) => r != ConnectivityResult.none)
           : results != ConnectivityResult.none;

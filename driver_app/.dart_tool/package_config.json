@@ -177,15 +177,15 @@
     },
     {
       "name": "connectivity_plus",
-      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus-5.0.2",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus-7.3.1",
       "packageUri": "lib/",
-      "languageVersion": "2.18"
+      "languageVersion": "3.2"
     },
     {
       "name": "connectivity_plus_platform_interface",
-      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus_platform_interface-1.2.4",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus_platform_interface-2.1.0",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "2.18"
     },
     {
       "name": "convert",
@@ -344,10 +344,10 @@
       "languageVersion": "3.10"
     },
     {
-      "name": "flutter_jailbreak_detection",
-      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_jailbreak_detection-1.10.0",
+      "name": "flutter_jailbreak_detection_plus",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_jailbreak_detection_plus-1.10.7",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.6"
     },
     {
       "name": "flutter_lints",

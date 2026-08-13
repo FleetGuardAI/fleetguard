@@ -134,6 +134,7 @@ const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/drivers/${driverId}/trips${query ? `?${query}` : ''}`);
     },
+    intelligence: (tripId) => request(`/v1/trips/${tripId}/intelligence`),
   },
 
   // ── Maintenance Domain (NEW - /api/v1/maintenance) ─────────

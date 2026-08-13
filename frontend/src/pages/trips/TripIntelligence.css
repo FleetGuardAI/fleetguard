@@ -1,0 +1,93 @@
+/* ═══════════════════════════════════════════════════════════
+   Trip Intelligence — Scoped Styles
+   Uses existing FleetGuard CSS custom properties and tokens.
+   ═══════════════════════════════════════════════════════════ */
+
+.ti-container {
+  animation: ti-fadein 0.3s ease-out;
+}
+
+@keyframes ti-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Rank badge for profit-loss contributors */
+.ti-rank-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Tab navigation styles */
+.ti-tab-nav {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--surface-tertiary);
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.ti-tab-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--content-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ti-tab-btn:hover {
+  color: var(--content);
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.dark .ti-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ti-tab-btn.active {
+  background-color: var(--surface);
+  color: var(--content);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+.dark .ti-tab-btn.active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Intelligence score pulse for high scores */
+@keyframes ti-score-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.3)); }
+  50% { filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.5)); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .ti-tab-nav {
+    width: 100%;
+  }
+  
+  .ti-tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}

@@ -1,58 +1,65 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Fuel, HeartPulse, Users, Wrench } from 'lucide-react';
+import { Zap, Fuel, HeartPulse, ShieldCheck, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 /**
- * Premium miniature fleet health indicator rails (compact bar gauges).
- * Uses spring animations and radial score gradients.
+ * Fleet Status Rail — compact premium indicators for the right-side data rail.
+ * Dark command-center aesthetic with green-toned progress bars.
  */
-export function FleetHealthRail({ health = {} }) {
+export function FleetHealthRail({ health = {}, mockData = null }) {
   const { t } = useLanguage();
-  const metrics = [
-    { key: 'fuelEfficiency', label: 'Fuel Economy', icon: Fuel, max: 6, color: 'from-sky-400 to-blue-500' },
-    { key: 'vehicleHealth', label: 'Vehicle Lifespan', icon: HeartPulse, max: 100, color: 'from-emerald-400 to-teal-500' },
-    { key: 'driverScore', label: 'Safety Index', icon: Users, max: 5, color: 'from-indigo-400 to-violet-500' },
-    { key: 'maintenance', label: 'Schedules', icon: Wrench, max: 5, color: 'from-amber-400 to-orange-500' },
+  
+  // Use mock data if provided, otherwise compute from health object
+  const metrics = mockData || [
+    { key: 'signals', label: 'Active Signals', value: '1', icon: Zap, color: '#19B86A' },
+    { key: 'fuelEconomy', label: 'Fuel Economy', value: health?.fuelEfficiency?.value ? `${health.fuelEfficiency.value} ${health.fuelEfficiency.unit}` : '3.9 km/L', icon: Fuel, color: '#19B86A' },
+    { key: 'vehicleLifespan', label: 'Vehicle Lifespan', value: health?.vehicleHealth?.value ? `${health.vehicleHealth.value}%` : '67%', progress: health?.vehicleHealth?.value || 67, icon: HeartPulse, color: '#19B86A' },
+    { key: 'safetyIndex', label: 'Safety Index', value: '92%', progress: 92, icon: ShieldCheck, color: '#19B86A' },
+    { key: 'schedules', label: 'Schedules', value: health?.maintenance?.value ? `${health.maintenance.value} Due` : '3 Due', icon: Calendar, color: '#f59e0b' },
   ];
 
   return (
-    <div className="space-y-4 select-none">
-      <h4 className="text-[10px] font-semibold text-content-muted uppercase tracking-widest mb-3">
-        {t("Fleet Status Rails")}
-      </h4>
-      <div className="grid grid-cols-1 gap-3.5">
-        {metrics.map((metric) => {
-          const item = health[metric.key];
-          if (!item || item.value == null) return null;
+    <div className="space-y-3 select-none">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[10px] font-semibold text-fg-text-sec uppercase tracking-widest">
+          {t("Fleet Status")}
+        </h4>
+        <button className="text-[10px] text-fg-green hover:text-fg-green-bright transition-colors font-medium">
+          {t("VIEW ALL")}
+        </button>
+      </div>
+      <div className="space-y-1">
+        {metrics.map((metric, i) => {
           const Icon = metric.icon;
-          
-          // Calculate fill width percentage
-          const percent = Math.min(100, Math.round((item.value / metric.max) * 100));
-
           return (
-            <div key={metric.key} className="space-y-1.5 p-3 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.03] transition-colors duration-300">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-content-secondary">
-                  <Icon className="w-3.5 h-3.5 text-content-muted" strokeWidth={1.8} />
-                  <span className="font-light">{t(metric.label)}</span>
-                </div>
-                <span className="font-semibold text-content tabular-nums">
-                  {item.value}
-                  <span className="text-[10px] text-content-muted font-normal ml-0.5">{t(item.unit)}</span>
-                </span>
+            <div
+              key={metric.key || i}
+              className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-default group"
+            >
+              <div className="flex items-center gap-2.5 text-fg-text-sec">
+                <Icon className="w-4 h-4" strokeWidth={1.5} style={{ color: metric.color }} />
+                <span className="text-[13px] font-light">{t(metric.label)}</span>
               </div>
-              
-              {/* Animated Progress Gauge */}
-              <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: `${percent}%` }}
-                  viewport={{ once: true }}
-                  transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.1 }}
-                  className={cn("h-full rounded-full bg-gradient-to-r", metric.color)}
-                />
+              <div className="flex items-center gap-2">
+                {metric.progress != null && (
+                  <div className="w-16 fg-progress-track">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${metric.progress}%` }}
+                      viewport={{ once: true }}
+                      transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.1 + i * 0.05 }}
+                      className="fg-progress-fill"
+                      style={{ 
+                        background: `linear-gradient(90deg, #0D6B46, ${metric.color})` 
+                      }}
+                    />
+                  </div>
+                )}
+                <span className="text-[13px] font-semibold text-fg-text tabular-nums">
+                  {metric.value}
+                </span>
               </div>
             </div>
           );

@@ -35,6 +35,12 @@ class TripResponse(BaseModel):
     # --- Assignments ---
     vehicle_id: Optional[int] = None
     driver_id: Optional[int] = None
+
+    # --- Financial ---
+    revenue: Optional[float] = None
+    planned_cost: Optional[float] = None
+    planned_fuel_liters: Optional[float] = None
+    cargo_weight: Optional[float] = None
     
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None

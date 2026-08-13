@@ -125,6 +125,16 @@ class TripService:
         if "driver_id" in payload:
             trip.driver_id = payload["driver_id"]
 
+        # Financial fields
+        if "revenue" in payload:
+            trip.revenue = payload["revenue"]
+        if "planned_cost" in payload:
+            trip.planned_cost = payload["planned_cost"]
+        if "planned_fuel_liters" in payload:
+            trip.planned_fuel_liters = payload["planned_fuel_liters"]
+        if "cargo_weight" in payload:
+            trip.cargo_weight = payload["cargo_weight"]
+
         await self.uow.repositories.trip.upsert_trip(trip)
         
     async def _record_trip_started(self, trip_business_id: str, payload: dict, origin_id: str) -> None:

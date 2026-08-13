@@ -60,6 +60,24 @@ class Trip(Base):
     vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", lazy="selectin")
     driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin")
 
+    # --- Financial ---
+    revenue: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Trip freight/revenue amount in base currency"
+    )
+    planned_cost: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Estimated/budgeted total cost for this trip"
+    )
+    planned_fuel_liters: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Planned fuel consumption in liters"
+    )
+    cargo_weight: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Cargo weight in tonnes"
+    )
+
     # --- Traceability ---
     origin_type: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True,

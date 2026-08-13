@@ -11,7 +11,9 @@ from database import get_read_uow
 from infrastructure.uow import AbstractUnitOfWork
 from models.trip_domain import TripStatus
 from services.trip_service import TripService
+from services.trip_intelligence_service import TripIntelligenceService
 from schemas.trip_domain import TripResponse
+from schemas.trip_intelligence import TripIntelligenceResponse
 
 router = APIRouter(prefix="/v1", tags=["Trip Domain"])
 
@@ -54,6 +56,24 @@ async def get_trip(
         raise HTTPException(404, f"Trip {trip_id} not found")
     return TripResponse.model_validate(trip)
 
+
+@router.get("/trips/{trip_id}/intelligence", response_model=TripIntelligenceResponse)
+async def get_trip_intelligence(
+    trip_id: int,
+    uow: AbstractUnitOfWork = Depends(get_read_uow),
+) -> TripIntelligenceResponse:
+    """
+    Get Trip Intelligence analysis for a specific trip.
+    Returns profitability, cost breakdown, efficiency score,
+    anomaly insights, historical comparisons, and recommendations.
+    """
+    trip_service = TripService(uow)
+    trip = await trip_service.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(404, f"Trip {trip_id} not found")
+
+    intelligence_service = TripIntelligenceService(uow)
+    return await intelligence_service.compute_intelligence(trip)
 
 @router.get("/vehicles/{vehicle_id}/trips", response_model=List[TripResponse])
 async def get_trips_by_vehicle(

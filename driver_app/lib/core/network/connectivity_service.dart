@@ -19,7 +19,7 @@ class ConnectivityService {
   Stream<bool> get connectivityStream => _controller.stream;
 
   ConnectivityService() {
-    _connectivity.onConnectivityChanged.listen((results) {
+    _connectivity.onConnectivityChanged.listen((dynamic results) {
       final isOnline = _checkIsOnline(results);
       _controller.add(isOnline);
       AppLogger.info('Connectivity changed: ${isOnline ? "ONLINE" : "OFFLINE"}');
@@ -28,7 +28,7 @@ class ConnectivityService {
 
   static bool _checkIsOnline(dynamic results) {
     if (results is List) {
-      return results.any((r) => r != ConnectivityResult.none);
+      return results.any((dynamic r) => r != ConnectivityResult.none);
     }
     return results != ConnectivityResult.none;
   }

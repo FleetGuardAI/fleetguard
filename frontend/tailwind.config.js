@@ -43,11 +43,31 @@ export default {
         border: {
           DEFAULT: 'var(--border-color)',
         },
+        // ── FleetGuard Command-Center Dark Theme ──
+        fg: {
+          dark:          '#050B09',
+          deep:          '#07110D',
+          'green-deep':  '#063C28',
+          green:         '#19B86A',
+          'green-bright':'#36D98A',
+          'green-muted': '#0D6B46',
+          text:          '#F3F7F5',
+          'text-sec':    '#8D9B95',
+          card:          'rgba(10,22,17,0.75)',
+          border:        'rgba(255,255,255,0.07)',
+          'card-hover':  'rgba(14,30,22,0.85)',
+        },
       },
       boxShadow: {
         card: '0 4px 24px rgba(0,0,0,0.06)',
         elevated: '0 12px 40px rgba(0,0,0,0.08)',
         green: '0 4px 20px rgba(22,163,74,0.15)',
+        // FleetGuard command-center shadows
+        'fg-glow':     '0 0 30px rgba(25,184,106,0.08)',
+        'fg-glow-md':  '0 0 50px rgba(25,184,106,0.12)',
+        'fg-card':     '0 4px 24px rgba(0,0,0,0.3)',
+        'fg-elevated': '0 12px 40px rgba(0,0,0,0.4)',
+        'fg-active':   '0 0 20px rgba(25,184,106,0.15), inset 0 0 20px rgba(25,184,106,0.05)',
       },
       borderRadius: {
         xl: '16px',
@@ -62,6 +82,8 @@ export default {
         'slide-up': 'slideUp 0.4s ease-out',
         shimmer: 'shimmer 2s infinite linear',
         'spin-slow': 'spin 2s linear infinite',
+        'pulse-slow': 'pulse 3s ease-in-out infinite',
+        'typing-dot': 'typingDot 1.4s infinite ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -79,6 +101,10 @@ export default {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        typingDot: {
+          '0%, 80%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
+          '40%': { opacity: '1', transform: 'scale(1)' },
         },
       },
     },
