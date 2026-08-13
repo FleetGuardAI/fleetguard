@@ -154,6 +154,7 @@ from routers.auth import router as auth_router
 from routers.operational_events import router as operational_events_router
 from routers.documents import router as documents_router
 from routers.evidence import router as evidence_router
+from routers.fleet_intelligence import router as fleet_intelligence_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -269,6 +270,7 @@ app.include_router(auth_router)                   # carries its own /api/v1/auth
 app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
 app.include_router(evidence_router)               # carries its own /api/v1/events/{event_id}/evidence prefix
+app.include_router(fleet_intelligence_router, prefix="/api/v1") # carries /intelligence prefix
 
 # Mount Driver Mobile App Routers
 app.include_router(driver_mobile_router)
