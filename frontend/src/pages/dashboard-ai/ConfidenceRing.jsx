@@ -28,7 +28,7 @@ export function ConfidenceRing({ percentage = 90, size = 48, strokeWidth = 3 }) 
       <svg className="w-full h-full transform -rotate-90">
         {/* Track Ring */}
         <circle
-          className="text-slate-100 dark:text-slate-800"
+          className="text-white/[0.06]"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -52,7 +52,7 @@ export function ConfidenceRing({ percentage = 90, size = 48, strokeWidth = 3 }) 
         />
       </svg>
       {/* Inner Label */}
-      <span className="absolute text-[11px] font-bold tracking-tighter text-content tabular-nums">
+      <span className="absolute text-[11px] font-bold tracking-tighter text-fg-text tabular-nums">
         {percentage}%
       </span>
     </div>

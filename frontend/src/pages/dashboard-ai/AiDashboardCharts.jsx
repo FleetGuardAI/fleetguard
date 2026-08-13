@@ -16,7 +16,7 @@ function SparklineTooltip({ active, payload, prefix = '', suffix = '' }) {
   if (!active || !payload?.length) return null;
   const value = payload[0].value;
   return (
-    <div className="bg-surface border border-border px-2 py-1 rounded-lg shadow-sm text-xs font-medium text-content">
+    <div className="bg-fg-deep border border-fg-border px-2 py-1 rounded-lg shadow-sm text-xs font-medium text-fg-text">
       {prefix}
       {typeof value === 'number' ? value.toLocaleString('en-IN') : value ?? '—'}
       {suffix}
@@ -88,15 +88,15 @@ export function AiDashboardCharts() {
         return (
           <div
             key={chart.id}
-            className="bg-surface border border-border/50 rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 hover:border-border hover:shadow-card"
+            className="fg-card-static p-4 flex flex-col justify-between"
           >
             {/* Header */}
             <div className="mb-3">
-              <span className="text-[11px] font-semibold text-content-muted uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-fg-text-sec uppercase tracking-wider">
                 {chart.title}
               </span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-semibold text-content">
+                <span className="text-base font-semibold text-fg-text">
                   {latestValue != null ? (
                     <>
                       {chart.prefix}
@@ -104,11 +104,11 @@ export function AiDashboardCharts() {
                       {chart.suffix}
                     </>
                   ) : (
-                    <span className="text-content-muted">No data</span>
+                    <span className="text-fg-text-sec">No data</span>
                   )}
                 </span>
                 {latestValue != null && (
-                  <span className="text-[10px] text-content-muted">latest</span>
+                   <span className="text-[10px] text-fg-text-sec">latest</span>
                 )}
               </div>
             </div>
@@ -128,7 +128,7 @@ export function AiDashboardCharts() {
                     <YAxis hide domain={['dataMin - 10%', 'dataMax + 10%']} />
                     <Tooltip
                       content={<SparklineTooltip prefix={chart.prefix} suffix={chart.suffix} />}
-                      cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      cursor={{ stroke: 'rgba(255,255,255,0.05)', strokeWidth: 1, strokeDasharray: '3 3' }}
                     />
                     <Area
                       type="monotone"
@@ -137,13 +137,13 @@ export function AiDashboardCharts() {
                       strokeWidth={1.5}
                       fill={`url(#gradient-${chart.id})`}
                       dot={false}
-                      activeDot={{ r: 3, stroke: chart.stroke, strokeWidth: 1.5, fill: '#ffffff' }}
+                      activeDot={{ r: 3, stroke: chart.stroke, strokeWidth: 1.5, fill: '#050B09' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <span className="text-xs text-content-muted">
+                   <span className="text-xs text-fg-text-sec">
                     {loading ? 'Loading...' : 'Awaiting data'}
                   </span>
                 </div>

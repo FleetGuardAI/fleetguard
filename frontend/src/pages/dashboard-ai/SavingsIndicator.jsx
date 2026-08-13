@@ -32,8 +32,8 @@ export function SavingsIndicator({ value = 0 }) {
   return (
     <div className="relative inline-flex items-baseline">
       {/* Soft background glow */}
-      <span className="text-2xl md:text-3xl font-light text-content tracking-tight select-none relative z-10 flex items-center">
-        <span className="text-lg font-medium text-content-muted mr-1">₹</span>
+      <span className="text-2xl md:text-3xl font-light text-fg-text tracking-tight select-none relative z-10 flex items-center">
+        <span className="text-lg font-medium text-fg-text-sec mr-1">₹</span>
         <motion.span className="font-semibold">{rounded}</motion.span>
         
         {/* Ambient indicator glow */}
@@ -43,7 +43,7 @@ export function SavingsIndicator({ value = 0 }) {
             scale: glowing ? 1.1 : 0.95,
           }}
           transition={{ duration: 1.2 }}
-          className="absolute inset-0 bg-brand-500 blur-xl rounded-lg -z-10"
+          className="absolute inset-0 bg-fg-green blur-xl rounded-lg -z-10"
         />
       </span>
     </div>

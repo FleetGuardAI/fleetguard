@@ -32,6 +32,9 @@ function normalizeTrip(t) {
     progress: t.progress ?? (status === 'completed' ? 100 : status === 'on-trip' ? 50 : 0),
     status: status,
     cargo_weight: t.cargo_weight || null,
+    revenue: t.revenue || null,
+    planned_cost: t.planned_cost || null,
+    planned_fuel_liters: t.planned_fuel_liters || null,
     timeline: t.timeline || [
       { status: status.toUpperCase(), time: t.created_at || new Date().toISOString(), description: `Trip status is ${status}` }
     ]
@@ -114,4 +117,15 @@ export async function updateTripStatus(id, status, description) {
   };
   await api.events.create(payload);
   return normalizeTrip({ id, status });
+}
+
+/**
+ * Fetch Trip Intelligence data for a specific trip.
+ * Returns profitability, cost breakdown, efficiency score, insights, etc.
+ *
+ * @param {string|number} tripId
+ * @returns {Promise<object>}
+ */
+export async function getTripIntelligence(tripId) {
+  return await api.trips.intelligence(tripId);
 }

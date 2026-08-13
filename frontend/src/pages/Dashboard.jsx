@@ -23,6 +23,7 @@ const UserManagement = lazy(() => import('./admin/UserManagement'));
 const RolesPermissions = lazy(() => import('./admin/RolesPermissions'));
 const AuditLogs = lazy(() => import('./admin/AuditLogs'));
 const OpportunityFeedPage = lazy(() => import('./opportunities/OpportunityFeedPage'));
+const ChatBox = lazy(() => import('./chatbox/ChatBox'));
 
 function RouteLoader() {
   return (
@@ -38,6 +39,7 @@ export default function Dashboard() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardOverview />} />
+          <Route path="chatbox" element={<ChatBox />} />
           <Route path="opportunities" element={<OpportunityFeedPage />} />
           <Route path="reports" element={<Reports />} />
           <Route path="vehicles/*" element={<Vehicles />} />

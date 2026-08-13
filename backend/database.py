@@ -101,11 +101,33 @@ async def get_read_uow() -> AsyncGenerator[Any, None]:
 
 
 
+def _sync_sqlite_columns(sync_conn):
+    """Inspects existing SQLite tables and adds any missing ORM columns automatically."""
+    for table_name, table in Base.metadata.tables.items():
+        res = sync_conn.execute(
+            Base.metadata.tables[table_name].select().limit(0)
+        )
+        # Fetch PRAGMA info
+        cursor_res = sync_conn.exec_driver_sql(f"PRAGMA table_info('{table_name}')")
+        existing_cols = {row[1] for row in cursor_res.fetchall()}
+        
+        for col in table.columns:
+            if col.name not in existing_cols:
+                type_str = str(col.type).upper()
+                col_type = "INTEGER" if "INT" in type_str else "REAL" if ("FLOAT" in type_str or "REAL" in type_str) else "BOOLEAN" if "BOOL" in type_str else "VARCHAR"
+                try:
+                    sync_conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
+                except Exception:
+                    pass
+
 # --- Table Management ---
 async def create_all_tables() -> None:
-    """Create all tables defined by ORM models. Called on app startup."""
+    """Create all tables defined by ORM models and sync columns. Called on app startup."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if settings.DATABASE_URL.startswith("sqlite"):
+            await conn.run_sync(_sync_sqlite_columns)
+
 
 
 async def drop_all_tables() -> None:

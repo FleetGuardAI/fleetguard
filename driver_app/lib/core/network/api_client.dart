@@ -140,6 +140,7 @@ class ApiClient {
 
 /// Attaches JWT Bearer token to every request
 class _AuthInterceptor extends Interceptor {
+  // ignore: unused_field
   final Ref _ref;
 
   _AuthInterceptor(this._ref);
