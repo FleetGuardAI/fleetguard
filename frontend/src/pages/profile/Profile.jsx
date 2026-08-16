@@ -161,7 +161,7 @@ export default function Profile() {
       {/* User Header Profile Card */}
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row items-center gap-5">
-          <div className="w-20 h-20 bg-brand-100 dark:bg-brand-900/30 text-brand-600 rounded-full flex items-center justify-center font-bold text-2xl border border-brand-200">
+          <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-2xl border border-brand-200">
             {user.name.split(' ').map(n => n[0]).join('')}
           </div>
           <div className="text-center sm:text-left space-y-1">
@@ -202,7 +202,7 @@ export default function Profile() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5",
             activeTab === 'details'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -214,7 +214,7 @@ export default function Profile() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5",
             activeTab === 'security'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -226,7 +226,7 @@ export default function Profile() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5",
             activeTab === 'sessions'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >

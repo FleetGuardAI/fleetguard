@@ -137,7 +137,6 @@ outbox_worker = OutboxWorkerRunner(publisher=outbox_publisher)
 import models  # noqa: F401
 
 # Import routers
-from routers.whatsapp import router as whatsapp_router
 from routers.dashboard import router as dashboard_router
 from routers.tickets import router as tickets_router
 # from routers.assignment_domain import router as assignment_domain_router
@@ -155,6 +154,8 @@ from routers.operational_events import router as operational_events_router
 from routers.documents import router as documents_router
 from routers.evidence import router as evidence_router
 from routers.fleet_intelligence import router as fleet_intelligence_router
+from routers.copilot import router as copilot_router
+from routers.owner_dashboard import router as owner_dashboard_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -187,7 +188,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("🚛 FleetGuard TMS starting up...")
     logger.info(f"   Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
-    logger.info(f"   WhatsApp configured: {bool(settings.WHATSAPP_API_TOKEN)}")
     logger.info(f"   Event Bus: {event_bus}")
 
     await create_all_tables()
@@ -205,7 +205,7 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description=(
         "Transport Management System for fraud prevention, "
-        "WhatsApp expense tracking, fuel telematics, and BI reporting."
+        "expense tracking, fuel telematics, and BI reporting."
     ),
     lifespan=lifespan,
     docs_url="/docs",
@@ -247,14 +247,12 @@ async def health_check() -> dict[str, str]:
         "status": "healthy",
         "database": "connected",
         "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
-        "whatsapp": "configured" if settings.WHATSAPP_API_TOKEN else "not_configured",
     }
 
 
 # --- Mount Routers ---
 API_PREFIX = "/api"
 
-app.include_router(whatsapp_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(tickets_router, prefix=API_PREFIX)
 app.include_router(driver_domain_router, prefix=API_PREFIX)
@@ -271,6 +269,9 @@ app.include_router(operational_events_router)     # carries its own /api/v1/even
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
 app.include_router(evidence_router)               # carries its own /api/v1/events/{event_id}/evidence prefix
 app.include_router(fleet_intelligence_router, prefix="/api/v1") # carries /intelligence prefix
+app.include_router(copilot_router, prefix="/api/v1")
+app.include_router(owner_dashboard_router)
+
 
 # Mount Driver Mobile App Routers
 app.include_router(driver_mobile_router)

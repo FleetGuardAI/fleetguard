@@ -238,7 +238,7 @@ export function SignalPanel({ opportunity, onAssign, onSchedule, onDismiss, onIn
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={() => onAssign?.(o.id)}
-                className="bg-fg-green text-fg-dark font-semibold text-xs px-5 py-2.5 rounded-xl transition-all duration-200 hover:bg-fg-green-bright hover:shadow-fg-glow flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-[0.98]"
+                className="bg-brand-500 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-all duration-200 hover:bg-brand-600 shadow-green flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-[0.98]"
               >
                 <span>{t("Resolve Signal")}</span>
                 <ChevronRight className="w-3.5 h-3.5" />

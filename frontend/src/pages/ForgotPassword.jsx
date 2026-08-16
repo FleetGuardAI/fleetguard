@@ -77,23 +77,23 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-8 space-y-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-12 h-12 flex items-center justify-center">
             <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-slate-900">
             Forgot <span className="text-emerald-600">Password</span>
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500">
             Request a reset token, then set a new password.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <form onSubmit={handleRequest} className="space-y-4 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">1. Request Reset</h3>
+          <form onSubmit={handleRequest} className="space-y-4 border border-slate-200 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-slate-900">1. Request Reset</h3>
 
             <Input
               label="Email or Mobile"
@@ -116,8 +116,8 @@ export default function ForgotPassword() {
             </Button>
           </form>
 
-          <form onSubmit={handleReset} className="space-y-4 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">2. Reset Password</h3>
+          <form onSubmit={handleReset} className="space-y-4 border border-slate-200 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-slate-900">2. Reset Password</h3>
 
             <Input
               label="Reset Token"
@@ -182,7 +182,7 @@ export default function ForgotPassword() {
           </form>
         </div>
 
-        <div className="text-center text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-center text-xs text-slate-500">
           <Link to="/login" className="text-emerald-600 hover:underline">
             Back to login
           </Link>

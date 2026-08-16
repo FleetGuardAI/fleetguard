@@ -1,16 +1,22 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/utils/validators.dart';
+import '../../../../core/storage/secure_storage.dart';
+import '../../data/expense_repository.dart';
+import '../providers/expense_provider.dart';
 
-class CreateExpenseScreen extends StatefulWidget {
+class CreateExpenseScreen extends ConsumerStatefulWidget {
   const CreateExpenseScreen({super.key});
 
   @override
-  State<CreateExpenseScreen> createState() => _CreateExpenseScreenState();
+  ConsumerState<CreateExpenseScreen> createState() => _CreateExpenseScreenState();
 }
 
-class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
+class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
   final _amountController = TextEditingController();
   final _vendorController = TextEditingController();
   final _gstController = TextEditingController();
@@ -21,20 +27,43 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   bool _isSubmitting = false;
 
   void _simulateCameraAndOcr() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    
+    if (pickedFile == null) return;
+
     setState(() => _isOcrProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
+    
+    try {
+      final repo = ref.read(expenseRepositoryProvider);
+      final ocrResult = await repo.processReceiptOcr(File(pickedFile.path));
+      
+      setState(() {
+        _isOcrProcessing = false;
+        _vendorController.text = ocrResult['vendor'] ?? '';
+        _gstController.text = ocrResult['gst_number'] ?? '';
+        _amountController.text = (ocrResult['amount'] ?? '').toString();
+        
+        // Auto-select category if matching
+        String suggestedCategory = ocrResult['category'] ?? 'FUEL';
+        if (['FUEL', 'TOLL', 'PARKING', 'REPAIR', 'FOOD'].contains(suggestedCategory)) {
+          _category = suggestedCategory;
+        }
+      });
 
-    setState(() {
-      _isOcrProcessing = false;
-      _vendorController.text = 'HP Fuel Station #482';
-      _gstController.text = '27AAACH1234H1Z5';
-      _amountController.text = '2500';
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI OCR Extracted: HP Fuel Station, ₹2,500. Fraud Risk: Low (0.08)')),
-      );
+      if (mounted) {
+        final risk = (ocrResult['fraud_risk_score'] * 100).toStringAsFixed(0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI OCR Extracted: ${ocrResult['vendor']}, ₹${ocrResult['amount']}. Fraud Risk: $risk%')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isOcrProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('OCR Failed: $e')),
+        );
+      }
     }
   }
 
@@ -42,14 +71,34 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isSubmitting = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Expense submitted successfully for fleet review!')),
+    
+    try {
+      final repo = ref.read(expenseRepositoryProvider);
+      final driverId = await SecureStorage.getDriverId() ?? 1;
+      
+      await repo.createExpense(
+        category: _category,
+        amount: double.tryParse(_amountController.text) ?? 0,
+        description: '${_vendorController.text} (GST: ${_gstController.text})',
+        driverId: driverId,
       );
-      context.pop();
+      
+      setState(() => _isSubmitting = false);
+
+      if (mounted) {
+        ref.invalidate(driverExpensesProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Expense submitted successfully for fleet review!')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit expense: $e')),
+        );
+      }
     }
   }
 

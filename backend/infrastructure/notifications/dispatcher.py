@@ -5,10 +5,10 @@ Notification Service - Dispatcher
 from typing import Dict, Type
 from infrastructure.notifications.models import NotificationChannel, Notification, DeliveryResult
 from infrastructure.notifications.channels.base import BaseNotificationChannel
-from infrastructure.notifications.channels.whatsapp import WhatsAppChannel
 from infrastructure.notifications.channels.email import EmailChannel
 from infrastructure.notifications.channels.sms import SMSChannel
 from infrastructure.notifications.channels.webhook import WebhookChannel
+from infrastructure.notifications.channels.push import PushChannel
 
 class NotificationDispatcher:
     """
@@ -17,10 +17,10 @@ class NotificationDispatcher:
     def __init__(self):
         # Statically configured provider implementations
         self._channels: Dict[NotificationChannel, BaseNotificationChannel] = {
-            NotificationChannel.WHATSAPP: WhatsAppChannel(),
             NotificationChannel.EMAIL: EmailChannel(),
             NotificationChannel.SMS: SMSChannel(),
-            NotificationChannel.WEBHOOK: WebhookChannel()
+            NotificationChannel.WEBHOOK: WebhookChannel(),
+            NotificationChannel.PUSH: PushChannel()
         }
 
     def dispatch(self, channel_enum: NotificationChannel, notification: Notification) -> DeliveryResult:

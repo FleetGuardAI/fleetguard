@@ -7,9 +7,8 @@ thin and delegate entirely to this module.
 Responsibilities:
   - Company registration (atomic: company + admin user + JWT)
   - Dual-identifier login (email OR mobile number)
-    - CAPTCHA verification for public auth endpoints
-    - Remember-me session persistence with company/user mapping
-    - Forgot-password and reset-password token workflows
+  - Remember-me session persistence with company/user mapping
+  - Forgot-password and reset-password token workflows
   - JWT creation and decoding
   - FastAPI dependency: get_current_user()
 """
@@ -176,102 +175,6 @@ async def _assert_email_not_taken(
         )
 
 
-async def verify_captcha_token(captcha_token: str, *, context: str) -> None:
-    """
-    Verify CAPTCHA token.
-
-    - If CAPTCHA_SECRET_KEY is configured, validates against Turnstile endpoint.
-    - If not configured, allows local bypass token for dev testing.
-    """
-    recaptcha_project_id = settings.RECAPTCHA_PROJECT_ID
-    recaptcha_api_key = settings.RECAPTCHA_API_KEY
-    recaptcha_site_key = settings.RECAPTCHA_SITE_KEY or settings.CAPTCHA_SITE_KEY
-
-    if recaptcha_project_id and recaptcha_api_key and recaptcha_site_key:
-        url = (
-            f"https://recaptchaenterprise.googleapis.com/v1/projects/"
-            f"{recaptcha_project_id}/assessments?key={recaptcha_api_key}"
-        )
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    url,
-                    json={
-                        "event": {
-                            "token": captcha_token,
-                            "siteKey": recaptcha_site_key,
-                            "expectedAction": context,
-                        }
-                    },
-                )
-            payload = response.json()
-        except Exception as exc:
-            logger.warning("reCAPTCHA Enterprise network error (%s): %s", context, exc)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Captcha verification service is unavailable. Please try again.",
-            ) from exc
-
-        token_props = payload.get("tokenProperties", {})
-        if not token_props.get("valid", False):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Captcha verification failed: "
-                    f"{token_props.get('invalidReason', 'INVALID_TOKEN')}"
-                ),
-            )
-
-        token_action = token_props.get("action")
-        if token_action and token_action != context:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Captcha action mismatch.",
-            )
-
-        score = payload.get("riskAnalysis", {}).get("score", 0.0)
-        if score < settings.RECAPTCHA_MIN_SCORE:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Captcha risk score too low.",
-            )
-        return
-
-    if settings.CAPTCHA_SECRET_KEY:
-        try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                response = await client.post(
-                    settings.CAPTCHA_VERIFY_URL,
-                    data={
-                        "secret": settings.CAPTCHA_SECRET_KEY,
-                        "response": captcha_token,
-                    },
-                )
-            payload = response.json()
-        except Exception as exc:
-            logger.warning("CAPTCHA verify network error (%s): %s", context, exc)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Captcha verification service is unavailable. Please try again.",
-            ) from exc
-
-        if not payload.get("success", False):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Captcha verification failed.",
-            )
-        return
-
-    if captcha_token == settings.CAPTCHA_DEV_BYPASS_TOKEN:
-        return
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=(
-            "Captcha is not configured on server. Use local bypass token for dev or "
-            "configure CAPTCHA keys."
-        ),
-    )
 
 
 # ---------------------------------------------------------------------------

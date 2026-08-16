@@ -42,7 +42,7 @@ class FleetIntelligenceService:
         self._orchestrator = IntelligenceFactory.build_orchestrator()
         self._builder = EvidenceBuilder()
 
-    async def get_fleet_health(self) -> FleetHealthResponse:
+    async def get_fleet_health(self, company_id: int) -> FleetHealthResponse:
         """
         Dynamically executes the intelligence engine against existing
         operational events for all active vehicles to produce a real-time
@@ -125,7 +125,7 @@ class FleetIntelligenceService:
             ))
 
         # 6. Aggregate into fleet-level health report
-        analyzer = FleetHealthAnalyzer(fleet_id="current_fleet")
+        analyzer = FleetHealthAnalyzer(fleet_id=str(company_id))
         report = analyzer.execute(
             vehicle_contexts=vehicle_contexts,
             fleet_insights=[],

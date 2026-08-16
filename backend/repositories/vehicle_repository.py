@@ -14,11 +14,17 @@ class VehicleRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_vehicle_by_id(self, vehicle_id: int) -> Optional[Vehicle]:
-        return await self.db.get(Vehicle, vehicle_id)
+    async def get_vehicle_by_id(self, vehicle_id: int, company_id: Optional[int] = None) -> Optional[Vehicle]:
+        stmt = select(Vehicle).where(Vehicle.id == vehicle_id)
+        if company_id is not None:
+            stmt = stmt.where(Vehicle.company_id == company_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    async def get_vehicle_by_registration(self, registration_number: str) -> Optional[Vehicle]:
+    async def get_vehicle_by_registration(self, registration_number: str, company_id: Optional[int] = None) -> Optional[Vehicle]:
         stmt = select(Vehicle).where(Vehicle.registration_number == registration_number)
+        if company_id is not None:
+            stmt = stmt.where(Vehicle.company_id == company_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -26,9 +32,12 @@ class VehicleRepository:
         self, 
         is_active: Optional[bool] = None, 
         limit: int = 50, 
-        offset: int = 0
+        offset: int = 0,
+        company_id: Optional[int] = None
     ) -> Sequence[Vehicle]:
         query = select(Vehicle)
+        if company_id is not None:
+            query = query.where(Vehicle.company_id == company_id)
         
         if is_active is not None:
             if is_active:

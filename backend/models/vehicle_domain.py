@@ -3,7 +3,7 @@ FleetGuard — Vehicle Domain ORM Models
 Represents a vehicle and its state in the fleet.
 """
 
-from sqlalchemy import Integer, String, Float, Enum
+from sqlalchemy import Integer, String, Float, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, TYPE_CHECKING
 import enum
@@ -13,6 +13,8 @@ from database import Base
 if TYPE_CHECKING:
     from models.ticket import Ticket
     from models.fuel_log import FuelLog
+    from models.user import Company
+    from models.driver_domain import Driver
 
 
 class VehicleStatus(str, enum.Enum):
@@ -66,6 +68,19 @@ class Vehicle(Base):
         String(255), nullable=True,
         comment="Reference ID from the origin (e.g., OperationalEvent ID)"
     )
+
+    # --- Isolation ---
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("companies.id"), nullable=False, index=True, default=1
+    )
+    company: Mapped["Company"] = relationship("Company", lazy="selectin")
+
+    # --- Driver Assignment ---
+    assigned_driver_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("drivers.id", ondelete="SET NULL"), nullable=True, index=True,
+        comment="Currently assigned driver"
+    )
+    assigned_driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin", foreign_keys=[assigned_driver_id])
 
     # --- Relationships ---
     tickets: Mapped[list["Ticket"]] = relationship(

@@ -59,7 +59,8 @@ class VehicleService:
             )
 
     async def _record_vehicle_registered(self, registration_number: str, payload: dict, origin_id: str) -> None:
-        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number)
+        company_id = payload.get("company_id")
+        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=company_id)
         if vehicle:
             # If already exists, we might just update it or skip
             pass
@@ -75,12 +76,14 @@ class VehicleService:
                 ownership_info=payload.get("ownership_info"),
                 status=VehicleStatus.ACTIVE,
                 origin_type="verified_event",
-                origin_id=origin_id
+                origin_id=origin_id,
+                company_id=company_id or 1
             )
         await self.uow.repositories.vehicle.upsert_vehicle(vehicle)
         
     async def _record_vehicle_updated(self, registration_number: str, payload: dict, origin_id: str) -> None:
-        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number)
+        company_id = payload.get("company_id")
+        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=company_id)
         if not vehicle:
             return # Cannot update a vehicle that doesn't exist
 
@@ -105,7 +108,8 @@ class VehicleService:
         await self.uow.repositories.vehicle.upsert_vehicle(vehicle)
 
     async def _record_vehicle_status_changed(self, registration_number: str, payload: dict, origin_id: str) -> None:
-        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number)
+        company_id = payload.get("company_id")
+        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=company_id)
         if not vehicle:
             return
             
@@ -121,13 +125,14 @@ class VehicleService:
 
     # --- Read APIs ---
 
-    async def get_vehicle(self, vehicle_id: int) -> Optional[Vehicle]:
-        return await self.uow.repositories.vehicle.get_vehicle_by_id(vehicle_id)
+    async def get_vehicle(self, vehicle_id: int, company_id: Optional[int] = None) -> Optional[Vehicle]:
+        return await self.uow.repositories.vehicle.get_vehicle_by_id(vehicle_id, company_id=company_id)
 
     async def search_vehicles(
         self, 
         is_active: Optional[bool] = None, 
         limit: int = 50, 
-        offset: int = 0
+        offset: int = 0,
+        company_id: Optional[int] = None
     ) -> Sequence[Vehicle]:
-        return await self.uow.repositories.vehicle.search_vehicles(is_active=is_active, limit=limit, offset=offset)
+        return await self.uow.repositories.vehicle.search_vehicles(is_active=is_active, limit=limit, offset=offset, company_id=company_id)

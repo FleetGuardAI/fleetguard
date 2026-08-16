@@ -1,21 +1,99 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../data/tracking_service.dart';
 
-class ActiveTripScreen extends StatefulWidget {
+class ActiveTripScreen extends ConsumerStatefulWidget {
   final int tripId;
 
   const ActiveTripScreen({super.key, required this.tripId});
 
   @override
-  State<ActiveTripScreen> createState() => _ActiveTripScreenState();
+  ConsumerState<ActiveTripScreen> createState() => _ActiveTripScreenState();
 }
 
-class _ActiveTripScreenState extends State<ActiveTripScreen> {
-  // Mumbai to Pune Highway sample coordinates for OSM Map
+class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
+  // Mumbai to Pune Highway sample coordinates
   final LatLng _origin = const LatLng(18.9500, 72.9500); // JNPT Navi Mumbai
   final LatLng _destination = const LatLng(18.5204, 73.8567); // Pune
+  
+  GoogleMapController? _mapController;
+  Position? _currentPosition;
+  Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+  
+  StreamSubscription<Position>? _positionSubscription;
+  late final TrackingService _trackingService;
+
+  @override
+  void initState() {
+    super.initState();
+    _trackingService = ref.read(trackingServiceProvider);
+    _setupMapAndTracking();
+  }
+
+  Future<void> _setupMapAndTracking() async {
+    try {
+      await _trackingService.startTracking();
+
+      _positionSubscription = Geolocator.getPositionStream().listen((Position position) {
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+            _updateMarkers();
+          });
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+            );
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error starting tracking: $e');
+    }
+  }
+
+  void _updateMarkers() {
+    _markers = {
+      Marker(
+        markerId: const MarkerId('origin'),
+        position: _origin,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+      ),
+      Marker(
+        markerId: const MarkerId('destination'),
+        position: _destination,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ),
+      if (_currentPosition != null)
+        Marker(
+          markerId: const MarkerId('current'),
+          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: const InfoWindow(title: 'You are here'),
+        ),
+    };
+
+    _polylines = {
+      Polyline(
+        polylineId: const PolylineId('route'),
+        points: [_origin, _destination],
+        color: Colors.blue,
+        width: 4,
+      )
+    };
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _trackingService.stopTracking();
+    super.dispose();
+  }
 
   void _launchExternalGoogleMaps() async {
     final googleMapsUrl = Uri.parse(
@@ -45,43 +123,20 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
       ),
       body: Stack(
         children: [
-          // --- OpenStreetMap Display ---
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: const LatLng(18.75, 73.40),
-              initialZoom: 9.5,
+          // --- Google Maps Display ---
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _origin,
+              zoom: 9.5,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.fleetguard.driver',
-              ),
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: [_origin, const LatLng(18.78, 73.30), _destination],
-                    strokeWidth: 4.0,
-                    color: Colors.blue,
-                  ),
-                ],
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _origin,
-                    width: 40,
-                    height: 40,
-                    child: const Icon(Icons.location_on, color: Colors.green, size: 40),
-                  ),
-                  Marker(
-                    point: _destination,
-                    width: 40,
-                    height: 40,
-                    child: const Icon(Icons.flag, color: Colors.red, size: 40),
-                  ),
-                ],
-              ),
-            ],
+            markers: _markers,
+            polylines: _polylines,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            onMapCreated: (GoogleMapController controller) {
+              _mapController = controller;
+              _updateMarkers(); // Initial setup
+            },
           ),
 
           // --- Bottom Floating Navigation Control Overlay ---

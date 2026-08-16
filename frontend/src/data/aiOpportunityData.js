@@ -28,8 +28,8 @@ export const CATEGORY_META = {
 };
 
 export const SEVERITY_CONFIG = {
-  critical: { label: 'Critical', dot: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',    bg: 'bg-red-50 dark:bg-red-950/30' },
-  high:     { label: 'High',     dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/30' },
-  medium:   { label: 'Medium',   dot: 'bg-amber-500',  text: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-950/30' },
-  low:      { label: 'Low',      dot: 'bg-emerald-500',text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+  critical: { label: 'Critical', dot: 'bg-red-500',    text: 'text-red-600',    bg: 'bg-red-50' },
+  high:     { label: 'High',     dot: 'bg-orange-500', text: 'text-orange-600', bg: 'bg-orange-50' },
+  medium:   { label: 'Medium',   dot: 'bg-amber-500',  text: 'text-amber-600',  bg: 'bg-amber-50' },
+  low:      { label: 'Low',      dot: 'bg-emerald-500',text: 'text-emerald-600', bg: 'bg-emerald-50' },
 };

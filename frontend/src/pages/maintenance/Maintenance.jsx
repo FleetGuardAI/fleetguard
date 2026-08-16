@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wrench, Plus, Eye, CheckCircle, Calendar, Compass, FileText, Check, Settings, ShieldAlert, Package } from 'lucide-react';
 import { getMaintenanceLogs, scheduleMaintenance } from '@/api/maintenanceApi';
 import { getVehicles } from '@/api/vehicleApi';
-import { getTyres } from '@/api/tyreApi';
+
 import { getAssets } from '@/api/assetApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -52,24 +52,15 @@ export default function Maintenance() {
     setLoading(true);
     setErr(null);
     try {
-      const [lData, vData, tData, aData] = await Promise.all([
+      const [lData, vData, aData] = await Promise.all([
         getMaintenanceLogs({ search }),
         getVehicles(),
-        getTyres().catch(() => []),
         getAssets().catch(() => [])
       ]);
       setLogs(lData);
       setVehicles(vData);
 
       const parts = [
-        ...tData.map(t => ({
-          sku: t.serial_number || `TYRE-${t.id}`,
-          name: [t.manufacturer, t.brand, t.size, 'Tyre'].filter(Boolean).join(' '),
-          stock: t.current_status === 'available' || t.current_status === 'in_stock' ? 1 : 0,
-          reorder: 1,
-          unit: 'Units',
-          price: t.purchase_information?.price || 0,
-        })),
         ...aData.map(a => ({
           sku: a.business_id || `AST-${a.id}`,
           name: [a.manufacturer, a.model, a.asset_type?.replace(/_/g, ' ')].filter(Boolean).join(' '),
@@ -270,7 +261,7 @@ export default function Maintenance() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'logs'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -281,7 +272,7 @@ export default function Maintenance() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'inventory'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >

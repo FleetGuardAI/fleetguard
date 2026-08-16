@@ -377,13 +377,13 @@ export default function DriverProfile() {
           </>
         }
       >
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
           <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-950 dark:text-red-400">
+            <p className="text-sm font-semibold text-red-950">
               Removing {driver.name}
             </p>
-            <p className="text-xs text-red-700 dark:text-red-300">
+            <p className="text-xs text-red-700">
               This will permanently revoke dispatch allocations and archive security credentials.
             </p>
           </div>

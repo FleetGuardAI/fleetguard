@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/validators.dart';
+import '../../data/auth_repository.dart';
 
-class ProfileCreationScreen extends StatefulWidget {
+class ProfileCreationScreen extends ConsumerStatefulWidget {
   const ProfileCreationScreen({super.key});
 
   @override
-  State<ProfileCreationScreen> createState() => _ProfileCreationScreenState();
+  ConsumerState<ProfileCreationScreen> createState() => _ProfileCreationScreenState();
 }
 
-class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
+class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
   final _nameController = TextEditingController();
   final _licenseController = TextEditingController();
   final _aadhaarController = TextEditingController();
@@ -22,13 +24,29 @@ class _ProfileCreationScreenState extends State<ProfileCreationScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
+    
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.registerProfile(
+        _nameController.text.trim(),
+        _licenseController.text.trim(),
+        _aadhaarController.text.trim(),
+      );
 
-    await SecureStorage.setDriverName(_nameController.text.trim());
-    setState(() => _isLoading = false);
+      await SecureStorage.setDriverName(response['name']);
+      
+      setState(() => _isLoading = false);
 
-    if (mounted) {
-      context.go('/auth/documents');
+      if (mounted) {
+        context.go('/auth/documents');
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
     }
   }
 

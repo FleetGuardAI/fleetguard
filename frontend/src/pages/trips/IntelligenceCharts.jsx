@@ -28,7 +28,7 @@ export function ScoreGauge({ score, maxScore = 100, size = 160, strokeWidth = 12
             cx={size / 2} cy={size / 2} r={radius}
             fill="none" stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-gray-200 dark:text-gray-700"
+            className="text-gray-200"
           />
           {/* Score arc */}
           {hasData && (
@@ -73,7 +73,6 @@ const CATEGORY_COLORS = {
   FUEL: '#3b82f6',
   TOLL: '#8b5cf6',
   MAINTENANCE: '#f59e0b',
-  TYRE: '#6b7280',
   PARKING: '#06b6d4',
   SALARY: '#10b981',
   ALLOWANCE: '#14b8a6',
@@ -101,7 +100,7 @@ export function CostBreakdownBar({ items, revenue }) {
             <span className="text-content-secondary">Revenue</span>
             <span className="font-semibold text-content">₹{revenue.toLocaleString('en-IN')}</span>
           </div>
-          <div className="h-6 rounded-md bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800" />
+          <div className="h-6 rounded-md bg-green-100 border border-green-200" />
         </div>
       )}
 
@@ -139,14 +138,14 @@ export function CostBreakdownBar({ items, revenue }) {
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span className="text-content-secondary">{profit >= 0 ? 'Net Profit' : 'Net Loss'}</span>
-            <span className={`font-bold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <span className={`font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {profit >= 0 ? '+' : ''}₹{profit.toLocaleString('en-IN')}
             </span>
           </div>
           <div
             className={`h-3 rounded-md ${profit >= 0
-                ? 'bg-green-500 dark:bg-green-600'
-                : 'bg-red-500 dark:bg-red-600'
+                ? 'bg-green-500'
+                : 'bg-red-500'
               }`}
             style={{ width: `${Math.min(Math.abs(profit) / baseWidth * 100, 100)}%` }}
           />
@@ -192,9 +191,9 @@ export function VarianceBar({ value, maxAbsValue = 50, severity = 'INFO', unit =
 
   return (
     <div className="flex items-center gap-2 min-w-[120px]">
-      <div className="relative w-24 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="relative w-24 h-3 bg-gray-100 rounded-full overflow-hidden">
         {/* Center line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-500 z-10" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 z-10" />
         {/* Bar */}
         <div
           className={`absolute top-0 bottom-0 ${barColor} rounded-full`}
@@ -208,8 +207,8 @@ export function VarianceBar({ value, maxAbsValue = 50, severity = 'INFO', unit =
         />
       </div>
       <span className={`text-xs font-medium whitespace-nowrap ${
-        severity === 'CRITICAL' ? 'text-red-600 dark:text-red-400' :
-        severity === 'WARNING' ? 'text-amber-600 dark:text-amber-400' :
+        severity === 'CRITICAL' ? 'text-red-600' :
+        severity === 'WARNING' ? 'text-amber-600' :
         'text-content-secondary'
       }`}>
         {isPositive ? '+' : ''}{value}{unit && ` ${unit}`}
@@ -226,7 +225,7 @@ export function SubScoreBar({ label, score, maxScore = 100 }) {
   const hasData = score != null;
 
   const getColor = () => {
-    if (!hasData) return 'bg-gray-200 dark:bg-gray-700';
+    if (!hasData) return 'bg-gray-200';
     if (score >= 80) return 'bg-green-500';
     if (score >= 60) return 'bg-amber-500';
     if (score >= 40) return 'bg-orange-500';
@@ -241,7 +240,7 @@ export function SubScoreBar({ label, score, maxScore = 100 }) {
           {hasData ? `${Math.round(score)}` : '—'}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
         <div
           className={`h-full rounded-full ${getColor()}`}
           style={{ width: `${pct}%`, transition: 'width 0.8s ease-out' }}

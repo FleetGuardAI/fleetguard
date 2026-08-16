@@ -1,29 +1,25 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 
 const ThemeContext = createContext();
 
+/**
+ * FleetGuard Theme Provider — Fixed Light Theme
+ * The application uses a single cohesive light theme.
+ * This provider is kept for API compatibility but no longer toggles themes.
+ */
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('fleetguard_theme');
-    return saved || 'dark'; // Default to dark for FleetGuard premium feel
-  });
+  // Ensure no dark class remnants on the root element
+  document.documentElement.classList.remove('dark');
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('fleetguard_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  const value = {
+    theme: 'light',
+    resolvedTheme: 'light',
+    setTheme: () => {},      // no-op — fixed theme
+    toggleTheme: () => {},   // no-op — fixed theme
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

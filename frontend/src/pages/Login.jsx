@@ -71,17 +71,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden p-8 space-y-6">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-12 h-12 flex items-center justify-center">
             <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-slate-900">
             Fleet<span className="text-emerald-600">Guard</span> ERP
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500">
             Sign in to manage your trucking fleet
           </p>
         </div>
@@ -122,10 +122,10 @@ export default function Login() {
           />
 
           <div className="flex items-center justify-between text-xs">
-            <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-slate-600 cursor-pointer">
               <input
                 type="checkbox"
-                className="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500/30"
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/30"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
@@ -145,7 +145,7 @@ export default function Login() {
           </Button>
         </form>
 
-        <div className="text-center text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-center text-xs text-slate-500">
           <p className="mb-2">
             New company?{' '}
             <Link to="/register" className="text-emerald-600 hover:underline">

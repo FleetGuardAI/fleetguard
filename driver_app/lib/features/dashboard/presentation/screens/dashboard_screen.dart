@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/config/theme/app_colors.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/services/auth_service.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _dutyStatus = 'OFF_DUTY'; // OFF_DUTY, ON_DUTY, ON_BREAK
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final dio = ref.read(apiClientProvider).dio;
+      NotificationService.registerFcmToken(dio);
+    });
+  }
 
   Color _getDutyColor() {
     switch (_dutyStatus) {
@@ -28,14 +41,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.local_shipping, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('FleetGuard Driver', style: TextStyle(fontWeight: FontWeight.bold)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/driver_logo.png',
+                width: 28,
+                height: 28,
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('FleetGuard Driver', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notification_add, color: Colors.blue),
+            onPressed: () {
+              NotificationService.showTripNotification(
+                title: 'New Trip Assigned',
+                body: 'TRIP-9999: Delhi to Mumbai. Start journey at 08:00 AM.',
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => context.push('/notifications'),
@@ -43,6 +73,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.folder_outlined),
             onPressed: () => context.push('/documents'),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'logout') {
+                await ref.read(authServiceProvider).logout();
+              }
+            },
+            icon: const Icon(Icons.account_circle),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Logout', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

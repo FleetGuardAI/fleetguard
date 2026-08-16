@@ -84,6 +84,7 @@ class DriverProfileResponse(BaseModel):
     duty_status: Optional[str] = None
     driver_score: Optional[float] = None
     status: str
+    assigned_vehicle: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -324,7 +325,9 @@ async def register_driver_profile(
     await db.commit()
     await db.refresh(driver)
 
-    return _driver_to_response(driver)
+    response = _driver_to_response(driver)
+    response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
+    return response
 
 
 @router.post("/upload-document")
@@ -418,7 +421,10 @@ async def get_driver_profile(
     driver = await db.get(Driver, driver_id)
     if driver is None:
         raise HTTPException(404, "Driver not found")
-    return _driver_to_response(driver)
+    
+    response = _driver_to_response(driver)
+    response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
+    return response
 
 
 @router.patch("/profile", response_model=DriverProfileResponse)
@@ -439,7 +445,9 @@ async def update_driver_profile(
 
     await db.commit()
     await db.refresh(driver)
-    return _driver_to_response(driver)
+    response = _driver_to_response(driver)
+    response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
+    return response
 
 
 @router.put("/fcm-token")
@@ -552,7 +560,18 @@ def _driver_to_response(driver: Driver) -> DriverProfileResponse:
         duty_status=driver.duty_status.value if driver.duty_status else None,
         driver_score=driver.driver_score,
         status=driver.status.value,
+        assigned_vehicle=None, # Populated below if vehicle is passed or queried
     )
+
+async def _get_assigned_vehicle(driver_id: int, db: AsyncSession) -> Optional[str]:
+    """Helper to get registration number of currently assigned vehicle."""
+    from sqlalchemy import select
+    from models.vehicle_domain import Vehicle
+    result = await db.execute(
+        select(Vehicle).where(Vehicle.assigned_driver_id == driver_id).limit(1)
+    )
+    vehicle = result.scalar_one_or_none()
+    return vehicle.registration_number if vehicle else None
 
 
 async def _extract_driver_id_from_token(db: AsyncSession) -> Optional[int]:

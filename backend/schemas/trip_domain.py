@@ -51,8 +51,17 @@ class TripResponse(BaseModel):
 
 
 # ===========================================================================
-# Value Objects / Internal Commands
+# Write Models / Commands
 # ===========================================================================
+
+class TripCreate(BaseModel):
+    vehicle_id: int
+    driver_id: int
+    origin_location: str
+    destination_location: str
+    planned_distance: Optional[float] = None
+    planned_start_time: Optional[datetime] = None
+    planned_end_time: Optional[datetime] = None
 
 class TripCreated(BaseModel):
     trip_id: str

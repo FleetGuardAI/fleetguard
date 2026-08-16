@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -9,31 +8,24 @@ export default {
     extend: {
       colors: {
         brand: {
-          50:  '#e8f5e9',
-          100: '#c8e6c9',
-          200: '#a5d6a7',
-          300: '#66bb6a',
-          400: '#00e676', // Neon vibrant green
-          500: '#00c853', // Primary — vivid green
-          600: '#00a844',
-          700: '#008837',
-          800: '#1b5e20',
-          900: '#103e13',
-          950: '#0a2e0d',
-          850: '#0d4a1a',
+          50:  '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E', // Primary green
+          600: '#16A34A',
+          700: '#15803D',
+          800: '#166534',
+          900: '#14532D',
+          950: '#052E16',
         },
         surface: {
           DEFAULT: 'var(--surface)',
           secondary: 'var(--surface-secondary)',
           tertiary: 'var(--surface-tertiary)',
-          50:  '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          700: '#1e293b',
-          800: '#0f172a',  // Dark slate (cards highlight border)
-          850: '#070a0e',  // Deep card background
-          900: '#05070a',  // Deeper background
-          950: '#0c1017',  // Monitor dashboard slate background
+          base: 'var(--surface-base)',
+          inverted: 'var(--surface-inverted)',
         },
         content: {
           DEFAULT: 'var(--content)',
@@ -43,31 +35,28 @@ export default {
         border: {
           DEFAULT: 'var(--border-color)',
         },
-        // ── FleetGuard Command-Center Dark Theme ──
+        // ── FleetGuard Green Identity ──
         fg: {
-          dark:          '#050B09',
-          deep:          '#07110D',
-          'green-deep':  '#063C28',
-          green:         '#19B86A',
-          'green-bright':'#36D98A',
-          'green-muted': '#0D6B46',
-          text:          '#F3F7F5',
-          'text-sec':    '#8D9B95',
-          card:          'rgba(10,22,17,0.75)',
-          border:        'rgba(255,255,255,0.07)',
-          'card-hover':  'rgba(14,30,22,0.85)',
+          green:         '#22C55E',
+          'green-bright':'#86EFAC',
+          'green-deep':  '#DCFCE7',
+          'green-muted': '#BBF7D0',
+          'green-surface':'#F0FDF4',
+          text:          '#17201A',
+          'text-sec':    '#647067',
+          border:        '#E5EDE7',
         },
       },
       boxShadow: {
-        card: '0 4px 24px rgba(0,0,0,0.06)',
-        elevated: '0 12px 40px rgba(0,0,0,0.08)',
-        green: '0 4px 20px rgba(22,163,74,0.15)',
-        // FleetGuard command-center shadows
-        'fg-glow':     '0 0 30px rgba(25,184,106,0.08)',
-        'fg-glow-md':  '0 0 50px rgba(25,184,106,0.12)',
-        'fg-card':     '0 4px 24px rgba(0,0,0,0.3)',
-        'fg-elevated': '0 12px 40px rgba(0,0,0,0.4)',
-        'fg-active':   '0 0 20px rgba(25,184,106,0.15), inset 0 0 20px rgba(25,184,106,0.05)',
+        card: '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)',
+        elevated: '0 8px 24px rgba(0, 0, 0, 0.06), 0 4px 8px rgba(0, 0, 0, 0.03)',
+        green: '0 4px 14px rgba(34, 197, 94, 0.12)',
+        // FleetGuard accent shadows
+        'fg-glow':     '0 4px 20px rgba(34, 197, 94, 0.06)',
+        'fg-glow-md':  '0 4px 30px rgba(34, 197, 94, 0.10)',
+        'fg-card':     '0 1px 3px rgba(0, 0, 0, 0.04)',
+        'fg-elevated': '0 8px 24px rgba(0, 0, 0, 0.06)',
+        'fg-active':   '0 0 12px rgba(34, 197, 94, 0.10)',
       },
       borderRadius: {
         xl: '16px',

@@ -50,7 +50,7 @@ export function OpportunitySidebar({ opportunities = [], recentActivity = [] }) 
                 key={o.id}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary/80 transition-colors cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -75,7 +75,7 @@ export function OpportunitySidebar({ opportunities = [], recentActivity = [] }) 
                 key={o.id}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-secondary/80 transition-colors cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                   <Truck className="h-4 w-4 text-blue-500" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -89,7 +89,7 @@ export function OpportunitySidebar({ opportunities = [], recentActivity = [] }) 
                 <span className={cn(
                   'text-[10px] font-medium px-1.5 py-0.5 rounded-md',
                   isToday(o.pickupDate)
-                    ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                    ? 'bg-red-100 text-red-600'
                     : 'bg-surface-secondary text-content-muted'
                 )}>
                   {isToday(o.pickupDate) ? 'Today' : isTomorrow(o.pickupDate) ? 'Tomorrow' : formatDate(o.pickupDate)}

@@ -1,14 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
-class DocumentUploadScreen extends StatefulWidget {
+import '../../../../core/storage/secure_storage.dart';
+import '../../data/auth_repository.dart';
+
+class DocumentUploadScreen extends ConsumerStatefulWidget {
   const DocumentUploadScreen({super.key});
 
   @override
-  State<DocumentUploadScreen> createState() => _DocumentUploadScreenState();
+  ConsumerState<DocumentUploadScreen> createState() => _DocumentUploadScreenState();
 }
 
-class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
+class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   bool _dlFrontUploaded = false;
   bool _dlBackUploaded = false;
   bool _aadhaarFrontUploaded = false;
@@ -34,16 +40,45 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     );
   }
 
-  void _simulateUpload(String type) {
-    setState(() {
-      if (type == 'dl_front') _dlFrontUploaded = true;
-      if (type == 'dl_back') _dlBackUploaded = true;
-      if (type == 'aadhaar_front') _aadhaarFrontUploaded = true;
-      if (type == 'aadhaar_back') _aadhaarBackUploaded = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type uploaded successfully!')),
-    );
+  void _captureAndUpload(String type) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    
+    if (pickedFile == null) return;
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Uploading $type...')),
+      );
+    }
+
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final driverId = await SecureStorage.getDriverId();
+      
+      if (driverId != null) {
+        await repo.uploadDocument(File(pickedFile.path), type, driverId);
+        
+        setState(() {
+          if (type == 'license_front') _dlFrontUploaded = true;
+          if (type == 'license_back') _dlBackUploaded = true;
+          if (type == 'aadhaar_front') _aadhaarFrontUploaded = true;
+          if (type == 'aadhaar_back') _aadhaarBackUploaded = true;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Uploaded successfully!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -65,10 +100,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             Expanded(
               child: ListView(
                 children: [
-                  _buildDocCard('Driving License (Front)', _dlFrontUploaded, () => _simulateUpload('dl_front')),
-                  _buildDocCard('Driving License (Back)', _dlBackUploaded, () => _simulateUpload('dl_back')),
-                  _buildDocCard('Aadhaar Card (Front)', _aadhaarFrontUploaded, () => _simulateUpload('aadhaar_front')),
-                  _buildDocCard('Aadhaar Card (Back)', _aadhaarBackUploaded, () => _simulateUpload('aadhaar_back')),
+                  _buildDocCard('Driving License (Front)', _dlFrontUploaded, () => _captureAndUpload('license_front')),
+                  _buildDocCard('Driving License (Back)', _dlBackUploaded, () => _captureAndUpload('license_back')),
+                  _buildDocCard('Aadhaar Card (Front)', _aadhaarFrontUploaded, () => _captureAndUpload('aadhaar_front')),
+                  _buildDocCard('Aadhaar Card (Back)', _aadhaarBackUploaded, () => _captureAndUpload('aadhaar_back')),
                 ],
               ),
             ),

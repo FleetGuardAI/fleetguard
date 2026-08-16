@@ -1,79 +1,64 @@
 import 'package:flutter/material.dart';
 
-/// FleetGuard curated color palette — premium fleet management aesthetics
 class AppColors {
   AppColors._();
 
   // --- Brand Colors ---
-  static const Color primary = Color(0xFF1B5E8C);
-  static const Color primaryLight = Color(0xFF4DA8DA);
-  static const Color primaryDark = Color(0xFF0D3F5E);
-  static const Color secondary = Color(0xFF2ECC71);
-  static const Color accent = Color(0xFFF39C12);
+  static const Color primary = Color(0xFF0F9D58); // FleetGuard Green
+  static const Color primaryLight = Color(0xFF34B26C);
+  static const Color primaryDark = Color(0xFF087540);
+  
+  // --- Supporting ---
+  static const Color mutedGreen = Color(0xFFE6F4EA);
+  static const Color deepGraphite = Color(0xFF1E2124);
+  static const Color coolGray = Color(0xFF757575);
+  static const Color blueGray = Color(0xFF546E7A);
 
-  // --- Semantic Colors ---
+  // --- Semantic & Status Colors ---
   static const Color success = Color(0xFF27AE60);
-  static const Color warning = Color(0xFFF39C12);
-  static const Color error = Color(0xFFE74C3C);
-  static const Color info = Color(0xFF3498DB);
+  static const Color warning = Color(0xFFF4B400); // Amber
+  static const Color error = Color(0xFFDB4437); // Red
+  static const Color info = Color(0xFF4285F4); // Blue
 
-  // --- Status Colors ---
+  // Status mappings
+  static const Color statusGreen = Color(0xFF27AE60); // healthy/active/completed
+  static const Color statusAmber = Color(0xFFF4B400); // warning/attention
+  static const Color statusRed = Color(0xFFDB4437);   // critical/failed
+  static const Color statusBlue = Color(0xFF4285F4);  // information/in-progress
+
+  // Duty Status Colors
   static const Color onDuty = Color(0xFF27AE60);
-  static const Color offDuty = Color(0xFF95A5A6);
-  static const Color onBreak = Color(0xFFF39C12);
-  static const Color onTrip = Color(0xFF3498DB);
-  static const Color emergency = Color(0xFFE74C3C);
-  static const Color pendingApproval = Color(0xFFE67E22);
+  static const Color onBreak = Color(0xFFF4B400);
+  static const Color offDuty = Color(0xFF757575);
+
+  static Color driverScoreColor(int score) {
+    if (score >= 90) return success;
+    if (score >= 70) return warning;
+    return error;
+  }
+
+  static const LinearGradient dangerGradient = LinearGradient(
+    colors: [Color(0xFFDB4437), Color(0xFFC53929)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   // --- Light Theme ---
-  static const Color lightBackground = Color(0xFFF8FAFB);
+  static const Color lightBackground = Color(0xFFF8F9FA); // Soft white/cream
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCardBackground = Color(0xFFFFFFFF);
-  static const Color lightOnSurface = Color(0xFF1A2332);
-  static const Color lightOnSurfaceVariant = Color(0xFF6B7B8D);
+  static const Color lightOnSurface = Color(0xFF1E2124);
+  static const Color lightOnSurfaceVariant = Color(0xFF757575);
   static Color lightBorder = const Color(0xFFE8ECF0);
   static Color lightInputFill = const Color(0xFFF4F6F8);
 
   // --- Dark Theme ---
-  static const Color darkBackground = Color(0xFF0F1923);
-  static const Color darkSurface = Color(0xFF1A2736);
-  static const Color darkCardBackground = Color(0xFF1E2D3D);
+  // Deep charcoal background, translucent surfaces
+  static const Color darkBackground = Color(0xFF121417); // Deep charcoal
+  static const Color darkSurface = Color(0xFF1E2124);
+  static const Color darkCardBackground = Color(0xFF23272B); // Slightly lighter than background
   static const Color darkOnSurface = Color(0xFFE8EDF2);
   static const Color darkOnSurfaceVariant = Color(0xFF8899AA);
-  static Color darkBorder = const Color(0xFF2A3A4A);
-  static Color darkInputFill = const Color(0xFF162230);
-
-  // --- Gradients ---
-  static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, primaryLight],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient successGradient = LinearGradient(
-    colors: [Color(0xFF27AE60), Color(0xFF2ECC71)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient dangerGradient = LinearGradient(
-    colors: [Color(0xFFE74C3C), Color(0xFFFF6B6B)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient darkCardGradient = LinearGradient(
-    colors: [Color(0xFF1E2D3D), Color(0xFF243447)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  // --- Driver Score Colors ---
-  static Color driverScoreColor(double score) {
-    if (score >= 90) return success;
-    if (score >= 75) return const Color(0xFF2ECC71);
-    if (score >= 60) return warning;
-    if (score >= 40) return const Color(0xFFE67E22);
-    return error;
-  }
+  static Color darkBorder = const Color(0xFF2D3238);
+  static Color darkInputFill = const Color(0xFF1A1D20);
 }

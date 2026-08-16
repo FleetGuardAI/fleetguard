@@ -25,6 +25,7 @@ class VehicleResponse(BaseModel):
     ownership_info: Optional[str] = None
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None
+    assigned_driver_id: Optional[int] = None
 
     model_config = {
         "from_attributes": True
@@ -60,6 +61,7 @@ class VehicleUpdated(BaseModel):
     year: Optional[int] = None
     tank_capacity: Optional[float] = None
     ownership_info: Optional[str] = None
+    driver_id: Optional[int] = None
 
 
 class VehicleStatusChanged(BaseModel):

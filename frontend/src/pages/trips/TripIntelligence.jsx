@@ -69,11 +69,11 @@ export default function TripIntelligence({ tripId, trip }) {
     <div className="ti-container space-y-6">
       {/* ══════ Data Quality Notice ══════ */}
       {data.data_quality === 'INSUFFICIENT' && (
-        <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Limited data available</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            <p className="text-sm font-medium text-amber-800">Limited data available</p>
+            <p className="text-xs text-amber-600 mt-1">
               Some intelligence sections may be incomplete. Add revenue, cost estimates, and expense records to get full analysis.
             </p>
           </div>
@@ -197,7 +197,7 @@ export default function TripIntelligence({ tripId, trip }) {
                   </div>
                   {c.impact_amount != null && (
                     <div className="flex-shrink-0 text-right">
-                      <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                      <span className="text-sm font-bold text-red-600">
                         ₹{c.impact_amount.toLocaleString('en-IN')}
                       </span>
                       <p className="text-[10px] text-content-muted">impact</p>
@@ -212,7 +212,7 @@ export default function TripIntelligence({ tripId, trip }) {
                   <span className="text-xs font-medium text-content-secondary">
                     Estimated avoidable cost
                   </span>
-                  <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                  <span className="text-sm font-bold text-red-600">
                     ₹{data.profit_loss_contributors
                       .reduce((sum, c) => sum + (c.impact_amount || 0), 0)
                       .toLocaleString('en-IN')}
@@ -285,8 +285,8 @@ export default function TripIntelligence({ tripId, trip }) {
                     <td className="py-3 text-right">
                       {item.has_data && item.variance_pct != null ? (
                         <span className={`text-xs font-medium ${
-                          item.severity === 'CRITICAL' ? 'text-red-600 dark:text-red-400' :
-                          item.severity === 'WARNING' ? 'text-amber-600 dark:text-amber-400' :
+                          item.severity === 'CRITICAL' ? 'text-red-600' :
+                          item.severity === 'WARNING' ? 'text-amber-600' :
                           'text-content-secondary'
                         }`}>
                           {item.variance_pct > 0 ? '+' : ''}{item.variance_pct}%
@@ -385,7 +385,7 @@ export default function TripIntelligence({ tripId, trip }) {
           <div className="space-y-3">
             {data.recommendations.map((rec, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-surface-secondary transition-colors">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 text-xs font-bold flex-shrink-0">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
                   {rec.priority}
                 </span>
                 <div>
@@ -416,13 +416,13 @@ export default function TripIntelligence({ tripId, trip }) {
 
 function KPICard({ label, value, format, icon, color = 'gray' }) {
   const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-    green: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800',
-    red: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800',
-    orange: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-    purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-    teal: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800',
-    gray: 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700',
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    red: 'bg-red-50 text-red-600 border-red-200',
+    orange: 'bg-orange-50 text-orange-600 border-orange-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    teal: 'bg-teal-50 text-teal-600 border-teal-200',
+    gray: 'bg-gray-50 text-gray-600 border-gray-200',
   };
 
   const formatValue = () => {
@@ -449,20 +449,20 @@ function KPICard({ label, value, format, icon, color = 'gray' }) {
 function InsightCard({ insight, isExpanded, onToggle }) {
   const severityConfig = {
     CRITICAL: {
-      bg: 'bg-red-50 dark:bg-red-900/20',
-      border: 'border-red-200 dark:border-red-800',
+      bg: 'bg-red-50',
+      border: 'border-red-200',
       icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
       badge: 'danger',
     },
     WARNING: {
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
-      border: 'border-amber-200 dark:border-amber-800',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
       icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
       badge: 'warning',
     },
     INFO: {
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'border-blue-200 dark:border-blue-800',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
       icon: <Info className="h-4 w-4 text-blue-500" />,
       badge: 'info',
     },
@@ -482,7 +482,7 @@ function InsightCard({ insight, isExpanded, onToggle }) {
             <span className="text-sm font-medium text-content">{insight.title}</span>
             <Badge variant={config.badge} size="sm">{insight.severity}</Badge>
             {insight.impact_amount != null && (
-              <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+              <span className="text-xs font-semibold text-red-600">
                 ₹{insight.impact_amount.toLocaleString('en-IN')} impact
                 {insight.is_estimate && ' (est.)'}
               </span>

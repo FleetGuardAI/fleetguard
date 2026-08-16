@@ -106,13 +106,13 @@ export default function Notifications() {
   const getCategoryClass = (type) => {
     switch (type) {
       case 'alert':
-        return 'bg-red-50 border-red-100 dark:bg-red-950/20 dark:border-red-900/30';
+        return 'bg-red-50 border-red-100';
       case 'expense':
-        return 'bg-green-50 border-green-100 dark:bg-green-950/20 dark:border-green-900/30';
+        return 'bg-green-50 border-green-100';
       case 'document':
-        return 'bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/30';
+        return 'bg-blue-50 border-blue-100';
       default:
-        return 'bg-purple-50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/30';
+        return 'bg-purple-50 border-purple-100';
     }
   };
 
@@ -157,7 +157,7 @@ export default function Notifications() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             readFilter === 'all'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -168,7 +168,7 @@ export default function Notifications() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             readFilter === 'unread'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -229,7 +229,7 @@ export default function Notifications() {
                     "flex items-start justify-between p-4 border rounded-xl hover:shadow-sm transition-all duration-200 gap-4",
                     item.read
                       ? "bg-surface border-border opacity-75"
-                      : "bg-brand-50/10 border-brand-100 dark:bg-brand-950/5 dark:border-brand-900/30"
+                      : "bg-brand-50/10 border-brand-100"
                   )}
                 >
                   <div className="flex items-start gap-3.5">

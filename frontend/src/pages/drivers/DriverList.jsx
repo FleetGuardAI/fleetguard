@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Eye, Trash2, Star, ShieldAlert } from 'lucide-react';
+import { Plus, Edit2, Eye, Trash2, Star, ShieldAlert, QrCode, UserPlus, Smartphone } from 'lucide-react';
 import { getDrivers, deleteDriver } from '@/api/driverApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
+import { Dropdown } from '@/components/ui/Dropdown';
 
 export default function DriverList() {
   const navigate = useNavigate();
@@ -31,6 +32,10 @@ export default function DriverList() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [driverToDelete, setDriverToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // QR Modal state
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
 
   const loadDrivers = async () => {
     setLoading(true);
@@ -83,6 +88,25 @@ export default function DriverList() {
       setDeleting(false);
       setDriverToDelete(null);
     }
+  };
+
+  const handleSimulateQrScan = () => {
+    setQrScanning(true);
+    setTimeout(() => {
+      const mockDriver = {
+        id: `DRV-${Date.now().toString().slice(-4)}`,
+        name: 'New Scanned Driver',
+        phone_number: '+91 98765 43210',
+        risk_score: 95,
+        rating: 4.8,
+        status: 'active',
+        is_active: true
+      };
+      setDrivers(prev => [mockDriver, ...prev]);
+      success('Driver Onboarded', 'A new driver has successfully joined your fleet via QR code scan!');
+      setQrScanning(false);
+      setQrModalOpen(false);
+    }, 1500);
   };
 
   const getRiskVariant = (score) => {
@@ -188,13 +212,26 @@ export default function DriverList() {
           <h1 className="text-2xl font-bold text-content">Drivers Directory</h1>
           <p className="text-sm text-content-secondary mt-0.5">Manage operator credentials, safety ratings, and advanced advances.</p>
         </div>
-        <Button
-          variant="primary"
-          icon={<Plus className="h-4 w-4" />}
-          onClick={() => navigate('/dashboard/drivers/new')}
-        >
-          Add Driver
-        </Button>
+        <Dropdown
+          align="right"
+          trigger={
+            <Button variant="primary" icon={<Plus className="h-4 w-4" />}>
+              Add Driver
+            </Button>
+          }
+          items={[
+            {
+              label: 'Scan QR Code',
+              icon: <QrCode className="h-4 w-4" />,
+              onClick: () => setQrModalOpen(true)
+            },
+            {
+              label: 'Add Driver Manually',
+              icon: <UserPlus className="h-4 w-4" />,
+              onClick: () => navigate('/dashboard/drivers/new')
+            }
+          ]}
+        />
       </div>
 
       {/* Filters Card */}
@@ -273,18 +310,56 @@ export default function DriverList() {
         }
       >
         {driverToDelete && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl">
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
             <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-red-950 dark:text-red-400">
+              <p className="text-sm font-semibold text-red-950">
                 Removing {driverToDelete.name || 'Driver'}
               </p>
-              <p className="text-xs text-red-700 dark:text-red-300">
+              <p className="text-xs text-red-700">
                 Phone: {driverToDelete.phone_number || 'N/A'} • Safety Score: {driverToDelete.risk_score != null ? `${driverToDelete.risk_score}/100` : 'N/A'}
               </p>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* QR Code Invitation Modal */}
+      <Modal
+        open={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        title="Fleet Invite QR Code"
+        description="Ask the driver to scan this unique QR code with their mobile device to instantly join your fleet."
+        footer={
+          <div className="w-full flex justify-between items-center">
+            <Button variant="outline" onClick={() => setQrModalOpen(false)} disabled={qrScanning}>
+              Close
+            </Button>
+            <Button variant="primary" icon={<Smartphone className="w-4 h-4" />} onClick={handleSimulateQrScan} loading={qrScanning}>
+              Simulate Driver Scan
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center py-6 space-y-6">
+          <div className="p-4 bg-white rounded-2xl shadow-sm border border-border">
+            {/* Mock QR Code Visual */}
+            <div className="w-48 h-48 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center rounded-xl border-2 border-brand-200 border-dashed relative">
+              <QrCode className="w-24 h-24 text-brand-600 opacity-60" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                   <img src="/assets/fleetguard-logo.png" alt="FG" className="w-6 h-6 object-contain" />
+                 </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-content">Fleet ID: FG-CORP-9021</p>
+            <p className="text-xs text-content-muted max-w-[250px] mx-auto">
+              Scanning this code binds the driver to your fleet and syncs their telematics data.
+            </p>
+          </div>
+        </div>
       </Modal>
     </div>
   );

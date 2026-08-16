@@ -330,7 +330,7 @@ export default function Alerts() {
       >
         {alertToResolve && (
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleConfirmResolve(); }}>
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+            <div className="p-3 bg-slate-50 rounded-xl">
               <p className="text-xs text-content-secondary font-semibold">Alarm Trigger</p>
               <p className="text-sm font-semibold text-content mt-1">{alertToResolve.message}</p>
             </div>
@@ -380,7 +380,7 @@ export default function Alerts() {
               <p className="flex justify-between"><span className="text-content-secondary">Audit Status:</span> <span className="font-bold">{selectedAlert.resolved ? 'RESOLVED' : 'ACTIVE TRIGGER'}</span></p>
               
               {selectedAlert.resolved && (
-                <div className="p-3.5 bg-green-50/50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 rounded-xl space-y-1 mt-2 text-green-950 dark:text-green-300">
+                <div className="p-3.5 bg-green-50/50 border border-green-100 rounded-xl space-y-1 mt-2 text-green-950">
                   <div className="flex items-center gap-1.5 font-semibold text-xs">
                     <MessageSquare className="h-4 w-4 text-green-600" />
                     Resolution Comments Note
@@ -390,7 +390,7 @@ export default function Alerts() {
               )}
 
               {/* Coordinates Map simulation */}
-              <div className="pt-3 border-t border-border mt-3 flex items-center gap-2 text-content-secondary bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl">
+              <div className="pt-3 border-t border-border mt-3 flex items-center gap-2 text-content-secondary bg-slate-50 p-3.5 rounded-xl">
                 <MapPin className="h-5 w-5 text-rose-500 flex-shrink-0" />
                 <span className="text-xs leading-relaxed">
                   GPS coordinate match: Latitude {selectedAlert.latitude || '24.985'}, Longitude {selectedAlert.longitude || '73.312'}. Velocity logging: {selectedAlert.speed || '0'} km/h.

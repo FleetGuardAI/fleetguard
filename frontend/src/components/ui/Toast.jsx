@@ -18,10 +18,10 @@ const icons = {
 };
 
 const bgColors = {
-  success: 'border-green-200 dark:border-green-800',
-  error: 'border-red-200 dark:border-red-800',
-  warning: 'border-amber-200 dark:border-amber-800',
-  info: 'border-blue-200 dark:border-blue-800',
+  success: 'border-green-200',
+  error: 'border-red-200',
+  warning: 'border-amber-200',
+  info: 'border-blue-200',
 };
 
 export function ToastProvider({ children }) {

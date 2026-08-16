@@ -107,7 +107,7 @@ async def create_expense(
         category=cat_enum,
         amount=payload.amount,
         currency="INR",
-        status=ExpenseStatus.RECORDED,
+        status=ExpenseStatus.PENDING,
         expense_date=datetime.now(timezone.utc),
         description=payload.description,
         receipt_reference=payload.receipt_url,

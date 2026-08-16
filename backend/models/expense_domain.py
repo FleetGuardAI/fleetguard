@@ -35,6 +35,9 @@ class ExpenseCategory(str, enum.Enum):
 class ExpenseStatus(str, enum.Enum):
     RECORDED = "RECORDED"
     CANCELLED = "CANCELLED"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 
 class Expense(Base):

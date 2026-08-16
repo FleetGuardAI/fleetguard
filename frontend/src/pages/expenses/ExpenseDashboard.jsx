@@ -225,7 +225,7 @@ export default function ExpenseDashboard() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'claims'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -236,7 +236,7 @@ export default function ExpenseDashboard() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'analytics'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -346,7 +346,7 @@ export default function ExpenseDashboard() {
                         <span className="font-semibold text-content">{item.label}</span>
                         <span className="text-content-secondary">₹{item.amount.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                       </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                         <div className={cn("h-full transition-all duration-300", item.color)} style={{ width: `${percentage}%` }} />
                       </div>
                     </div>
@@ -363,8 +363,8 @@ export default function ExpenseDashboard() {
                 <h3 className="text-3xl font-extrabold text-content">₹{grandTotal.toLocaleString()}</h3>
                 <p className="text-xs text-content-secondary mt-1">Aggregated values of filters matched claims</p>
               </div>
-              <div className="p-3 bg-brand-50/50 dark:bg-brand-950/20 border border-brand-100 dark:border-brand-900/30 rounded-xl">
-                <p className="text-xs text-brand-900 dark:text-brand-400 leading-relaxed">
+              <div className="p-3 bg-brand-50/50 border border-brand-100 rounded-xl">
+                <p className="text-xs text-brand-900 leading-relaxed">
                   OCR visual receipt check scans for vendor duplication, pricing benchmarks and location correlations in real time.
                 </p>
               </div>
@@ -427,8 +427,8 @@ export default function ExpenseDashboard() {
               <div className={cn(
                 "p-4 rounded-xl border space-y-2",
                 selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical'
-                  ? "bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30 text-red-950 dark:text-red-300"
-                  : "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-950 dark:text-emerald-300"
+                  ? "bg-red-50/50 border-red-100 text-red-950"
+                  : "bg-emerald-50/50 border-emerald-100 text-emerald-950"
               )}>
                 <div className="flex items-center gap-2">
                   {selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical' ? (

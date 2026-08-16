@@ -14,7 +14,9 @@ from infrastructure.uow import AbstractUnitOfWork
 from services.vehicle_service import VehicleService
 from models.vehicle_domain import Vehicle, VehicleStatus
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+from models.user import User
 from schemas.vehicle_domain import VehicleResponse, VehicleCreate, VehicleUpdated
+from services.auth_service import get_current_user
 
 router = APIRouter(prefix="/v1", tags=["Vehicle Domain"])
 
@@ -25,10 +27,11 @@ async def list_vehicles(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> List[VehicleResponse]:
     """List all vehicles with optional active filter."""
     service = VehicleService(uow)
-    vehicles = await service.search_vehicles(is_active=is_active, limit=limit, offset=offset)
+    vehicles = await service.search_vehicles(is_active=is_active, limit=limit, offset=offset, company_id=current_user.company_id)
     return [VehicleResponse.model_validate(v) for v in vehicles]
 
 
@@ -36,10 +39,11 @@ async def list_vehicles(
 async def get_vehicle(
     vehicle_id: int, 
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> VehicleResponse:
     """Get a single vehicle by ID."""
     service = VehicleService(uow)
-    vehicle = await service.get_vehicle(vehicle_id)
+    vehicle = await service.get_vehicle(vehicle_id, company_id=current_user.company_id)
     if not vehicle:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
     return VehicleResponse.model_validate(vehicle)
@@ -49,6 +53,7 @@ async def get_vehicle(
 async def create_vehicle(
     payload: VehicleCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> VehicleResponse:
     """Register a new vehicle in the database."""
     reg_num = payload.registration_number or payload.license_plate
@@ -69,6 +74,7 @@ async def create_vehicle(
         tank_capacity=payload.tank_capacity or 400.0,
         status=VehicleStatus.ACTIVE,
         origin_type="rest_api",
+        company_id=current_user.company_id
     )
     db.add(vehicle)
     await db.commit()
@@ -81,7 +87,7 @@ async def create_vehicle(
         entity_id=vehicle.registration_number,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
-        payload={"make": vehicle.make, "registration_number": vehicle.registration_number},
+        payload={"make": vehicle.make, "registration_number": vehicle.registration_number, "company_id": current_user.company_id},
     )
     db.add(event)
     await db.commit()
@@ -94,10 +100,11 @@ async def update_vehicle(
     vehicle_id: int,
     payload: VehicleUpdated,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> VehicleResponse:
     """Update vehicle details."""
     vehicle = await db.get(Vehicle, vehicle_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
 
     if payload.license_plate:
@@ -112,6 +119,12 @@ async def update_vehicle(
         vehicle.tank_capacity = payload.tank_capacity
     if payload.ownership_info:
         vehicle.ownership_info = payload.ownership_info
+    if payload.driver_id is not None:
+        from models.driver_domain import Driver
+        driver = await db.get(Driver, payload.driver_id)
+        if not driver or driver.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid driver_id or driver belongs to another company")
+        vehicle.assigned_driver_id = payload.driver_id
 
     await db.commit()
     await db.refresh(vehicle)
@@ -122,10 +135,11 @@ async def update_vehicle(
 async def delete_vehicle(
     vehicle_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Delete/archive a vehicle."""
     vehicle = await db.get(Vehicle, vehicle_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
 
     await db.delete(vehicle)

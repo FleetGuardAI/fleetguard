@@ -152,6 +152,12 @@
       "languageVersion": "3.8"
     },
     {
+      "name": "cli_util",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/cli_util-0.4.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "clock",
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/clock-1.1.2",
       "packageUri": "lib/",
@@ -204,6 +210,12 @@
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/crypto-3.0.7",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "csslib",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/csslib-1.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
     },
     {
       "name": "custom_lint_core",
@@ -348,6 +360,12 @@
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_jailbreak_detection_plus-1.10.7",
       "packageUri": "lib/",
       "languageVersion": "3.6"
+    },
+    {
+      "name": "flutter_launcher_icons",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_launcher_icons-0.13.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
     },
     {
       "name": "flutter_lints",
@@ -530,6 +548,42 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "google_maps",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps-8.3.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "google_maps_flutter",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter-2.18.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "google_maps_flutter_android",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_android-2.19.12",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "google_maps_flutter_ios",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_ios-2.18.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "google_maps_flutter_platform_interface",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_platform_interface-2.16.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "google_maps_flutter_web",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/google_maps_flutter_web-0.6.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
       "name": "graphs",
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/graphs-2.3.2",
       "packageUri": "lib/",
@@ -540,6 +594,12 @@
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-2.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.10"
+    },
+    {
+      "name": "html",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/html-0.15.6",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
     },
     {
       "name": "http",
@@ -558,6 +618,12 @@
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/http_parser-4.1.2",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "image",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/image-4.8.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "image_picker",
@@ -972,6 +1038,12 @@
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/rxdart-0.28.0",
       "packageUri": "lib/",
       "languageVersion": "2.12"
+    },
+    {
+      "name": "sanitize_html",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/sanitize_html-2.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
     },
     {
       "name": "shelf",
