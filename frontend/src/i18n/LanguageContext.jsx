@@ -19,6 +19,18 @@ export function LanguageProvider({ children }) {
   const setLang = useCallback((code) => {
     setLangState(code);
     try { localStorage.setItem(STORAGE_KEY, code); } catch {}
+    
+    // Leverage Google Translate DOM auto-translation for full 100% text coverage
+    if (code === 'hi') {
+      document.cookie = `googtrans=/en/hi; path=/`;
+    } else {
+      // Clear translation cookie for English
+      document.cookie = `googtrans=/en/en; path=/`;
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    }
+    
+    // Reload to apply DOM translation globally
+    window.location.reload();
   }, []);
 
   // Update the html lang & dir attribute for accessibility / SEO
