@@ -22,12 +22,7 @@ export default function Settings() {
   const [fuelTheftThreshold, setFuelTheftThreshold] = useState('');
   const [speedLimit, setSpeedLimit] = useState('');
   const [smsAlerts, setSmsAlerts] = useState(false);
-  const [whatsappBot, setWhatsappBot] = useState(false);
 
-  // Theme state
-  const [themeMode, setThemeMode] = useState(() => {
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-  });
 
   const loadSettingsData = async () => {
     setLoading(true);
@@ -40,7 +35,6 @@ export default function Settings() {
       setFuelTheftThreshold(data.fuelTheftThresholdLiters);
       setSpeedLimit(data.speedLimitKmh);
       setSmsAlerts(data.smsAlertsEnabled);
-      setWhatsappBot(data.whatsappBotActive);
     } catch (e) {
       error('Load Error', 'Failed to retrieve system settings.');
     } finally {
@@ -63,8 +57,7 @@ export default function Settings() {
       currency,
       fuelTheftThresholdLiters: Number(fuelTheftThreshold),
       speedLimitKmh: Number(speedLimit),
-      smsAlertsEnabled: smsAlerts,
-      whatsappBotActive: whatsappBot
+      smsAlertsEnabled: smsAlerts
     };
 
     try {
@@ -77,18 +70,6 @@ export default function Settings() {
     }
   };
 
-  const handleThemeChange = (mode) => {
-    setThemeMode(mode);
-    const root = document.documentElement;
-    if (mode === 'dark') {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-    success('Theme Updated', `Switched workspace theme to ${mode.toUpperCase()} mode.`);
-  };
 
   const [backingUp, setBackingUp] = useState(false);
   const handleBackup = async () => {
@@ -246,18 +227,6 @@ export default function Settings() {
                       <span className="text-xs text-content-secondary">Forward critical alarms directly to owner mobile phones.</span>
                     </div>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={whatsappBot}
-                      onChange={(e) => setWhatsappBot(e.target.checked)}
-                      className="rounded border-border text-brand-600 focus:ring-brand-500/20"
-                    />
-                    <div className="text-sm">
-                      <span className="font-semibold text-content block">WhatsApp Bot integration</span>
-                      <span className="text-xs text-content-secondary">Allow driver expense submissions directly via WhatsApp OCR bot.</span>
-                    </div>
-                  </label>
                 </div>
               </div>
 
@@ -277,40 +246,7 @@ export default function Settings() {
 
         {/* Sidebar Theme & Backup Options */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Theme Workspace Card */}
-          <Card className="space-y-4">
-            <CardHeader className="p-0 pb-2">
-              <CardTitle className="text-base">Workspace Theme settings</CardTitle>
-            </CardHeader>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleThemeChange('light')}
-                className={cn(
-                  "p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all font-semibold text-sm",
-                  themeMode === 'light'
-                    ? "border-brand-600 bg-brand-50/20 text-brand-600"
-                    : "border-border text-content-secondary hover:text-content hover:bg-slate-50"
-                )}
-              >
-                <Sun className="h-5 w-5" />
-                Light Mode
-              </button>
-              <button
-                type="button"
-                onClick={() => handleThemeChange('dark')}
-                className={cn(
-                  "p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all font-semibold text-sm",
-                  themeMode === 'dark'
-                    ? "border-brand-500 bg-brand-950/20 text-brand-500"
-                    : "border-border text-content-secondary hover:text-content hover:bg-slate-50"
-                )}
-              >
-                <Moon className="h-5 w-5" />
-                Dark Mode
-              </button>
-            </div>
-          </Card>
+
 
           {/* Backup & Restore Database Card */}
           <Card className="space-y-4">

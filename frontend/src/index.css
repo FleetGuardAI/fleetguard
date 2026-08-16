@@ -2,36 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== CSS Variables — Light/Dark Theme ===== */
+/* ===== FleetGuard Design System — Fixed Light Theme ===== */
 :root {
-  --surface: rgba(255, 255, 255, 0.72);
-  --surface-secondary: #ffffff;
-  --surface-tertiary: #f1f5f3;
-  --content: #07110d;
-  --content-secondary: #47554c;
-  --content-muted: #8d9b95;
-  --border-color: rgba(7, 60, 40, 0.10);
-  --sidebar-bg: rgba(255, 255, 255, 0.85);
-  --sidebar-text: #47554c;
-  --sidebar-active: #19b86a;
-}
+  /* ── Core Surfaces ── */
+  --surface:            #FFFFFF;
+  --surface-secondary:  #FFFFFF;
+  --surface-tertiary:   #F7FAF8;
+  --surface-base:       #FAFCFA;
+  --surface-inverted:   #17201A;
 
-.dark {
-  --surface: rgba(10, 22, 17, 0.75);
-  --surface-secondary: #07110d;
-  --surface-tertiary: #063c28;
-  --content: #f3f7f5;
-  --content-secondary: #8d9b95;
-  --content-muted: #5e6d67;
-  --border-color: rgba(255, 255, 255, 0.07);
-  --sidebar-bg: #07110d;
-  --sidebar-text: #8d9b95;
-  --sidebar-active: #19b86a;
-}
+  /* ── Content / Typography ── */
+  --content:            #17201A;
+  --content-secondary:  #647067;
+  --content-muted:      #98A49C;
 
-html.dark body {
-  background-color: #050b09;
-  color: #f3f7f5;
+  /* ── Borders ── */
+  --border-color:       #E5EDE7;
+
+  /* ── Sidebar ── */
+  --sidebar-bg:         #FFFFFF;
+  --sidebar-text:       #647067;
+  --sidebar-active:     #22C55E;
+
+  /* ── Brand Green Palette ── */
+  --fg-green:           #22C55E;
+  --fg-green-bright:    #86EFAC;
+  --fg-green-deep:      #DCFCE7;
+  --fg-green-muted:     #BBF7D0;
+  --fg-green-surface:   #F0FDF4;
 }
 
 /* === Reset / Global Styles === */
@@ -42,11 +40,11 @@ html.dark body {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: #F3F6F3;
-  color: #07110d;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--surface-base);
+  color: var(--content);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* === Scrollbars === */
@@ -71,37 +69,39 @@ body {
 /* === Dashboard Card Wrapper styling === */
 @layer components {
   .dashboard-card {
-    background-color: #ffffff; /* bg-white */
-    border: 1px solid #e2e8f0; /* border-slate-200 */
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+    border-radius: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
 
   .dashboard-card:hover {
-    border-color: #a7f3d0; /* emerald-200 border on hover */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    border-color: rgba(34, 197, 94, 0.25);
+    box-shadow: 0 4px 12px -2px rgba(34, 197, 94, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
   }
 }
 
-/* === Grid background overlay matching light layout === */
+/* === Grid background overlay === */
 .bg-grid {
   background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, var(--border-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
 }
 
-/* === Highlight badges === */
+/* === Status badges === */
 .status-badge-active {
-  background-color: #ecfdf5; /* emerald-50 */
-  color: #059669; /* emerald-600 */
-  border: 1px solid #d1fae5; /* emerald-100 */
+  background-color: rgba(34, 197, 94, 0.08);
+  color: #22C55E;
+  border: 1px solid rgba(34, 197, 94, 0.15);
 }
 
 .status-badge-alert {
-  background-color: #fef2f2; /* red-50 */
-  color: #dc2626; /* red-600 */
-  border: 1px solid #fee2e2; /* red-100 */
+  background-color: rgba(220, 38, 38, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.12);
 }
 
 .risk-high {
@@ -109,7 +109,7 @@ body {
 }
 
 @keyframes riskPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.15); }
   50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
 }
 
@@ -120,7 +120,7 @@ body {
   right: -2px;
   width: 8px;
   height: 8px;
-  background: #ef4444;
+  background: #DC2626;
   border-radius: 50%;
   animation: dotPulse 2s ease-in-out infinite;
 }
@@ -162,11 +162,13 @@ html.lenis, html.lenis body {
 
 @layer components {
   .glass {
-    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl;
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .card-base {
-    @apply bg-surface border border-border rounded-xl shadow-card transition-all duration-200;
+    @apply bg-white border border-border rounded-xl shadow-card transition-all duration-200;
   }
 
   .card-hover {
@@ -174,15 +176,18 @@ html.lenis, html.lenis body {
   }
 
   .gradient-brand {
-    @apply bg-gradient-to-br from-brand-500 to-brand-700;
+    background: linear-gradient(135deg, #22C55E, #86EFAC);
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-500 to-brand-600 bg-clip-text text-transparent;
+    background: linear-gradient(90deg, #22C55E, #16A34A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
-/* 3D Animations & Premium Dark Glow Effects */
+/* 3D Animations & Premium Light Effects */
 .perspective-1000 {
   perspective: 1000px;
 }
@@ -193,25 +198,26 @@ html.lenis, html.lenis body {
   backface-visibility: hidden;
 }
 
+/* ── FleetGuard glass cards ── */
 .glass-dark {
-  background: rgba(6, 10, 20, 0.75);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
 }
 
 .glass-dark-card {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.45) 0%, rgba(9, 13, 22, 0.7) 100%);
+  background: rgba(255, 255, 255, 0.80);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-dark-card:hover {
-  border-color: rgba(0, 200, 83, 0.4);
-  box-shadow: 0 0 25px rgba(0, 200, 83, 0.2);
+  border-color: rgba(34, 197, 94, 0.25);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.08);
 }
 
 @keyframes scan {
@@ -225,15 +231,15 @@ html.lenis, html.lenis body {
   position: absolute;
   left: 0;
   width: 100%;
-  height: 4px;
-  background: linear-gradient(to right, transparent, #00c853, transparent);
-  box-shadow: 0 0 12px 2px #00c853;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #22C55E, transparent);
+  box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.3);
   animation: scan 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes laser-glow {
-  0%, 100% { opacity: 0.3; filter: drop-shadow(0 0 1px #00c853); }
-  50% { opacity: 0.8; filter: drop-shadow(0 0 6px #00c853); }
+  0%, 100% { opacity: 0.3; filter: drop-shadow(0 0 1px #22C55E); }
+  50% { opacity: 0.6; filter: drop-shadow(0 0 4px #22C55E); }
 }
 
 .laser-connection {
@@ -250,7 +256,7 @@ html.lenis, html.lenis body {
 
 @keyframes float {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-8px) rotate(0.5deg); }
+  50% { transform: translateY(-6px) rotate(0.3deg); }
 }
 .animate-float-slow {
   animation: float 6s ease-in-out infinite;
@@ -260,29 +266,22 @@ html.lenis, html.lenis body {
   width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
   border-radius: 2px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 200, 83, 0.4);
+  background: rgba(34, 197, 94, 0.3);
 }
 
 /* ===== Cinematic Hero Background Animations ===== */
 
-/* Ken Burns — slow zoom-in, very subtle so text isn't affected */
 @keyframes cinematic-ken-burns {
-  0% {
-    transform: scale(1) translate(0, 0);
-  }
-  50% {
-    transform: scale(1.06) translate(-0.3%, -0.2%);
-  }
-  100% {
-    transform: scale(1) translate(0, 0);
-  }
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.06) translate(-0.3%, -0.2%); }
+  100% { transform: scale(1) translate(0, 0); }
 }
 
 .cinematic-ken-burns {
@@ -292,37 +291,32 @@ html.lenis, html.lenis body {
 
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .cinematic-ken-burns {
+  .cinematic-ken-burns,
+  .animate-slow-rotate,
+  .animate-float-slow,
+  .scanner-line,
+  .laser-connection {
     animation: none;
   }
 }
 
-/* =========================================================================
-   FleetGuard Command-Center Dark Theme
-   ========================================================================= */
-
 /* ── FleetGuard card glass ── */
 .fg-card {
-  background: rgba(10, 22, 17, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fg-card:hover {
-  background: rgba(14, 30, 22, 0.85);
-  border-color: rgba(25, 184, 106, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.06);
   transform: translateY(-2px);
 }
 
 .fg-card-static {
-  background: rgba(10, 22, 17, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
   border-radius: 16px;
 }
 
@@ -330,8 +324,8 @@ html.lenis, html.lenis body {
 .fg-grid-bg {
   background-size: 40px 40px;
   background-image:
-    linear-gradient(to right, rgba(25, 184, 106, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(25, 184, 106, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(34, 197, 94, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
 }
 
 /* ── Atmospheric green glow ── */
@@ -346,25 +340,25 @@ html.lenis, html.lenis body {
   width: 60%;
   height: 60%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(25, 184, 106, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.04) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* ── Dark scrollbar for dashboard ── */
+/* ── Dashboard scrollbar ── */
 .fg-scrollbar::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 .fg-scrollbar::-webkit-scrollbar-track {
-  background: rgba(5, 11, 9, 0.5);
+  background: transparent;
 }
 .fg-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(25, 184, 106, 0.2);
+  background: var(--border-color);
   border-radius: 2px;
 }
 .fg-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(25, 184, 106, 0.4);
+  background: rgba(34, 197, 94, 0.3);
 }
 
 /* ── KPI card subtle accent underline ── */
@@ -378,19 +372,19 @@ html.lenis, html.lenis body {
   left: 16px;
   right: 16px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(25, 184, 106, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.15), transparent);
 }
 
 /* ── Chat message bubble styles ── */
 .fg-chat-user {
-  background: linear-gradient(135deg, #063C28 0%, #0D6B46 100%);
-  border: 1px solid rgba(25, 184, 106, 0.2);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.15);
   border-radius: 20px 20px 6px 20px;
 }
 
 .fg-chat-ai {
-  background: rgba(10, 22, 17, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
   border-radius: 20px 20px 20px 6px;
 }
 
@@ -399,7 +393,7 @@ html.lenis, html.lenis body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #19B86A;
+  background: #22C55E;
   animation: typingDot 1.4s infinite ease-in-out;
 }
 .fg-typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -412,26 +406,26 @@ html.lenis, html.lenis body {
 
 /* ── Suggested prompt pill ── */
 .fg-prompt-pill {
-  background: rgba(10, 22, 17, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
   border-radius: 24px;
   padding: 8px 18px;
   font-size: 13px;
-  color: #8D9B95;
+  color: var(--content-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
 }
 .fg-prompt-pill:hover {
-  background: rgba(6, 60, 40, 0.5);
-  border-color: rgba(25, 184, 106, 0.3);
-  color: #F3F7F5;
-  box-shadow: 0 0 20px rgba(25, 184, 106, 0.08);
+  background: #F0FDF4;
+  border-color: rgba(34, 197, 94, 0.25);
+  color: var(--content);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.06);
 }
 
 /* ── Progress bar in fleet health ── */
 .fg-progress-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #E5EDE7;
   border-radius: 4px;
   height: 4px;
   overflow: hidden;
@@ -439,13 +433,17 @@ html.lenis, html.lenis body {
 .fg-progress-fill {
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, #0D6B46, #19B86A);
+  background: linear-gradient(90deg, #16A34A, #22C55E);
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Active sidebar nav glow ── */
+/* ── Active sidebar nav accent ── */
 .fg-nav-active {
-  background: #063C28;
-  box-shadow: 0 0 15px rgba(25, 184, 106, 0.1);
+  background: rgba(34, 197, 94, 0.08);
   border-radius: 10px;
+}
+
+/* ── Surface base background ── */
+.bg-surface-base {
+  background-color: var(--surface-base);
 }

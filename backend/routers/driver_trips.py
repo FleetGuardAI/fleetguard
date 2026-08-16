@@ -201,44 +201,16 @@ async def get_assigned_vehicle(
 ):
     """
     Get the vehicle currently assigned to the driver.
-    Looks up active trips for the driver to find vehicle_id.
     """
     result = await db.execute(
-        select(Trip).where(
-            Trip.driver_id == driver_id,
-            Trip.status.in_([TripStatus.CREATED, TripStatus.IN_PROGRESS, TripStatus.PAUSED])
-        ).limit(1)
+        select(Vehicle).where(Vehicle.assigned_driver_id == driver_id).limit(1)
     )
-    trip = result.scalar_one_or_none()
-
-    vehicle = None
-    if trip and trip.vehicle_id:
-        vehicle = await db.get(Vehicle, trip.vehicle_id)
+    vehicle = result.scalar_one_or_none()
 
     if vehicle is None:
-        # Fallback to first active vehicle in system if no assignment
-        v_res = await db.execute(select(Vehicle).limit(1))
-        vehicle = v_res.scalar_one_or_none()
+        raise HTTPException(404, "No vehicle assigned to this driver")
 
-    if vehicle is None:
-        # Create a realistic demo vehicle if database is empty
-        return VehicleDetailResponse(
-            id=1,
-            registration_number="MH-12-FG-2026",
-            make="Tata Motors",
-            model="Prima 3530.K",
-            year=2024,
-            tank_capacity=400.0,
-            vin="MAT1234567890FG01",
-            fuel_type="DIESEL",
-            insurance_status="VALID",
-            fitness_status="VALID",
-            puc_status="VALID",
-            permit_status="NATIONAL_PERMIT",
-            assigned_dispatcher="Rajesh Sharma (Fleet HQ)",
-            image_url="/uploads/vehicles/demo_truck.jpg",
-            status="ACTIVE",
-        )
+
 
     return VehicleDetailResponse(
         id=vehicle.id,

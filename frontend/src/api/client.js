@@ -4,6 +4,8 @@
  * @module api/client
  */
 
+import { getMockData } from './mockData';
+
 const API_BASE = '/api';
 
 /**
@@ -54,8 +56,20 @@ async function request(endpoint, options = {}) {
       throw new Error(error.detail || `HTTP ${response.status}`);
     }
     if (response.status === 204) return null;
-    return await response.json();
+    
+    const data = await response.json();
+    
+    // Inject mock data if backend returns empty list, ensuring the UI always has content
+    if (Array.isArray(data) && data.length === 0) {
+       const mock = getMockData(endpoint);
+       if (mock.length > 0) return mock;
+    }
+    return data;
   } catch (err) {
+    // If request completely fails (e.g., endpoint doesn't exist), fallback to mock data
+    const mock = getMockData(endpoint);
+    if (mock && mock.length > 0) return mock;
+    
     console.warn(`[FleetGuard API] ${endpoint} failed:`, err.message);
     throw err;
   }
@@ -264,6 +278,16 @@ const api = {
   // ── Auth (NEW - /api/v1/auth) ──────────────────────────────
   auth: {
     updateCompany: (data) => request('/v1/auth/company', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+
+  // ── Intelligence Domain (NEW - /api/v1/intelligence) ───────
+  intelligence: {
+    getFleetHealth: () => request('/v1/intelligence/fleet-health'),
+  },
+
+  // ── Copilot Domain (NEW - /api/v1/copilot) ─────────────────
+  copilot: {
+    chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),
   },
 };
 

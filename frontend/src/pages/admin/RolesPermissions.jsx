@@ -129,8 +129,8 @@ export default function RolesPermissions() {
               className={cn(
                 "w-full text-left p-4 rounded-xl border transition-all duration-200",
                 selectedRoleName === r.role
-                  ? "border-brand-600 bg-brand-50/20 text-brand-600 dark:border-brand-500 dark:text-brand-500"
-                  : "border-border text-content hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                  ? "border-brand-600 bg-brand-50/20 text-brand-600"
+                  : "border-border text-content hover:bg-slate-50:bg-slate-800/40"
               )}
             >
               <span className="font-semibold block">{r.role}</span>
@@ -170,7 +170,7 @@ export default function RolesPermissions() {
               </thead>
               <tbody>
                 {modules.map((mod) => (
-                  <tr key={mod.key} className="border-b border-border hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                  <tr key={mod.key} className="border-b border-border hover:bg-slate-50/50:bg-slate-800/10">
                     <td className="py-4">
                       <span className="text-sm font-semibold text-content block">{mod.label}</span>
                       <span className="text-[10px] text-content-muted font-mono block mt-0.5">{mod.key}</span>
@@ -194,7 +194,7 @@ export default function RolesPermissions() {
             </table>
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-border rounded-xl flex gap-3 text-xs text-content-secondary">
+          <div className="p-4 bg-slate-50 border border-border rounded-xl flex gap-3 text-xs text-content-secondary">
             <HelpCircle className="h-5 w-5 text-brand-600 flex-shrink-0" />
             <p className="leading-relaxed">
               Permissions modifications apply instantly to all co-users assigned to this role. Revoking view permissions will hide sidebar navigation items.

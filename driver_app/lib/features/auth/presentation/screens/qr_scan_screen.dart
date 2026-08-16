@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/config/theme/app_colors.dart';
+import '../../data/auth_repository.dart';
 
-class QrScanScreen extends StatefulWidget {
+class QrScanScreen extends ConsumerStatefulWidget {
   const QrScanScreen({super.key});
 
   @override
-  State<QrScanScreen> createState() => _QrScanScreenState();
+  ConsumerState<QrScanScreen> createState() => _QrScanScreenState();
 }
 
-class _QrScanScreenState extends State<QrScanScreen> {
+class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   bool _isProcessing = false;
   final MobileScannerController _controller = MobileScannerController();
 
@@ -27,7 +29,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     }
   }
 
-  void _processInviteCode(String rawCode) {
+  Future<void> _processInviteCode(String rawCode) async {
     setState(() => _isProcessing = true);
     
     // Parse invite token from QR code string (e.g., fleetguard://invite?token=xyz123)
@@ -37,17 +39,37 @@ class _QrScanScreenState extends State<QrScanScreen> {
       token = uri.queryParameters['token'] ?? rawCode;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fleet invite QR scanned successfully!')),
-    );
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.verifyInvite(token);
 
-    context.go(
-      '/auth/phone-verify',
-      extra: {
-        'company_name': 'FleetGuard Partner Fleet',
-        'invite_token': token,
-      },
-    );
+      if (response['valid'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fleet invite QR scanned successfully!'), backgroundColor: AppColors.success),
+        );
+
+        context.go(
+          '/auth/phone-verify',
+          extra: {
+            'company_name': response['company_name'] ?? 'FleetGuard Partner Fleet',
+            'invite_token': token,
+          },
+        );
+      } else {
+        setState(() => _isProcessing = false);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid or expired invite token'), backgroundColor: AppColors.error),
+        );
+      }
+    } catch (e) {
+      setState(() => _isProcessing = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error verifying invite: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 
   @override
@@ -108,8 +130,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
                     // Manual demo bypass button
                     _processInviteCode("demo_invite_token_2026");
                   },
-                  icon: const Icon(Icons.qr_code),
-                  label: const Text('Demo: Skip QR Scan'),
+                  icon: _isProcessing 
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                      : const Icon(Icons.qr_code),
+                  label: Text(_isProcessing ? 'Verifying...' : 'Demo: Skip QR Scan'),
                 ),
               ],
             ),

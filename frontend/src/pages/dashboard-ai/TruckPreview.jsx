@@ -75,7 +75,7 @@ export function TruckPreview({ category = 'fuel_waste' }) {
   return (
     <div className="relative w-28 h-20 flex-shrink-0 flex items-center justify-center select-none group">
       {/* 2.5D Ground Shadow */}
-      <div className="absolute bottom-2.5 w-24 h-1.5 bg-black/10 dark:bg-black/40 blur-sm rounded-full transition-all duration-500 group-hover:scale-x-105 group-hover:opacity-70" />
+      <div className="absolute bottom-2.5 w-24 h-1.5 bg-black/10 blur-sm rounded-full transition-all duration-500 group-hover:scale-x-105 group-hover:opacity-70" />
 
       {/* 2.5D Animated SVG Truck */}
       <svg

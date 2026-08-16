@@ -25,10 +25,10 @@ class DeliveryStatus(str, Enum):
 
 
 class NotificationChannel(str, Enum):
-    WHATSAPP = "WHATSAPP"
     EMAIL = "EMAIL"
     SMS = "SMS"
     WEBHOOK = "WEBHOOK"
+    PUSH = "PUSH"
 
 
 class Notification(BaseModel):

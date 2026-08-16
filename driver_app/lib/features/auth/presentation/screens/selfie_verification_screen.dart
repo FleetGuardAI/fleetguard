@@ -1,31 +1,67 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/storage/secure_storage.dart';
+import '../../data/auth_repository.dart';
 
-class SelfieVerificationScreen extends StatefulWidget {
+class SelfieVerificationScreen extends ConsumerStatefulWidget {
   const SelfieVerificationScreen({super.key});
 
   @override
-  State<SelfieVerificationScreen> createState() => _SelfieVerificationScreenState();
+  ConsumerState<SelfieVerificationScreen> createState() => _SelfieVerificationScreenState();
 }
 
-class _SelfieVerificationScreenState extends State<SelfieVerificationScreen> {
+class _SelfieVerificationScreenState extends ConsumerState<SelfieVerificationScreen> {
   bool _isVerifying = false;
 
+  File? _selfieFile;
+
   void _captureAndVerify() async {
-    setState(() => _isVerifying = true);
-    await Future.delayed(const Duration(seconds: 2)); // Simulate AI face match
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.camera, 
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 70
+    );
+    
+    if (pickedFile == null) return;
+    
+    setState(() {
+      _selfieFile = File(pickedFile.path);
+      _isVerifying = true;
+    });
+    
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final driverId = await SecureStorage.getDriverId() ?? 1;
 
-    await SecureStorage.setVerificationStatus('PENDING_APPROVAL');
+      // 1. Upload Selfie
+      await repo.uploadDocument(_selfieFile!, 'selfie', driverId);
 
-    setState(() => _isVerifying = false);
+      // 2. Trigger Face Verify
+      final verifyResponse = await repo.verifyFace(driverId);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI Face Verification Match: 95.8% Confidence')),
-      );
-      context.go('/auth/pending-approval');
+      await SecureStorage.setVerificationStatus('PENDING_APPROVAL');
+
+      setState(() => _isVerifying = false);
+
+      if (mounted) {
+        final confidence = (verifyResponse['confidence'] * 100).toStringAsFixed(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI Face Verification Match: $confidence% Confidence')),
+        );
+        context.go('/auth/pending-approval');
+      }
+    } catch (e) {
+      setState(() => _isVerifying = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Face Verification failed: $e')),
+        );
+      }
     }
   }
 
@@ -63,7 +99,12 @@ class _SelfieVerificationScreenState extends State<SelfieVerificationScreen> {
                         width: 4,
                       ),
                     ),
-                    child: const Icon(Icons.face, size: 140, color: Colors.grey),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(110),
+                      child: _selfieFile != null 
+                          ? Image.file(_selfieFile!, fit: BoxFit.cover)
+                          : const Icon(Icons.face, size: 140, color: Colors.grey),
+                    ),
                   ),
                   if (_isVerifying) const CircularProgressIndicator(),
                 ],

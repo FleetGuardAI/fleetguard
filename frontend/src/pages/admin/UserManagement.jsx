@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, ShieldCheck, Mail, ToggleLeft, ToggleRight, Trash2, ShieldAlert } from 'lucide-react';
+import { Users, Plus, ShieldCheck, Mail, ToggleLeft, ToggleRight, Trash2, ShieldAlert, QrCode, UserPlus, Smartphone, Laptop, TabletSmartphone } from 'lucide-react';
 import { getAdminUsers, addAdminUser, toggleAdminUserStatus } from '@/api/settingsApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Input';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { cn } from '@/utils/cn';
 
 export default function UserManagement() {
@@ -29,6 +30,9 @@ export default function UserManagement() {
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrScanning, setQrScanning] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -117,9 +121,29 @@ export default function UserManagement() {
     }
   };
 
-  const handleToggleStatus = async (id, userName) => {
+  const handleSimulateQrScan = () => {
+    setQrScanning(true);
+    setTimeout(() => {
+      const mockUser = {
+        id: `USR-${Date.now().toString().slice(-4)}`,
+        name: 'New Mobile User',
+        email: 'newuser@fleetguard.com',
+        role: 'Dispatcher',
+        department: 'Operations',
+        status: 'active',
+        platform: 'Mobile User'
+      };
+      setUsers(prev => [mockUser, ...prev]);
+      success('User Onboarded', 'A new user has successfully joined the workspace via QR code scan!');
+      setQrScanning(false);
+      setQrModalOpen(false);
+    }, 1500);
+  };
+
+  const handleToggleStatus = async (id, userName, currentStatus) => {
     try {
-      const updated = await toggleAdminUserStatus(id);
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const updated = await toggleAdminUserStatus(id, newStatus);
       setUsers(prev => prev.map(u => u.id === id ? { ...u, status: updated.status } : u));
       success('Status Updated', `Successfully updated active status for ${userName}.`);
     } catch (e) {
@@ -154,6 +178,18 @@ export default function UserManagement() {
       label: 'Department'
     },
     {
+      key: 'platform',
+      label: 'Platform',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          {item.platform === 'Mobile User' && <Smartphone className="h-4 w-4 text-brand-600" title="Mobile User" />}
+          {item.platform === 'PC User' && <Laptop className="h-4 w-4 text-blue-600" title="PC User" />}
+          {item.platform === 'Both' && <TabletSmartphone className="h-4 w-4 text-amber-600" title="Both PC & Mobile" />}
+          <span className="text-sm font-medium text-content-secondary">{item.platform || 'PC User'}</span>
+        </div>
+      )
+    },
+    {
       key: 'status',
       label: 'Access Status',
       render: (item) => (
@@ -173,7 +209,7 @@ export default function UserManagement() {
             size="sm"
             className={item.status === 'active' ? 'text-green-600' : 'text-content-muted'}
             icon={item.status === 'active' ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-            onClick={() => handleToggleStatus(item.id, item.name)}
+            onClick={() => handleToggleStatus(item.id, item.name, item.status)}
             title={item.status === 'active' ? 'Deactivate User' : 'Activate User'}
           />
         </div>
@@ -188,17 +224,30 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-bold text-content flex items-center gap-2">
             <Users className="h-6 w-6" />
-            User Management (Co-Admins)
+            System Users
           </h1>
-          <p className="text-sm text-content-secondary mt-0.5">Manage operator dashboards access, assign departments, and deactivate administrators.</p>
+          <p className="text-sm text-content-secondary mt-0.5">Manage dashboard access, assign departments, and invite app users.</p>
         </div>
-        <Button
-          variant="primary"
-          icon={<Plus className="h-4 w-4" />}
-          onClick={() => setAddModalOpen(true)}
-        >
-          Add Team User
-        </Button>
+        <Dropdown
+          align="right"
+          trigger={
+            <Button variant="primary" icon={<Plus className="h-4 w-4" />}>
+              Add Team User
+            </Button>
+          }
+          items={[
+            {
+              label: 'Scan QR Code (Mobile App)',
+              icon: <QrCode className="h-4 w-4" />,
+              onClick: () => setQrModalOpen(true)
+            },
+            {
+              label: 'Add User Manually',
+              icon: <UserPlus className="h-4 w-4" />,
+              onClick: () => setAddModalOpen(true)
+            }
+          ]}
+        />
       </div>
 
       {/* Filters Card */}
@@ -315,6 +364,43 @@ export default function UserManagement() {
             />
           </div>
         </form>
+      </Modal>
+
+      {/* QR Code Invitation Modal */}
+      <Modal
+        open={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        title="Owner App Invite QR Code"
+        description="Ask the user to scan this unique QR code with their mobile device to instantly join the workspace."
+        footer={
+          <div className="w-full flex justify-between items-center">
+            <Button variant="outline" onClick={() => setQrModalOpen(false)} disabled={qrScanning}>
+              Close
+            </Button>
+            <Button variant="primary" icon={<Smartphone className="w-4 h-4" />} onClick={handleSimulateQrScan} loading={qrScanning}>
+              Simulate App Scan
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center py-6 space-y-6">
+          <div className="p-4 bg-white rounded-2xl shadow-sm border border-border">
+            <div className="w-48 h-48 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center rounded-xl border-2 border-brand-200 border-dashed relative">
+              <QrCode className="w-24 h-24 text-brand-600 opacity-60" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                   <img src="/assets/fleetguard-logo.png" alt="FG" className="w-6 h-6 object-contain" />
+                 </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-content">Workspace ID: FG-WORKSPACE-843</p>
+            <p className="text-xs text-content-muted max-w-[250px] mx-auto">
+              Scanning this code binds the user's mobile app to your dashboard instantly.
+            </p>
+          </div>
+        </div>
       </Modal>
     </div>
   );

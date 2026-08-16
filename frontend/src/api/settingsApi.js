@@ -17,8 +17,7 @@ export async function getSettings() {
       currency: 'INR (₹)',
       fuelTheftThresholdLiters: 18,
       speedLimitKmh: 80,
-      smsAlertsEnabled: true,
-      whatsappBotActive: true
+      smsAlertsEnabled: true
     };
   } catch {
     return {
@@ -28,8 +27,7 @@ export async function getSettings() {
       currency: 'INR (₹)',
       fuelTheftThresholdLiters: 18,
       speedLimitKmh: 80,
-      smsAlertsEnabled: true,
-      whatsappBotActive: true
+      smsAlertsEnabled: true
     };
   }
 }
@@ -62,6 +60,7 @@ export async function getAdminUsers() {
       email: d.email || `${d.name.toLowerCase().replace(/\s+/g, '.')}@fleetguard.com`,
       role: 'Fleet Manager',
       status: (d.status || 'ACTIVE').toLowerCase(),
+      platform: ['Mobile User', 'PC User', 'Both'][Math.floor(Math.random() * 3)],
     }));
   } catch {
     return [];
@@ -72,8 +71,8 @@ export async function addAdminUser(data) {
   return { id: Date.now(), status: 'active', ...data };
 }
 
-export async function toggleAdminUserStatus(id) {
-  return { id, status: 'active' };
+export async function toggleAdminUserStatus(id, newStatus) {
+  return { id, status: newStatus || 'inactive' };
 }
 
 // Admin: Roles & Permissions Matrix

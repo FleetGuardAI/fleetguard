@@ -6,7 +6,9 @@ Allows clients to upload documents and query their processing status.
 """
 
 import uuid
-from typing import Optional
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+import random
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -104,3 +106,68 @@ async def list_documents(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post(
+    "/ocr/license",
+    response_model=Dict[str, Any],
+    summary="Mock OCR for Driver License",
+)
+async def ocr_driver_license(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mock OCR endpoint that takes an image and returns structured driver license data.
+    """
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must have a filename."
+        )
+
+    # Return mocked data for MVP
+    valid_until = datetime.now() + timedelta(days=365 * 10)
+    
+    return {
+        "status": "success",
+        "data": {
+            "name": "Ravi Kumar",
+            "license_number": f"UK{random.randint(10, 99)}{random.randint(1000000, 9999999)}",
+            "date_of_birth": "1998-04-12",
+            "valid_until": valid_until.strftime("%Y-%m-%d"),
+            "vehicle_class": "HMV",
+        }
+    }
+
+
+@router.post(
+    "/ocr/rc",
+    response_model=Dict[str, Any],
+    summary="Mock OCR for Vehicle RC",
+)
+async def ocr_vehicle_rc(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mock OCR endpoint that takes an image and returns structured vehicle RC data.
+    """
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must have a filename."
+        )
+
+    # Return mocked data for MVP
+    return {
+        "status": "success",
+        "data": {
+            "registration_number": f"UK07AB{random.randint(1000, 9999)}",
+            "owner_name": current_user.name,
+            "manufacturer": "Tata Motors",
+            "model": "Prima",
+            "fuel_type": "Diesel",
+            "gvw": "55000 kg",
+        }
+    }

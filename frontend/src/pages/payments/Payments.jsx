@@ -247,7 +247,7 @@ export default function Payments() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'transactions'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -258,15 +258,31 @@ export default function Payments() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'vendors'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
           Vendor Directory
         </button>
+        <button
+          onClick={() => setActiveTab('approvals')}
+          className={cn(
+            "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
+            activeTab === 'approvals'
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-content-secondary hover:text-content"
+          )}
+        >
+          Approval Requests
+          {totalPending > 0 && (
+            <span className="ml-2 bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+              Action Needed
+            </span>
+          )}
+        </button>
       </div>
 
-      {activeTab === 'transactions' ? (
+      {activeTab === 'transactions' || activeTab === 'approvals' ? (
         <div className="space-y-6">
           <Card className="p-4 flex items-center justify-between">
             <SearchBox
@@ -299,7 +315,7 @@ export default function Payments() {
               <>
                 <Table
                   columns={columns}
-                  data={paginatedPayments}
+                  data={activeTab === 'approvals' ? paginatedPayments.filter(p => p.status === 'pending') : paginatedPayments.filter(p => p.status === 'completed')}
                   keyExtractor={(item) => item.id}
                   onRowClick={(item) => handleViewPayout(item)}
                 />

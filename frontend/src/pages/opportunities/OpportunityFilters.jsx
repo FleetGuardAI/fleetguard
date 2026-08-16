@@ -113,7 +113,7 @@ export function OpportunityFilters({ filters, onChange, onReset }) {
             className="text-content-muted hover:text-red-500"
           >
             Reset
-            <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full">
+            <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">
               {activeFilterCount}
             </span>
           </Button>

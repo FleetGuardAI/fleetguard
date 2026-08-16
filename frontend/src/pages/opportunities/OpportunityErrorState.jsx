@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 export function OpportunityErrorState({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-fade-in">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 flex items-center justify-center mb-5 shadow-card border border-red-100 dark:border-red-900/40">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center mb-5 shadow-card border border-red-100">
         <AlertTriangle className="w-9 h-9 text-red-400" strokeWidth={1.5} />
       </div>
 

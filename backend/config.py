@@ -29,15 +29,13 @@ class Settings(BaseSettings):
 
     # --- OpenAI (for receipt OCR via Vision API) ---
     OPENAI_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
 
-    # --- WhatsApp Business API ---
-    WHATSAPP_API_TOKEN: Optional[str] = None
-    WHATSAPP_API_URL: str = "https://graph.facebook.com/v21.0"
-    WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
-    WHATSAPP_VERIFY_TOKEN: str = "fleetguard_webhook_verify_2026"
+    # --- Twilio ---
+    TWILIO_API_KEY: Optional[str] = None
 
-    # Validation Pipeline
+    # --- Validation Pipeline ---
     KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
     
     # Outbox Pattern
@@ -69,17 +67,7 @@ class Settings(BaseSettings):
     REMEMBER_ME_EXPIRE_DAYS: int = 30
     PASSWORD_RESET_EXPIRE_MINUTES: int = 30
 
-    # --- reCAPTCHA Enterprise ---
-    RECAPTCHA_PROJECT_ID: Optional[str] = None
-    RECAPTCHA_API_KEY: Optional[str] = None
-    RECAPTCHA_SITE_KEY: Optional[str] = None
-    RECAPTCHA_MIN_SCORE: float = 0.4
 
-    # --- CAPTCHA (Cloudflare Turnstile compatible) ---
-    CAPTCHA_SITE_KEY: Optional[str] = None
-    CAPTCHA_SECRET_KEY: Optional[str] = None
-    CAPTCHA_VERIFY_URL: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-    CAPTCHA_DEV_BYPASS_TOKEN: str = "dev-captcha-pass"
 
     # In DEBUG this can help local testing of forgot-password without SMS/email integration.
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True

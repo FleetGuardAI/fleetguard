@@ -412,7 +412,7 @@ function InteractiveScanner() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white dark:bg-slate-950/80 rounded-2xl p-6 relative overflow-hidden border border-slate-200 dark:border-slate-800/80 shadow-2xl shadow-[#00c853]/5 transition-colors duration-300">
+      <div className="bg-white rounded-2xl p-6 relative overflow-hidden border border-slate-200 shadow-2xl shadow-[#00c853]/5 transition-colors duration-300">
         
         {/* Glow background filters */}
         <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#00c853]/10 rounded-full blur-2xl pointer-events-none" />
@@ -422,30 +422,30 @@ function InteractiveScanner() {
           <div className="w-8 h-8 rounded-lg bg-[#00c853]/10 flex items-center justify-center border border-[#00c853]/20">
             <Cpu className="w-4 h-4 text-[#00c853]" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide transition-colors duration-300">
+          <h3 className="text-sm font-bold text-slate-900 tracking-wide transition-colors duration-300">
             Interactive AI Claim Scanner
           </h3>
         </div>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-5 leading-relaxed transition-colors duration-300">
+        <p className="text-[11px] text-slate-500 mb-5 leading-relaxed transition-colors duration-300">
           Test live verification capability. Watch FleetGuard parse receipts, query telematics, and audit risk instantly.
         </p>
 
         {/* Input Bar & Upload */}
         <form onSubmit={startScan} className="space-y-4 mb-5 text-left">
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Claim ID</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Claim ID</label>
             <input
               type="text"
               value={trackingCode}
               onChange={(e) => setTrackingCode(e.target.value)}
               placeholder="Enter receipt code e.g. CLAIM-8831..."
-              className="w-full bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-[#00c853] transition-all duration-300"
+              className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#00c853] transition-all duration-300"
               disabled={isScanning}
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Receipt Upload</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Receipt Upload</label>
             <div
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
@@ -454,10 +454,10 @@ function InteractiveScanner() {
               onClick={handleUploadClick}
               className={`w-full border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 text-center relative overflow-hidden ${
                 selectedFile 
-                  ? "border-[#00c853]/50 bg-[#00c853]/5 dark:bg-[#00c853]/3" 
+                  ? "border-[#00c853]/50 bg-[#00c853]/5#00c853]/3" 
                   : isDragActive
-                    ? "border-[#00c853] bg-[#00c853]/10 dark:bg-[#00c853]/5 shadow-lg shadow-[#00c853]/5"
-                    : "border-slate-200 dark:border-slate-800/80 hover:border-[#00c853]/40 bg-slate-50 dark:bg-slate-950/30"
+                    ? "border-[#00c853] bg-[#00c853]/10#00c853]/5 shadow-lg shadow-[#00c853]/5"
+                    : "border-slate-200 hover:border-[#00c853]/40 bg-slate-50"
               }`}
             >
               <input
@@ -470,7 +470,7 @@ function InteractiveScanner() {
               />
               
               {!selectedFile ? (
-                <div className="flex flex-col items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center gap-1.5 text-slate-500">
                   <Upload className="w-5 h-5 text-[#00c853]" />
                   <span className="text-[11px] font-bold">Drag & drop, paste, or click to upload</span>
                   <span className="text-[9px] opacity-60">JPG, PNG, WEBP, PDF (Max 20MB)</span>
@@ -480,14 +480,14 @@ function InteractiveScanner() {
                   {/* Thumbnail Preview */}
                   <div className="flex items-center gap-3">
                     {previewUrl ? (
-                      <img src={previewUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-800" alt="receipt preview" />
+                      <img src={previewUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200" alt="receipt preview" />
                     ) : (
                       <div className="w-10 h-10 rounded-lg bg-[#00c853]/10 border border-[#00c853]/20 flex items-center justify-center">
                         <span className="text-[9px] font-black text-[#00c853]">PDF</span>
                       </div>
                     )}
                     <div className="overflow-hidden max-w-[120px] sm:max-w-[160px]">
-                      <p className="text-[10px] font-bold text-slate-850 dark:text-slate-200 truncate">{selectedFile.name}</p>
+                      <p className="text-[10px] font-bold text-slate-850 truncate">{selectedFile.name}</p>
                       <p className="text-[9px] text-slate-500 font-semibold">{formatSize(selectedFile.size)}</p>
                     </div>
                   </div>
@@ -497,7 +497,7 @@ function InteractiveScanner() {
                     <button
                       type="button"
                       onClick={handleUploadClick}
-                      className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-bold transition-colors active:scale-95"
+                      className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200:bg-slate-800 border border-slate-200 text-slate-800 text-[10px] font-bold transition-colors active:scale-95"
                       disabled={isScanning}
                     >
                       Replace
@@ -536,15 +536,15 @@ function InteractiveScanner() {
         </form>
 
         {/* Simulated Document Scanning Window */}
-        <div className="bg-slate-100 dark:bg-slate-950/95 rounded-xl border border-slate-200 dark:border-slate-900 aspect-[16/10] relative overflow-hidden flex flex-col justify-between p-4 font-mono text-[9px] text-slate-650 dark:text-slate-550 transition-colors duration-300">
+        <div className="bg-slate-100 rounded-xl border border-slate-200 aspect-[16/10] relative overflow-hidden flex flex-col justify-between p-4 font-mono text-[9px] text-slate-650 transition-colors duration-300">
           
           {/* Laser Scan line overlay */}
           {isScanning && <div className="scanner-line" />}
 
           {/* Top Panel */}
-          <div className="flex justify-between items-center text-slate-500 dark:text-slate-600 border-b border-slate-200 dark:border-slate-900/60 pb-2 transition-colors duration-300">
+          <div className="flex justify-between items-center text-slate-500 border-b border-slate-200 pb-2 transition-colors duration-300">
             <span>SECURE_PAY_TELEMETRY</span>
-            <span className={isScanning ? 'text-green-650 dark:text-green-500 animate-pulse font-bold' : 'text-slate-450 dark:text-slate-700'}>
+            <span className={isScanning ? 'text-green-650 animate-pulse font-bold' : 'text-slate-450'}>
               ● {isScanning ? 'PROCESSING_PROOF' : 'STANDBY'}
             </span>
           </div>
@@ -552,8 +552,8 @@ function InteractiveScanner() {
           {/* Middle Section */}
           <div className="flex-1 py-3 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar text-left scroll-smooth">
             {telemetryLogs.length === 0 && !scanResult && (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-slate-655 text-center gap-2 transition-colors duration-300">
-                <Truck className="w-7 h-7 opacity-30 dark:opacity-20 text-slate-600 dark:text-slate-400" />
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center gap-2 transition-colors duration-300">
+                <Truck className="w-7 h-7 opacity-30 text-slate-600" />
                 <span className="max-w-[200px] leading-relaxed">Enter a mock ID above, upload a receipt, or click Audit to trigger the telemetry audit simulator.</span>
               </div>
             )}
@@ -564,7 +564,7 @@ function InteractiveScanner() {
               const isError = log.includes('❌') || log.includes('Error') || log.includes('failed');
 
               return (
-                <div key={index} className="flex items-center gap-1.5 animate-fade-in text-slate-800 dark:text-slate-300 transition-colors duration-300">
+                <div key={index} className="flex items-center gap-1.5 animate-fade-in text-slate-800 transition-colors duration-300">
                   <span className={isSuccess ? "text-[#00c853]" : isPending ? "text-yellow-500" : isError ? "text-red-500" : "text-[#00c853]"}>
                     {isSuccess ? '✓' : isPending ? '⚡' : isError ? '❌' : '❯'}
                   </span>
@@ -575,7 +575,7 @@ function InteractiveScanner() {
           </div>
 
           {/* Bottom Panel */}
-          <div className="flex justify-between text-[7px] text-slate-500 dark:text-slate-700 border-t border-slate-200 dark:border-slate-900/60 pt-1.5 transition-colors duration-300">
+          <div className="flex justify-between text-[7px] text-slate-500 border-t border-slate-200 pt-1.5 transition-colors duration-300">
             <span>PIPELINE: ACTIVE_RUNNER_v2.0</span>
             <span>SHIELD: READY</span>
           </div>
@@ -583,20 +583,20 @@ function InteractiveScanner() {
 
         {/* Final Analysis Result Card */}
         {scanResult && (
-          <div className="mt-6 border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-950/90 rounded-2xl p-5 shadow-xl animate-fade-in text-left transition-colors duration-300">
-            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 dark:border-slate-900 pb-3">
+          <div className="mt-6 border border-slate-200 bg-slate-50 rounded-2xl p-5 shadow-xl animate-fade-in text-left transition-colors duration-300">
+            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-3">
               <Shield className="w-5 h-5 text-[#00c853]" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">AI Fraud Audit Result</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">AI Fraud Audit Result</h4>
             </div>
 
             {/* Fraud Risk Indicator */}
-            <div className="grid grid-cols-12 gap-4 items-center mb-6 bg-white dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200 dark:border-slate-900/80 transition-colors duration-300">
+            <div className="grid grid-cols-12 gap-4 items-center mb-6 bg-white p-4 rounded-xl border border-slate-200 transition-colors duration-300">
               
-              <div className="col-span-4 flex flex-col items-center justify-center border-r border-slate-200 dark:border-slate-905 pr-4">
+              <div className="col-span-4 flex flex-col items-center justify-center border-r border-slate-200 pr-4">
                 <div className="relative w-16 h-16 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                     <path
-                      className="text-slate-200 dark:text-slate-800"
+                      className="text-slate-200"
                       strokeWidth="3.5"
                       stroke="currentColor"
                       fill="none"
@@ -621,7 +621,7 @@ function InteractiveScanner() {
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">{scanResult.fraud_assessment.risk_score}%</span>
+                    <span className="text-xs font-black text-slate-900">{scanResult.fraud_assessment.risk_score}%</span>
                     <span className="text-[6px] text-slate-500 uppercase tracking-wider font-bold">Risk</span>
                   </div>
                 </div>
@@ -642,8 +642,8 @@ function InteractiveScanner() {
                     {scanResult.fraud_assessment.risk_level}
                   </span>
                 </div>
-                <div className="text-[9px] text-slate-600 dark:text-slate-400 space-y-0.5 font-semibold">
-                  <p>Confidence: <strong className="text-slate-800 dark:text-slate-200">{scanResult.fraud_assessment.confidence}%</strong></p>
+                <div className="text-[9px] text-slate-600 space-y-0.5 font-semibold">
+                  <p>Confidence: <strong className="text-slate-800">{scanResult.fraud_assessment.confidence}%</strong></p>
                   <p>Recommendation: <strong className={
                     scanResult.fraud_assessment.recommendation === 'Approve' ? 'text-[#00c853]' : 'text-red-500'
                   }>{scanResult.fraud_assessment.recommendation}</strong></p>
@@ -655,22 +655,22 @@ function InteractiveScanner() {
             <div className="space-y-4 text-[10px]">
               
               {/* Receipt Summary */}
-              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">Receipt Summary</h5>
-                <div className="grid grid-cols-3 gap-y-1 text-slate-600 dark:text-slate-400 font-semibold">
-                  <span>Merchant:</span><span className="col-span-2 text-slate-800 dark:text-slate-200 font-bold">{scanResult.receipt.merchant}</span>
-                  <span>Category:</span><span className="col-span-2 text-slate-800 dark:text-slate-200">{scanResult.receipt.category}</span>
-                  <span>Purpose:</span><span className="col-span-2 text-slate-800 dark:text-slate-200">{scanResult.receipt.purpose}</span>
+              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">Receipt Summary</h5>
+                <div className="grid grid-cols-3 gap-y-1 text-slate-600 font-semibold">
+                  <span>Merchant:</span><span className="col-span-2 text-slate-800 font-bold">{scanResult.receipt.merchant}</span>
+                  <span>Category:</span><span className="col-span-2 text-slate-800">{scanResult.receipt.category}</span>
+                  <span>Purpose:</span><span className="col-span-2 text-slate-800">{scanResult.receipt.purpose}</span>
                   <span>Amount:</span><span className="col-span-2 text-[#00c853] font-bold">₹{scanResult.receipt.amount}</span>
-                  <span>GSTIN:</span><span className="col-span-2 font-mono text-slate-800 dark:text-slate-200">{scanResult.receipt.gst}</span>
-                  <span>Invoice No:</span><span className="col-span-2 font-mono text-slate-800 dark:text-slate-200">{scanResult.receipt.invoice_number}</span>
+                  <span>GSTIN:</span><span className="col-span-2 font-mono text-slate-800">{scanResult.receipt.gst}</span>
+                  <span>Invoice No:</span><span className="col-span-2 font-mono text-slate-800">{scanResult.receipt.invoice_number}</span>
                 </div>
               </div>
 
               {/* Image & Business Analysis */}
-              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">AI Analysis Checks</h5>
-                <div className="space-y-1.5 text-slate-655 dark:text-slate-455 font-semibold">
+              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">AI Analysis Checks</h5>
+                <div className="space-y-1.5 text-slate-655 font-semibold">
                   <div className="flex justify-between items-center">
                     <span>Tampering / Manipulation:</span>
                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
@@ -705,12 +705,12 @@ function InteractiveScanner() {
               </div>
 
               {/* History Intelligence */}
-              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">History & Duplicate Checks</h5>
-                <div className="grid grid-cols-2 gap-y-1 text-slate-600 dark:text-slate-400 font-semibold">
-                  <span>Truck Previous Repairs:</span><span className="text-slate-800 dark:text-slate-200 font-bold">{scanResult.truck_history.previous_repairs} repairs</span>
-                  <span>Days Since Last Repair:</span><span className="text-slate-800 dark:text-slate-200">{scanResult.truck_history.last_repair_days} days ago</span>
-                  <span>Driver Claims This Month:</span><span className="text-slate-800 dark:text-slate-200">{scanResult.driver_history.claims_this_month} claims</span>
+              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">History & Duplicate Checks</h5>
+                <div className="grid grid-cols-2 gap-y-1 text-slate-600 font-semibold">
+                  <span>Truck Previous Repairs:</span><span className="text-slate-800 font-bold">{scanResult.truck_history.previous_repairs} repairs</span>
+                  <span>Days Since Last Repair:</span><span className="text-slate-800">{scanResult.truck_history.last_repair_days} days ago</span>
+                  <span>Driver Claims This Month:</span><span className="text-slate-800">{scanResult.driver_history.claims_this_month} claims</span>
                   <span>Duplicate Claims:</span><span className={scanResult.business_validation.duplicate ? "text-red-500 font-bold" : "text-[#00c853]"}>
                     {scanResult.business_validation.duplicate ? "Duplicate Found" : "No duplicates"}
                   </span>
@@ -718,9 +718,9 @@ function InteractiveScanner() {
               </div>
 
               {/* Reasoning */}
-              <div className="border border-slate-200 dark:border-slate-900 rounded-xl p-3 bg-white dark:bg-slate-900/30 transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-900 pb-1 mb-2">AI Reasonings</h5>
-                <ul className="list-disc list-inside space-y-1 text-slate-650 dark:text-slate-400 text-[9px] font-semibold leading-relaxed">
+              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
+                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">AI Reasonings</h5>
+                <ul className="list-disc list-inside space-y-1 text-slate-650 text-[9px] font-semibold leading-relaxed">
                   {scanResult.reasoning.map((reason, i) => (
                     <li key={i}>{reason}</li>
                   ))}
@@ -921,29 +921,12 @@ function WhatsAppSimulator({ t }) {
 
 export default function LandingPage() {
   const { t } = useLanguage();
-  const [isDark, setIsDark] = useState(() => {
-    const cached = localStorage.getItem('fleetguard_theme');
-    return cached === 'dark' || !cached;
-  });
   const [isScrolled, setIsScrolled] = useState(false);
 
   // ——— Smooth Scrolling & Scroll Animations ———
   const pageRef = useRef(null);
   useLenis();
   useScrollAnimations(pageRef);
-
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem('fleetguard_theme', next ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', next);
-  };
-
-  useEffect(() => {
-    const cached = localStorage.getItem('fleetguard_theme');
-    const defaultDark = cached === 'dark' || !cached;
-    document.documentElement.classList.toggle('dark', defaultDark);
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -962,7 +945,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-slate-50 dark:bg-[#070a13] font-sans text-slate-700 dark:text-slate-300 overflow-x-hidden relative selection:bg-[#00c853]/30 selection:text-white transition-colors duration-300">
+    <div ref={pageRef} className="min-h-screen bg-slate-50#070a13] font-sans text-slate-700 overflow-x-hidden relative selection:bg-[#00c853]/30 selection:text-white transition-colors duration-300">
       
       {/* Interactive nodes and lines backdrop */}
       <InteractiveNetworkBackground />
@@ -975,7 +958,7 @@ export default function LandingPage() {
       {/* ===== NAVBAR ===== */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
         isScrolled 
-          ? "bg-white/70 dark:bg-[#070a13]/70 backdrop-blur-lg border-b border-slate-200/50 dark:border-slate-900/60 shadow-sm" 
+          ? "bg-white/70#070a13]/70 backdrop-blur-lg border-b border-slate-200/50 shadow-sm" 
           : "bg-transparent border-b border-transparent"
       }`} id="navbar">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -984,7 +967,7 @@ export default function LandingPage() {
               <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tight">
-              <span className="text-slate-900 dark:text-white transition-colors duration-300">Fleet </span>
+              <span className="text-slate-900 transition-colors duration-300">Fleet </span>
               <span className="text-[#00c853]">Guard</span>
             </span>
           </Link>
@@ -993,8 +976,8 @@ export default function LandingPage() {
           <div className={cn(
             "hidden md:flex items-center gap-1.5 border rounded-full px-2 py-1 transition-all duration-300 shadow-sm",
             isScrolled
-              ? "bg-slate-100/85 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 shadow-black/5"
-              : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 shadow-black/10"
+              ? "bg-slate-100/85 border-slate-200/80 shadow-black/5"
+              : "bg-white/10 border-white/15 shadow-black/10"
           )}>
             {navItems.map((item) => (
               <a
@@ -1003,7 +986,7 @@ export default function LandingPage() {
                 className={cn(
                   "text-[11px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 relative group",
                   isScrolled
-                    ? "text-slate-700 dark:text-slate-200 hover:text-[#00c853] dark:hover:text-[#00c853] hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                    ? "text-slate-700 hover:text-[#00c853]:text-[#00c853] hover:bg-slate-200/60:bg-slate-800/60"
                     : "text-white/90 hover:text-white hover:bg-white/10"
                 )}
               >
@@ -1014,26 +997,14 @@ export default function LandingPage() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={toggleTheme}
-              className={cn(
-                "p-2 rounded-full border transition-all duration-300 active:scale-95 backdrop-blur-md shadow-sm",
-                isScrolled
-                  ? "bg-slate-100/80 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 text-slate-700 dark:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
-                  : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-white hover:bg-white/15 dark:hover:bg-white/10"
-              )}
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-500" />}
-            </button>
             <LanguageSelector variant={isScrolled ? "glass-scrolled" : "glass-transparent"} />
             <Link
               to="/login"
               className={cn(
                 "px-4 py-2 rounded-full border transition-all duration-300 hidden sm:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
                 isScrolled
-                  ? "bg-slate-100/80 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 text-slate-700 dark:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
-                  : "bg-white/10 dark:bg-white/5 border-white/15 dark:border-white/10 text-white hover:bg-white/15 dark:hover:bg-white/10"
+                  ? "bg-slate-100/80 border-slate-200/80 text-slate-700 hover:bg-slate-200/50:bg-slate-800/50"
+                  : "bg-white/10 border-white/15 text-white hover:bg-white/15:bg-white/10"
               )}
               id="dashboard-login-btn"
             >
@@ -1085,9 +1056,9 @@ export default function LandingPage() {
           {/* Cinematic Canvas Overlay — god rays, mist, water shimmer, dust */}
           <CinematicHeroBackground />
           {/* Subtle overlay to guarantee high-contrast text readability */}
-          <div className="absolute inset-0 bg-black/30 dark:bg-black/55 transition-colors duration-300" style={{ zIndex: 3 }} />
+          <div className="absolute inset-0 bg-black/30 transition-colors duration-300" style={{ zIndex: 3 }} />
           {/* Top scrim overlay to make navbar options pop against sky */}
-          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/15 to-transparent dark:from-black/35 pointer-events-none" style={{ zIndex: 4 }} />
+          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/15 to-transparent pointer-events-none" style={{ zIndex: 4 }} />
         </div>
 
         <div data-hero-content className="max-w-7xl mx-auto relative z-10 w-full px-6">
@@ -1154,12 +1125,12 @@ export default function LandingPage() {
       </section>
 
       {/* ===== INTEGRATIONS BAR ===== */}
-      <section className="py-8 bg-slate-100/60 dark:bg-slate-950/40 border-y border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300">
+      <section className="py-8 bg-slate-100/60 border-y border-slate-200 relative z-10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p data-animate="fade-in" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Compatible Fleet Telematics Systems</p>
           <div data-animate="logos-stagger" className="flex flex-wrap items-center justify-center gap-8 md:gap-16" style={{opacity: 0}}>
             {['Volvo', 'Scania', 'Tata Fleets', 'Daimler', 'BharatBenz'].map((logo, i) => (
-              <span key={i} className="text-sm md:text-base font-black tracking-widest text-slate-850 dark:text-slate-300 font-mono select-none transition-colors duration-300">
+              <span key={i} className="text-sm md:text-base font-black tracking-widest text-slate-850 font-mono select-none transition-colors duration-300">
                 {logo.toUpperCase()}
               </span>
             ))}
@@ -1176,30 +1147,30 @@ export default function LandingPage() {
               <div className="w-8 h-0.5 bg-[#00c853]" />
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('problem.label')}</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight transition-colors duration-300">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight transition-colors duration-300">
               {t('problem.title1')}{' '}
               <span className="text-[#00c853] italic font-black">{t('problem.title2')}</span>
             </h2>
-            <p className="text-sm md:text-base text-slate-650 dark:text-slate-400 mt-4 max-w-xl leading-relaxed transition-colors duration-300">
+            <p className="text-sm md:text-base text-slate-650 mt-4 max-w-xl leading-relaxed transition-colors duration-300">
               {t('problem.desc')}
             </p>
           </div>
 
           <div data-animate="stagger-children" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: FileWarning, title: t('problem.fake.title'), desc: t('problem.fake.desc'), color: 'text-red-500 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-              { icon: Fuel, title: t('problem.fuel.title'), desc: t('problem.fuel.desc'), color: 'text-rose-500 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-              { icon: Eye, title: t('problem.proof.title'), desc: t('problem.proof.desc'), color: 'text-orange-500 dark:text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-              { icon: Phone, title: t('problem.pressure.title'), desc: t('problem.pressure.desc'), color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+              { icon: FileWarning, title: t('problem.fake.title'), desc: t('problem.fake.desc'), color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+              { icon: Fuel, title: t('problem.fuel.title'), desc: t('problem.fuel.desc'), color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+              { icon: Eye, title: t('problem.proof.title'), desc: t('problem.proof.desc'), color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+              { icon: Phone, title: t('problem.pressure.title'), desc: t('problem.pressure.desc'), color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
             ].map((item, i) => (
               <TiltCard key={i} className="h-full">
-                <div className="p-6 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-900 shadow-lg dark:shadow-2xl h-full flex flex-col justify-between group transition-colors duration-300">
+                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-lg h-full flex flex-col justify-between group transition-colors duration-300">
                   <div>
                     <div className={`p-3 rounded-xl ${item.bg} border ${item.border} w-fit mb-5 group-hover:scale-110 transition-transform duration-200`}>
                       <item.icon className={`w-5 h-5 ${item.color}`} />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 tracking-wide transition-colors duration-300">{item.title}</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed transition-colors duration-300">{item.desc}</p>
+                    <h3 className="text-sm font-bold text-slate-900 mb-3 tracking-wide transition-colors duration-300">{item.title}</h3>
+                    <p className="text-xs text-slate-600 leading-relaxed transition-colors duration-300">{item.desc}</p>
                   </div>
                 </div>
               </TiltCard>
@@ -1210,7 +1181,7 @@ export default function LandingPage() {
       </section>
 
       {/* ===== HOW IT WORKS (Interactive Pipeline) ===== */}
-      <section className="py-24 px-6 bg-slate-100/40 dark:bg-slate-950/30 border-y border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300" id="how-it-works">
+      <section className="py-24 px-6 bg-slate-100/40 border-y border-slate-200 relative z-10 transition-colors duration-300" id="how-it-works">
         <div className="max-w-5xl mx-auto text-center">
           
           <div data-animate="fade-up" className="flex items-center justify-center gap-3 mb-4">
@@ -1219,10 +1190,10 @@ export default function LandingPage() {
             <div className="w-8 h-0.5 bg-[#00c853]" />
           </div>
           
-          <h2 data-animate="fade-up" data-animate-delay="0.1" className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 transition-colors duration-300">
+          <h2 data-animate="fade-up" data-animate-delay="0.1" className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 transition-colors duration-300">
             {t('how.title1')} <span className="text-[#00c853] italic font-black">{t('how.title2')}</span>
           </h2>
-          <p data-animate="fade-up" data-animate-delay="0.2" className="text-sm md:text-base text-slate-650 dark:text-slate-400 mb-16 max-w-xl mx-auto leading-relaxed transition-colors duration-300">
+          <p data-animate="fade-up" data-animate-delay="0.2" className="text-sm md:text-base text-slate-650 mb-16 max-w-xl mx-auto leading-relaxed transition-colors duration-300">
             {t('how.desc')}
           </p>
 
@@ -1245,8 +1216,8 @@ export default function LandingPage() {
                   >
                     0{step.num}
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 tracking-wide group-hover:text-[#00c853] transition-colors duration-300">{step.title}</h3>
-                  <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed max-w-xs transition-colors duration-300">{step.desc}</p>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 tracking-wide group-hover:text-[#00c853] transition-colors duration-300">{step.title}</h3>
+                  <p className="text-xs text-slate-650 leading-relaxed max-w-xs transition-colors duration-300">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -1271,11 +1242,11 @@ export default function LandingPage() {
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('demo.label')}</span>
             </div>
             
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 leading-tight transition-colors duration-300">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight transition-colors duration-300">
               {t('demo.title1')}{' '}
               <span className="text-[#00c853] italic font-black">{t('demo.title2')}</span>
             </h2>
-            <p className="text-sm md:text-base text-slate-650 dark:text-slate-400 mb-10 leading-relaxed transition-colors duration-300">
+            <p className="text-sm md:text-base text-slate-650 mb-10 leading-relaxed transition-colors duration-300">
               {t('demo.desc')}
             </p>
 
@@ -1285,13 +1256,13 @@ export default function LandingPage() {
                 { num: '02', title: t('demo.step2.title'), desc: t('demo.step2.desc') },
                 { num: '03', title: t('demo.step3.title'), desc: t('demo.step3.desc') },
               ].map((w) => (
-                <div key={w.num} className="flex gap-4 p-4 rounded-xl bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-900/60 items-start text-left hover:border-[#00c853]/35 transition-colors shadow-sm duration-300">
+                <div key={w.num} className="flex gap-4 p-4 rounded-xl bg-white border border-slate-200 items-start text-left hover:border-[#00c853]/35 transition-colors shadow-sm duration-300">
                   <div className="text-xs font-extrabold text-[#00c853] bg-[#00c853]/10 w-6 h-6 rounded flex items-center justify-center shrink-0 border border-[#00c853]/20">
                     {w.num}
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xs tracking-wide transition-colors duration-300">{w.title}</h3>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed transition-colors duration-300">{w.desc}</p>
+                    <h3 className="font-bold text-slate-900 text-xs tracking-wide transition-colors duration-300">{w.title}</h3>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed transition-colors duration-300">{w.desc}</p>
                   </div>
                 </div>
               ))}
@@ -1313,7 +1284,7 @@ export default function LandingPage() {
       </section>
 
       {/* ===== FEATURES GRID (Obsidian Glassmorphism SaaS Grid) ===== */}
-      <section className="py-24 px-6 bg-slate-100/30 dark:bg-slate-950/30 border-t border-slate-200 dark:border-slate-900/80 relative z-10 transition-colors duration-300" id="features">
+      <section className="py-24 px-6 bg-slate-100/30 border-t border-slate-200 relative z-10 transition-colors duration-300" id="features">
         <div className="max-w-7xl mx-auto">
           
           <div data-animate="fade-up" className="text-center mb-16">
@@ -1322,7 +1293,7 @@ export default function LandingPage() {
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('features.label')}</span>
               <div className="w-8 h-0.5 bg-[#00c853]" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white transition-colors duration-300">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 transition-colors duration-300">
               {t('features.title1')} <span className="text-[#00c853] italic font-black">{t('features.title2')}</span>
             </h2>
           </div>
@@ -1337,13 +1308,13 @@ export default function LandingPage() {
               { icon: Shield, title: t('features.risk.title'), desc: t('features.risk.desc') },
             ].map((feat, i) => (
               <TiltCard key={i} className="h-full">
-                <div className="p-6 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-900 shadow-lg dark:shadow-2xl h-full flex flex-col justify-between group transition-colors duration-300">
+                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-lg h-full flex flex-col justify-between group transition-colors duration-300">
                   <div>
                     <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 w-fit mb-5 group-hover:bg-[#00c853]/25 transition-colors">
                       <feat.icon className="w-5 h-5 text-[#00c853]" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 tracking-wide group-hover:text-[#00c853] transition-colors font-sans duration-300">{feat.title}</h3>
-                    <p className="text-xs text-slate-650 dark:text-slate-400 leading-relaxed font-sans transition-colors duration-300">{feat.desc}</p>
+                    <h3 className="text-sm font-bold text-slate-900 mb-3 tracking-wide group-hover:text-[#00c853] transition-colors font-sans duration-300">{feat.title}</h3>
+                    <p className="text-xs text-slate-650 leading-relaxed font-sans transition-colors duration-300">{feat.desc}</p>
                   </div>
                 </div>
               </TiltCard>
@@ -1355,16 +1326,16 @@ export default function LandingPage() {
 
       {/* ===== CALL TO ACTION (CTA Banner with Pulsing Backdrops) ===== */}
       <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="cta">
-        <div data-animate="cta-reveal" className="max-w-4xl mx-auto rounded-3xl border border-[#00c853]/20 bg-white dark:bg-slate-950/60 p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-green-500/5 transition-colors duration-300">
+        <div data-animate="cta-reveal" className="max-w-4xl mx-auto rounded-3xl border border-[#00c853]/20 bg-white p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-green-500/5 transition-colors duration-300">
           
           {/* Radial green glow */}
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
           <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
 
-          <h2 data-cta-child className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-5 italic font-sans transition-colors duration-300">
+          <h2 data-cta-child className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-5 italic font-sans transition-colors duration-300">
             {t('cta.title1')} <span className="not-italic text-[#00c853] font-sans">{t('cta.title2')}</span>
           </h2>
-          <p data-cta-child className="text-sm md:text-base text-slate-600 dark:text-slate-400 mb-8 max-w-xl mx-auto leading-relaxed font-sans transition-colors duration-300">
+          <p data-cta-child className="text-sm md:text-base text-slate-600 mb-8 max-w-xl mx-auto leading-relaxed font-sans transition-colors duration-300">
             {t('cta.desc')}
           </p>
           
@@ -1384,7 +1355,7 @@ export default function LandingPage() {
       </section>
 
       {/* ===== FOOTER (Clean Slate Dark) ===== */}
-      <footer className="bg-slate-100 dark:bg-slate-950/90 text-slate-500 py-16 px-6 border-t border-slate-200 dark:border-slate-900/60 relative z-10 transition-colors duration-300" id="about">
+      <footer className="bg-slate-100 text-slate-500 py-16 px-6 border-t border-slate-200 relative z-10 transition-colors duration-300" id="about">
         <div data-animate="footer-stagger" className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
           
           <div>
@@ -1393,56 +1364,56 @@ export default function LandingPage() {
                 <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-lg font-bold tracking-tight">
-                <span className="text-slate-900 dark:text-white font-sans transition-colors duration-300">Fleet </span>
+                <span className="text-slate-900 font-sans transition-colors duration-300">Fleet </span>
                 <span className="text-[#00e676] font-sans">Guard</span>
               </span>
             </div>
-            <p className="text-xs leading-relaxed text-slate-650 dark:text-slate-400 max-w-xs font-sans transition-colors duration-300">
+            <p className="text-xs leading-relaxed text-slate-650 max-w-xs font-sans transition-colors duration-300">
               {t('footer.tagline')}
             </p>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.product')}</h4>
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.product')}</h4>
             <ul className="space-y-2.5 text-xs font-semibold font-sans">
-              <li><a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.features')}</a></li>
-              <li><a href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.howItWorks')}</a></li>
-              <li><Link to="/dashboard" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('footer.liveDemo')}</Link></li>
-              <li><a href="#demo" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.bookDemo')}</a></li>
+              <li><a href="#features" className="hover:text-slate-900:text-white transition-colors">{t('nav.features')}</a></li>
+              <li><a href="#how-it-works" className="hover:text-slate-900:text-white transition-colors">{t('nav.howItWorks')}</a></li>
+              <li><Link to="/dashboard" className="hover:text-slate-900:text-white transition-colors">{t('footer.liveDemo')}</Link></li>
+              <li><a href="#demo" className="hover:text-slate-900:text-white transition-colors">{t('nav.bookDemo')}</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.company')}</h4>
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.company')}</h4>
             <ul className="space-y-2.5 text-xs font-semibold font-sans">
-              <li><a href="#about" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.about')}</a></li>
-              <li><a href="#" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('footer.testimonials')}</a></li>
-              <li><a href="#" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('footer.careers')}</a></li>
-              <li><a href="#" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('footer.blog')}</a></li>
+              <li><a href="#about" className="hover:text-slate-900:text-white transition-colors">{t('nav.about')}</a></li>
+              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.testimonials')}</a></li>
+              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.careers')}</a></li>
+              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.blog')}</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.contact')}</h4>
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.contact')}</h4>
             <ul className="space-y-2.5 text-xs font-semibold font-sans">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#00c853]" />
-                <a href="mailto:fleetguardinfo@gmail.com" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                <a href="mailto:fleetguardinfo@gmail.com" className="hover:text-slate-900:text-white transition-colors">
                   fleetguardinfo@gmail.com
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Instagram className="w-4 h-4 text-[#00c853]" />
-                <a href="#" className="hover:text-slate-900 dark:hover:text-white transition-colors">Instagram</a>
+                <a href="#" className="hover:text-slate-900:text-white transition-colors">Instagram</a>
               </li>
             </ul>
           </div>
 
         </div>
 
-        <div data-animate="fade-in" className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 dark:border-slate-900 flex items-center justify-between transition-colors duration-300">
-          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-600 font-sans transition-colors duration-300">{t('footer.copyright')}</p>
-          <div className="flex items-center gap-4 text-slate-450 dark:text-slate-700 transition-colors duration-300">
+        <div data-animate="fade-in" className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 flex items-center justify-between transition-colors duration-300">
+          <p className="text-[10px] font-semibold text-slate-500 font-sans transition-colors duration-300">{t('footer.copyright')}</p>
+          <div className="flex items-center gap-4 text-slate-450 transition-colors duration-300">
             <Truck className="w-4 h-4" />
             <BarChart3 className="w-4 h-4" />
           </div>

@@ -9,7 +9,8 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getInitials } from '@/utils/formatters';
-import { SUGGESTED_PROMPTS, getMockResponse } from '@/data/chatMockData';
+import { SUGGESTED_PROMPTS } from '@/data/chatMockData';
+import api from '@/api/client';
 
 // ── Message Types ──
 function ChatMessageBubble({ message }) {
@@ -163,6 +164,7 @@ export default function ChatBox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -172,7 +174,7 @@ export default function ChatBox() {
     if (cached) setUser(JSON.parse(cached));
   }, []);
 
-  const handleSend = useCallback((text) => {
+  const handleSend = useCallback(async (text) => {
     const messageText = text || input.trim();
     if (!messageText) return;
 
@@ -187,28 +189,54 @@ export default function ChatBox() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response with streaming delay
-    setTimeout(() => {
-      const response = getMockResponse(messageText);
+    try {
+      const payload = {
+        message: messageText,
+      };
+      if (conversationId) {
+        payload.conversation_id = conversationId;
+      }
+      if (location.state?.context) {
+        payload.context = location.state.context;
+      }
+
+      const response = await api.copilot.chat(payload);
+      
+      if (response.conversation_id && !conversationId) {
+        setConversationId(response.conversation_id);
+      }
+
       const aiMsg = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: response,
+        content: { text: response.message },
         timestamp: new Date(),
       };
-      setIsTyping(false);
       setMessages(prev => [...prev, aiMsg]);
-    }, 1200 + Math.random() * 800);
-  }, [input]);
+    } catch (err) {
+      console.error("Copilot chat error:", err);
+      const errorMsg = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: { text: "I'm sorry, I encountered an error while processing your request. Please try again later." },
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
+    }
+  }, [input, conversationId, location.state]);
 
   // Handle initial message from search bar navigation
+  const initialMessageSent = useRef(false);
   useEffect(() => {
-    if (location.state?.initialMessage) {
+    if (location.state?.initialMessage && !initialMessageSent.current) {
+      initialMessageSent.current = true;
       handleSend(location.state.initialMessage);
       // Clean up navigation state
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, handleSend]);
+  }, [location.state]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -360,8 +388,8 @@ export default function ChatBox() {
             className={cn(
               'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
               input.trim()
-                ? 'bg-fg-green hover:bg-fg-green-bright text-fg-dark cursor-pointer'
-                : 'bg-white/[0.03] text-fg-text-sec/40 cursor-not-allowed'
+                ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-green'
+                : 'bg-surface-tertiary text-content-muted cursor-not-allowed'
             )}
           >
             <Send className="w-4 h-4" />

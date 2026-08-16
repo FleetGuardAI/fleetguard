@@ -200,7 +200,7 @@ export default function TripDetail() {
                   const isLast = idx === trip.timeline.length - 1;
                   return (
                     <div key={idx} className="relative">
-                      <div className={`absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ${isLast ? 'bg-brand-600 scale-110' : 'bg-content-muted'}`} />
+                      <div className={`absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm ${isLast ? 'bg-brand-600 scale-110' : 'bg-content-muted'}`} />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-semibold ${isLast ? 'text-brand-600' : 'text-content'}`}>

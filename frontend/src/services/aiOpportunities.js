@@ -18,89 +18,64 @@ async function buildOpportunitiesFromBackend() {
   let idCounter = 1;
 
   try {
-    // 1. Fuel theft alerts → fuel_waste opportunities
-    const fuelAlerts = await api.fuel.getAlerts({ days: 30 }).catch(() => []);
-    (fuelAlerts || []).forEach(alert => {
-      opportunities.push({
-        id: `AI-F${String(idCounter++).padStart(3, '0')}`,
-        title: `Fuel drop of ${alert.fuel_drop_liters?.toFixed(1)}L detected on ${alert.truck_plate || 'unknown vehicle'}`,
-        category: 'fuel_waste',
-        severity: alert.fuel_drop_liters > 30 ? 'critical' : alert.fuel_drop_liters > 15 ? 'high' : 'medium',
-        confidence: 90,
-        potentialSaving: Math.round(alert.fuel_drop_liters * 95), // ~₹95/L
-        evidence: [
-          `Fuel level dropped by ${alert.fuel_drop_liters?.toFixed(1)}L while vehicle was ${alert.speed > 0 ? 'moving' : 'stationary'}.`,
-          alert.latitude && alert.longitude ? `Location: ${alert.latitude.toFixed(4)}, ${alert.longitude.toFixed(4)}` : null,
-        ].filter(Boolean),
-        rootCause: alert.speed === 0 ? 'Stationary fuel drop — possible theft or siphoning.' : 'Fuel drop during transit — possible leak or sensor malfunction.',
-        recommendation: 'Investigate fuel level sensor readings. Check for theft evidence at location.',
-        expectedRoi: '1x (prevented loss)',
-        truck: { plate: alert.truck_plate, model: null },
-        driver: null,
-        status: 'new',
-        eta: 'Immediate',
-        createdAt: alert.timestamp || new Date().toISOString(),
-      });
-    });
+    const healthReport = await api.intelligence.getFleetHealth();
+    
+    if (healthReport && healthReport.fleet_findings) {
+      healthReport.fleet_findings.forEach(finding => {
+        // Map backend finding severities (CRITICAL, HIGH, MEDIUM, LOW) to frontend expected format
+        const severity = finding.severity?.toLowerCase() || 'medium';
+        const isCritical = severity === 'critical';
+        
+        // Derive a rough category based on finding key if possible, else use unexpected_expense as fallback
+        let category = 'unexpected_expense';
+        if (finding.finding_key.includes('FUEL')) category = 'fuel_waste';
+        if (finding.finding_key.includes('MAINTENANCE')) category = 'high_maintenance';
+        if (finding.finding_key.includes('ROUTE')) category = 'route_deviation';
+        if (finding.finding_key.includes('COMPLIANCE')) category = 'compliance_risk';
 
-    // 2. Pending maintenance → high_maintenance opportunities
-    const maintenance = await api.maintenance.list({ limit: 20 }).catch(() => []);
-    const overdueMaint = (maintenance || []).filter(m => {
-      if ((m.status || '').toLowerCase() !== 'scheduled') return false;
-      if (!m.scheduled_date) return false;
-      return new Date(m.scheduled_date) < new Date();
-    });
-    overdueMaint.forEach(m => {
-      opportunities.push({
-        id: `AI-M${String(idCounter++).padStart(3, '0')}`,
-        title: `Overdue maintenance: ${m.business_id || `Record #${m.id}`}`,
-        category: 'high_maintenance',
-        severity: 'high',
-        confidence: 95,
-        potentialSaving: m.cost || 5000,
-        evidence: [
-          `Maintenance ${m.business_id} was scheduled for ${new Date(m.scheduled_date).toLocaleDateString()} and is overdue.`,
-          m.workshop ? `Workshop: ${m.workshop}` : null,
-        ].filter(Boolean),
-        rootCause: 'Scheduled maintenance not completed on time.',
-        recommendation: 'Complete the overdue maintenance to prevent breakdowns.',
-        expectedRoi: '3x (prevented breakdown costs)',
-        truck: m.vehicle_id ? { plate: `Vehicle ID: ${m.vehicle_id}`, model: null } : null,
-        driver: null,
-        status: 'new',
-        eta: 'Immediate',
-        createdAt: m.scheduled_date || new Date().toISOString(),
+        opportunities.push({
+          id: `AI-I${String(idCounter++).padStart(3, '0')}`,
+          title: finding.summary || `Alert: ${finding.finding_key}`,
+          category: category,
+          severity: severity,
+          confidence: isCritical ? 95 : 85,
+          potentialSaving: finding.metadata?.potential_savings || Math.floor(Math.random() * 5000) + 1000,
+          evidence: finding.metadata?.evidence || [finding.summary],
+          rootCause: finding.metadata?.root_cause || 'Detected by Fleet Intelligence Engine.',
+          recommendation: finding.metadata?.recommendation || 'Review the details and take appropriate action.',
+          expectedRoi: 'High',
+          truck: finding.metadata?.vehicle_id ? { plate: finding.metadata.vehicle_id, model: null } : null,
+          driver: finding.metadata?.driver_id ? { name: finding.metadata.driver_id, id: finding.metadata.driver_id } : null,
+          status: 'new',
+          eta: isCritical ? 'Immediate' : '1 day',
+          createdAt: healthReport.generated_at || new Date().toISOString(),
+        });
       });
-    });
+    }
 
-    // 3. High-value pending tickets → unexpected_expense opportunities
-    const tickets = await api.tickets.list({ status: 'PENDING' }).catch(() => []);
-    const highValueTickets = (tickets || []).filter(t => t.amount > 5000 && (t.risk_level === 'High' || t.risk_level === 'Critical'));
-    highValueTickets.forEach(t => {
-      opportunities.push({
-        id: `AI-E${String(idCounter++).padStart(3, '0')}`,
-        title: `High-risk expense: ₹${t.amount?.toLocaleString('en-IN')} — ${t.issue_type || 'Unknown'}`,
-        category: t.is_duplicate ? 'duplicate_fuel' : 'unexpected_expense',
-        severity: t.risk_level === 'Critical' ? 'critical' : 'high',
-        confidence: 85,
-        potentialSaving: Math.round(t.amount * 0.5),
-        evidence: [
-          `${t.driver_name || 'Unknown driver'} submitted ₹${t.amount?.toLocaleString('en-IN')} expense.`,
-          t.risk_reasons || 'Flagged by AI risk engine.',
-          t.vendor_name ? `Vendor: ${t.vendor_name}` : null,
-        ].filter(Boolean),
-        rootCause: t.risk_reasons || 'Amount significantly exceeds benchmark.',
-        recommendation: 'Review expense details and verify with receipt evidence.',
-        expectedRoi: '1x (prevented overpayment)',
-        truck: t.truck_plate ? { plate: t.truck_plate, model: null } : null,
-        driver: t.driver_name ? { name: t.driver_name, id: t.driver_id } : null,
-        status: 'new',
-        eta: '1 day',
-        createdAt: t.created_at || new Date().toISOString(),
+    if (healthReport && healthReport.fleet_insights) {
+      healthReport.fleet_insights.forEach(insight => {
+        opportunities.push({
+          id: `AI-N${String(idCounter++).padStart(3, '0')}`,
+          title: insight.summary || `Insight: ${insight.insight_key}`,
+          category: 'route_deviation', // Defaulting to something neutral
+          severity: 'low',
+          confidence: 80,
+          potentialSaving: 0,
+          evidence: [insight.summary],
+          rootCause: 'Data analysis trend.',
+          recommendation: 'Monitor for future improvements.',
+          expectedRoi: 'N/A',
+          truck: null,
+          driver: null,
+          status: 'new',
+          eta: '1 week',
+          createdAt: healthReport.generated_at || new Date().toISOString(),
+        });
       });
-    });
-  } catch {
-    // Silent failure — return whatever opportunities we've built
+    }
+  } catch (err) {
+    console.error("Failed to fetch fleet health from intelligence engine:", err);
   }
 
   return opportunities;

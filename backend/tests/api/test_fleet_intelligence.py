@@ -1,14 +1,29 @@
 import pytest
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
+from main import app
 
-@pytest.mark.asyncio
-async def test_get_fleet_health_endpoint(async_client: AsyncClient, access_token: str):
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+@pytest.fixture(scope="module")
+def access_token(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@example.com", "password": "password", "remember_me": True}
+    )
+    assert response.status_code == 200, "Failed to login for test setup. Ensure seed data exists."
+    return response.json()["access_token"]
+
+
+def test_get_fleet_health_endpoint(client: TestClient, access_token: str):
     """
     Verify that the fleet intelligence API can be called successfully
     by an authenticated user, returning a valid schema representing
     the fleet's current health status.
     """
-    response = await async_client.get(
+    response = client.get(
         "/api/v1/intelligence/fleet-health",
         headers={"Authorization": f"Bearer {access_token}"}
     )
@@ -25,10 +40,10 @@ async def test_get_fleet_health_endpoint(async_client: AsyncClient, access_token
     assert isinstance(data["vehicle_count"], int)
     assert isinstance(data["fleet_summary"], str)
 
-@pytest.mark.asyncio
-async def test_get_fleet_health_unauthorized(async_client: AsyncClient):
+
+def test_get_fleet_health_unauthorized(client: TestClient):
     """
     Verify that unauthorized access is blocked.
     """
-    response = await async_client.get("/api/v1/intelligence/fleet-health")
+    response = client.get("/api/v1/intelligence/fleet-health")
     assert response.status_code == 401

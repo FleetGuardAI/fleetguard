@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/validators.dart';
+import '../../data/auth_repository.dart';
 
-class PhoneVerificationScreen extends StatefulWidget {
+class PhoneVerificationScreen extends ConsumerStatefulWidget {
   final String companyName;
   final String inviteToken;
 
@@ -16,10 +18,10 @@ class PhoneVerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
+  ConsumerState<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
 }
 
-class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
+class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -31,41 +33,75 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1)); // Simulate API
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.sendOtp(_phoneController.text.trim());
 
-    setState(() {
-      _isLoading = false;
-      _otpSent = true;
-    });
+      setState(() {
+        _isLoading = false;
+        _otpSent = true;
+      });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('OTP sent! Use demo code: ${AppConfig.demoOtpCode}')),
-      );
+      if (mounted) {
+        final demoOtp = response['demo_otp'] ?? '123456';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('OTP sent! Use code: $demoOtp')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send OTP: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
     }
   }
 
   void _verifyOtp() async {
-    if (_otpController.text.trim() != AppConfig.demoOtpCode && _otpController.text.length != 6) {
+    if (_otpController.text.trim().length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid OTP. Use demo OTP: 123456')),
+        const SnackBar(content: Text('Invalid OTP length.')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
+    
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.verifyOtp(
+        _phoneController.text.trim(), 
+        _otpController.text.trim(), 
+        widget.inviteToken,
+      );
 
-    // Save demo credentials to SecureStorage
-    await SecureStorage.setPhoneNumber(_phoneController.text.trim());
-    await SecureStorage.setAccessToken("demo_jwt_access_token_driver_2026");
-    await SecureStorage.setDriverId(1);
-    await SecureStorage.setVerificationStatus("PENDING_DOCUMENTS");
+      // Save credentials to SecureStorage
+      await SecureStorage.setPhoneNumber(_phoneController.text.trim());
+      await SecureStorage.setAccessToken(response['access_token']);
+      if (response['driver_id'] != null) {
+        await SecureStorage.setDriverId(response['driver_id']);
+      }
+      if (response['verification_status'] != null) {
+        await SecureStorage.setVerificationStatus(response['verification_status']);
+      }
 
-    setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
 
-    if (mounted) {
-      context.go('/auth/profile');
+      if (mounted) {
+        if (response['is_new_driver'] == true || response['verification_status'] != 'APPROVED') {
+          context.go('/auth/profile');
+        } else {
+          context.go('/home'); // Send straight to home if already approved
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid OTP or verify failed'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
     }
   }
 

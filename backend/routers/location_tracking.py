@@ -17,6 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.driver_domain import Driver
 from models.location_tracking import DriverLocation, LocationSource
+from models.trip_domain import Trip, TripStatus
+from models.vehicle_domain import Vehicle
+from models.user import User
+from services.auth_service import get_current_user
 
 logger = logging.getLogger("fleetguard.tracking")
 
@@ -66,6 +70,9 @@ class LiveDriverLocation(BaseModel):
     battery_percent: Optional[int] = None
     duty_status: Optional[str] = None
     last_updated: Optional[datetime] = None
+    vehicle_id: Optional[int] = None
+    vehicle_registration: Optional[str] = None
+    trip_id: Optional[str] = None
 
 
 # ==========================================================================
@@ -179,23 +186,26 @@ async def get_driver_location_history(
 
 @router.get("/api/v1/tracking/fleet/live", response_model=List[LiveDriverLocation])
 async def get_fleet_live_locations(
-    company_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get live locations of all active drivers in the fleet.
     Used by the dashboard's live map view.
     """
-    query = select(Driver).where(
-        Driver.last_known_lat.isnot(None),
-        Driver.last_known_lng.isnot(None),
+    query = (
+        select(Driver, Vehicle, Trip)
+        .outerjoin(Vehicle, Vehicle.assigned_driver_id == Driver.id)
+        .outerjoin(Trip, (Trip.driver_id == Driver.id) & (Trip.status == TripStatus.IN_PROGRESS))
+        .where(
+            Driver.last_known_lat.isnot(None),
+            Driver.last_known_lng.isnot(None),
+            Driver.company_id == current_user.company_id
+        )
     )
 
-    if company_id:
-        query = query.where(Driver.company_id == company_id)
-
     result = await db.execute(query)
-    drivers = result.scalars().all()
+    rows = result.all()
 
     return [LiveDriverLocation(
         driver_id=d.id,
@@ -204,7 +214,10 @@ async def get_fleet_live_locations(
         longitude=d.last_known_lng or 0.0,
         duty_status=d.duty_status.value if d.duty_status else None,
         last_updated=d.last_location_at,
-    ) for d in drivers]
+        vehicle_id=v.id if v else None,
+        vehicle_registration=v.registration_number if v else None,
+        trip_id=t.trip_id if t else None
+    ) for d, v, t in rows]
 
 
 @router.post("/api/v1/tracking/compare-gps")

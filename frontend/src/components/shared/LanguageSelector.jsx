@@ -48,9 +48,9 @@ export function LanguageSelector({ variant = 'dark', className }) {
   const triggerColors = {
     light: 'text-white/80 hover:text-white hover:bg-white/10',
     dark: 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
-    adaptive: 'text-content-secondary hover:text-content hover:bg-surface-secondary',
-    'glass-transparent': 'text-white/90 hover:text-white bg-white/10 dark:bg-white/5 hover:bg-white/15 dark:hover:bg-white/10 border border-white/15 dark:border-white/10 rounded-full shadow-sm backdrop-blur-md',
-    'glass-scrolled': 'text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 dark:bg-slate-900/50 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800/80 rounded-full shadow-sm backdrop-blur-md',
+    adaptive: 'text-content-secondary hover:text-content hover:bg-surface-tertiary',
+    'glass-transparent': 'text-white/90 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 rounded-full shadow-sm backdrop-blur-md',
+    'glass-scrolled': 'text-slate-700 hover:text-slate-900 bg-slate-100/80 hover:bg-slate-200/50 border border-slate-200/80 rounded-full shadow-sm backdrop-blur-md',
   };
 
   return (
@@ -74,8 +74,8 @@ export function LanguageSelector({ variant = 'dark', className }) {
           className={cn(
             'absolute top-full right-0 mt-2 z-50 w-52 py-1.5 rounded-xl shadow-xl border animate-fade-in',
             'bg-white border-slate-200 overflow-hidden',
-            variant === 'adaptive' && 'bg-surface border-border',
-            variant.startsWith('glass') && 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-slate-200/80 dark:border-slate-800/80 shadow-2xl'
+            variant === 'adaptive' && 'bg-white border-border',
+            variant.startsWith('glass') && 'bg-white/95 backdrop-blur-lg border-slate-200/80 shadow-2xl'
           )}
         >
           <div className={cn(
@@ -97,15 +97,15 @@ export function LanguageSelector({ variant = 'dark', className }) {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left',
                   lang === langItem.code
-                    ? 'bg-green-50 text-green-700 font-semibold'
+                    ? 'bg-brand-50 text-brand-700 font-semibold'
                     : variant === 'adaptive'
-                      ? 'text-content hover:bg-surface-secondary'
+                      ? 'text-content hover:bg-surface-tertiary'
                       : 'text-slate-700 hover:bg-slate-50'
                 )}
               >
                 <span className="text-base">{langItem.flag}</span>
                 <span className="flex-1">{langItem.label}</span>
-                {lang === langItem.code && <Check className="w-3.5 h-3.5 text-green-600" />}
+                {lang === langItem.code && <Check className="w-3.5 h-3.5 text-brand-500" />}
               </button>
             ))}
           </div>

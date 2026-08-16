@@ -217,7 +217,7 @@ export default function FuelDashboard() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'logs'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -228,7 +228,7 @@ export default function FuelDashboard() {
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
             activeTab === 'analytics'
-              ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+              ? "border-brand-600 text-brand-600"
               : "border-transparent text-content-secondary hover:text-content"
           )}
         >
@@ -334,11 +334,11 @@ export default function FuelDashboard() {
                   Theft Detection Analytics
                 </CardTitle>
               </CardHeader>
-              <div className="p-4 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl">
-                <p className="text-xs text-rose-900 dark:text-rose-400 font-medium">
+              <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-xl">
+                <p className="text-xs text-rose-900 font-medium">
                   EMA Siphon Telemetry Check:
                 </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                   Sudden drops exceeding 15 Liters while truck velocity matches 0 km/h trigger instant owner alerts.
                 </p>
               </div>
@@ -352,7 +352,7 @@ export default function FuelDashboard() {
                     <p className="text-[10px] text-content-secondary">
                       {new Date(item.timestamp).toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/10 px-2 py-1 rounded mt-1">
+                    <p className="text-[10px] text-rose-700 bg-rose-50 px-2 py-1 rounded mt-1">
                       {item.fuel_drop_liters > 25 ? 'Suspected Siphon Siphonage' : 'Anomalous Drop'}
                     </p>
                   </div>

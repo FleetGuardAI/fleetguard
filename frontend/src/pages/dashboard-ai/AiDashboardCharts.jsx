@@ -16,7 +16,7 @@ function SparklineTooltip({ active, payload, prefix = '', suffix = '' }) {
   if (!active || !payload?.length) return null;
   const value = payload[0].value;
   return (
-    <div className="bg-fg-deep border border-fg-border px-2 py-1 rounded-lg shadow-sm text-xs font-medium text-fg-text">
+    <div className="bg-white border border-border px-2 py-1 rounded-lg shadow-elevated text-xs font-medium text-content">
       {prefix}
       {typeof value === 'number' ? value.toLocaleString('en-IN') : value ?? '—'}
       {suffix}
@@ -128,7 +128,7 @@ export function AiDashboardCharts() {
                     <YAxis hide domain={['dataMin - 10%', 'dataMax + 10%']} />
                     <Tooltip
                       content={<SparklineTooltip prefix={chart.prefix} suffix={chart.suffix} />}
-                      cursor={{ stroke: 'rgba(255,255,255,0.05)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      cursor={{ stroke: 'rgba(34,197,94,0.1)', strokeWidth: 1, strokeDasharray: '3 3' }}
                     />
                     <Area
                       type="monotone"
@@ -137,7 +137,7 @@ export function AiDashboardCharts() {
                       strokeWidth={1.5}
                       fill={`url(#gradient-${chart.id})`}
                       dot={false}
-                      activeDot={{ r: 3, stroke: chart.stroke, strokeWidth: 1.5, fill: '#050B09' }}
+                      activeDot={{ r: 3, stroke: chart.stroke, strokeWidth: 1.5, fill: '#FFFFFF' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

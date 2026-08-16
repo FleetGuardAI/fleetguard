@@ -181,9 +181,9 @@ export function AiOpportunityCard({ opportunity, onAssign, onSchedule, onDismiss
     <div
       className={cn(
         'w-[350px] sm:w-[380px] md:w-[420px] flex-shrink-0 rounded-2xl transition-all duration-300 ease-out',
-        'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-border/40',
+        'bg-white/80 backdrop-blur-xl border border-border/40',
         'shadow-card hover:shadow-elevated hover:-translate-y-2',
-        expanded ? 'ring-2 ring-brand-500/20 shadow-elevated bg-white dark:bg-slate-900' : ''
+        expanded ? 'ring-2 ring-brand-500/20 shadow-elevated bg-white' : ''
       )}
       style={{
         transform: expanded ? 'translateY(-8px)' : '',
@@ -193,7 +193,7 @@ export function AiOpportunityCard({ opportunity, onAssign, onSchedule, onDismiss
         <div>
           {/* Card Top: AI tag, Confidence, Severity */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 text-[11px] font-semibold">
+            <div className="flex items-center gap-1.5 text-brand-600 text-[11px] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>AI COPILOT</span>
             </div>
@@ -212,7 +212,7 @@ export function AiOpportunityCard({ opportunity, onAssign, onSchedule, onDismiss
           </div>
 
           {/* Narrative Text */}
-          <p className="text-[14px] text-content-secondary leading-relaxed tracking-wide font-normal mb-5 prose dark:prose-invert min-h-[75px]">
+          <p className="text-[14px] text-content-secondary leading-relaxed tracking-wide font-normal mb-5 prose min-h-[75px]">
             {getConversationalNarrative(o)}
           </p>
 
@@ -224,7 +224,7 @@ export function AiOpportunityCard({ opportunity, onAssign, onSchedule, onDismiss
             </div>
             <div className="text-right">
               <span className="text-[10px] text-content-muted uppercase tracking-wider block">ROI</span>
-              <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">{o.expectedRoi}</span>
+              <span className="text-xs font-semibold text-brand-600">{o.expectedRoi}</span>
             </div>
           </div>
 

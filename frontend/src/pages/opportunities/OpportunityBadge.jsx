@@ -2,57 +2,57 @@ import { cn } from '@/utils/cn';
 
 const priorityConfig = {
   high: {
-    bg: 'bg-red-50 dark:bg-red-950/40',
-    text: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-50',
+    text: 'text-red-600',
     dot: 'bg-red-500',
-    border: 'border-red-200 dark:border-red-800/50',
+    border: 'border-red-200',
   },
   medium: {
-    bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50',
+    text: 'text-amber-600',
     dot: 'bg-amber-500',
-    border: 'border-amber-200 dark:border-amber-800/50',
+    border: 'border-amber-200',
   },
   low: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-    text: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-600',
     dot: 'bg-emerald-500',
-    border: 'border-emerald-200 dark:border-emerald-800/50',
+    border: 'border-emerald-200',
   },
 };
 
 const statusConfig = {
   available: {
-    bg: 'bg-blue-50 dark:bg-blue-950/40',
-    text: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-50',
+    text: 'text-blue-600',
     dot: 'bg-blue-500',
     label: 'Available',
   },
   accepted: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-    text: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-600',
     dot: 'bg-emerald-500',
     label: 'Accepted',
   },
   expired: {
-    bg: 'bg-gray-100 dark:bg-gray-800/60',
-    text: 'text-gray-500 dark:text-gray-400',
+    bg: 'bg-gray-100',
+    text: 'text-gray-500',
     dot: 'bg-gray-400',
     label: 'Expired',
   },
   negotiating: {
-    bg: 'bg-purple-50 dark:bg-purple-950/40',
-    text: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-50',
+    text: 'text-purple-600',
     dot: 'bg-purple-500',
     label: 'Negotiating',
   },
 };
 
 const sourceConfig = {
-  broker: { label: 'Broker', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' },
-  marketplace: { label: 'Marketplace', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
-  whatsapp: { label: 'WhatsApp', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  direct: { label: 'Direct', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  broker: { label: 'Broker', color: 'bg-sky-100 text-sky-700' },
+  marketplace: { label: 'Marketplace', color: 'bg-violet-100 text-violet-700' },
+  whatsapp: { label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
+  direct: { label: 'Direct', color: 'bg-orange-100 text-orange-700' },
 };
 
 /**

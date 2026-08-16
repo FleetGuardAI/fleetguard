@@ -2,11 +2,11 @@ import { Eye, MessageSquare, CheckCircle2, Plus, Clock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 const typeConfig = {
-  created: { icon: Plus, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40' },
-  viewed: { icon: Eye, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/40' },
-  note: { icon: MessageSquare, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/40' },
-  accepted: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
-  default: { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-50 dark:bg-gray-800' },
+  created: { icon: Plus, color: 'text-blue-500', bg: 'bg-blue-50' },
+  viewed: { icon: Eye, color: 'text-purple-500', bg: 'bg-purple-50' },
+  note: { icon: MessageSquare, color: 'text-amber-500', bg: 'bg-amber-50' },
+  accepted: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  default: { icon: Clock, color: 'text-gray-400', bg: 'bg-gray-50' },
 };
 
 /**

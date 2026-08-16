@@ -1,6 +1,9 @@
+import 'dart:math';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:dio/dio.dart';
 
 import '../storage/local_database.dart';
+import '../storage/secure_storage.dart';
 import '../utils/logger.dart';
 
 /// Local notification service — works without Firebase for demo.
@@ -37,6 +40,28 @@ class NotificationService {
 
     _initialized = true;
     AppLogger.info('Notification service initialized');
+  }
+
+  /// Register FCM token with backend
+  static Future<void> registerFcmToken(Dio dio) async {
+    try {
+      final mockToken = 'mock_fcm_token_${Random().nextInt(999999)}';
+      AppLogger.info('Mock FCM Token generated: $mockToken');
+      
+      final driverId = await SecureStorage.getDriverId();
+      if (driverId != null) {
+        await dio.put(
+          '/api/v1/driver-app/fcm-token', 
+          queryParameters: {'driver_id': driverId},
+          data: {
+            'fcm_token': mockToken,
+          },
+        );
+        AppLogger.info('FCM Token successfully registered with backend.');
+      }
+    } catch (e) {
+      AppLogger.error('Failed to register FCM token: $e');
+    }
   }
 
   /// Show a local notification

@@ -106,7 +106,7 @@ export function NotificationBell() {
                     key={n.id}
                     className={cn(
                       'px-4 py-3 hover:bg-surface-secondary/50 transition-colors cursor-pointer',
-                      !n.read && 'bg-brand-50/50 dark:bg-brand-900/10'
+                      !n.read && 'bg-brand-50/50'
                     )}
                   >
                     <div className="flex gap-3">

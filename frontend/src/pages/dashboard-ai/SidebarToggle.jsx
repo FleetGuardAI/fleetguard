@@ -13,8 +13,8 @@ export function SidebarToggle({ collapsed, onClick, className }) {
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={cn(
-        'w-6 h-6 rounded-full bg-slate-900 border border-white/10 shadow-elevated',
-        'flex items-center justify-center text-gray-400 hover:text-white',
+        'w-6 h-6 rounded-full bg-white border border-border shadow-elevated',
+        'flex items-center justify-center text-content-muted hover:text-brand-500',
         'transition-colors duration-200 cursor-pointer focus:outline-none',
         className
       )}

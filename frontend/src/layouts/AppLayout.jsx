@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Menu, Moon, Sun, Settings } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { getCurrentUser } from '@/api/authApi';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { Loader } from '@/components/ui/Loader';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
-import { useTheme } from '@/theme/ThemeContext';
 import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { NotificationBell } from '@/components/shared/NotificationDropdown';
 import { getInitials } from '@/utils/formatters';
+
+const SIDEBAR_WIDTH = 240;
 
 export default function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,7 +19,6 @@ export default function AppLayout() {
   
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     let active = true;
@@ -41,14 +41,14 @@ export default function AppLayout() {
 
   if (authChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-fg-dark text-fg-text">
+      <div className="flex items-center justify-center min-h-screen bg-white text-content">
         <Loader size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-fg-dark text-fg-text relative">
+    <div className="min-h-screen bg-surface-base text-content relative overflow-x-hidden">
       <Sidebar
         collapsed={false}
         onToggle={() => {}}
@@ -56,23 +56,21 @@ export default function AppLayout() {
         onMobileClose={() => setMobileMenuOpen(false)}
       />
 
-      {/* Floating Glass Utility Cluster */}
+      {/* Floating Utility Cluster — pinned top-right */}
       {!isMobile && (
-        <div className="fixed top-4 right-6 z-40 flex items-center gap-2 p-1.5 rounded-2xl bg-surface/40 backdrop-blur-md border border-border shadow-sm hover:shadow-fg-glow transition-all duration-300">
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-content-secondary hover:text-content hover:bg-surface-secondary transition-colors"
-            title="Toggle Theme"
-          >
-            {theme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
-          </button>
+        <div
+          className="fixed top-4 right-6 z-40 flex items-center gap-2 p-1.5 rounded-2xl bg-white/80 backdrop-blur-xl border border-border shadow-card hover:shadow-elevated transition-all duration-300"
+          role="toolbar"
+          aria-label="Utility toolbar"
+        >
           <LanguageSelector variant="adaptive" />
           <NotificationBell />
           <button
             onClick={() => navigate('/dashboard/profile')}
-            className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl hover:bg-surface-secondary transition-colors border-l border-border/50 ml-1"
+            className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl hover:bg-surface-tertiary transition-colors border-l border-border/50 ml-1"
+            aria-label="View profile"
           >
-            <div className="w-7 h-7 rounded-full bg-fg-green/10 flex items-center justify-center text-[10px] font-bold text-fg-green border border-fg-green/20">
+            <div className="w-7 h-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand-600 border border-brand-200">
               {getInitials(user?.name || 'Dev1')}
             </div>
             <div className="hidden lg:block text-left">
@@ -84,14 +82,17 @@ export default function AppLayout() {
 
       <div className={cn(
         'transition-all duration-300 min-h-screen flex flex-col',
-        isMobile ? 'ml-0' : 'ml-[200px]'
-      )}>
+        isMobile ? 'ml-0' : `ml-[${SIDEBAR_WIDTH}px]`
+      )}
+        style={!isMobile ? { marginLeft: `${SIDEBAR_WIDTH}px` } : undefined}
+      >
         {isMobile && (
-          <header className="sticky top-0 z-20 h-14 bg-fg-deep/90 backdrop-blur-md border-b border-white/[0.07] flex items-center px-4 justify-between md:hidden">
+          <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur-md border-b border-border flex items-center px-4 justify-between md:hidden">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-lg text-fg-text-sec hover:text-fg-text hover:bg-white/[0.05]"
+              className="p-2 rounded-lg text-content-secondary hover:text-content hover:bg-surface-tertiary"
               title="Open Navigation Menu"
+              aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -99,11 +100,14 @@ export default function AppLayout() {
               <div className="w-6 h-6 flex items-center justify-center">
                 <img src="/assets/fleetguard-logo.png" alt="FleetGuard" className="w-full h-full object-contain" />
               </div>
-              <span className="text-sm font-bold text-fg-text">Fleet<span className="text-fg-green">Guard</span></span>
+              <span className="text-sm font-bold text-content">Fleet<span className="text-brand-500">Guard</span></span>
+            </div>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
             </div>
           </header>
         )}
-        <main className="p-4 md:p-6 lg:p-8 flex-1 fg-scrollbar">
+        <main className="p-4 md:p-6 lg:p-8 lg:pt-24 flex-1 fg-scrollbar">
           <Outlet />
         </main>
       </div>

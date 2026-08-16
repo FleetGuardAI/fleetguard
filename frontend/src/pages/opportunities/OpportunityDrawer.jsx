@@ -91,15 +91,15 @@ export function OpportunityDrawer({ opportunity, open, onClose, onAccept, onReje
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
             {/* Route card */}
-            <div className="rounded-xl bg-gradient-to-r from-brand-50 to-emerald-50 dark:from-brand-950/20 dark:to-emerald-950/20 border border-brand-100 dark:border-brand-900/30 p-4">
+            <div className="rounded-xl bg-gradient-to-r from-brand-50 to-emerald-50 border border-brand-100 p-4">
               <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-3">
                 Complete Route
               </h4>
               <div className="space-y-3">
                 {/* Pickup */}
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div>
                     <p className="text-xs text-content-muted">Pickup</p>
@@ -117,8 +117,8 @@ export function OpportunityDrawer({ opportunity, open, onClose, onAccept, onReje
 
                 {/* Drop */}
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-4 w-4 text-red-600" />
                   </div>
                   <div>
                     <p className="text-xs text-content-muted">Drop</p>
@@ -168,9 +168,9 @@ export function OpportunityDrawer({ opportunity, open, onClose, onAccept, onReje
             {/* Special instructions */}
             {o.specialInstructions && (
               <Section title="Special Instructions">
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-100">
                   <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+                  <p className="text-sm text-amber-800 leading-relaxed">
                     {o.specialInstructions}
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export function OpportunityDrawer({ opportunity, open, onClose, onAccept, onReje
                   {o.documents.map((doc, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface-secondary border border-border rounded-lg text-content-secondary hover:border-brand-300 dark:hover:border-brand-700 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface-secondary border border-border rounded-lg text-content-secondary hover:border-brand-300:border-brand-700 transition-colors cursor-pointer"
                     >
                       <FileText className="h-3 w-3" />
                       {doc}
@@ -315,7 +315,7 @@ function DetailRow({ icon: Icon, label, value, link, highlight }) {
   const content = (
     <span className={cn(
       'text-sm',
-      highlight ? 'font-bold text-brand-600 dark:text-brand-400' : 'text-content'
+      highlight ? 'font-bold text-brand-600' : 'text-content'
     )}>
       {value || '—'}
     </span>
@@ -328,7 +328,7 @@ function DetailRow({ icon: Icon, label, value, link, highlight }) {
         <span className="text-xs">{label}</span>
       </div>
       {link ? (
-        <a href={link} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
+        <a href={link} className="text-sm text-brand-600 hover:underline">
           {value}
         </a>
       ) : content}

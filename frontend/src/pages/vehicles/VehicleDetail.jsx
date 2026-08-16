@@ -196,7 +196,7 @@ export default function VehicleDetail() {
             </CardTitle>
           </CardHeader>
           {vehicle.activeTrip ? (
-            <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl space-y-4">
+            <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-4">
               <div className="flex justify-between items-start">
                 <div>
                   <Badge variant="brand">ON TRIP</Badge>
@@ -225,7 +225,7 @@ export default function VehicleDetail() {
                   <span>Trip Progress</span>
                   <span>{vehicle.activeTrip.progress}%</span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                   <div className="bg-brand-600 h-full transition-all duration-300" style={{ width: `${vehicle.activeTrip.progress}%` }} />
                 </div>
               </div>
@@ -274,13 +274,13 @@ export default function VehicleDetail() {
           </>
         }
       >
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
           <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-950 dark:text-red-400">
+            <p className="text-sm font-semibold text-red-950">
               Removing {vehicle.license_plate}
             </p>
-            <p className="text-xs text-red-700 dark:text-red-300">
+            <p className="text-xs text-red-700">
               This will permanently archive the specifications and associated history details.
             </p>
           </div>

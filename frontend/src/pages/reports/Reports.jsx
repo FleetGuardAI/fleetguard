@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, BarChart2, Calendar, FileSpreadsheet, DownloadCloud, TrendingUp, ShieldCheck, Filter } from 'lucide-react';
+import { FileText, Download, BarChart2, Calendar, FileSpreadsheet, DownloadCloud, TrendingUp, ShieldCheck, Filter, Wrench, Receipt, Truck, Route, IndianRupee, Activity } from 'lucide-react';
 import { getFleetReportData, exportReport } from '@/api/reportApi';
 import { getVehicles } from '@/api/vehicleApi';
 import { getDocuments } from '@/api/documentApi';
@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Loader } from '@/components/ui/Loader';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useToast } from '@/components/ui/Toast';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 import { cn } from '@/utils/cn';
 
 export default function Reports() {
@@ -203,6 +205,49 @@ export default function Reports() {
         </div>
       </Card>
 
+      {/* High-Level KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4 flex items-center gap-4 border-l-4 border-brand-500">
+          <div className="p-3 bg-brand-50 text-brand-600 rounded-xl">
+            <Truck className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm text-content-secondary font-medium">Total Fleet Size</p>
+            <h3 className="text-2xl font-bold text-content mt-1">{reportData.totalVehicles} <span className="text-sm font-normal text-content-muted">Vehicles</span></h3>
+          </div>
+        </Card>
+        
+        <Card className="p-4 flex items-center gap-4 border-l-4 border-blue-500">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <Route className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm text-content-secondary font-medium">Recorded Trips</p>
+            <h3 className="text-2xl font-bold text-content mt-1">{reportData.totalTrips} <span className="text-sm font-normal text-content-muted">Trips Logged</span></h3>
+          </div>
+        </Card>
+
+        <Card className="p-4 flex items-center gap-4 border-l-4 border-amber-500">
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+            <IndianRupee className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm text-content-secondary font-medium">Total Expenditure</p>
+            <h3 className="text-2xl font-bold text-content mt-1">₹{(reportData.totalExpense / 1000).toFixed(1)}k <span className="text-sm font-normal text-content-muted">YTD</span></h3>
+          </div>
+        </Card>
+
+        <Card className="p-4 flex items-center gap-4 border-l-4 border-purple-500">
+          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+            <Activity className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm text-content-secondary font-medium">System Health</p>
+            <h3 className="text-2xl font-bold text-content mt-1">98.4% <span className="text-sm font-normal text-green-600">Optimal</span></h3>
+          </div>
+        </Card>
+      </div>
+
       {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mileage line chart */}
@@ -243,6 +288,65 @@ export default function Reports() {
                 <Tooltip />
                 <Bar dataKey="safetyScore" fill="#0f62fe" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Expense Distribution Pie Chart */}
+        <Card className="space-y-4">
+          <CardHeader className="p-0">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-brand-600" />
+              Operational Expenses Breakdown
+            </CardTitle>
+          </CardHeader>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={reportData.expenseDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {reportData.expenseDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Vehicle Maintenance Costs Area Chart */}
+        <Card className="space-y-4">
+          <CardHeader className="p-0">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-brand-600" />
+              Vehicle Maintenance Costs
+            </CardTitle>
+          </CardHeader>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={reportData.maintenanceCostByVehicle} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="vehicle" stroke="#94a3b8" fontSize={10} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₹${val/1000}k`} />
+                <Tooltip formatter={(value) => `₹${value}`} />
+                <Area type="monotone" dataKey="cost" stroke="#ef4444" fillOpacity={1} fill="url(#colorCost)" />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>

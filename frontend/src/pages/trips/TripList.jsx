@@ -130,7 +130,7 @@ export default function TripList() {
             <span>{t.progress}%</span>
             <span>{t.distance_km} km</span>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
             <div className={cn(
               "h-full transition-all duration-300",
               t.status === 'completed' ? 'bg-green-600' : 'bg-brand-600'
@@ -208,7 +208,7 @@ export default function TripList() {
             className={cn(
               "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
               activeTab === tab.id
-                ? "border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-500"
+                ? "border-brand-600 text-brand-600"
                 : "border-transparent text-content-secondary hover:text-content"
             )}
           >

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Bell, Sun, Moon, User, Settings, LogOut } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Menu, Bell, User, Settings, LogOut } from 'lucide-react';
 import { Dropdown } from '@/components/ui/Dropdown';
 
 import { NotificationBell } from '@/components/shared/NotificationDropdown';
@@ -27,13 +26,6 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   }, []);
 
   const navigate = useNavigate();
-  const [theme, setTheme] = useLocalStorage('fleetguard_theme', 'light');
-
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -48,22 +40,13 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
   ];
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-border flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
-      <button onClick={onMenuClick} className="p-2 rounded-lg hover:bg-surface-secondary transition-colors text-content-secondary md:hidden">
+    <header className="sticky top-0 z-20 h-16 bg-white/80 backdrop-blur-md border-b border-border flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
+      <button onClick={onMenuClick} className="p-2 rounded-lg hover:bg-surface-tertiary transition-colors text-content-secondary md:hidden">
         <Menu className="h-5 w-5" />
       </button>
 
       <div className="flex-1" />
       <div className="flex items-center gap-2">
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-surface-secondary transition-colors text-content-secondary"
-          title={theme === 'light' ? 'Dark mode' : 'Light mode'}
-        >
-          {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-        </button>
-
         {/* Language */}
         <LanguageSelector variant="adaptive" />
 
@@ -74,7 +57,7 @@ export function TopNavbar({ sidebarCollapsed, isMobile, onMenuClick }) {
         <Dropdown
           trigger={
             <div className="flex items-center gap-2.5 pl-2 cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold text-white">
+              <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-xs font-bold text-brand-600 border border-brand-200">
                 {user ? getInitials(user.name) : 'U'}
               </div>
               <div className="hidden md:block text-left">

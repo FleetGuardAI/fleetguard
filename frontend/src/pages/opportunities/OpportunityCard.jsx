@@ -43,7 +43,7 @@ export function OpportunityCard({ opportunity, onViewDetails, onAccept, onNegoti
       className={cn(
         'group relative bg-surface border border-border rounded-2xl overflow-hidden',
         'transition-all duration-300',
-        'hover:shadow-elevated hover:-translate-y-1 hover:border-brand-200 dark:hover:border-brand-800/50',
+        'hover:shadow-elevated hover:-translate-y-1 hover:border-brand-200:border-brand-800/50',
         'animate-slide-up',
         o.status === 'expired' && 'opacity-60'
       )}
@@ -64,8 +64,8 @@ export function OpportunityCard({ opportunity, onViewDetails, onAccept, onNegoti
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3 min-w-0">
             {/* Customer avatar */}
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 dark:from-brand-900/40 dark:to-brand-800/30 flex items-center justify-center flex-shrink-0 border border-brand-200/50 dark:border-brand-700/30">
-              <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 flex items-center justify-center flex-shrink-0 border border-brand-200/50">
+              <span className="text-sm font-bold text-brand-700">
                 {o.customer.charAt(0)}
               </span>
             </div>

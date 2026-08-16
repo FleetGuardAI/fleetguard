@@ -36,10 +36,14 @@ class TripRepository:
         self, 
         status: Optional[TripStatus] = None, 
         limit: int = 50, 
-        offset: int = 0
+        offset: int = 0,
+        company_id: Optional[int] = None
     ) -> Sequence[Trip]:
         query = select(Trip)
         
+        if company_id is not None:
+            query = query.where(Trip.company_id == company_id)
+
         if status is not None:
             query = query.where(Trip.status == status)
 

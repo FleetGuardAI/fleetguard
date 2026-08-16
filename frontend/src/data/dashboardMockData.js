@@ -20,7 +20,7 @@ export const MOCK_KPIS = [
     value: 12,
     icon: 'Package',
     trend: '50% utilized',
-    color: '#36D98A',
+    color: '#3b82f6', // blue
   },
   {
     id: 'available',
@@ -28,7 +28,7 @@ export const MOCK_KPIS = [
     value: 8,
     icon: 'CheckCircle2',
     trend: 'Ready to deploy',
-    color: '#0D6B46',
+    color: '#8b5cf6', // purple
   },
   {
     id: 'maintenance',
@@ -36,7 +36,7 @@ export const MOCK_KPIS = [
     value: 4,
     icon: 'Wrench',
     trend: '2 due this week',
-    color: '#f59e0b',
+    color: '#f97316', // orange
   },
 ];
 

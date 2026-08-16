@@ -85,11 +85,10 @@ class EvidenceBuilder:
                     evidence_id=event.event_id,
                     source="event_processing",
                     origin="master_data",
-                    reliability=Reliability.GUARANTEED,
+                    reliability=Reliability.VERIFIED,
                     collected_at=event.timestamp,
                     vehicle_id=event.vehicle_id,
-                    tank_capacity=event.tank_capacity,
-                    fuel_type="diesel"
+                    tank_capacity=event.tank_capacity
                 ))
                 
         return EvidencePackage(evidence_list)

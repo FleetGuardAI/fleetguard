@@ -18,7 +18,7 @@ export function FleetHealthSidebar({ health = {}, alerts = [], recentActions = [
   const healthMetrics = mockData || [
     { label: 'Fuel Efficiency', value: health?.fuelEfficiency?.value ? `${health.fuelEfficiency.value} ${health.fuelEfficiency.unit}` : '3.9 km/L', status: 'normal', icon: Fuel },
     { label: 'Engine Health', value: 'Good', status: 'good', icon: HeartPulse },
-    { label: 'Tyre Health', value: 'Good', status: 'good', icon: Circle },
+    { label: 'Doc Compliance', value: 'Good', status: 'good', icon: Circle },
     { label: 'Next Service', value: health?.maintenance?.value ? `${health.maintenance.value} Days` : '2 Days', status: 'warning', icon: Wrench },
   ];
 

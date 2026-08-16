@@ -12,12 +12,13 @@ const Fuel = lazy(() => import('./fuel/Fuel'));
 const Expenses = lazy(() => import('./expenses/Expenses'));
 const Payments = lazy(() => import('./payments/Payments'));
 const Maintenance = lazy(() => import('./maintenance/Maintenance'));
-const Tyres = lazy(() => import('./tyres/Tyres'));
+
 const Assets = lazy(() => import('./assets/Assets'));
 const Documents = lazy(() => import('./documents/Documents'));
 const Alerts = lazy(() => import('./alerts/Alerts'));
 const Notifications = lazy(() => import('./notifications/Notifications'));
 const Profile = lazy(() => import('./Profile'));
+const Support = lazy(() => import('./support/Support'));
 const Settings = lazy(() => import('./settings/Settings'));
 const UserManagement = lazy(() => import('./admin/UserManagement'));
 const RolesPermissions = lazy(() => import('./admin/RolesPermissions'));
@@ -49,12 +50,13 @@ export default function Dashboard() {
           <Route path="expenses/*" element={<Expenses />} />
           <Route path="payments/*" element={<Payments />} />
           <Route path="maintenance/*" element={<Maintenance />} />
-          <Route path="tyres/*" element={<Tyres />} />
+
           <Route path="assets/*" element={<Assets />} />
           <Route path="documents/*" element={<Documents />} />
           <Route path="alerts/*" element={<Alerts />} />
           <Route path="notifications/*" element={<Notifications />} />
           <Route path="profile/*" element={<Profile />} />
+          <Route path="support" element={<Support />} />
           <Route path="settings/*" element={<Settings />} />
           <Route path="admin/users/*" element={<UserManagement />} />
           <Route path="admin/roles/*" element={<RolesPermissions />} />

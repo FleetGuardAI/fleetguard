@@ -14,6 +14,7 @@ from database import Base
 if TYPE_CHECKING:
     from models.vehicle_domain import Vehicle
     from models.driver_domain import Driver
+    from models.user import Company
 
 
 class TripStatus(str, enum.Enum):
@@ -59,6 +60,12 @@ class Trip(Base):
 
     vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", lazy="selectin")
     driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin")
+
+    # --- Isolation ---
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("companies.id"), nullable=False, index=True, default=1
+    )
+    company: Mapped[Optional["Company"]] = relationship("Company", lazy="selectin")
 
     # --- Financial ---
     revenue: Mapped[Optional[float]] = mapped_column(

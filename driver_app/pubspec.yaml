@@ -25,7 +25,8 @@ dependencies:
   # Routing
   go_router: ^13.0.0
 
-  # Maps (OSM - free, no API key needed)
+  # Maps
+  google_maps_flutter: ^2.5.3
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
   url_launcher: ^6.2.2
@@ -86,11 +87,18 @@ dev_dependencies:
   mockito: ^5.4.4
   integration_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
 
 flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/
     - assets/icons/
     - assets/animations/
