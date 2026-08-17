@@ -21,15 +21,32 @@ class KafkaEventBus(EventBus):
     """
     Kafka-backed event publisher.
     """
-    def __init__(self, bootstrap_servers: str):
+    def __init__(
+        self, 
+        bootstrap_servers: str,
+        security_protocol: str = "PLAINTEXT",
+        sasl_mechanism: str = None,
+        sasl_plain_username: str = None,
+        sasl_plain_password: str = None
+    ):
         self.bootstrap_servers = bootstrap_servers
+        self.security_protocol = security_protocol
+        self.sasl_mechanism = sasl_mechanism
+        self.sasl_plain_username = sasl_plain_username
+        self.sasl_plain_password = sasl_plain_password
         self._producer = None
         self._is_running = False
 
     async def start(self) -> None:
         if not self._is_running:
             logger.info(f"Starting Kafka producer (bootstrap_servers={self.bootstrap_servers})...")
-            self._producer = AIOKafkaProducer(bootstrap_servers=self.bootstrap_servers)
+            self._producer = AIOKafkaProducer(
+                bootstrap_servers=self.bootstrap_servers,
+                security_protocol=self.security_protocol,
+                sasl_mechanism=self.sasl_mechanism,
+                sasl_plain_username=self.sasl_plain_username,
+                sasl_plain_password=self.sasl_plain_password,
+            )
             await self._producer.start()
             self._is_running = True
             logger.info("Kafka producer started.")

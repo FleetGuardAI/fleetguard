@@ -34,3 +34,5 @@ python-jose[cryptography]==3.3.0
 
 # --- Event Bus (Kafka) ---
 aiokafka==0.14.0
+
+supabase

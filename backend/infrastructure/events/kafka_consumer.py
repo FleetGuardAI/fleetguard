@@ -43,6 +43,10 @@ class KafkaConsumerRunner:
         subscriber: EventSubscriber,
         retry_policy: RetryPolicy = None,
         dlq_publisher: DeadLetterPublisher = None,
+        security_protocol: str = "PLAINTEXT",
+        sasl_mechanism: str = None,
+        sasl_plain_username: str = None,
+        sasl_plain_password: str = None
     ):
         self.bootstrap_servers = bootstrap_servers
         self.group_id = group_id
@@ -50,6 +54,10 @@ class KafkaConsumerRunner:
         self.subscriber = subscriber
         self.dlq_publisher = dlq_publisher
         self.retry_executor = RetryExecutor(retry_policy or RetryPolicy())
+        self.security_protocol = security_protocol
+        self.sasl_mechanism = sasl_mechanism
+        self.sasl_plain_username = sasl_plain_username
+        self.sasl_plain_password = sasl_plain_password
         
         self._consumer = None
         self._running = False
@@ -65,7 +73,11 @@ class KafkaConsumerRunner:
             bootstrap_servers=self.bootstrap_servers,
             group_id=self.group_id,
             auto_offset_reset="earliest",
-            enable_auto_commit=False  # We manually commit after successful processing
+            enable_auto_commit=False,  # We manually commit after successful processing
+            security_protocol=self.security_protocol,
+            sasl_mechanism=self.sasl_mechanism,
+            sasl_plain_username=self.sasl_plain_username,
+            sasl_plain_password=self.sasl_plain_password,
         )
         await self._consumer.start()
         self._running = True

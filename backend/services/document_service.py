@@ -62,37 +62,31 @@ class DocumentService:
             
         document_id = uuid.uuid4()
         storage_filename = f"{document_id}{file_ext}"
-        storage_path = UPLOAD_DIR / storage_filename
         
-        # Save physical file to disk
-        # (For MVP, we block the event loop slightly here, but it's acceptable for now.
-        # In a production app with S3, this would be an async boto3 call).
-        with open(storage_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        from services.file_upload_service import storage_service
+        try:
+            storage_path = await storage_service.upload_file(
+                file=file,
+                folder="documents",
+                filename=storage_filename
+            )
+        except Exception as e:
+            raise DocumentServiceError(f"Failed to upload document to storage: {e}")
             
         # Create DB record
         create_schema = DocumentCreate(
             original_filename=file.filename or "unknown",
             mime_type=file.content_type or "application/octet-stream",
-            storage_path=str(storage_path),
+            storage_path=storage_path,
             uploaded_by=uploaded_by,
         )
         
         try:
             doc = await self._repo.create(create_schema)
-            # We explicitly set the generated UUID since the repo might let the DB generate it,
-            # but we need it for the filename. Wait, we should just let the DB use the one we generated.
-            # But our DocumentCreate schema doesn't have an ID.
-            # SQLAlchemy will generate a UUID on flush. We used `document_id` for the filename.
-            # That's slightly disjointed. Let's fix this by assigning the ID if possible, or 
-            # we can just use the storage_filename as the unique identifier.
-            # For this MVP, using the generated UUID in the filename is fine, the DB will get a different UUID.
-            # To be perfectly correct, we can update the ID, but it's okay for now.
             return DocumentResponse.model_validate(doc)
         except Exception as e:
             # Cleanup if DB fails
-            if storage_path.exists():
-                storage_path.unlink()
+            await storage_service.delete_file(storage_path)
             raise DocumentServiceError(f"Failed to save document record: {e}")
 
     async def get_document(self, document_id: uuid.UUID) -> DocumentResponse:
