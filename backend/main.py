@@ -27,7 +27,13 @@ from services.operational_event_service import OperationalEventService
 
 # Application-level event bus singleton.
 # Injected into OperationalEventService via get_event_service dependency.
-event_bus = KafkaEventBus(settings.KAFKA_BOOTSTRAP_SERVERS)
+event_bus = KafkaEventBus(
+    bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
+)
 
 # Initialize Validation & Enrichment Engine
 from infrastructure.validation.registry import ValidationRuleRegistry
@@ -73,7 +79,11 @@ validation_consumer_runner = KafkaConsumerRunner(
     group_id="validation-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
     subscriber=validation_consumer,
-    dlq_publisher=dlq_publisher
+    dlq_publisher=dlq_publisher,
+    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
 )
 
 # Initialize Processing Engine
@@ -97,7 +107,11 @@ processing_consumer = KafkaConsumerRunner(
     group_id="processing-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
     subscriber=processing_consumer_instance,
-    dlq_publisher=dlq_publisher
+    dlq_publisher=dlq_publisher,
+    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
 )
 
 # Initialize Evidence Framework
@@ -123,7 +137,11 @@ evidence_consumer_runner = KafkaConsumerRunner(
         registry=evidence_registry,
         event_service_factory=event_service_factory
     ),
-    dlq_publisher=dlq_publisher
+    dlq_publisher=dlq_publisher,
+    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
 )
 
 # Initialize Outbox Pattern

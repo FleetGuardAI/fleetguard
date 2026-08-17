@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # --- Application ---
     APP_NAME: str = "FleetGuard TMS"
     APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # --- Database ---
     # Default to SQLite for zero-config local dev. Switch to PostgreSQL for prod:
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     # --- JWT Authentication ---
     # IMPORTANT: Override SECRET_KEY with a strong random value in production.
     # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
-    SECRET_KEY: str = "change-me-in-production-use-a-strong-random-secret"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     REMEMBER_ME_EXPIRE_DAYS: int = 30
@@ -74,11 +74,20 @@ class Settings(BaseSettings):
 
     # --- Kafka (Event Bus) ---
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_SECURITY_PROTOCOL: str = "PLAINTEXT"
+    KAFKA_SASL_MECHANISM: str | None = None
+    KAFKA_SASL_USERNAME: str | None = None
+    KAFKA_SASL_PASSWORD: str | None = None
     KAFKA_OPERATIONAL_EVENTS_TOPIC: str = "operational-events"
     
     # --- Dead Letter Queue (DLQ) ---
     DLQ_TOPIC_NAME: str = "fleetguard.dlq"
     DLQ_INCLUDE_STACK_TRACE: bool = True
+
+    # --- Supabase Storage ---
+    SUPABASE_URL: str | None = None
+    SUPABASE_KEY: str | None = None
+    SUPABASE_STORAGE_BUCKET: str = "fleetguard-uploads"
 
 
 settings = Settings()
