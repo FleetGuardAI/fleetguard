@@ -13,10 +13,22 @@ class OpenAIProvider(LLMProvider):
     """Implementation of LLMProvider for OpenAI."""
 
     def __init__(self):
-        if not settings.OPENAI_API_KEY:
-            logger.warning("OPENAI_API_KEY is not set. OpenAIProvider will fail on calls.")
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.OPENAI_MODEL
+        # Prefer Gemini API key if present
+        api_key = settings.GEMINI_API_KEY or settings.OPENAI_API_KEY
+        if not api_key:
+            logger.warning("API key is not set. LLMProvider will fail on calls.")
+        
+        base_url = None
+        model = settings.OPENAI_MODEL
+        
+        if settings.GEMINI_API_KEY:
+            # When using Gemini API key, we must hit the Gemini OpenAI-compatible endpoint
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            # Use gemini model if we are using gemini endpoint. Default to gemini-2.5-flash
+            model = "gemini-2.5-flash"
+            
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self.model = model
 
     async def chat(
         self,
