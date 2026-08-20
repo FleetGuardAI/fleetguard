@@ -18,6 +18,8 @@ from services.auth_service import (
     create_token_for_user,
     create_forgot_password_request,
     reset_password_with_token,
+    logout_user,
+    _oauth2_scheme,
 )
 
 from services.operational_event_service import (
@@ -48,6 +50,8 @@ __all__ = [
     "create_token_for_user",
     "create_forgot_password_request",
     "reset_password_with_token",
+    "logout_user",
+    "_oauth2_scheme",
 
     # Operational Events
     "OperationalEventService",

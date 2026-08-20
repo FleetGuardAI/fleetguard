@@ -279,4 +279,19 @@ class LocalDatabase {
     final db = await database;
     await db.update('notifications', {'read': 1}, where: 'id = ?', whereArgs: [id]);
   }
+
+  // --- Reset ---
+  static Future<void> clearAll() async {
+    final db = await database;
+    final batch = db.batch();
+    batch.delete('location_queue');
+    batch.delete('sync_queue');
+    batch.delete('cached_trips');
+    batch.delete('cached_vehicle');
+    batch.delete('cached_documents');
+    batch.delete('driver_profile_cache');
+    batch.delete('notifications');
+    await batch.commit(noResult: true);
+    AppLogger.info('Local database cleared for logout');
+  }
 }

@@ -10,11 +10,39 @@ import '../../features/fleet/presentation/screens/add_driver_screen.dart';
 import '../../features/fleet/presentation/screens/add_truck_screen.dart';
 import '../../features/fleet/presentation/screens/invite_driver_screen.dart';
 import '../../features/navigation/presentation/screens/scaffold_with_nav_bar.dart';
+import '../../features/auth/presentation/screens/qr_scan_screen.dart';
+import '../../features/operations/presentation/screens/operations_screen.dart';
+import '../../features/more/presentation/screens/more_screen.dart';
+import '../storage/secure_storage.dart';
+
+final authStateProvider = StateProvider<bool>((ref) => false);
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Setup simple async initialization for auth state
+  Future.microtask(() async {
+    final loggedIn = await SecureStorage.isLoggedIn();
+    ref.read(authStateProvider.notifier).state = loggedIn;
+  });
+
   return GoRouter(
     initialLocation: '/dashboard',
+    redirect: (context, state) {
+      final isLoggedIn = ref.read(authStateProvider);
+      final isAuthRoute = state.matchedLocation == '/auth/qr-scan';
+
+      if (!isLoggedIn && !isAuthRoute) {
+        return '/auth/qr-scan';
+      }
+      if (isLoggedIn && isAuthRoute) {
+        return '/dashboard';
+      }
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: '/auth/qr-scan',
+        builder: (context, state) => const QRScanScreen(),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return ScaffoldWithNavBar(child: child);
@@ -41,18 +69,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AddTruckScreen(),
           ),
           GoRoute(
-            path: '/copilot',
-            builder: (context, state) => const CopilotScreen(),
+            path: '/operations',
+            builder: (context, state) => const OperationsScreen(),
           ),
           GoRoute(
-            path: '/expense',
-            builder: (context, state) => const ExpenseScreen(),
-          ),
-          GoRoute(
-            path: '/trips',
-            builder: (context, state) => const TripsScreen(),
+            path: '/more',
+            builder: (context, state) => const MoreScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/copilot',
+        builder: (context, state) => const CopilotScreen(),
+      ),
+      GoRoute(
+        path: '/expense',
+        builder: (context, state) => const ExpenseScreen(),
+      ),
+      GoRoute(
+        path: '/trips',
+        builder: (context, state) => const TripsScreen(),
       ),
     ],
   );

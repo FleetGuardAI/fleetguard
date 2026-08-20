@@ -1,6 +1,11 @@
 """
 FleetGuard — Tickets (Expenses) API Router
 CRUD operations and approval workflow for expense tickets.
+
+Security: All endpoints require authentication and enforce company-level
+isolation. Tickets are scoped via the Driver→company_id relationship.
+Cross-company resource references (driver/vehicle from different companies)
+are rejected.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +21,8 @@ from routers.operational_events import get_event_service
 from services.operational_event_service import OperationalEventService
 from models.driver_domain import Driver
 from models.vehicle_domain import Vehicle
+from services.auth_service import get_current_user
+from models.user import User
 from schemas.ticket import (
     TicketCreate,
     TicketUpdate,
@@ -62,13 +69,17 @@ async def list_tickets(
     truck_id: Optional[int] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    uow = Depends(get_uow),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[TicketResponse]:
-    """List all tickets with optional filters. Returns joined driver/truck names."""
+    """List all tickets with optional filters. Scoped to authenticated company."""
+    company_id = current_user.company_id
+
     query = (
         select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
+        .where(Driver.company_id == company_id)
     )
 
     if status:
@@ -101,13 +112,19 @@ async def list_tickets(
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
-async def get_ticket(ticket_id: int, uow = Depends(get_uow)) -> TicketResponse:
-    """Get a single ticket by ID."""
+async def get_ticket(
+    ticket_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TicketResponse:
+    """Get a single ticket by ID. Verifies company ownership."""
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
-        .where(Ticket.id == ticket_id)
+        .where(Ticket.id == ticket_id, Driver.company_id == company_id)
     )
     row = result.first()
     if not row:
@@ -120,16 +137,20 @@ async def get_ticket(ticket_id: int, uow = Depends(get_uow)) -> TicketResponse:
 @router.post("", response_model=TicketResponse, status_code=201)
 async def create_ticket(
     payload: TicketCreate,
-    uow = Depends(get_uow),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TicketResponse:
-    """Create a new expense ticket."""
-    # Verify truck and driver exist
+    """Create a new expense ticket. Validates driver and vehicle belong to the same company."""
+    company_id = current_user.company_id
+
+    # Verify vehicle belongs to the authenticated company
     vehicle = await db.get(Vehicle, payload.truck_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != company_id:
         raise HTTPException(404, f"Vehicle {payload.truck_id} not found")
 
+    # Verify driver belongs to the authenticated company
     driver = await db.get(Driver, payload.driver_id)
-    if not driver:
+    if not driver or driver.company_id != company_id:
         raise HTTPException(404, f"Driver {payload.driver_id} not found")
 
     ticket = Ticket(
@@ -159,11 +180,12 @@ async def create_ticket(
 async def approve_or_reject_ticket(
     ticket_id: int,
     payload: TicketApproval,
-    uow = Depends(get_uow),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     event_service: OperationalEventService = Depends(get_event_service),
 ) -> TicketResponse:
     """
-    Approve or reject a ticket.
+    Approve or reject a ticket. Verifies company ownership before action.
 
     On approval:
     - Simulates a UPI payout (generates a mock transaction ID)
@@ -173,11 +195,13 @@ async def approve_or_reject_ticket(
     - Records the rejection reason
     - Phase 2 will notify the driver via WhatsApp
     """
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
         .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
-        .where(Ticket.id == ticket_id)
+        .where(Ticket.id == ticket_id, Driver.company_id == company_id)
     )
     row = result.first()
     if not row:
@@ -194,7 +218,7 @@ async def approve_or_reject_ticket(
         import uuid
         ticket.payout_reference = f"UPI-{uuid.uuid4().hex[:12].upper()}"
         
-        # Flush here to get updated ticket state (though we don't strictly need it for the payload)
+        # Flush here to get updated ticket state
         await db.flush()
         
         # Emit an Unverified event for the new Expense Domain to pick up.
@@ -217,8 +241,6 @@ async def approve_or_reject_ticket(
             notes=f"Auto-generated from approved Ticket {ticket.id}"
         )
         
-        # This will save the event, and the validation engine will mark it VERIFIED, 
-        # which dispatches it to the ProcessingEngine, which routes to ExpenseService.
         await event_service.create_event(event_payload)
         
     else:
