@@ -258,6 +258,7 @@ const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/vehicles/${vehicleId}/assets${query ? `?${query}` : ''}`);
     },
+    createHardware: (data) => request('/v1/assets/hardware', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // ── Tyre Domain (NEW - /api/v1/tyres) ──────────────────────

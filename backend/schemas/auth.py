@@ -103,6 +103,15 @@ class TokenResponse(BaseModel):
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field("bearer", description="Token scheme (typically bearer)")
 
+class OwnerQRLoginRequest(BaseModel):
+    """Payload for Owner App QR login."""
+    pairing_token: str = Field(..., description="Short-lived token scanned from QR code")
+
+class OwnerQRPairingResponse(BaseModel):
+    """Response when dashboard generates a QR code for Owner App."""
+    pairing_token: str
+    expires_in_seconds: int
+
 
 class ForgotPasswordRequest(BaseModel):
     """Start forgot-password flow using email or mobile identifier."""

@@ -24,6 +24,8 @@ from schemas.auth import (
     ResetPasswordRequest,
     ForgotPasswordResponse,
     GenericMessageResponse,
+    OwnerQRLoginRequest,
+    OwnerQRPairingResponse,
 )
 from schemas.operational_event import (
     OperationalEventCreate,
@@ -70,6 +72,8 @@ __all__ = [
     "ResetPasswordRequest",
     "ForgotPasswordResponse",
     "GenericMessageResponse",
+    "OwnerQRLoginRequest",
+    "OwnerQRPairingResponse",
 
     # Event-Driven Architecture Schemas
     "OperationalEventCreate",
