@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/dashboard_provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -519,7 +518,7 @@ class _GlassIconButton extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onPressed: onPressed,
+                      onTap: onPressed,
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
