@@ -51,6 +51,7 @@ class DocumentService:
         self,
         file: UploadFile,
         uploaded_by: Optional[str] = None,
+        company_id: Optional[int] = None,
     ) -> DocumentResponse:
         """
         Save the uploaded file to disk and create a Document record.
@@ -79,6 +80,7 @@ class DocumentService:
             mime_type=file.content_type or "application/octet-stream",
             storage_path=storage_path,
             uploaded_by=uploaded_by,
+            company_id=company_id,
         )
         
         try:
@@ -89,32 +91,41 @@ class DocumentService:
             await storage_service.delete_file(storage_path)
             raise DocumentServiceError(f"Failed to save document record: {e}")
 
-    async def get_document(self, document_id: uuid.UUID) -> DocumentResponse:
+    async def get_document(self, document_id: uuid.UUID, company_id: Optional[int] = None) -> DocumentResponse:
         """Retrieve a document by ID."""
         try:
-            doc = await self._repo.get_by_id(document_id)
+            doc = await self._repo.get_by_id(document_id, company_id=company_id)
             return DocumentResponse.model_validate(doc)
         except DocumentNotFoundError:
             raise DocumentNotFound(document_id)
 
     async def list_documents(
         self,
+        *,
         status: Optional[DocumentStorageStatus] = None,
+        company_id: Optional[int] = None,
         limit: int = 50,
-        offset: int = 0,
-    ) -> list[DocumentResponse]:
-        """List documents with optional filtering and pagination."""
-        docs = await self._repo.list_documents(status=status, limit=limit, offset=offset)
+        offset: int = 0
+    ) -> Sequence[DocumentResponse]:
+        """List documents, optionally filtered by status and company."""
+        docs = await self._repo.list_documents(
+            status=status,
+            company_id=company_id,
+            limit=limit,
+            offset=offset
+        )
         return [DocumentResponse.model_validate(doc) for doc in docs]
 
-    async def update_document(
+    async def update_document_status(
         self,
         document_id: uuid.UUID,
-        payload: DocumentUpdate,
+        status: DocumentStorageStatus,
+        company_id: Optional[int] = None
     ) -> DocumentResponse:
-        """Update document status."""
+        """Update the storage status of a document."""
+        update_schema = DocumentUpdate(status=status)
         try:
-            doc = await self._repo.update(document_id, payload)
+            doc = await self._repo.update(document_id, update_schema, company_id=company_id)
             return DocumentResponse.model_validate(doc)
         except DocumentNotFoundError:
             raise DocumentNotFound(document_id)

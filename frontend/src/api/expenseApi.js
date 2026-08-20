@@ -148,20 +148,18 @@ export async function getExpensesByTrip(tripId) {
  */
 export async function createExpense(data) {
   const payload = {
-    truck_id: Number(data.truck_id),
+    vehicle_id: Number(data.truck_id),
     driver_id: Number(data.driver_id),
-    issue_type: data.category || 'other',
-    vendor_name: data.vendor_name || null,
+    category: data.category ? data.category.toUpperCase() : 'MISCELLANEOUS',
     amount: Number(data.amount),
     description: data.title || '',
-    receipt_url: data.receipt_url || null,
   };
 
-  const ticket = await api.tickets.create(payload);
-  if (!ticket) {
-    throw new Error('Failed to create ticket on server');
+  const expense = await api.expenses.create(payload);
+  if (!expense) {
+    throw new Error('Failed to create expense on server');
   }
-  return mapTicketToExpense(ticket);
+  return normalizeExpense(expense);
 }
 
 /**
@@ -171,11 +169,11 @@ export async function createExpense(data) {
  * @returns {Promise<object>}
  */
 export async function approveExpense(id) {
-  const ticket = await api.tickets.action(id, { action: 'approve' });
-  if (!ticket) {
-    throw new Error('Failed to approve ticket on server');
+  const expense = await api.expenses.update(id, { status: 'APPROVED' });
+  if (!expense) {
+    throw new Error('Failed to approve expense on server');
   }
-  return mapTicketToExpense(ticket);
+  return normalizeExpense(expense);
 }
 
 /**
@@ -185,9 +183,9 @@ export async function approveExpense(id) {
  * @returns {Promise<object>}
  */
 export async function rejectExpense(id) {
-  const ticket = await api.tickets.action(id, { action: 'reject', rejection_reason: 'Rejected by owner' });
-  if (!ticket) {
-    throw new Error('Failed to reject ticket on server');
+  const expense = await api.expenses.update(id, { status: 'REJECTED' });
+  if (!expense) {
+    throw new Error('Failed to reject expense on server');
   }
-  return mapTicketToExpense(ticket);
+  return normalizeExpense(expense);
 }

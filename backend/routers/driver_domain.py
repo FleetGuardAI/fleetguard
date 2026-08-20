@@ -15,6 +15,8 @@ from services.driver_service import DriverService
 from models.driver_domain import Driver, DriverStatus
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
 from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
+from services.auth_service import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/v1", tags=["Driver Domain"])
 
@@ -25,10 +27,11 @@ async def list_drivers(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> List[DriverResponse]:
     """List all drivers with optional active filter."""
     service = DriverService(uow)
-    drivers = await service.search_drivers(is_active=is_active, limit=limit, offset=offset)
+    drivers = await service.search_drivers(is_active=is_active, limit=limit, offset=offset, company_id=current_user.company_id)
     return [DriverResponse.model_validate(d) for d in drivers]
 
 
@@ -36,10 +39,11 @@ async def list_drivers(
 async def get_driver(
     driver_id: int, 
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> DriverResponse:
     """Get a single driver by ID."""
     service = DriverService(uow)
-    driver = await service.get_driver(driver_id)
+    driver = await service.get_driver(driver_id, company_id=current_user.company_id)
     if not driver:
         raise HTTPException(404, f"Driver {driver_id} not found")
     return DriverResponse.model_validate(driver)
@@ -49,6 +53,7 @@ async def get_driver(
 async def create_driver(
     payload: DriverCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> DriverResponse:
     """Register a new driver in the database."""
     # Check if driver with phone already exists
@@ -67,6 +72,7 @@ async def create_driver(
         license_number=payload.license_number,
         status=DriverStatus.ACTIVE,
         origin_type="rest_api",
+        company_id=current_user.company_id
     )
     db.add(driver)
     await db.commit()
@@ -92,10 +98,11 @@ async def update_driver(
     driver_id: int,
     payload: DriverUpdated,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> DriverResponse:
     """Update driver profile details."""
     driver = await db.get(Driver, driver_id)
-    if not driver:
+    if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(404, f"Driver {driver_id} not found")
 
     if payload.name is not None:
@@ -114,10 +121,11 @@ async def update_driver(
 async def delete_driver(
     driver_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Archive/delete a driver."""
     driver = await db.get(Driver, driver_id)
-    if not driver:
+    if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(404, f"Driver {driver_id} not found")
 
     await db.delete(driver)

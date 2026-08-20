@@ -38,17 +38,21 @@ class DocumentRepository:
             mime_type=payload.mime_type,
             storage_path=payload.storage_path,
             uploaded_by=payload.uploaded_by,
+            company_id=payload.company_id,
         )
         self._session.add(doc)
         await self._session.flush()
         return doc
 
-    async def get_by_id(self, document_id: uuid.UUID) -> Document:
+    async def get_by_id(self, document_id: uuid.UUID, company_id: Optional[int] = None) -> Document:
         """
         Retrieve a document by its UUID.
         Raises DocumentNotFoundError if not found.
         """
         stmt = select(Document).where(Document.id == document_id)
+        if company_id is not None:
+            stmt = stmt.where(Document.company_id == company_id)
+            
         result = await self._session.execute(stmt)
         doc = result.scalar_one_or_none()
         
@@ -61,11 +65,12 @@ class DocumentRepository:
         self,
         *,
         status: Optional[DocumentStorageStatus] = None,
+        company_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Sequence[Document]:
         """
-        List documents, optionally filtered by status.
+        List documents, optionally filtered by status and company_id.
         Ordered by creation time descending.
         """
         stmt = select(Document).order_by(Document.created_at.desc())
@@ -73,15 +78,18 @@ class DocumentRepository:
         if status:
             stmt = stmt.where(Document.status == status)
             
+        if company_id is not None:
+            stmt = stmt.where(Document.company_id == company_id)
+            
         stmt = stmt.limit(limit).offset(offset)
         result = await self._session.execute(stmt)
         return result.scalars().all()
 
-    async def update(self, document_id: uuid.UUID, payload: DocumentUpdate) -> Document:
+    async def update(self, document_id: uuid.UUID, payload: DocumentUpdate, company_id: Optional[int] = None) -> Document:
         """
         Update an existing document status.
         """
-        doc = await self.get_by_id(document_id)
+        doc = await self.get_by_id(document_id, company_id=company_id)
         
         if payload.status is not None:
             doc.status = payload.status

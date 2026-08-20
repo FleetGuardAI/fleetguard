@@ -7,20 +7,20 @@ import api from './client';
  * @returns {Promise<object>}
  */
 export async function getFleetReportData() {
-  const [kpis, tickets, trips, vehicles, maintenance] = await Promise.all([
-    api.dashboard.getKPIs().catch(() => null),
-    api.tickets.list().catch(() => []),
+  const [kpis, expenses, trips, vehicles, maintenance] = await Promise.all([
+    api.ownerDashboard.getKPIs().catch(() => null),
+    api.expenses.list().catch(() => []),
     api.trips.list({ limit: 200 }).catch(() => []),
     api.vehicles.list().catch(() => []),
     api.maintenance.list().catch(() => []),
   ]);
 
-  // Aggregate expenses by issue type / category from tickets
+  // Aggregate expenses by category
   const categoryTotals = {};
   let totalExpense = 0;
-  (tickets || []).forEach(t => {
-    const cat = t.issue_type ? t.issue_type.toUpperCase() : 'OTHER';
-    const amt = Number(t.amount || 0);
+  (expenses || []).forEach(e => {
+    const cat = e.category ? e.category.toUpperCase() : 'OTHER';
+    const amt = Number(e.amount || 0);
     categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
     totalExpense += amt;
   });

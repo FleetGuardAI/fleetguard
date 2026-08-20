@@ -144,13 +144,14 @@ class DriverService:
 
     # --- Read APIs ---
 
-    async def get_driver(self, driver_id: int) -> Optional[Driver]:
-        return await self.uow.repositories.driver.get_driver_by_id(driver_id)
+    async def get_driver(self, driver_id: int, company_id: Optional[int] = None) -> Optional[Driver]:
+        return await self.uow.repositories.driver.get_driver_by_id(driver_id, company_id=company_id)
 
     async def search_drivers(
         self, 
         is_active: Optional[bool] = None, 
         limit: int = 50, 
-        offset: int = 0
+        offset: int = 0,
+        company_id: Optional[int] = None
     ) -> Sequence[Driver]:
-        return await self.uow.repositories.driver.search_drivers(is_active=is_active, limit=limit, offset=offset)
+        return await self.uow.repositories.driver.search_drivers(is_active=is_active, limit=limit, offset=offset, company_id=company_id)

@@ -107,6 +107,14 @@ export async function updateVehicle(id, data) {
   return normalizeVehicle(updated);
 }
 
+export async function deleteVehicle(id) {
+  try {
+    return await api.vehicles.delete(id);
+  } catch {
+    return await api.trucks.delete(id);
+  }
+}
+
 export async function getVehicleHistory(id, hours = 24) {
   try {
     const fuelLogs = await api.fuel.getLogs(id, hours);

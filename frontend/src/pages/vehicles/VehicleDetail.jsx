@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Calendar, Fuel, Info, Route, ShieldAlert, Zap } from 'lucide-react';
-import { getVehicleById, getVehicleHistory } from '@/api/vehicleApi';
+import { getVehicleById, getVehicleHistory, deleteVehicle } from '@/api/vehicleApi';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -50,7 +50,7 @@ export default function VehicleDetail() {
   const handleConfirmDelete = async () => {
     setDeleting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await deleteVehicle(id);
       success('Vehicle Deleted', `Successfully removed vehicle ${vehicle.license_plate}.`);
       setDeleteModalOpen(false);
       navigate('/dashboard/vehicles');

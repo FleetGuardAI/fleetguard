@@ -104,10 +104,7 @@ async def get_read_uow() -> AsyncGenerator[Any, None]:
 def _sync_sqlite_columns(sync_conn):
     """Inspects existing SQLite tables and adds any missing ORM columns automatically."""
     for table_name, table in Base.metadata.tables.items():
-        res = sync_conn.execute(
-            Base.metadata.tables[table_name].select().limit(0)
-        )
-        # Fetch PRAGMA info
+        # Fetch PRAGMA info to discover existing columns (safe — never references ORM metadata)
         cursor_res = sync_conn.exec_driver_sql(f"PRAGMA table_info('{table_name}')")
         existing_cols = {row[1] for row in cursor_res.fetchall()}
         

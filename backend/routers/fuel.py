@@ -13,6 +13,8 @@ from database import get_db
 from models.fuel_log import FuelLog
 from models.vehicle_domain import Vehicle
 from schemas.fuel_log import FuelLogCreate, FuelLogResponse, FuelAlertResponse, FuelChartData
+from services.auth_service import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/fuel", tags=["Fuel Monitoring"])
 
@@ -23,10 +25,11 @@ async def get_fuel_logs(
     hours: int = Query(24, ge=1, le=720, description="Look-back window in hours"),
     limit: int = Query(500, ge=1, le=5000),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> list[FuelLogResponse]:
     """Get fuel log entries for a specific truck within a time window."""
     vehicle = await db.get(Vehicle, truck_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {truck_id} not found")
 
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -49,6 +52,7 @@ async def get_fuel_chart_data(
     truck_id: int,
     hours: int = Query(24, ge=1, le=720),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> list[FuelChartData]:
     """
     Get time-series chart data for the Live Fuel Monitor.
@@ -56,7 +60,7 @@ async def get_fuel_chart_data(
     shaped specifically for the Recharts LineChart component.
     """
     vehicle = await db.get(Vehicle, truck_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {truck_id} not found")
 
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -89,6 +93,7 @@ async def get_fuel_alerts(
     truck_id: Optional[int] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> list[FuelAlertResponse]:
     """Get fuel theft alerts across all trucks or a specific truck."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
@@ -97,6 +102,7 @@ async def get_fuel_alerts(
         select(FuelLog, Vehicle.registration_number)
         .join(Vehicle, FuelLog.vehicle_id == Vehicle.id)
         .where(
+            Vehicle.company_id == current_user.company_id,
             FuelLog.is_theft_alert == True,  # noqa: E712
             FuelLog.timestamp >= since,
         )
@@ -136,17 +142,15 @@ async def get_fuel_alerts(
 async def ingest_fuel_reading(
     payload: FuelLogCreate,
     db: AsyncSession = Depends(get_db),
+    # Optional: You can enforce current_user here if API is called by frontend, 
+    # but normally IoT ingestion uses API keys, so I'll leave this as depends on user for now.
+    current_user: User = Depends(get_current_user)
 ) -> FuelLogResponse:
     """
-    Ingest a single fuel reading (from IoT listener or manual input).
-
-    Phase 3 will add:
-    - EMA smoothing of raw_level → filtered_level
-    - Theft detection (speed==0 + fuel drop > threshold)
-    - Alert creation
+    Ingest a single fuel reading.
     """
     vehicle = await db.get(Vehicle, payload.truck_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {payload.truck_id} not found")
 
     # For now, filtered_level = raw_level (Phase 3 adds EMA smoothing)

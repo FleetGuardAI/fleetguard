@@ -12,6 +12,8 @@ from database import get_db
 from models.vehicle_domain import Vehicle
 from repositories.fuel_repository import FuelRepository
 from schemas.fuel_domain import FuelTransactionResponse, FuelStateResponse, FuelHistoryResponse
+from services.auth_service import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/v1", tags=["Fuel Domain"])
 
@@ -32,11 +34,12 @@ async def get_fuel_transaction(
 @router.get("/vehicles/{vehicle_id}/fuel", response_model=FuelStateResponse)
 async def get_vehicle_fuel_state(
     vehicle_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> FuelStateResponse:
     """Get the current known fuel state for a vehicle."""
     vehicle = await db.get(Vehicle, vehicle_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
         
     repo = FuelRepository(db)
@@ -52,11 +55,12 @@ async def get_vehicle_fuel_state(
 async def get_vehicle_fuel_history(
     vehicle_id: int,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> FuelHistoryResponse:
     """Get the fuel transaction history for a vehicle."""
     vehicle = await db.get(Vehicle, vehicle_id)
-    if not vehicle:
+    if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
         
     repo = FuelRepository(db)

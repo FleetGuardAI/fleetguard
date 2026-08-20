@@ -9,7 +9,8 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getInitials } from '@/utils/formatters';
-import { SUGGESTED_PROMPTS, getMockResponse } from '@/data/chatMockData';
+import { SUGGESTED_PROMPTS } from '@/data/chatMockData';
+import api from '@/api/client';
 
 // ── Message Types ──
 function ChatMessageBubble({ message }) {
@@ -188,19 +189,30 @@ export function AiCopilot() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response with streaming delay
-    setTimeout(() => {
-      const response = getMockResponse(messageText);
+    // Call real AI backend
+    api.copilot.chat({
+      message: messageText,
+      context: { page: location.pathname }
+    }).then(res => {
       const aiMsg = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: response,
+        content: { text: res.message },
         timestamp: new Date(),
       };
       setIsTyping(false);
       setMessages(prev => [...prev, aiMsg]);
-    }, 1200 + Math.random() * 800);
-  }, [input]);
+    }).catch(err => {
+      console.error('Copilot Error:', err);
+      setIsTyping(false);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: { text: "I'm sorry, I encountered an error while processing your request. Please try again later." },
+        timestamp: new Date(),
+      }]);
+    });
+  }, [input, location.pathname]);
 
   // Handle initial message from search bar navigation
   const initialMessageSent = useRef(false);

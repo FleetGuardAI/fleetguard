@@ -39,7 +39,8 @@ async def chat_with_copilot(
         return response
     except Exception as e:
         logger.error(f"Error in Copilot chat: {e}", exc_info=True)
+        # Return the actual error message so the frontend can display it
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while communicating with the Copilot service."
+            detail=f"An error occurred while communicating with the Copilot service: {str(e)}"
         )
