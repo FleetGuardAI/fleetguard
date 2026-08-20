@@ -5,7 +5,7 @@
  */
 
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 /**
  * @param {string} endpoint - API path (e.g. '/dashboard/kpis')
