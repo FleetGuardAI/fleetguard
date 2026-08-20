@@ -63,6 +63,11 @@ class TripCreate(BaseModel):
     planned_start_time: Optional[datetime] = None
     planned_end_time: Optional[datetime] = None
 
+class TripUpdated(BaseModel):
+    status: Optional[TripStatus] = None
+    vehicle_id: Optional[int] = None
+    driver_id: Optional[int] = None
+
 class TripCreated(BaseModel):
     trip_id: str
     origin_location: Optional[str] = None

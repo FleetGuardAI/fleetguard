@@ -12,7 +12,7 @@ from infrastructure.uow import AbstractUnitOfWork
 from models.trip_domain import TripStatus
 from services.trip_service import TripService
 from services.trip_intelligence_service import TripIntelligenceService
-from schemas.trip_domain import TripResponse, TripCreate
+from schemas.trip_domain import TripResponse, TripCreate, TripUpdated
 from schemas.trip_intelligence import TripIntelligenceResponse
 from services.auth_service import get_current_user
 from models.user import User
@@ -82,10 +82,11 @@ async def search_trips(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> List[TripResponse]:
     """Search for trips based on criteria."""
     service = TripService(uow)
-    trips = await service.search_trips(status=status, limit=limit, offset=offset)
+    trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id)
     return [TripResponse.model_validate(t) for t in trips]
 
 
@@ -93,12 +94,37 @@ async def search_trips(
 async def get_trip(
     trip_id: int, 
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> TripResponse:
     """Get a single trip by ID."""
     service = TripService(uow)
-    trip = await service.get_trip(trip_id)
+    trip = await service.get_trip(trip_id, company_id=current_user.company_id)
     if not trip:
         raise HTTPException(404, f"Trip {trip_id} not found")
+    return TripResponse.model_validate(trip)
+
+
+@router.patch("/trips/{trip_id}", response_model=TripResponse)
+async def update_trip(
+    trip_id: int,
+    payload: TripUpdated,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> TripResponse:
+    from models.trip_domain import Trip
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.company_id != current_user.company_id:
+        raise HTTPException(404, f"Trip {trip_id} not found")
+    
+    if payload.status is not None:
+        trip.status = payload.status
+    if payload.vehicle_id is not None:
+        trip.vehicle_id = payload.vehicle_id
+    if payload.driver_id is not None:
+        trip.driver_id = payload.driver_id
+        
+    await db.commit()
+    await db.refresh(trip)
     return TripResponse.model_validate(trip)
 
 
@@ -126,10 +152,11 @@ async def get_trips_by_vehicle(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> List[TripResponse]:
     """Get all trips associated with a specific vehicle."""
     service = TripService(uow)
-    trips = await service.get_trips_by_vehicle(vehicle_id, limit=limit, offset=offset)
+    trips = await service.get_trips_by_vehicle(vehicle_id, limit=limit, offset=offset, company_id=current_user.company_id)
     return [TripResponse.model_validate(t) for t in trips]
 
 
@@ -139,8 +166,9 @@ async def get_trips_by_driver(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user)
 ) -> List[TripResponse]:
     """Get all trips associated with a specific driver."""
     service = TripService(uow)
-    trips = await service.get_trips_by_driver(driver_id, limit=limit, offset=offset)
+    trips = await service.get_trips_by_driver(driver_id, limit=limit, offset=offset, company_id=current_user.company_id)
     return [TripResponse.model_validate(t) for t in trips]

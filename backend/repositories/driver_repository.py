@@ -14,8 +14,12 @@ class DriverRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_driver_by_id(self, driver_id: int) -> Optional[Driver]:
-        return await self.db.get(Driver, driver_id)
+    async def get_driver_by_id(self, driver_id: int, company_id: Optional[int] = None) -> Optional[Driver]:
+        stmt = select(Driver).where(Driver.id == driver_id)
+        if company_id is not None:
+            stmt = stmt.where(Driver.company_id == company_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_driver_by_phone(self, phone_number: str) -> Optional[Driver]:
         stmt = select(Driver).where(Driver.phone_number == phone_number)
@@ -31,7 +35,8 @@ class DriverRepository:
         self, 
         is_active: Optional[bool] = None, 
         limit: int = 50, 
-        offset: int = 0
+        offset: int = 0,
+        company_id: Optional[int] = None
     ) -> Sequence[Driver]:
         query = select(Driver)
         
@@ -40,6 +45,9 @@ class DriverRepository:
                 query = query.where(Driver.status == DriverStatus.ACTIVE)
             else:
                 query = query.where(Driver.status != DriverStatus.ACTIVE)
+
+        if company_id is not None:
+            query = query.where(Driver.company_id == company_id)
 
         query = query.order_by(Driver.name).offset(offset).limit(limit)
         result = await self.db.execute(query)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Eye, Trash2, ShieldAlert } from 'lucide-react';
-import { getVehicles } from '@/api/vehicleApi';
+import { getVehicles, deleteVehicle } from '@/api/vehicleApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -74,8 +74,7 @@ export default function VehicleList() {
     if (!vehicleToDelete) return;
     setDeleting(true);
     try {
-      // Mock deletion
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await deleteVehicle(vehicleToDelete.id);
       setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
       success('Vehicle Deleted', `Successfully removed vehicle ${vehicleToDelete.license_plate}.`);
       setDeleteModalOpen(false);

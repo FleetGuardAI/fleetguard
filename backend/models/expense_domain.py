@@ -61,6 +61,9 @@ class Expense(Base):
     # Optional Supporting Document Reference
     receipt_reference: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
+    # Multi-tenancy
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    
     # Linked Business Entities (References only - no deep relationships for decoupling)
     business_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     vehicle_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)

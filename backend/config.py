@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
+    LLM_BASE_URL: Optional[str] = None
 
     # --- Twilio ---
     TWILIO_API_KEY: Optional[str] = None
@@ -45,9 +46,9 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------------
     # --- CORS ---
     CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:3000",
-        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
     ]
 
     # --- Fuel Theft & Anomaly Detection Thresholds ---

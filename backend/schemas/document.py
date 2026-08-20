@@ -31,6 +31,11 @@ class DocumentBase(BaseModel):
         description="ID of the user or system that uploaded the document.",
         examples=["user-uuid-123"],
     )
+    company_id: Optional[int] = Field(
+        None,
+        description="ID of the company that owns the document.",
+        examples=[1],
+    )
 
 
 class DocumentCreate(DocumentBase):

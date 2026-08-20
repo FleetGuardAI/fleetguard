@@ -7,8 +7,8 @@ import api from './client';
  */
 export async function getDashboardData() {
   const [kpis, recentActivity] = await Promise.all([
-    api.dashboard.getKPIs(),
-    api.dashboard.getRecentActivity(5),
+    api.ownerDashboard.getKPIs().catch(() => null),
+    api.expenses.list({ limit: 5 }).catch(() => []),
   ]);
 
   const defaultKPIs = {
@@ -21,26 +21,26 @@ export async function getDashboardData() {
   };
 
   const mappedKPIs = kpis ? {
-    active_trucks: kpis.active_trucks,
-    pending_approvals: kpis.pending_approvals,
-    theft_alerts: kpis.theft_alerts,
-    flagged_drivers: kpis.flagged_drivers,
-    total_expenses_today: kpis.total_expenses_today,
-    total_expenses_month: kpis.total_expenses_month,
+    active_trucks: kpis.total_active_trucks || 0,
+    pending_approvals: 0,
+    theft_alerts: 0,
+    flagged_drivers: 0,
+    total_expenses_today: 0,
+    total_expenses_month: kpis.monthly_expenses || 0,
   } : defaultKPIs;
 
-  const mappedRecentActivity = (recentActivity || []).map(ticket => ({
-    id: ticket.id,
-    truck_id: ticket.truck_id,
-    driver_id: ticket.driver_id,
-    truck_plate: ticket.truck_plate || null,
-    driver_name: ticket.driver_name || null,
-    category: ticket.issue_type ? ticket.issue_type.toLowerCase() : 'other',
-    title: ticket.description || ticket.issue_type || 'Expense Claim',
-    amount: ticket.amount,
-    date: ticket.created_at || null,
-    status: ticket.status || 'pending',
-    ai_risk: ticket.risk_level || null,
+  const mappedRecentActivity = (recentActivity || []).map(expense => ({
+    id: expense.id,
+    truck_id: expense.vehicle_id,
+    driver_id: expense.driver_id,
+    truck_plate: null, // would need to be enriched
+    driver_name: null, // would need to be enriched
+    category: expense.category ? expense.category.toLowerCase() : 'other',
+    title: expense.description || expense.category || 'Expense Claim',
+    amount: expense.amount,
+    date: expense.created_at || null,
+    status: expense.status || 'pending',
+    ai_risk: null,
   }));
 
   // Fetch real fuel chart data from backend
@@ -75,7 +75,7 @@ export async function getDashboardData() {
  */
 export async function getFleetHealth() {
   const [kpis, vehicles, maintenance] = await Promise.all([
-    api.dashboard.getKPIs().catch(() => null),
+    api.ownerDashboard.getKPIs().catch(() => null),
     api.vehicles.list().catch(() => []),
     api.maintenance.list({ limit: 50 }).catch(() => []),
   ]);
@@ -95,7 +95,7 @@ export async function getFleetHealth() {
     driverScore: { value: 0, unit: '/5', trend: 0, status: 'neutral' },
     maintenance: { value: pendingMaintenance, unit: 'due', trend: 0, status: pendingMaintenance > 5 ? 'warning' : 'good' },
     monthlySavings: {
-      value: kpis?.total_expenses_month || 0,
+      value: kpis?.monthly_expenses || 0,
       unit: '₹',
       trend: 0,
       status: 'neutral',

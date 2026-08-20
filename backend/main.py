@@ -193,6 +193,7 @@ from routers.fleet_intelligence import router as fleet_intelligence_router
 from routers.fuel_intelligence import router as fuel_intelligence_router
 from routers.copilot import router as copilot_router
 from routers.owner_dashboard import router as owner_dashboard_router
+from routers.owner_emergency import router as owner_emergency_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -321,6 +322,7 @@ app.include_router(fleet_intelligence_router, prefix="/api/v1") # carries /intel
 app.include_router(fuel_intelligence_router, prefix="/api/v1") # carries /intelligence/fuel prefix
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(owner_dashboard_router)
+app.include_router(owner_emergency_router, prefix="/api/v1")
 
 
 # Mount Driver Mobile App Routers

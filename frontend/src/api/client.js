@@ -4,7 +4,6 @@
  * @module api/client
  */
 
-import { getMockData } from './mockData';
 
 const API_BASE = '/api';
 
@@ -58,18 +57,8 @@ async function request(endpoint, options = {}) {
     if (response.status === 204) return null;
     
     const data = await response.json();
-    
-    // Inject mock data if backend returns empty list, ensuring the UI always has content
-    if (Array.isArray(data) && data.length === 0) {
-       const mock = getMockData(endpoint);
-       if (mock.length > 0) return mock;
-    }
     return data;
   } catch (err) {
-    // If request completely fails (e.g., endpoint doesn't exist), fallback to mock data
-    const mock = getMockData(endpoint);
-    if (mock && mock.length > 0) return mock;
-    
     console.warn(`[FleetGuard API] ${endpoint} failed:`, err.message);
     throw err;
   }
@@ -118,6 +107,11 @@ const api = {
     delete: (id) => request(`/v1/vehicles/${id}`, { method: 'DELETE' }),
   },
 
+  // ── Copilot (/api/v1/copilot) ─────────────────
+  copilot: {
+    chat: (data) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
   // ── Fuel Monitoring (existing) ─────────────────────────────
   fuel: {
     getLogs: (truckId, hours = 24) => request(`/fuel/logs/${truckId}?hours=${hours}`),
@@ -136,6 +130,8 @@ const api = {
       return request(`/v1/trips${query ? `?${query}` : ''}`);
     },
     get: (id) => request(`/v1/trips/${id}`),
+    create: (data) => request('/v1/trips', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/v1/trips/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     search: (params = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/trips/search${query ? `?${query}` : ''}`);
@@ -151,7 +147,47 @@ const api = {
     intelligence: (tripId) => request(`/v1/trips/${tripId}/intelligence`),
   },
 
-  // ── Maintenance Domain (NEW - /api/v1/maintenance) ─────────
+  // ── Expense Domain (NEW - /api/v1/expenses) ─────────
+  expenses: {
+    list: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/expenses/search${query ? `?${query}` : ''}`);
+    },
+    get: (id) => request(`/v1/expenses/${id}`),
+    create: (data) => request('/v1/expenses', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/v1/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    byVehicle: (vehicleId, params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/vehicles/${vehicleId}/expenses${query ? `?${query}` : ''}`);
+    },
+    byDriver: (driverId, params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/drivers/${driverId}/expenses${query ? `?${query}` : ''}`);
+    },
+    byTrip: (tripId, params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/trips/${tripId}/expenses${query ? `?${query}` : ''}`);
+    },
+  },
+
+  // ── SOS / Emergency (NEW - /api/v1/sos) ─────────
+  sos: {
+    list: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/sos/active${query ? `?${query}` : ''}`);
+    },
+    resolve: (id, notes) => request(`/v1/sos/${id}/resolve`, { method: 'POST', body: JSON.stringify({ notes }) }),
+  },
+  // ── Owner Dashboard (NEW - /api/v1/owner/dashboard) ─────────
+  ownerDashboard: {
+    getKPIs: () => request('/v1/owner/dashboard/kpis'),
+  },
+
+  // ── Telematics / Tracking ─────────
+  telematics: {
+    getLiveFleet: () => request('/v1/tracking/fleet/live'),
+  },
+
   maintenance: {
     list: (params = {}) => {
       const query = new URLSearchParams(params).toString();

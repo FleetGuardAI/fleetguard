@@ -18,14 +18,16 @@ class OpenAIProvider(LLMProvider):
         if not api_key:
             logger.warning("API key is not set. LLMProvider will fail on calls.")
         
-        base_url = None
+        base_url = settings.LLM_BASE_URL
         model = settings.OPENAI_MODEL
         
         if settings.GEMINI_API_KEY:
-            # When using Gemini API key, we must hit the Gemini OpenAI-compatible endpoint
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-            # Use gemini model if we are using gemini endpoint. Default to gemini-2.5-flash
-            model = "gemini-2.5-flash"
+            # When using Gemini API key, we must hit the Gemini OpenAI-compatible endpoint if no custom base_url is set
+            if not base_url:
+                base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            # Use gemini model if we are using gemini endpoint. Default to gemini-3.6-flash
+            if model == "gpt-4o": # Only override if it wasn't explicitly changed from the default
+                model = "gemini-3.6-flash"
             
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.model = model

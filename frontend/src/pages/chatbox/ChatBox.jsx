@@ -215,10 +215,17 @@ export default function ChatBox() {
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       console.error("Copilot chat error:", err);
+      let errorMessage = "I'm sorry, I encountered an error while processing your request. Please try again later.";
+      if (err.response && err.response.data && err.response.data.detail) {
+        errorMessage = `Error: ${err.response.data.detail}`;
+      } else if (err.message) {
+        errorMessage = `Error: ${err.message}`;
+      }
+
       const errorMsg = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: { text: "I'm sorry, I encountered an error while processing your request. Please try again later." },
+        content: { text: errorMessage },
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);

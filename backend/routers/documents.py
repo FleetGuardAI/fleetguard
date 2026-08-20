@@ -56,7 +56,7 @@ async def upload_document(
     user_id_str = str(current_user.id)
     
     try:
-        return await service.upload_document(file=file, uploaded_by=user_id_str)
+        return await service.upload_document(file=file, uploaded_by=user_id_str, company_id=current_user.company_id)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -78,7 +78,7 @@ async def get_document(
     Retrieve the metadata and processing status of a specific document.
     """
     try:
-        return await service.get_document(document_id)
+        return await service.get_document(document_id, company_id=current_user.company_id)
     except DocumentNotFound as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,6 +103,7 @@ async def list_documents(
     """
     return await service.list_documents(
         status=storage_status,
+        company_id=current_user.company_id,
         limit=limit,
         offset=offset,
     )

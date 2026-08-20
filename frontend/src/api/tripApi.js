@@ -78,45 +78,31 @@ export async function getTripById(id) {
 
 export async function createTrip(data) {
   const payload = {
-    event_type: 'trip.created',
-    domain: 'trip',
-    payload: {
-      origin_location: data.origin_location || data.start_point || data.origin,
-      destination_location: data.destination_location || data.end_point || data.destination,
-      planned_distance: data.planned_distance ? Number(data.planned_distance) : null,
-      planned_start_time: data.planned_start_time || data.start_date || null,
-      planned_end_time: data.planned_end_time || data.expected_delivery || null,
-      vehicle_id: data.vehicle_id || data.truck_id ? Number(data.vehicle_id || data.truck_id) : null,
-      driver_id: data.driver_id ? Number(data.driver_id) : null,
-    },
+    origin_location: data.origin_location || data.start_point || data.origin,
+    destination_location: data.destination_location || data.end_point || data.destination,
+    planned_distance: data.planned_distance ? Number(data.planned_distance) : null,
+    planned_start_time: data.planned_start_time || data.start_date || null,
+    planned_end_time: data.planned_end_time || data.expected_delivery || null,
+    vehicle_id: data.vehicle_id || data.truck_id ? Number(data.vehicle_id || data.truck_id) : null,
+    driver_id: data.driver_id ? Number(data.driver_id) : null,
   };
-  const event = await api.events.create(payload);
-  return normalizeTrip({
-    id: Date.now(),
-    trip_id: `TRIP-${Date.now().toString().slice(-4)}`,
-    status: 'CREATED',
-    ...data,
-  });
+  const trip = await api.trips.create(payload);
+  return normalizeTrip(trip);
 }
 
 export async function updateTripStatus(id, status, description) {
-  const eventTypeMap = {
-    'in_progress': 'trip.started',
-    'on-trip': 'trip.started',
-    'paused': 'trip.paused',
-    'completed': 'trip.completed',
-    'cancelled': 'trip.cancelled',
+  const statusMap = {
+    'in_progress': 'IN_PROGRESS',
+    'on-trip': 'IN_PROGRESS',
+    'paused': 'PAUSED',
+    'completed': 'COMPLETED',
+    'cancelled': 'CANCELLED',
+    'scheduled': 'CREATED'
   };
-  const payload = {
-    event_type: eventTypeMap[status] || `trip.${status}`,
-    domain: 'trip',
-    aggregate_id: String(id),
-    payload: {
-      description: description || `Status updated to ${status}`,
-    },
-  };
-  await api.events.create(payload);
-  return normalizeTrip({ id, status });
+  const targetStatus = statusMap[status] || status.toUpperCase();
+  const payload = { status: targetStatus };
+  const updated = await api.trips.update(id, payload);
+  return normalizeTrip(updated);
 }
 
 /**

@@ -73,6 +73,12 @@ class Document(Base):
         doc="ID of the user or system that uploaded the document.",
     )
     
+    company_id: Mapped[int | None] = mapped_column(
+        nullable=True,
+        index=True,
+        doc="ID of the company that owns the document.",
+    )
+    
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
         nullable=False,

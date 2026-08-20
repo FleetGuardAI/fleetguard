@@ -96,5 +96,6 @@ export async function deleteDriver(id) {
 }
 
 export async function assignVehicle(driverId, vehicleId) {
+  await api.trucks.update(vehicleId, { driver_id: driverId });
   return { success: true, message: `Vehicle ID ${vehicleId} assigned to driver ID ${driverId}.` };
 }
