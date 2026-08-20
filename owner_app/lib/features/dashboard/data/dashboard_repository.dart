@@ -12,12 +12,14 @@ class DashboardKPIs {
   final int totalActiveDrivers;
   final int activeTrips;
   final double monthlyExpenses;
+  final int attentionRequired;
 
   DashboardKPIs({
     required this.totalActiveTrucks,
     required this.totalActiveDrivers,
     required this.activeTrips,
     required this.monthlyExpenses,
+    required this.attentionRequired,
   });
 
   factory DashboardKPIs.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,36 @@ class DashboardKPIs {
       totalActiveDrivers: json['total_active_drivers'] ?? 0,
       activeTrips: json['active_trips'] ?? 0,
       monthlyExpenses: (json['monthly_expenses'] ?? 0).toDouble(),
+      attentionRequired: json['attention_required'] ?? 0,
+    );
+  }
+}
+
+class RecentActivityItem {
+  final int id;
+  final String title;
+  final String description;
+  final String type;
+  final String status;
+  final String? timestamp;
+
+  RecentActivityItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.type,
+    required this.status,
+    this.timestamp,
+  });
+
+  factory RecentActivityItem.fromJson(Map<String, dynamic> json) {
+    return RecentActivityItem(
+      id: json['id'],
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      type: json['type'] ?? '',
+      status: json['status'] ?? '',
+      timestamp: json['timestamp'],
     );
   }
 }
@@ -41,6 +73,16 @@ class DashboardRepository {
       return DashboardKPIs.fromJson(response.data);
     } catch (e) {
       throw Exception('Failed to load KPIs: $e');
+    }
+  }
+
+  Future<List<RecentActivityItem>> getRecentActivity() async {
+    try {
+      final response = await _dio.get('/api/v1/owner/dashboard/recent-activity');
+      final data = response.data as List;
+      return data.map((item) => RecentActivityItem.fromJson(item)).toList();
+    } catch (e) {
+      throw Exception('Failed to load recent activity: $e');
     }
   }
 }

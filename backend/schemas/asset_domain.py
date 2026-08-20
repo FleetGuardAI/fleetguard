@@ -4,7 +4,7 @@ Defines value objects for asset operations and read-models for API responses.
 """
 
 from typing import Optional, List, Any, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from datetime import datetime
 
 from models.asset_domain import (
@@ -59,10 +59,34 @@ class AssetResponse(BaseModel):
         "from_attributes": True
     }
 
+    @model_validator(mode="after")
+    def strip_secrets(self) -> "AssetResponse":
+        if self.purchase_information and "api_key_hash" in self.purchase_information:
+            # We don't want to mutate the DB object if it's attached, but Pydantic creates a copy for the model
+            # However, since purchase_information is a dict, it might be by reference.
+            # Let's create a new dict.
+            self.purchase_information = {k: v for k, v in self.purchase_information.items() if k != "api_key_hash"}
+        return self
+
 
 # ===========================================================================
-# Value Objects / Internal Commands
+# Value Objects / Internal Commands / API Inputs
 # ===========================================================================
+
+class HardwareAssetCreate(BaseModel):
+    api_key: str
+    vehicle_id: int
+    device_name: str
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "api_key": "sec_12345",
+                "vehicle_id": 1,
+                "device_name": "Truck 01 GPS"
+            }
+        }
+    }
 
 class AssetRegistered(BaseModel):
     asset_type: str

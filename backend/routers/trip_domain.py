@@ -98,8 +98,8 @@ async def get_trip(
 ) -> TripResponse:
     """Get a single trip by ID."""
     service = TripService(uow)
-    trip = await service.get_trip(trip_id, company_id=current_user.company_id)
-    if not trip:
+    trip = await service.get_trip(trip_id)
+    if not trip or trip.company_id != current_user.company_id:
         raise HTTPException(404, f"Trip {trip_id} not found")
     return TripResponse.model_validate(trip)
 
@@ -132,15 +132,17 @@ async def update_trip(
 async def get_trip_intelligence(
     trip_id: int,
     uow: AbstractUnitOfWork = Depends(get_read_uow),
+    current_user: User = Depends(get_current_user),
 ) -> TripIntelligenceResponse:
     """
     Get Trip Intelligence analysis for a specific trip.
     Returns profitability, cost breakdown, efficiency score,
     anomaly insights, historical comparisons, and recommendations.
+    Company-scoped.
     """
     trip_service = TripService(uow)
     trip = await trip_service.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.company_id != current_user.company_id:
         raise HTTPException(404, f"Trip {trip_id} not found")
 
     intelligence_service = TripIntelligenceService(uow)

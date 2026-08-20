@@ -14,11 +14,9 @@ import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getDashboardData, getFleetHealth, getUpcomingAlerts } from '@/api/dashboardApi';
-import { fetchAiOpportunities, assignOpportunity, dismissOpportunity } from '@/services/aiOpportunities';
 import { getLiveTracking } from '@/api/telematicsApi';
-import { SignalDeck } from './dashboard-ai/SignalDeck';
 import { FleetMap } from './dashboard-ai/FleetMap';
-import { FinancialIntelligenceWidget } from '@/components/dashboard/FinancialIntelligenceWidget';
+import { FinancialIntelligenceEngine } from '@/components/dashboard/FinancialIntelligenceEngine';
 // ── KPI Icon Map ──
 const kpiIcons = {
   Truck: Truck,
@@ -54,11 +52,7 @@ export default function DashboardOverview() {
   const [refreshing, setRefreshing] = useState(false);
   const [health, setHealth] = useState({});
   const [alerts, setAlerts] = useState([]);
-  const [opportunities, setOpportunities] = useState([]);
   const [searchValue, setSearchValue] = useState('');
-  const [resolveModalOpen, setResolveModalOpen] = useState(false);
-  const [selectedAction, setSelectedAction] = useState('tech');
-  const [resolving, setResolving] = useState(false);
 
   // Real data state
   const [dashboardData, setDashboardData] = useState({
@@ -84,14 +78,12 @@ export default function DashboardOverview() {
     if (isSilent) setRefreshing(true);
     else setLoading(true);
     try {
-      const [res, healthData, alertsData, dbData, tracking] = await Promise.all([
-        fetchAiOpportunities().catch(() => ({ data: [] })),
+      const [healthData, alertsData, dbData, tracking] = await Promise.all([
         getFleetHealth().catch(() => ({})),
         getUpcomingAlerts().catch(() => []),
         getDashboardData().catch(() => ({ kpis: {}, recentActivity: [], fuelChart: [] })),
         getLiveTracking().catch(() => [])
       ]);
-      setOpportunities(res?.data || []);
       setHealth(healthData || {});
       setAlerts(alertsData || []);
       setDashboardData({
@@ -110,23 +102,7 @@ export default function DashboardOverview() {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleAssign = async (id) => {
-    setResolveModalOpen(true);
-  };
 
-  const handleConfirmResolve = async (id) => {
-    setResolving(true);
-    try {
-      await assignOpportunity(id);
-      success('Signal Resolved', `Executed protocol '${selectedAction}' for signal ${id}`);
-      setOpportunities(prev => prev.map(o => o.id === id ? { ...o, status: 'assigned' } : o));
-      setResolveModalOpen(false);
-    } catch {
-      error('Resolution Failed', 'Could not execute the assignment.');
-    } finally {
-      setResolving(false);
-    }
-  };
 
   const handleSearchSubmit = () => {
     if (searchValue.trim()) {
@@ -136,7 +112,6 @@ export default function DashboardOverview() {
     }
   };
 
-  const activeOpportunities = (opportunities || []).filter(o => o && (o.status === 'new' || o.status === 'investigating'));
   const userName = user?.name || 'Owner';
 
   const kpiItems = [
@@ -196,15 +171,38 @@ export default function DashboardOverview() {
           })}
         </div>
 
-        {/* ═══════════ FLEET FINANCIAL INTELLIGENCE ═══════════ */}
+        {/* ═══════════ FINANCIAL INTELLIGENCE ENGINE ═══════════ */}
         <div className="mt-6">
-          <FinancialIntelligenceWidget />
+          <FinancialIntelligenceEngine />
         </div>
 
-        {/* ═══════════ OPERATIONS WORKSPACE (DECK & MAP) ═══════════ */}
+        {/* ═══════════ FINANCIAL OVERVIEW & MAP ═══════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-6">
           <div className="lg:col-span-5 h-[540px]">
-            <SignalDeck signals={activeOpportunities} onResolve={handleAssign} />
+            <div className="w-full h-full bg-white border border-border rounded-2xl p-6 shadow-sm flex flex-col">
+              <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-widest mb-6">
+                {t("Financial Overview")}
+              </h3>
+              
+              <div className="space-y-6 flex-1">
+                <div className="flex items-center justify-between py-3 border-b border-border/50">
+                  <span className="text-[13px] text-content-secondary font-medium">{t("Total Revenue")}</span>
+                  <span className="text-sm font-bold text-content">₹0</span>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-border/50">
+                  <span className="text-[13px] text-content-secondary font-medium">{t("Total Expenses")}</span>
+                  <span className="text-sm font-bold text-content">₹{(dashboardData.kpis.total_expenses_month || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-border/50">
+                  <span className="text-[13px] text-content-secondary font-medium">{t("Net Profit")}</span>
+                  <span className="text-sm font-bold text-content">₹0</span>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-[13px] text-content-secondary font-medium">{t("Profit Margin")}</span>
+                  <span className="text-sm font-bold text-content">0%</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="lg:col-span-7 h-[540px]">
              <FleetMap trucks={liveTrucks} />

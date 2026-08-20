@@ -200,7 +200,29 @@ export async function resetPassword(payload) {
  * Clears the access token and user cache.
  */
 export async function logout() {
+  const tokenBundle = getTokenBundle();
+  if (tokenBundle) {
+    const { token, tokenType } = tokenBundle;
+    try {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `${tokenType} ${token}`,
+        },
+      });
+    } catch (e) {
+      console.warn("Failed to logout from backend:", e);
+    }
+  }
+  
   clearAuth();
+  
+  // Clear any cached data
+  sessionStorage.clear();
+  // We do not clear entirely localStorage here in case there are other non-auth prefs,
+  // but clearing auth token effectively clears private data.
+  // Optional: clear specific keys or localStorage.clear()
+  
   return { success: true };
 }
 
@@ -293,4 +315,28 @@ export async function updateCompany(payload) {
 
 export function getStoredUser() {
   return getCachedUser();
+}
+
+/**
+ * Generate a short-lived QR token for Owner App pairing.
+ */
+export async function generateOwnerQR() {
+  const tokenBundle = getTokenBundle();
+  if (!tokenBundle) throw new Error('No active session.');
+
+  const { token, tokenType } = tokenBundle;
+
+  const response = await fetch('/api/v1/auth/owner-qr/generate', {
+    method: 'POST',
+    headers: {
+      'Authorization': `${tokenType} ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to generate QR token.' }));
+    throw new Error(errorData.detail || 'Failed to generate QR token.');
+  }
+
+  return response.json();
 }

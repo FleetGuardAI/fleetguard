@@ -5,7 +5,7 @@ Handles public tenant registration, dual-identifier login (email or mobile),
 and retrieval of current user profile context.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -23,6 +23,8 @@ from schemas import (
     TokenResponse,
     UserOut,
     CompanyUpdateRequest,
+    OwnerQRLoginRequest,
+    OwnerQRPairingResponse,
 )
 from services import (
     authenticate_user,
@@ -31,6 +33,8 @@ from services import (
     get_current_user,
     register_company,
     reset_password_with_token,
+    logout_user,
+    _oauth2_scheme,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
@@ -84,6 +88,47 @@ async def login(
         db=db,
         remember_me=payload.remember_me,
     )
+
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    summary="Log out the current user and revoke their session",
+)
+async def logout(
+    token: str = Depends(_oauth2_scheme),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Log out the currently authenticated user.
+    Revokes the current JWT's session to prevent further use.
+    """
+    await logout_user(token=token, db=db)
+    # Commit changes from logout_user update
+    await db.commit()
+    return {"message": "Logged out successfully"}
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    summary="Log out the current user and revoke their session",
+)
+async def logout(
+    token: str = Depends(_oauth2_scheme),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Log out the currently authenticated user.
+    Revokes the current JWT's session to prevent further use.
+    """
+    await logout_user(token=token, db=db)
+    # Commit changes from logout_user update
+    await db.commit()
+    return {"message": "Logged out successfully"}
 
 
 @router.post(
@@ -177,4 +222,66 @@ async def update_company(
         company=CompanyOut.model_validate(company),
         role=current_user.role,
     )
+
+
+@router.post(
+    "/logout",
+    response_model=GenericMessageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Log out the current session",
+)
+async def logout(
+    token: str = Depends(_oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> GenericMessageResponse:
+    """
+    Revoke the current user's session.
+    """
+    await logout_user(token, db)
+    return GenericMessageResponse(message="Successfully logged out.")
+
+
+@router.post(
+    "/owner-qr/generate",
+    response_model=OwnerQRPairingResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate a short-lived QR token for Owner App login",
+)
+async def generate_owner_qr(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OwnerQRPairingResponse:
+    """
+    Generate a pairing token for the Owner App.
+    Only COMPANY_ADMIN can generate this.
+    """
+    from models.user import UserRole
+    if current_user.role not in (UserRole.COMPANY_ADMIN, UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Company Admin can generate Owner App QR codes."
+        )
+    
+    from services.auth_service import generate_owner_qr_token
+    return await generate_owner_qr_token(current_user, db)
+
+
+@router.post(
+    "/owner-qr/verify",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify QR token and return access token for Owner App",
+)
+async def verify_owner_qr(
+    payload: OwnerQRLoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """
+    Verify the scanned QR token. If valid, create AuthSession and return JWT.
+    """
+    from services.auth_service import verify_owner_qr_token
+    return await verify_owner_qr_token(payload.pairing_token, db)
+
+
+
 

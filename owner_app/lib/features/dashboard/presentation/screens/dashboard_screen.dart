@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/providers/mock_data_provider.dart';
 import '../providers/dashboard_provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../tracking/presentation/providers/tracking_provider.dart';
+import '../../../../core/services/auth_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -47,6 +47,8 @@ class DashboardScreen extends ConsumerWidget {
               onRefresh: () async {
                 ref.invalidate(dashboardKPIsProvider);
                 await ref.read(dashboardKPIsProvider.future);
+                ref.invalidate(recentActivityProvider);
+                await ref.read(recentActivityProvider.future);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -57,14 +59,14 @@ class DashboardScreen extends ConsumerWidget {
                     _buildHeader(ref, isDark),
                     const SizedBox(height: 24),
                     _buildGreeting(isDark),
-                    const SizedBox(height: 32),
-                    _buildFleetScoreSection(isDark),
                     const SizedBox(height: 24),
-                    _buildLiveTrackingCard(ref, isDark),
+                    _buildAttentionRequired(ref, isDark),
                     const SizedBox(height: 24),
                     _buildPerformanceOverview(ref, isDark),
                     const SizedBox(height: 24),
-                    _buildAttentionCard(isDark),
+                    _buildLiveTrackingCard(ref, isDark),
+                    const SizedBox(height: 24),
+                    _buildRecentActivity(ref, isDark),
                     const SizedBox(height: 100), // Bottom padding for glass nav
                   ],
                 ),
@@ -74,6 +76,175 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildAttentionRequired(WidgetRef ref, bool isDark) {
+    final kpisAsync = ref.watch(dashboardKPIsProvider);
+    return kpisAsync.when(
+      data: (kpis) {
+        if (kpis.attentionRequired == 0) return const SizedBox.shrink();
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.statusRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.statusRed.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.statusRed.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: AppColors.statusRed),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Attention Required',
+                      style: TextStyle(
+                        color: AppColors.statusRed,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'You have ${kpis.attentionRequired} pending issue${kpis.attentionRequired > 1 ? 's' : ''} to review.',
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.statusRed),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildRecentActivity(WidgetRef ref, bool isDark) {
+    final activityAsync = ref.watch(recentActivityProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent Activity', 
+          style: TextStyle(
+            fontSize: 18, 
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+          ),
+        ),
+        const SizedBox(height: 16),
+        activityAsync.when(
+          data: (activities) {
+            if (activities.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    'No recent activity.',
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
+                    ),
+                  ),
+                ),
+              );
+            }
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: activities.length,
+              separatorBuilder: (context, index) => Divider(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                height: 24,
+              ),
+              itemBuilder: (context, index) {
+                final item = activities[index];
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: (isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      ),
+                      child: Icon(
+                        item.type == 'ticket' ? Icons.report_problem_outlined : Icons.info_outline,
+                        color: item.status == 'pending' ? AppColors.statusOrange : AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.description,
+                            style: TextStyle(
+                              color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (item.timestamp != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatTime(item.timestamp!),
+                              style: TextStyle(
+                                color: isDark ? AppColors.darkOnSurfaceVariant.withOpacity(0.5) : AppColors.lightOnSurfaceVariant.withOpacity(0.5),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ]
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Failed to load activity', style: const TextStyle(color: AppColors.statusRed))),
+        ),
+      ],
+    );
+  }
+
+  String _formatTime(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp).toLocal();
+      return DateFormat('MMM d, yyyy • h:mm a').format(dt);
+    } catch (_) {
+      return timestamp;
+    }
   }
 
   Widget _buildHeader(WidgetRef ref, bool isDark) {
@@ -131,9 +302,23 @@ class DashboardScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 2),
               ),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundImage: ref.watch(mockAvatarProvider),
+              child: PopupMenuButton(
+                icon: const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primary,
+                  child: Icon(Icons.person, color: Colors.white, size: 20),
+                ),
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    ref.read(authServiceProvider).logout();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Text('Logout'),
+                  ),
+                ],
               ),
             ),
           ],
@@ -176,98 +361,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFleetScoreSection(bool isDark) {
-    return _GlassCard(
-      isDark: isDark,
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          // Main Score Ring
-          Expanded(
-            flex: 5,
-            child: Column(
-              children: [
-                Text(
-                  'Fleet Health Score', 
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
-                    fontSize: 13,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 110,
-                      height: 110,
-                      child: CircularProgressIndicator(
-                        value: 0.84,
-                        strokeWidth: 8,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                        color: AppColors.statusGreen,
-                      ),
-                    ),
-                    Column(
-                      children: [
-                        Text(
-                          '84', 
-                          style: TextStyle(
-                            fontSize: 36, 
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.statusGreen.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text(
-                            'Good', 
-                            style: TextStyle(
-                              color: AppColors.statusGreen, 
-                              fontWeight: FontWeight.w600, 
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 1, 
-            height: 120, 
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-          // Breakdown
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _ScoreRow(label: 'Drivers', score: 88, color: AppColors.statusGreen, isDark: isDark),
-                const SizedBox(height: 16),
-                _ScoreRow(label: 'Vehicles', score: 82, color: AppColors.statusGreen, isDark: isDark),
-                const SizedBox(height: 16),
-                _ScoreRow(label: 'Maintenance', score: 76, color: AppColors.statusAmber, isDark: isDark),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildLiveTrackingCard(WidgetRef ref, bool isDark) {
     final locationsAsync = ref.watch(fleetLocationsProvider);
@@ -370,52 +464,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAttentionCard(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.statusRed.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.statusRed.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.statusRed.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.warning_amber_rounded, color: AppColors.statusRed),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '4 vehicles', 
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold, 
-                      fontSize: 16,
-                      color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
-                    ),
-                  ),
-                  const Text(
-                    'Require immediate service', 
-                    style: TextStyle(color: AppColors.statusRed, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Icon(Icons.arrow_forward_ios, color: AppColors.statusRed.withOpacity(0.7), size: 16),
-        ],
-      ),
-    );
-  }
+
 }
 
 class _GlassCard extends StatelessWidget {

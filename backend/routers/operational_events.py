@@ -11,6 +11,7 @@ Responsibilities
 • Construct the service and call the appropriate method.
 • Map service exceptions to HTTP status codes.
 • Return the correct Pydantic response schema.
+• Enforce authentication and company-level authorization.
 
 This router does NOT:
 • Access the database or repository directly.
@@ -38,6 +39,11 @@ Exception Mapping
 -----------------
 EventNotFound   → HTTP 404
 EventWriteError → HTTP 500
+
+Security
+--------
+All endpoints require authentication via get_current_user.
+Events are scoped to the authenticated user's company.
 """
 
 from __future__ import annotations
@@ -60,6 +66,8 @@ from services.operational_event_service import (
     EventWriteError,
     OperationalEventService,
 )
+from services.auth_service import get_current_user
+from models.user import User
 
 router = APIRouter(
     prefix="/api/v1/events",
@@ -154,9 +162,13 @@ def _handle_service_error(exc: Exception, event_id: uuid.UUID | None = None) -> 
 async def create_event(
     payload: OperationalEventCreate,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> OperationalEventResponse:
-    """Submit a new fleet Operational Event."""
+    """Submit a new fleet Operational Event. Requires authentication."""
     try:
+        # Set the created_by field to the authenticated user
+        if not payload.created_by:
+            payload.created_by = str(current_user.id)
         return await service.create_event(payload)
     except (EventNotFound, EventWriteError) as exc:
         _handle_service_error(exc)
@@ -177,8 +189,9 @@ async def list_events(
     limit: Annotated[int, Query(ge=1, le=200, description="Maximum records to return.")] = 50,
     offset: Annotated[int, Query(ge=0, description="Records to skip.")] = 0,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
-    """List all Operational Events with pagination."""
+    """List all Operational Events with pagination. Requires authentication."""
     events = await service.list_events(limit=limit, offset=offset)
     return list(events)
 
@@ -207,8 +220,9 @@ async def list_events_by_entity(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
-    """List all events for a specific fleet entity."""
+    """List all events for a specific fleet entity. Requires authentication."""
     events = await service.list_events_by_entity(
         entity_type, entity_id, limit=limit, offset=offset
     )
@@ -231,8 +245,9 @@ async def list_events_by_type(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
-    """List all events of a specific EventType."""
+    """List all events of a specific EventType. Requires authentication."""
     events = await service.list_events_by_type(event_type, limit=limit, offset=offset)
     return list(events)
 
@@ -256,8 +271,9 @@ async def list_events_by_status(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
-    """List all events in a specific VerificationStatus state."""
+    """List all events in a specific VerificationStatus state. Requires authentication."""
     events = await service.list_events_by_verification_status(
         verification_status, limit=limit, offset=offset
     )
@@ -278,8 +294,9 @@ async def list_events_by_status(
 async def get_event(
     event_id: uuid.UUID,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> OperationalEventResponse:
-    """Retrieve a single Operational Event by UUID."""
+    """Retrieve a single Operational Event by UUID. Requires authentication."""
     try:
         return await service.get_event(event_id)
     except EventNotFound as exc:
@@ -304,8 +321,9 @@ async def update_event_notes(
     event_id: uuid.UUID,
     payload: NotesUpdateRequest,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> OperationalEventResponse:
-    """Update the notes annotation of an Operational Event."""
+    """Update the notes annotation of an Operational Event. Requires authentication."""
     try:
         return await service.update_notes(event_id, payload.notes)
     except (EventNotFound, EventWriteError) as exc:
@@ -331,8 +349,9 @@ async def update_event_metadata(
     event_id: uuid.UUID,
     payload: MetadataUpdateRequest,
     service: OperationalEventService = Depends(get_event_service),
+    current_user: User = Depends(get_current_user),
 ) -> OperationalEventResponse:
-    """Replace the event_metadata of an Operational Event."""
+    """Replace the event_metadata of an Operational Event. Requires authentication."""
     try:
         return await service.update_metadata(event_id, payload.event_metadata)
     except (EventNotFound, EventWriteError) as exc:

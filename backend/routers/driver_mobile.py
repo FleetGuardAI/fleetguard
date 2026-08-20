@@ -8,6 +8,13 @@ Handles the complete driver mobile app flow:
 - Face verification (demo: simulated)
 - Profile management
 - FCM token registration
+- Duty management
+
+Security:
+All endpoints (except OTP/invite verification) require a valid JWT token.
+The `get_current_driver` dependency ensures the authenticated user is actually a driver
+and retrieves their driver profile.
+This prevents IDOR (Insecure Direct Object Reference) by not accepting `driver_id` from the client.
 """
 
 import logging
@@ -27,6 +34,7 @@ from models.fleet_invite import FleetInvite
 from services.otp_service import otp_service
 from services.file_upload_service import storage_service
 from utils.security import hash_password, create_access_token
+from services.auth_service import get_current_user
 
 logger = logging.getLogger("fleetguard.driver_mobile")
 
@@ -101,31 +109,25 @@ class FcmTokenRequest(BaseModel):
 # Dependencies
 # ==========================================================================
 
-async def get_current_driver(db: AsyncSession = Depends(get_db)) -> Driver:
-    """
-    Extract driver from JWT token.
-    Reuses the existing auth service's token format.
-    """
-    # This is a simplified version — in production, extract from JWT
-    # For the driver app, we use the same JWT format as the dashboard
-    from fastapi import Request
-    from fastapi.security import OAuth2PasswordBearer
-    from utils.security import decode_access_token
-    from jose import JWTError
-
-    # This will be injected via the auth interceptor
-    # For now, we'll create a proper dependency
-    raise HTTPException(401, "Use get_driver_from_token dependency")
-
-
-async def get_driver_from_token(
-    db: AsyncSession = Depends(get_db),
+async def get_current_driver(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Driver:
-    """Get the authenticated driver from JWT token."""
-    from fastapi import Request
-    # We'll use a simpler approach — the auth interceptor handles this
-    # Return a stub for now that gets replaced by proper middleware
-    pass
+    """
+    Get the authenticated driver profile.
+    Prevents IDOR by using the trusted JWT token to look up the driver.
+    """
+    result = await db.execute(
+        select(Driver).where(Driver.user_id == current_user.id)
+    )
+    driver = result.scalar_one_or_none()
+    
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authenticated user is not registered as a driver"
+        )
+    return driver
 
 
 # ==========================================================================
@@ -283,29 +285,13 @@ async def verify_otp(
 @router.post("/register", response_model=DriverProfileResponse)
 async def register_driver_profile(
     payload: DriverProfileRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Complete driver profile registration after OTP verification.
     Updates driver name, license, aadhaar, and sets status to PENDING_DOCUMENTS.
     """
-    # Extract driver_id from token
-    from services.auth_service import get_current_user
-    # We'll use a simpler auth check for the driver app
-    # In practice, the JWT already contains the driver_id
-    from fastapi import Request
-
-    # For this endpoint, we need to extract driver from the existing JWT
-    # The token was created in verify_otp with driver_id in payload
-    # We'll use a helper to extract it
-    driver_id = await _extract_driver_id_from_token(db)
-    if driver_id is None:
-        raise HTTPException(401, "Authentication required")
-
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.name = payload.name
     if payload.license_number:
         driver.license_number = payload.license_number
@@ -333,18 +319,14 @@ async def register_driver_profile(
 @router.post("/upload-document")
 async def upload_document(
     document_type: str = Form(..., description="license_front, license_back, aadhaar_front, aadhaar_back, selfie"),
-    driver_id: int = Form(...),
     file: UploadFile = File(...),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Upload a driver document (license, aadhaar, selfie).
     Stores locally for demo, abstracted for S3/R2 in production.
     """
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     # Validate document type
     valid_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
     if document_type not in valid_types:
@@ -383,7 +365,7 @@ async def upload_document(
 
 @router.post("/face-verify", response_model=FaceVerifyResponse)
 async def face_verify(
-    driver_id: int = Form(...),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -392,10 +374,6 @@ async def face_verify(
     Demo: simulates verification with 95% confidence.
     Production: integrate with face comparison AI (AWS Rekognition, etc.)
     """
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     if not driver.selfie_url or not driver.license_front_url:
         raise HTTPException(400, "Selfie and license front must be uploaded first")
 
@@ -403,7 +381,7 @@ async def face_verify(
     driver.face_verified = True
     await db.commit()
 
-    logger.info(f"[DEMO] Face verification passed for driver {driver_id}")
+    logger.info(f"[DEMO] Face verification passed for driver {driver.id}")
 
     return FaceVerifyResponse(
         verified=True,
@@ -414,14 +392,10 @@ async def face_verify(
 
 @router.get("/profile", response_model=DriverProfileResponse)
 async def get_driver_profile(
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Get driver profile with approval status."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-    
     response = _driver_to_response(driver)
     response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
     return response
@@ -429,15 +403,11 @@ async def get_driver_profile(
 
 @router.patch("/profile", response_model=DriverProfileResponse)
 async def update_driver_profile(
-    driver_id: int,
     payload: DriverProfileRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver profile details."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     if payload.name:
         driver.name = payload.name
     if payload.license_number:
@@ -453,14 +423,10 @@ async def update_driver_profile(
 @router.put("/fcm-token")
 async def update_fcm_token(
     payload: FcmTokenRequest,
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver's FCM push notification token."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.fcm_token = payload.fcm_token
     await db.commit()
     return {"message": "FCM token updated"}
@@ -472,48 +438,36 @@ async def update_fcm_token(
 
 @router.post("/duty/start")
 async def start_duty(
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Start driver's duty shift."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.duty_status = DutyStatus.ON_DUTY
     await db.commit()
 
-    logger.info(f"Driver {driver_id} started duty")
+    logger.info(f"Driver {driver.id} started duty")
     return {"message": "Duty started", "duty_status": "ON_DUTY"}
 
 
 @router.post("/duty/end")
 async def end_duty(
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """End driver's duty shift."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.duty_status = DutyStatus.OFF_DUTY
     await db.commit()
 
-    logger.info(f"Driver {driver_id} ended duty")
+    logger.info(f"Driver {driver.id} ended duty")
     return {"message": "Duty ended", "duty_status": "OFF_DUTY"}
 
 
 @router.post("/duty/break")
 async def start_break(
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a break during duty."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.duty_status = DutyStatus.ON_BREAK
     await db.commit()
 
@@ -522,14 +476,10 @@ async def start_break(
 
 @router.post("/duty/resume")
 async def resume_duty(
-    driver_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Resume duty after break."""
-    driver = await db.get(Driver, driver_id)
-    if driver is None:
-        raise HTTPException(404, "Driver not found")
-
     driver.duty_status = DutyStatus.ON_DUTY
     await db.commit()
 
@@ -572,17 +522,3 @@ async def _get_assigned_vehicle(driver_id: int, db: AsyncSession) -> Optional[st
     )
     vehicle = result.scalar_one_or_none()
     return vehicle.registration_number if vehicle else None
-
-
-async def _extract_driver_id_from_token(db: AsyncSession) -> Optional[int]:
-    """
-    Helper to extract driver_id from the current request's JWT.
-    This is a simplified version for demo — in production, use proper middleware.
-    """
-    # For demo, we'll query the most recently created driver
-    # In production, the JWT middleware would inject this
-    result = await db.execute(
-        select(Driver).order_by(Driver.id.desc()).limit(1)
-    )
-    driver = result.scalar_one_or_none()
-    return driver.id if driver else None
