@@ -1,100 +1,122 @@
 """
-FleetGuard — Dashboard API Router
-Aggregation endpoints for the Owner BI Dashboard KPIs and summary data.
+FleetGuard — Dashboard KPI Router
+Aggregated metrics for the React Dashboard.
+
+Security: All endpoints require authentication and are scoped
+to the authenticated user's company_id.
 """
 
-from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver
+from models.trip_domain import Trip, TripStatus
 from models.ticket import Ticket, TicketStatus, RiskLevel
-from models.fuel_log import FuelLog
-from schemas.ticket import DashboardKPIs
+from services.auth_service import get_current_user
+from models.user import User
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 
-@router.get("/kpis", response_model=DashboardKPIs)
-async def get_dashboard_kpis(db: AsyncSession = Depends(get_db)) -> DashboardKPIs:
+@router.get("/kpis")
+async def get_dashboard_kpis(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
-    Fetch top-level KPI card data for the owner dashboard.
-    Returns: active trucks, pending approvals, theft alerts, flagged drivers,
-    and expense totals for today and this month.
+    Get aggregate KPIs for the dashboard.
+    All metrics are scoped to the authenticated user's company.
     """
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    company_id = current_user.company_id
 
-    # Active trucks (now vehicles)
-    active_vehicles_result = await db.execute(
-        select(func.count(Vehicle.id)).where(Vehicle.status == "ACTIVE")  # noqa: E712
+    # Vehicle stats — scoped to company
+    vehicle_result = await db.execute(
+        select(
+            func.count(Vehicle.id).label("total"),
+            func.count(case((Vehicle.status == "active", 1))).label("active"),
+            func.count(case((Vehicle.status == "maintenance", 1))).label("maintenance"),
+        ).where(Vehicle.company_id == company_id)
     )
-    active_trucks = active_vehicles_result.scalar() or 0
+    v = vehicle_result.one()
 
-    # Pending approvals
-    pending_result = await db.execute(
-        select(func.count(Ticket.id)).where(Ticket.status == TicketStatus.PENDING)
+    # Driver stats — scoped to company
+    driver_result = await db.execute(
+        select(
+            func.count(Driver.id).label("total"),
+            func.count(case((Driver.status == "active", 1))).label("active"),
+        ).where(Driver.company_id == company_id)
     )
-    pending_approvals = pending_result.scalar() or 0
+    d = driver_result.one()
 
-    # Theft alerts (unresolved fuel theft alerts in the last 30 days)
-    thirty_days_ago = now - timedelta(days=30)
-    theft_result = await db.execute(
-        select(func.count(FuelLog.id)).where(
-            FuelLog.is_theft_alert == True,  # noqa: E712
-            FuelLog.timestamp >= thirty_days_ago,
+    # Trip stats — scoped to company
+    trip_result = await db.execute(
+        select(
+            func.count(Trip.id).label("total"),
+            func.count(case((Trip.status == TripStatus.IN_PROGRESS, 1))).label("active"),
+            func.count(case((Trip.status == TripStatus.COMPLETED, 1))).label("completed"),
+        ).where(Trip.company_id == company_id)
+    )
+    t = trip_result.one()
+
+    # Ticket stats — scoped to company via driver->company relationship
+    ticket_result = await db.execute(
+        select(
+            func.count(Ticket.id).label("total"),
+            func.count(case((Ticket.status == TicketStatus.PENDING, 1))).label("pending"),
+            func.count(case((Ticket.risk_level == RiskLevel.HIGH, 1))).label("high_risk"),
+            func.count(case((Ticket.risk_level == RiskLevel.CRITICAL, 1))).label("critical_risk"),
+            func.coalesce(func.sum(Ticket.amount), 0).label("total_amount"),
         )
+        .join(Driver, Ticket.driver_id == Driver.id)
+        .where(Driver.company_id == company_id)
     )
-    theft_alerts = theft_result.scalar() or 0
+    tk = ticket_result.one()
 
-    # Flagged drivers (risk_score > 50) - Temporarily disabled for Driver Domain Foundation refactor
-    flagged_drivers = 0
-
-    # Total approved expenses — today
-    expenses_today_result = await db.execute(
-        select(func.coalesce(func.sum(Ticket.amount), 0.0)).where(
-            Ticket.status == TicketStatus.APPROVED,
-            Ticket.updated_at >= today_start,
-        )
-    )
-    total_expenses_today = float(expenses_today_result.scalar() or 0)
-
-    # Total approved expenses — this month
-    expenses_month_result = await db.execute(
-        select(func.coalesce(func.sum(Ticket.amount), 0.0)).where(
-            Ticket.status == TicketStatus.APPROVED,
-            Ticket.updated_at >= month_start,
-        )
-    )
-    total_expenses_month = float(expenses_month_result.scalar() or 0)
-
-    return DashboardKPIs(
-        active_trucks=active_trucks,
-        pending_approvals=pending_approvals,
-        theft_alerts=theft_alerts,
-        flagged_drivers=flagged_drivers,
-        total_expenses_today=total_expenses_today,
-        total_expenses_month=total_expenses_month,
-    )
+    return {
+        "vehicles": {
+            "total": v.total,
+            "active": v.active,
+            "maintenance": v.maintenance,
+        },
+        "drivers": {
+            "total": d.total,
+            "active": d.active,
+        },
+        "trips": {
+            "total": t.total,
+            "active": t.active,
+            "completed": t.completed,
+        },
+        "tickets": {
+            "total": tk.total,
+            "pending": tk.pending,
+            "high_risk": tk.high_risk,
+            "critical_risk": tk.critical_risk,
+            "total_amount": float(tk.total_amount),
+        },
+    }
 
 
 @router.get("/recent-activity")
 async def get_recent_activity(
-    limit: int = 20,
+    limit: int = 10,
     db: AsyncSession = Depends(get_db),
-) -> list[dict]:
+    current_user: User = Depends(get_current_user),
+):
     """
-    Fetch recent ticket activity for the dashboard activity feed.
-    Returns the most recent tickets with driver and truck info.
+    Get recent ticket activity for the dashboard.
+    Scoped to the authenticated user's company.
     """
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(Ticket, Driver.name, Vehicle.registration_number)
         .join(Driver, Ticket.driver_id == Driver.id)
-        .join(Vehicle, Ticket.vehicle_id == Vehicle.id)
+        .outerjoin(Vehicle, Ticket.vehicle_id == Vehicle.id)
+        .where(Driver.company_id == company_id)
         .order_by(Ticket.created_at.desc())
         .limit(limit)
     )
@@ -103,13 +125,13 @@ async def get_recent_activity(
     return [
         {
             "id": ticket.id,
-            "issue_type": ticket.issue_type,
+            "type": ticket.issue_type,
             "amount": ticket.amount,
             "status": ticket.status.value,
             "risk_level": ticket.risk_level.value,
             "driver_name": driver_name,
-            "truck_plate": vehicle_reg,
+            "truck_plate": truck_plate,
             "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
         }
-        for ticket, driver_name, vehicle_reg in rows
+        for ticket, driver_name, truck_plate in rows
     ]

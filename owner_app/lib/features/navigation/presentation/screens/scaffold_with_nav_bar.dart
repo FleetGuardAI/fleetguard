@@ -14,26 +14,23 @@ class ScaffoldWithNavBar extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping),
             label: 'Fleet',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.smart_toy),
-            label: 'Copilot',
+            icon: Icon(Icons.build_circle),
+            label: 'Operations',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt),
-            label: 'Expense',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.route),
-            label: 'Trips',
+            icon: Icon(Icons.menu),
+            label: 'More',
           ),
         ],
         currentIndex: _calculateSelectedIndex(context),
@@ -50,14 +47,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
     if (location.startsWith('/fleet')) {
       return 1;
     }
-    if (location.startsWith('/copilot')) {
+    if (location.startsWith('/operations')) {
       return 2;
     }
-    if (location.startsWith('/expense')) {
+    if (location.startsWith('/more')) {
       return 3;
-    }
-    if (location.startsWith('/trips')) {
-      return 4;
     }
     return 0;
   }
@@ -71,13 +65,10 @@ class ScaffoldWithNavBar extends StatelessWidget {
         GoRouter.of(context).go('/fleet');
         break;
       case 2:
-        GoRouter.of(context).go('/copilot');
+        GoRouter.of(context).go('/operations');
         break;
       case 3:
-        GoRouter.of(context).go('/expense');
-        break;
-      case 4:
-        GoRouter.of(context).go('/trips');
+        GoRouter.of(context).go('/more');
         break;
     }
   }

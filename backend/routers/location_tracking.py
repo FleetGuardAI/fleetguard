@@ -83,13 +83,15 @@ class LiveDriverLocation(BaseModel):
 async def batch_upload_locations(
     payload: LocationBatchRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Batch upload GPS locations from driver's phone.
     Accepts queued offline locations for sync.
+    Validates that the driver belongs to the authenticated user's company.
     """
     driver = await db.get(Driver, payload.driver_id)
-    if driver is None:
+    if driver is None or driver.company_id != current_user.company_id:
         raise HTTPException(404, "Driver not found")
 
     locations_added = 0
@@ -138,10 +140,11 @@ async def batch_upload_locations(
 async def get_driver_live_location(
     driver_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Get a driver's latest known location (for dashboard map)."""
+    """Get a driver's latest known location (for dashboard map). Company-scoped."""
     driver = await db.get(Driver, driver_id)
-    if driver is None:
+    if driver is None or driver.company_id != current_user.company_id:
         raise HTTPException(404, "Driver not found")
 
     return LiveDriverLocation(
@@ -159,8 +162,14 @@ async def get_driver_location_history(
     driver_id: int,
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Get driver's location history (most recent first)."""
+    """Get driver's location history (most recent first). Company-scoped."""
+    # Verify driver belongs to the authenticated company
+    driver = await db.get(Driver, driver_id)
+    if driver is None or driver.company_id != current_user.company_id:
+        raise HTTPException(404, "Driver not found")
+
     result = await db.execute(
         select(DriverLocation)
         .where(DriverLocation.driver_id == driver_id)
@@ -226,13 +235,17 @@ async def compare_gps_sources(
     truck_lat: float,
     truck_lng: float,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Compare truck hardware GPS with driver phone GPS.
     Alert when they significantly differ (>500m).
+    Company-scoped: validates driver ownership.
     """
     driver = await db.get(Driver, driver_id)
-    if driver is None or driver.last_known_lat is None:
+    if driver is None or driver.company_id != current_user.company_id:
+        raise HTTPException(404, "Driver not found")
+    if driver.last_known_lat is None:
         raise HTTPException(404, "Driver location not available")
 
     # Haversine distance calculation (simplified)

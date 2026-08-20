@@ -58,3 +58,8 @@ export async function getAssetsByVehicle(vehicleId) {
   const records = await api.assets.byVehicle(vehicleId) || [];
   return records.map(normalizeAsset);
 }
+
+export async function createHardwareAsset(data) {
+  const record = await api.assets.createHardware(data);
+  return normalizeAsset(record);
+}

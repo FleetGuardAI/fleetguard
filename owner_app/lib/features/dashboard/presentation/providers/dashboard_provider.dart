@@ -18,3 +18,18 @@ final dashboardKPIsProvider = StreamProvider<DashboardKPIs>((ref) async* {
     }
   }
 });
+
+final recentActivityProvider = StreamProvider<List<RecentActivityItem>>((ref) async* {
+  final repository = ref.watch(dashboardRepositoryProvider);
+  
+  yield await repository.getRecentActivity();
+  
+  while (true) {
+    await Future.delayed(const Duration(seconds: 15));
+    try {
+      yield await repository.getRecentActivity();
+    } catch (e) {
+      continue;
+    }
+  }
+});

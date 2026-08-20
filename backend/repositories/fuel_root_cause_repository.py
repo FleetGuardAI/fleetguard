@@ -15,6 +15,8 @@ class FuelRootCauseRepository:
         return result.scalar_one_or_none()
 
     async def get_analyses_by_references(self, anomaly_references: list[str]) -> list[FuelRootCauseAnalysis]:
+        if not anomaly_references:
+            return []
         stmt = select(FuelRootCauseAnalysis).where(FuelRootCauseAnalysis.anomaly_reference.in_(anomaly_references)).options(selectinload(FuelRootCauseAnalysis.evidence_items))
         result = await self.db.execute(stmt)
         return list(result.scalars().all())

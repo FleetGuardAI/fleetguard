@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
+import AddDeviceModal from './AddDeviceModal';
 
 export default function AssetList() {
   const { error } = useToast();
@@ -30,6 +31,9 @@ export default function AssetList() {
   // Modal
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  
+  // Add Device Modal
+  const [addDeviceModalOpen, setAddDeviceModalOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -176,13 +180,21 @@ export default function AssetList() {
           <h1 className="text-2xl font-bold text-content">Hardware Assets</h1>
           <p className="text-sm text-content-secondary mt-0.5">Manage IoT telematics gateways, fuel sensors, dashcams, and fleet hardware assets.</p>
         </div>
-        <Button
-          variant="outline"
-          icon={<RefreshCw className="h-4 w-4" />}
-          onClick={loadData}
-        >
-          Refresh
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            icon={<RefreshCw className="h-4 w-4" />}
+            onClick={loadData}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => setAddDeviceModalOpen(true)}
+          >
+            + Add Device
+          </Button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -321,6 +333,17 @@ export default function AssetList() {
           </div>
         )}
       </Modal>
+
+      {/* Add Device Modal */}
+      <AddDeviceModal
+        open={addDeviceModalOpen}
+        onClose={() => setAddDeviceModalOpen(false)}
+        onSuccess={() => {
+          setAddDeviceModalOpen(false);
+          loadData();
+        }}
+        vehicles={vehicles}
+      />
     </div>
   );
 }

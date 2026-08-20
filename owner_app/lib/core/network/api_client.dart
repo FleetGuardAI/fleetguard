@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../storage/secure_storage.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
@@ -24,52 +25,30 @@ class ApiClient {
         },
       ),
     );
-    // Add interceptor for basic logging
     dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
-    dio.interceptors.add(OwnerMockInterceptor());
+    dio.interceptors.add(_AuthInterceptor());
   }
 }
 
-class OwnerMockInterceptor extends Interceptor {
+class _AuthInterceptor extends Interceptor {
+  @override
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    final token = await SecureStorage.getAccessToken();
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final path = err.requestOptions.path;
-    dynamic mockData;
-
-    if (path.contains('/vehicles') || path.contains('/trucks')) {
-      mockData = [
-        {'id': 1, 'license_plate': 'MH-12-AB-1234', 'make': 'Tata', 'model': 'Prima 5530.S', 'status': 'active', 'current_fuel_level': 65, 'location': 'Mumbai'},
-        {'id': 2, 'license_plate': 'MH-14-CD-5678', 'make': 'Ashok Leyland', 'model': 'U-3518', 'status': 'maintenance', 'current_fuel_level': 20, 'location': 'Pune'},
-      ];
-    } else if (path.contains('/drivers')) {
-      mockData = [
-        {'id': 101, 'name': 'Ramesh Kumar', 'phone_number': '+91 9876543210', 'status': 'active', 'risk_score': 25, 'rating': 4.8},
-        {'id': 102, 'name': 'Suresh Singh', 'phone_number': '+91 9876543211', 'status': 'inactive', 'risk_score': 45, 'rating': 4.2},
-      ];
-    } else if (path.contains('/trips')) {
-      mockData = [
-        {'id': 1001, 'trip_id': 'TRP-1001', 'origin_location': 'Mumbai', 'destination_location': 'Delhi', 'status': 'IN_PROGRESS', 'progress': 45, 'driver_name': 'Ramesh Kumar'},
-        {'id': 1002, 'trip_id': 'TRP-1002', 'origin_location': 'Pune', 'destination_location': 'Bangalore', 'status': 'COMPLETED', 'progress': 100, 'driver_name': 'Suresh Singh'},
-      ];
-    } else if (path.contains('/dashboard') || path.contains('/stats')) {
-      mockData = {'active_trips': 1, 'active_vehicles': 1, 'total_revenue': 45000, 'pending_alerts': 2};
-    } else if (path.contains('/alerts')) {
-      mockData = [
-        {'id': 401, 'type': 'Fuel Theft', 'message': 'Sudden fuel drop on MH-12-AB-1234', 'severity': 'high'},
-      ];
-    } else {
-      mockData = [];
+    if (err.response?.statusCode == 401 || err.response?.statusCode == 403) {
+      // Clear token and handle logout in a real app via event bus/riverpod
+      SecureStorage.clearAll();
     }
-
-    if (err.type == DioExceptionType.connectionTimeout || err.type == DioExceptionType.connectionError || err.response == null) {
-      // Fallback to mock data on network error
-      return handler.resolve(Response(
-        requestOptions: err.requestOptions,
-        data: mockData,
-        statusCode: 200,
-      ));
-    }
-    
     handler.next(err);
   }
 }

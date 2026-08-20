@@ -523,3 +523,76 @@ async def create_token_for_user(
         access_token=_create_access_token(user, jti=jti, remember_me=remember_me),
         token_type="bearer",
     )
+
+
+async def logout_user(token: str, db: AsyncSession) -> None:
+    """Revoke the current session by JTI."""
+    try:
+        payload = decode_access_token(token)
+        token_jti = payload.get("jti")
+        if token_jti:
+            await db.execute(
+                update(AuthSession)
+                .where(AuthSession.session_jti == token_jti)
+                .values(revoked_at=_utcnow())
+            )
+    except JWTError:
+        pass  # Just ignore if token is invalid
+
+
+async def generate_owner_qr_token(user: User, db: AsyncSession):
+    from models.owner_pairing_token import OwnerPairingToken
+    from schemas.auth import OwnerQRPairingResponse
+    
+    raw_token = secrets.token_urlsafe(32)
+    token_entry = OwnerPairingToken(
+        company_id=user.company_id,
+        user_id=user.id,
+        pairing_token=raw_token,
+    )
+    db.add(token_entry)
+    await db.commit()
+    await db.refresh(token_entry)
+    
+    # Calculate expires_in_seconds
+    now = datetime.utcnow()
+    expires_at = token_entry.expires_at.replace(tzinfo=None)
+    expires_in = int((expires_at - now).total_seconds())
+    
+    return OwnerQRPairingResponse(
+        pairing_token=token_entry.pairing_token,
+        expires_in_seconds=expires_in,
+    )
+
+
+async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
+    from models.owner_pairing_token import OwnerPairingToken
+    
+    result = await db.execute(
+        select(OwnerPairingToken).where(OwnerPairingToken.pairing_token == token)
+    )
+    token_entry = result.scalar_one_or_none()
+    
+    if token_entry is None or not token_entry.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired QR token."
+        )
+    
+    # Mark as used
+    token_entry.is_used = True
+    
+    # Get user
+    result = await db.execute(select(User).where(User.id == token_entry.user_id))
+    user = result.scalar_one_or_none()
+    
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled or deleted."
+        )
+        
+    return await create_token_for_user(user, db=db, remember_me=True)
+
+
+

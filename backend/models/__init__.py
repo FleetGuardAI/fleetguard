@@ -12,6 +12,7 @@ from models.company import Company
 from models.user import User
 from models.auth_session import AuthSession
 from models.password_reset_token import PasswordResetToken
+from models.owner_pairing_token import OwnerPairingToken
 
 # --- Fleet Models ---
 from models.vehicle_domain import Vehicle
@@ -55,6 +56,7 @@ __all__ = [
     "User",
     "AuthSession",
     "PasswordResetToken",
+    "OwnerPairingToken",
     # Fleet
     "Vehicle",
     "Driver",
