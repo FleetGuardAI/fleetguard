@@ -31,7 +31,8 @@ from database import get_db
 from models.user import User, UserRole
 from models.driver_domain import Driver, DriverStatus, VerificationStatus, DutyStatus
 from models.fleet_invite import FleetInvite
-from services.otp_service import otp_service
+from config import settings
+from services.otp_service import get_otp_provider
 from services.file_upload_service import storage_service
 from utils.security import hash_password, create_access_token
 from services.auth_service import get_current_user
@@ -58,6 +59,7 @@ class SendOtpRequest(BaseModel):
 
 class VerifyOtpRequest(BaseModel):
     phone_number: str
+    req_id: str
     otp_code: str
     invite_token: str
 
@@ -163,12 +165,16 @@ async def verify_invite(
 async def send_otp(payload: SendOtpRequest):
     """
     Send OTP to driver's phone number.
-    Demo mode: OTP is always 123456.
     """
-    success = await otp_service.send_otp(payload.phone_number)
-    if not success:
-        raise HTTPException(500, "Failed to send OTP")
-    return {"message": "OTP sent successfully", "demo_otp": "123456"}
+    otp_provider = get_otp_provider()
+    result = await otp_provider.request_otp(payload.phone_number)
+    if not result.success:
+        raise HTTPException(500, result.message)
+    return {
+        "message": result.message,
+        "req_id": result.provider_reference,
+        "demo_otp": "123456" if getattr(settings, 'OTP_MOCK_MODE', False) else None
+    }
 
 
 @router.post("/verify-otp", response_model=VerifyOtpResponse)
@@ -183,11 +189,12 @@ async def verify_otp(
     - If driver is new: create User + Driver records.
     """
     # Verify OTP
-    is_valid = await otp_service.verify_otp(payload.phone_number, payload.otp_code)
-    if not is_valid:
+    otp_provider = get_otp_provider()
+    result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
+    if not result.success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP"
+            detail=result.message
         )
 
     # Validate invite token

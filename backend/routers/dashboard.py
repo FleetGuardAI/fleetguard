@@ -18,7 +18,7 @@ from models.ticket import Ticket, TicketStatus, RiskLevel
 from services.auth_service import get_current_user
 from models.user import User
 
-router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 @router.get("/kpis")

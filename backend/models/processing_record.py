@@ -34,7 +34,7 @@ class ProcessingRecord(Base):
     event_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
     
     status: Mapped[ProcessingStatus] = mapped_column(
-        Enum(ProcessingStatus, name="processing_status"),
+        Enum(ProcessingStatus, native_enum=False, length=50),
         nullable=False,
         default=ProcessingStatus.PENDING,
         index=True

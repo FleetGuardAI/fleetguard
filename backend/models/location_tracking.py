@@ -68,7 +68,7 @@ class DriverLocation(Base):
     )
 
     source: Mapped[LocationSource] = mapped_column(
-        Enum(LocationSource, name="location_source"),
+        Enum(LocationSource, native_enum=False, length=50),
         nullable=False, default=LocationSource.PHONE_GPS,
     )
 
@@ -100,7 +100,7 @@ class LocationAlert(Base):
     )
 
     alert_type: Mapped[AlertType] = mapped_column(
-        Enum(AlertType, name="location_alert_type"),
+        Enum(AlertType, native_enum=False, length=50),
         nullable=False, index=True,
     )
 

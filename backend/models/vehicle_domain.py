@@ -41,7 +41,7 @@ class Vehicle(Base):
     )
     
     # --- Specifications ---
-    make: Mapped[str] = mapped_column(String(100), nullable=False)
+    make: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     tank_capacity: Mapped[float] = mapped_column(
@@ -51,7 +51,7 @@ class Vehicle(Base):
     
     # --- Business Status ---
     status: Mapped[VehicleStatus] = mapped_column(
-        Enum(VehicleStatus, name="vehicle_status"),
+        Enum(VehicleStatus, native_enum=False, length=50),
         nullable=False, default=VehicleStatus.ACTIVE, index=True
     )
     ownership_info: Mapped[Optional[str]] = mapped_column(

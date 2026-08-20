@@ -74,7 +74,7 @@ class User(Base):
     )
 
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role"),
+        Enum(UserRole, native_enum=False, length=20),
         nullable=False,
         default=UserRole.COMPANY_ADMIN,
         comment="Access level / permission role"

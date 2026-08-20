@@ -259,13 +259,13 @@ class OperationalEvent(Base):
 
     # --- Event Classification ---
     event_type: Mapped[EventType] = mapped_column(
-        Enum(EventType, name="event_type"),
+        Enum(EventType, native_enum=False, length=50),
         nullable=False,
         index=True,
         comment="What happened — drives processing logic in downstream consumers.",
     )
     entity_type: Mapped[EntityType] = mapped_column(
-        Enum(EntityType, name="entity_type"),
+        Enum(EntityType, native_enum=False, length=50),
         nullable=False,
         index=True,
         comment="The primary fleet entity domain this event concerns.",
@@ -299,12 +299,12 @@ class OperationalEvent(Base):
 
     # --- Capture & Verification ---
     capture_method: Mapped[CaptureMethod] = mapped_column(
-        Enum(CaptureMethod, name="capture_method"),
+        Enum(CaptureMethod, native_enum=False, length=50),
         nullable=False,
         comment="Channel through which this event entered the system.",
     )
     verification_status: Mapped[VerificationStatus] = mapped_column(
-        Enum(VerificationStatus, name="verification_status"),
+        Enum(VerificationStatus, native_enum=False, length=50),
         nullable=False,
         default=VerificationStatus.PENDING,
         index=True,

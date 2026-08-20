@@ -119,6 +119,30 @@ class ForgotPasswordRequest(BaseModel):
     identifier: str = Field(..., min_length=3, max_length=255)
 
 
+class OTPRequest(BaseModel):
+    """Payload to request an OTP."""
+    identifier: str = Field(..., min_length=3, max_length=255)
+
+
+class OTPRequestResponse(BaseModel):
+    """Response payload for requesting or resending an OTP."""
+    message: str
+    req_id: Optional[str] = None
+
+
+class OTPVerifyRequest(BaseModel):
+    """Payload to verify an OTP."""
+    identifier: str = Field(..., min_length=3, max_length=255)
+    req_id: str = Field(...)
+    code: str = Field(..., min_length=4, max_length=10)
+
+
+class OTPResendRequest(BaseModel):
+    """Payload to resend an OTP."""
+    req_id: str = Field(...)
+    channel: str = Field("SMS")
+
+
 class ResetPasswordRequest(BaseModel):
     """Complete reset-password flow with one-time reset token."""
 

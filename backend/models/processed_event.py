@@ -31,5 +31,5 @@ class ProcessedEvent(Base):
     metadata_payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("operational_event_id", "domain_name", name="uq_processed_event_domain"),
+        UniqueConstraint("operational_event_id", "domain_name", ),
     )

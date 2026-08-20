@@ -33,8 +33,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
     LLM_BASE_URL: Optional[str] = None
 
-    # --- Twilio ---
-    TWILIO_API_KEY: Optional[str] = None
+
 
     # --- Validation Pipeline ---
     KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
@@ -74,6 +73,12 @@ class Settings(BaseSettings):
 
 
     # In DEBUG this can help local testing of forgot-password without SMS/email integration.
+    # --- MSG91 OTP ---
+    MSG91_AUTH_KEY: Optional[str] = None
+    MSG91_WIDGET_ID: Optional[str] = None
+    MSG91_WIDGET_TOKEN: Optional[str] = None
+    OTP_PROVIDER: str = "MSG91"
+    OTP_MOCK_MODE: bool = False
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
 
     # --- Kafka (Event Bus) ---

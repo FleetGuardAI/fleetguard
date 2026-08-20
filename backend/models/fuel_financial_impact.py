@@ -28,8 +28,8 @@ class FinancialImpact(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
     entity_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, name="impact_entity_type"), nullable=False, index=True)
-    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, name="impact_metric_type"), nullable=False, index=True)
+    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, native_enum=False, length=50), nullable=False, index=True)
+    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, native_enum=False, length=50), nullable=False, index=True)
 
     # --- Generic Fields ---
     baseline_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -47,7 +47,7 @@ class FinancialImpact(Base):
     excess_fuel_liters: Mapped[float] = mapped_column(Float, nullable=False)
 
     fuel_price_per_liter: Mapped[float] = mapped_column(Float, nullable=False)
-    fuel_price_source: Mapped[FuelPriceSource] = mapped_column(Enum(FuelPriceSource, name="fuel_price_source"), nullable=False)
+    fuel_price_source: Mapped[FuelPriceSource] = mapped_column(Enum(FuelPriceSource, native_enum=False, length=50), nullable=False)
     
     # --- Universal Financial Fields ---
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")

@@ -26,6 +26,10 @@ from schemas.auth import (
     GenericMessageResponse,
     OwnerQRLoginRequest,
     OwnerQRPairingResponse,
+    OTPRequest,
+    OTPVerifyRequest,
+    OTPResendRequest,
+    OTPRequestResponse,
 )
 from schemas.operational_event import (
     OperationalEventCreate,
@@ -74,6 +78,10 @@ __all__ = [
     "GenericMessageResponse",
     "OwnerQRLoginRequest",
     "OwnerQRPairingResponse",
+    "OTPRequest",
+    "OTPVerifyRequest",
+    "OTPResendRequest",
+    "OTPRequestResponse",
 
     # Event-Driven Architecture Schemas
     "OperationalEventCreate",

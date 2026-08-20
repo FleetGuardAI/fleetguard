@@ -42,7 +42,7 @@ class ContributingFactorAnalysis(Base):
     financial_impact_reference: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
     entity_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, name="rc_entity_type"), nullable=False)
+    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, native_enum=False, length=50), nullable=False)
 
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -65,9 +65,9 @@ class ContributingFactorEvidence(Base):
     analysis_id: Mapped[int] = mapped_column(ForeignKey("fuel_root_cause_analyses.id"), nullable=False, index=True)
     analysis: Mapped["ContributingFactorAnalysis"] = relationship("ContributingFactorAnalysis", back_populates="evidence_items")
     
-    cause_type: Mapped[RootCauseType] = mapped_column(Enum(RootCauseType, name="root_cause_type"), nullable=False)
-    evidence_status: Mapped[EvidenceStatus] = mapped_column(Enum(EvidenceStatus, name="evidence_status"), nullable=False)
-    evidence_strength: Mapped[EvidenceStrength] = mapped_column(Enum(EvidenceStrength, name="evidence_strength"), nullable=False)
+    cause_type: Mapped[RootCauseType] = mapped_column(Enum(RootCauseType, native_enum=False, length=50), nullable=False)
+    evidence_status: Mapped[EvidenceStatus] = mapped_column(Enum(EvidenceStatus, native_enum=False, length=50), nullable=False)
+    evidence_strength: Mapped[EvidenceStrength] = mapped_column(Enum(EvidenceStrength, native_enum=False, length=50), nullable=False)
     
     evidence_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     baseline_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

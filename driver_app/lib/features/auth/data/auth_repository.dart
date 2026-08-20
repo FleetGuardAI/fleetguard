@@ -35,10 +35,22 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String otp, String inviteToken) async {
+  Future<Map<String, dynamic>> resendOtp(String reqId) async {
+    try {
+      final response = await _dio.post('/api/v1/auth/resend-otp', data: {
+        'req_id': reqId
+      });
+      return response.data; 
+    } catch (e) {
+      throw Exception('Failed to resend OTP: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String reqId, String otp, String inviteToken) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/verify-otp', data: {
         'phone_number': phoneNumber,
+        'req_id': reqId,
         'otp_code': otp,
         'invite_token': inviteToken,
       });

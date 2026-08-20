@@ -52,13 +52,13 @@ class FuelState(Base):
     
     # Traceability
     source: Mapped[FuelSource] = mapped_column(
-        Enum(FuelSource, name="fuel_source"),
+        Enum(FuelSource, native_enum=False, length=50),
         nullable=False,
         default=FuelSource.ESTIMATED,
         comment="Origin of this state"
     )
     reliability: Mapped[FuelStateReliability] = mapped_column(
-        Enum(FuelStateReliability, name="fuel_state_reliability"),
+        Enum(FuelStateReliability, native_enum=False, length=50),
         nullable=False,
         default=FuelStateReliability.UNKNOWN,
         comment="Business-oriented reliability of the measurement"
@@ -90,7 +90,7 @@ class FuelTransaction(Base):
         Integer, ForeignKey("vehicles.id"), nullable=False, index=True
     )
     transaction_type: Mapped[FuelTransactionType] = mapped_column(
-        Enum(FuelTransactionType, name="fuel_transaction_type"),
+        Enum(FuelTransactionType, native_enum=False, length=50),
         nullable=False, index=True
     )
     amount_liters: Mapped[float] = mapped_column(

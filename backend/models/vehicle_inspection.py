@@ -53,12 +53,12 @@ class VehicleInspection(Base):
     )
 
     inspection_type: Mapped[InspectionType] = mapped_column(
-        Enum(InspectionType, name="inspection_type"),
+        Enum(InspectionType, native_enum=False, length=50),
         nullable=False, index=True,
     )
 
     overall_status: Mapped[InspectionStatus] = mapped_column(
-        Enum(InspectionStatus, name="inspection_status"),
+        Enum(InspectionStatus, native_enum=False, length=50),
         nullable=False, default=InspectionStatus.PASS,
     )
 

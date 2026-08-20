@@ -50,10 +50,10 @@ class Expense(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
     # Financial fields
-    category: Mapped[ExpenseCategory] = mapped_column(Enum(ExpenseCategory), nullable=False, index=True)
+    category: Mapped[ExpenseCategory] = mapped_column(Enum(ExpenseCategory, native_enum=False, length=50), nullable=False, index=True)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
-    status: Mapped[ExpenseStatus] = mapped_column(Enum(ExpenseStatus), nullable=False, default=ExpenseStatus.RECORDED, index=True)
+    status: Mapped[ExpenseStatus] = mapped_column(Enum(ExpenseStatus, native_enum=False, length=50), nullable=False, default=ExpenseStatus.RECORDED, index=True)
     
     expense_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

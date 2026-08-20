@@ -62,7 +62,7 @@ class Evidence(Base):
     )
 
     evidence_type: Mapped[EvidenceType] = mapped_column(
-        Enum(EvidenceType, name="evidencetype"),
+        Enum(EvidenceType, native_enum=False, length=50),
         nullable=False,
         index=True,
     )
@@ -74,7 +74,7 @@ class Evidence(Base):
     )
 
     status: Mapped[EvidenceStatus] = mapped_column(
-        Enum(EvidenceStatus, name="evidencestatus"),
+        Enum(EvidenceStatus, native_enum=False, length=50),
         nullable=False,
         default=EvidenceStatus.PENDING,
         index=True,

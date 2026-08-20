@@ -62,7 +62,7 @@ class Asset(Base):
         comment="Authoritative business ID for the asset (e.g. internal tracking ID)"
     )
     asset_type: Mapped[AssetType] = mapped_column(
-        Enum(AssetType, name="asset_type"),
+        Enum(AssetType, native_enum=False, length=50),
         nullable=False, index=True
     )
     
@@ -80,11 +80,11 @@ class Asset(Base):
     current_vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", lazy="selectin")
     
     installation_status: Mapped[AssetInstallationStatus] = mapped_column(
-        Enum(AssetInstallationStatus, name="asset_installation_status"),
+        Enum(AssetInstallationStatus, native_enum=False, length=50),
         nullable=False, default=AssetInstallationStatus.REGISTERED, index=True
     )
     operational_status: Mapped[AssetOperationalStatus] = mapped_column(
-        Enum(AssetOperationalStatus, name="asset_operational_status"),
+        Enum(AssetOperationalStatus, native_enum=False, length=50),
         nullable=False, default=AssetOperationalStatus.OK, index=True
     )
 
@@ -117,7 +117,7 @@ class AssetHistory(Base):
     asset: Mapped["Asset"] = relationship("Asset", back_populates="history_records")
 
     event_category: Mapped[AssetHistoryCategory] = mapped_column(
-        Enum(AssetHistoryCategory, name="asset_history_category"),
+        Enum(AssetHistoryCategory, native_enum=False, length=50),
         nullable=False
     )
     performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

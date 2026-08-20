@@ -340,3 +340,73 @@ export async function generateOwnerQR() {
 
   return response.json();
 }
+
+/**
+ * Request an OTP for login via identifier.
+ */
+export async function requestOtp(identifier) {
+  const response = await fetch('/api/v1/auth/request-otp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ identifier }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to request OTP.' }));
+    throw new Error(errorData.detail || 'Failed to request OTP.');
+  }
+
+  return response.json();
+}
+
+/**
+ * Verify an OTP and receive an access token, storing it like a password login.
+ */
+export async function verifyOtp(identifier, req_id, code, options = {}) {
+  const { rememberMe = true } = options;
+  const response = await fetch('/api/v1/auth/verify-otp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ identifier, req_id, code }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to verify OTP.' }));
+    throw new Error(errorData.detail || 'Invalid or expired OTP.');
+  }
+
+  const { access_token, token_type } = await response.json();
+  clearAuth();
+  persistAuth(access_token, token_type || 'bearer', rememberMe);
+
+  const user = await getCurrentUser(rememberMe);
+  if (!user) {
+    throw new Error('Authentication succeeded but user profile could not be retrieved.');
+  }
+
+  return { success: true, user };
+}
+
+/**
+ * Resend an OTP.
+ */
+export async function resendOtp(req_id, channel = 'SMS') {
+  const response = await fetch('/api/v1/auth/resend-otp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ req_id, channel }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to resend OTP.' }));
+    throw new Error(errorData.detail || 'Failed to resend OTP.');
+  }
+
+  return response.json();
+}

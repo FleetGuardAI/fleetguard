@@ -50,14 +50,14 @@ class WalletTransaction(Base):
     )
 
     transaction_type: Mapped[TransactionType] = mapped_column(
-        Enum(TransactionType, name="wallet_transaction_type"),
+        Enum(TransactionType, native_enum=False, length=50),
         nullable=False, index=True,
     )
 
     amount: Mapped[float] = mapped_column(Float, nullable=False)
 
     status: Mapped[TransactionStatus] = mapped_column(
-        Enum(TransactionStatus, name="wallet_transaction_status"),
+        Enum(TransactionStatus, native_enum=False, length=50),
         nullable=False, default=TransactionStatus.PENDING,
     )
 
