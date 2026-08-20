@@ -15,8 +15,11 @@ from pydantic import BaseModel
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
+from database import get_db, get_uow
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
+from models.operational_event import EventType, CaptureMethod, EntityType
+from schemas.operational_event import OperationalEventCreate
+from services.operational_event_service import OperationalEventService
 from services.file_upload_service import storage_service
 
 logger = logging.getLogger("fleetguard.driver_expenses")
@@ -34,6 +37,11 @@ class ExpenseCreateRequest(BaseModel):
     vehicle_id: Optional[int] = None
     trip_id: Optional[int] = None
     driver_id: int
+    
+    # Fuel specific fields (Milestone 1C)
+    fuel_quantity_liters: Optional[float] = None
+    odometer_reading: Optional[float] = None
+    is_full_tank: Optional[bool] = None
 
 
 class ExpenseResponse(BaseModel):
@@ -93,12 +101,43 @@ async def process_receipt_ocr(
 async def create_expense(
     payload: ExpenseCreateRequest,
     db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow)
 ):
     """Submit a driver expense."""
     try:
         cat_enum = ExpenseCategory(payload.category.upper())
     except ValueError:
         cat_enum = ExpenseCategory.MISCELLANEOUS
+
+    # If it's a fuel expense, validate and dispatch operational event
+    if cat_enum == ExpenseCategory.FUEL and payload.fuel_quantity_liters is not None:
+        if payload.fuel_quantity_liters <= 0:
+            raise HTTPException(status_code=400, detail="Fuel quantity must be greater than 0")
+        if not payload.vehicle_id:
+            raise HTTPException(status_code=400, detail="vehicle_id is required for fuel expenses")
+            
+        event_service = OperationalEventService(uow)
+        
+        event_payload = {
+            "liters": payload.fuel_quantity_liters,
+            "odometer_km": payload.odometer_reading,
+            "is_full_tank": bool(payload.is_full_tank),
+            "cost_inr": payload.amount,
+            "receipt_url": payload.receipt_url
+        }
+        
+        event_create = OperationalEventCreate(
+            event_type=EventType.FUEL_FILLED,
+            entity_type=EntityType.VEHICLE,
+            entity_id=str(payload.vehicle_id),
+            occurred_at=datetime.now(timezone.utc),
+            capture_method=CaptureMethod.MANUAL_ENTRY,
+            created_by=f"driver_{payload.driver_id}",
+            payload=event_payload
+        )
+        
+        await event_service.create_event(event_create)
+        await uow.commit()
 
     business_id = f"exp_{uuid.uuid4().hex[:12]}"
 

@@ -37,6 +37,7 @@ import { ConfidenceRing } from './dashboard-ai/ConfidenceRing';
 import { AiCopilot } from './dashboard-ai/AiCopilot';
 import { SignalDeck } from './dashboard-ai/SignalDeck';
 import { FleetMap } from './dashboard-ai/FleetMap';
+import { FinancialIntelligenceWidget } from '@/components/dashboard/FinancialIntelligenceWidget';
 // ── KPI Icon Map ──
 const kpiIcons = {
   Truck: Truck,
@@ -265,6 +266,11 @@ export default function DashboardOverview() {
               </motion.div>
             );
           })}
+        </div>
+
+        {/* ═══════════ FLEET FINANCIAL INTELLIGENCE ═══════════ */}
+        <div className="mt-6">
+          <FinancialIntelligenceWidget />
         </div>
 
         {/* ═══════════ OPERATIONS WORKSPACE (DECK & MAP) ═══════════ */}

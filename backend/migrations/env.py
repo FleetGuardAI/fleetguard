@@ -48,7 +48,10 @@ config = context.config
 
 # Override sqlalchemy.url from pydantic-settings so credentials never
 # live in alembic.ini.
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.DATABASE_URL.replace("%", "%%")
+)
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

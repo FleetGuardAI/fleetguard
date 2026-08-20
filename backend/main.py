@@ -144,6 +144,24 @@ evidence_consumer_runner = KafkaConsumerRunner(
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
 )
 
+# Initialize Fuel Intelligence Engine
+from infrastructure.intelligence.fuel_domain.orchestrator import FuelIntelligenceOrchestrator
+from infrastructure.intelligence.fuel_domain.consumer import FuelIntelligenceConsumer
+
+fuel_intelligence_consumer_runner = KafkaConsumerRunner(
+    bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+    group_id="fie-group",
+    topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
+    subscriber=FuelIntelligenceConsumer(
+        orchestrator=FuelIntelligenceOrchestrator()
+    ),
+    dlq_publisher=dlq_publisher,
+    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
+)
+
 # Initialize Outbox Pattern
 from infrastructure.events.outbox_publisher import OutboxPublisher
 from infrastructure.events.outbox_worker import OutboxWorkerRunner
@@ -172,6 +190,7 @@ from routers.operational_events import router as operational_events_router
 from routers.documents import router as documents_router
 from routers.evidence import router as evidence_router
 from routers.fleet_intelligence import router as fleet_intelligence_router
+from routers.fuel_intelligence import router as fuel_intelligence_router
 from routers.copilot import router as copilot_router
 from routers.owner_dashboard import router as owner_dashboard_router
 
@@ -211,9 +230,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await create_all_tables()
     logger.info("✅ Database tables created/verified.")
     
+    validation_consumer_runner.start()
+    processing_consumer.start()
+    evidence_consumer_runner.start()
+    outbox_worker.start()
+    fuel_intelligence_consumer_runner.start()
+    logger.info("✅ Background Kafka runners started.")
+    
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
+    await validation_consumer_runner.stop()
+    await processing_consumer.stop()
+    await evidence_consumer_runner.stop()
+    await outbox_worker.stop()
+    await fuel_intelligence_consumer_runner.stop()
     await event_bus.stop()
 
 
@@ -287,6 +318,7 @@ app.include_router(operational_events_router)     # carries its own /api/v1/even
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
 app.include_router(evidence_router)               # carries its own /api/v1/events/{event_id}/evidence prefix
 app.include_router(fleet_intelligence_router, prefix="/api/v1") # carries /intelligence prefix
+app.include_router(fuel_intelligence_router, prefix="/api/v1") # carries /intelligence/fuel prefix
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(owner_dashboard_router)
 

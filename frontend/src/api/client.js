@@ -285,6 +285,18 @@ const api = {
     getFleetHealth: () => request('/v1/intelligence/fleet-health'),
   },
 
+  // ── Fuel Intelligence Domain (NEW - /api/v1/intelligence/fuel) ───────
+  fuelIntelligence: {
+    summary: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/intelligence/fuel/summary${query ? `?${query}` : ''}`);
+    },
+    truckDetail: (truckId, params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/intelligence/fuel/trucks/${encodeURIComponent(truckId)}${query ? `?${query}` : ''}`);
+    },
+  },
+
   // ── Copilot Domain (NEW - /api/v1/copilot) ─────────────────
   copilot: {
     chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),

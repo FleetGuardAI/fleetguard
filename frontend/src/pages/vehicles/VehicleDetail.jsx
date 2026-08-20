@@ -10,6 +10,7 @@ import { Loader } from '@/components/ui/Loader';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useToast } from '@/components/ui/Toast';
 import { Modal } from '@/components/ui/Modal';
+import { TruckFinancialIntelligence } from '@/components/vehicles/TruckFinancialIntelligence';
 
 export default function VehicleDetail() {
   const { id } = useParams();
@@ -238,6 +239,15 @@ export default function VehicleDetail() {
             </div>
           )}
         </Card>
+      </div>
+
+      {/* Financial Intelligence Section */}
+      <div className="pt-2">
+        <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+          <ShieldAlert className="h-5 w-5 text-brand-600" />
+          Financial Intelligence Profile
+        </h2>
+        <TruckFinancialIntelligence truckId={vehicle.license_plate} />
       </div>
 
       {/* Telemetry Log */}

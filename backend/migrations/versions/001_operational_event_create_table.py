@@ -35,7 +35,7 @@ Drops all indexes, the table, and the four enum types — in reverse order.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID, ENUM
 from alembic import op
 
 # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ depends_on: str | None = None
 # reused across tables in future milestones.
 # ---------------------------------------------------------------------------
 
-_event_type_enum = sa.Enum(
+_event_type_enum = ENUM(
     "FUEL_FILLED",
     "FUEL_ALERT_TRIGGERED",
     "TRIP_STARTED",
@@ -82,7 +82,7 @@ _event_type_enum = sa.Enum(
     create_type=False,   # We CREATE it manually below for clarity
 )
 
-_entity_type_enum = sa.Enum(
+_entity_type_enum = ENUM(
     "VEHICLE",
     "DRIVER",
     "TRIP",
@@ -96,7 +96,7 @@ _entity_type_enum = sa.Enum(
     create_type=False,
 )
 
-_capture_method_enum = sa.Enum(
+_capture_method_enum = ENUM(
     "WHATSAPP_BOT",
     "TELEMATICS",
     "MANUAL_ENTRY",
@@ -106,7 +106,7 @@ _capture_method_enum = sa.Enum(
     create_type=False,
 )
 
-_verification_status_enum = sa.Enum(
+_verification_status_enum = ENUM(
     "PENDING",
     "VERIFIED",
     "DISPUTED",
@@ -211,13 +211,13 @@ def upgrade() -> None:
         # --- Event Classification ---
         sa.Column(
             "event_type",
-            sa.Enum(name="event_type", create_type=False),
+            _event_type_enum,
             nullable=False,
             comment="What happened — drives processing logic in downstream consumers.",
         ),
         sa.Column(
             "entity_type",
-            sa.Enum(name="entity_type", create_type=False),
+            _entity_type_enum,
             nullable=False,
             comment="The primary fleet entity domain this event concerns.",
         ),
@@ -252,13 +252,13 @@ def upgrade() -> None:
         # --- Capture & Verification ---
         sa.Column(
             "capture_method",
-            sa.Enum(name="capture_method", create_type=False),
+            _capture_method_enum,
             nullable=False,
             comment="Channel through which this event entered the system.",
         ),
         sa.Column(
             "verification_status",
-            sa.Enum(name="verification_status", create_type=False),
+            _verification_status_enum,
             nullable=False,
             server_default="PENDING",
             comment="Validation lifecycle state — updated by the Validation & Enrichment Engine.",
