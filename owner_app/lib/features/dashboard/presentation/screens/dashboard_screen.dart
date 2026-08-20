@@ -6,7 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/dashboard_provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../tracking/presentation/providers/tracking_provider.dart';
+import '../../../tracking/presentation/providers/tracking_provider.dart';
 import '../../../../core/services/auth_service.dart';
 
 class DashboardScreen extends ConsumerWidget {

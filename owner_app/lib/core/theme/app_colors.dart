@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  // Backwards-compatible aliases (preserve older code references)
+  static const Color backgroundDark = darkBackground;
+  static const Color surfaceDark = darkSurface;
+  static const Color statusOrange = warning;
+
   // --- Brand Colors ---
   static const Color primary = Color(0xFF0F9D58); // FleetGuard Green
   static const Color primaryLight = Color(0xFF34B26C);
@@ -32,8 +37,8 @@ class AppColors {
   static const Color lightCardBackground = Color(0xFFFFFFFF);
   static const Color lightOnSurface = Color(0xFF1E2124);
   static const Color lightOnSurfaceVariant = Color(0xFF757575);
-  static Color lightBorder = const Color(0xFFE8ECF0);
-  static Color lightInputFill = const Color(0xFFF4F6F8);
+  static const Color lightBorder = Color(0xFFE8ECF0);
+  static const Color lightInputFill = Color(0xFFF4F6F8);
 
   // --- Dark Theme ---
   // Deep charcoal background, translucent surfaces
@@ -42,6 +47,6 @@ class AppColors {
   static const Color darkCardBackground = Color(0xFF23272B); // Slightly lighter than background
   static const Color darkOnSurface = Color(0xFFE8EDF2);
   static const Color darkOnSurfaceVariant = Color(0xFF8899AA);
-  static Color darkBorder = const Color(0xFF2D3238);
-  static Color darkInputFill = const Color(0xFF1A1D20);
+  static const Color darkBorder = Color(0xFF2D3238);
+  static const Color darkInputFill = Color(0xFF1A1D20);
 }

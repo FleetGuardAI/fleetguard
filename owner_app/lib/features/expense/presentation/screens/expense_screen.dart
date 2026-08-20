@@ -76,7 +76,7 @@ class ExpenseScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+            color: AppTheme.primaryGreen.withOpacity(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -109,7 +109,7 @@ class ExpenseScreen extends ConsumerWidget {
         color: AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withOpacity(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2)),
         ],
       ),
       child: Row(

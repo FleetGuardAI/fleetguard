@@ -5,6 +5,15 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  // Backwards-compatible color aliases used across the app.
+  // Prefer using AppColors directly; these are provided to avoid widespread changes.
+  static const Color backgroundCream = AppColors.lightBackground;
+  static const Color textSecondary = AppColors.coolGray;
+  static const Color primaryGreen = AppColors.primary;
+  static const Color cardLight = AppColors.lightCardBackground;
+  static const Color warningAmber = AppColors.warning;
+  static const Color errorRed = AppColors.error;
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
