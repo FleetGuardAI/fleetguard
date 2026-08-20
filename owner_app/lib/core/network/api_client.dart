@@ -9,9 +9,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 class ApiClient {
   late final Dio dio;
-
-  // Handles emulator vs iOS simulator localhost and production overrides
-  final String _baseUrl = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000');
+  
+// Handles emulator vs iOS simulator localhost and production overrides
+final String _baseUrl = const String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://10.0.2.2:8000',
+);
 
   ApiClient() {
     dio = Dio(
