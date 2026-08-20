@@ -228,8 +228,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   Event Bus: {event_bus}")
 
-    await create_all_tables()
-    logger.info("✅ Database tables created/verified.")
+    if settings.DATABASE_URL.startswith("sqlite"):
+        await create_all_tables()
+        logger.info("✅ Database tables created/verified (SQLite).")
+    else:
+        logger.info("✅ PostgreSQL database detected. Skipping create_all_tables() as Alembic manages the schema.")
     
     validation_consumer_runner.start()
     processing_consumer.start()
