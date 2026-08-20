@@ -23,6 +23,7 @@ from models.asset_domain import Asset, AssetHistory, AssetOperationalStatus, Ass
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from models.ticket import Ticket
 from models.fuel_log import FuelLog
+from models.fuel_domain import FuelTransaction, FuelState
 from models.operational_event import OperationalEvent
 from models.evidence import Evidence
 #from models.assignment_domain import DriverAssignment
@@ -32,6 +33,13 @@ from models.outbox_event import OutboxEvent, OutboxStatus
 
 # --- Document Intelligence ---
 from models.document import Document
+
+# --- FIE ---
+from models.derived_fuel_metrics import DerivedFuelMetric
+from models.entity_baseline import EntityBaseline
+from models.fuel_anomaly import FuelAnomaly
+from models.fuel_financial_impact import FuelFinancialImpact
+from models.fuel_root_cause import FuelRootCauseAnalysis, FuelRootCauseEvidence
 
 # --- Driver App Models ---
 from models.fleet_invite import FleetInvite
@@ -71,6 +79,13 @@ __all__ = [
     "OutboxStatus",
     # Document Intelligence
     "Document",
+    # FIE
+    "DerivedFuelMetric",
+    "EntityBaseline",
+    "FuelAnomaly",
+    "FuelFinancialImpact",
+    "FuelRootCauseAnalysis",
+    "FuelRootCauseEvidence",
     # Driver App
     "FleetInvite",
     "DriverLocation",

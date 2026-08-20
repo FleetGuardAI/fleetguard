@@ -50,10 +50,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
-    # --- Fuel Theft Detection Thresholds ---
+    # --- Fuel Theft & Anomaly Detection Thresholds ---
     FUEL_DROP_THRESHOLD_LITERS: float = 5.0
     FUEL_DROP_WINDOW_MINUTES: int = 5
     EMA_ALPHA: float = 0.3  # Smoothing factor for Exponential Moving Average
+    FUEL_ANOMALY_WARNING_THRESHOLD: float = 10.0
+    FUEL_ANOMALY_CRITICAL_THRESHOLD: float = 20.0
 
     # --- Fair Price Risk Threshold ---
     FAIR_PRICE_OVERAGE_PERCENT: float = 20.0

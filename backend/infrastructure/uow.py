@@ -22,6 +22,11 @@ from repositories.trip_repository import TripRepository
 from repositories.tyre_repository import TyreRepository
 from repositories.vehicle_repository import VehicleRepository
 from repositories.outbox_repository import OutboxRepository
+from repositories.derived_fuel_metric_repository import DerivedFuelMetricRepository
+from repositories.entity_baseline_repository import EntityBaselineRepository
+from repositories.fuel_anomaly_repository import FuelAnomalyRepository
+from repositories.fuel_financial_impact_repository import FuelFinancialImpactRepository
+from repositories.fuel_root_cause_repository import FuelRootCauseRepository
 from infrastructure.idempotency.repository import IdempotencyRepository
 
 
@@ -44,6 +49,11 @@ class RepositoryRegistry:
         self.tyre = TyreRepository(db)
         self.vehicle = VehicleRepository(db)
         self.outbox = OutboxRepository(db)
+        self.derived_fuel_metric = DerivedFuelMetricRepository(db)
+        self.entity_baseline = EntityBaselineRepository(db)
+        self.fuel_anomaly = FuelAnomalyRepository(db)
+        self.fuel_financial_impact = FuelFinancialImpactRepository(db)
+        self.fuel_root_cause = FuelRootCauseRepository(db)
         self.idempotency = IdempotencyRepository(db)
 
 
