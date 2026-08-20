@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
-class FleetScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/fleet_provider.dart';
+import '../../data/fleet_repository.dart';
+import 'vehicle_detail_screen.dart';
+
+class FleetScreen extends ConsumerStatefulWidget {
   const FleetScreen({super.key});
 
   @override
-  State<FleetScreen> createState() => _FleetScreenState();
+  ConsumerState<FleetScreen> createState() => _FleetScreenState();
 }
 
-class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStateMixin {
+class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -35,8 +40,10 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
             onPressed: () {
               if (_tabController.index == 0) {
                 context.push('/fleet/add-truck');
+              } else if (_tabController.index == 1) {
+                context.push('/fleet/invite-driver'); 
               } else {
-                context.push('/fleet/invite-driver'); // Using the QR Invite flow
+                context.push('/fleet/add-device');
               }
             },
             icon: const Icon(Icons.add, color: AppTheme.primaryGreen),
@@ -52,6 +59,7 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
           tabs: const [
             Tab(text: 'TRUCKS'),
             Tab(text: 'DRIVERS'),
+            Tab(text: 'HARDWARE'),
           ],
         ),
       ),
@@ -60,36 +68,139 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
         children: [
           _buildTrucksList(),
           _buildDriversList(),
+          _buildHardwareList(),
         ],
       ),
     );
   }
 
+  Widget _buildHardwareList() {
+    final hardwareAsync = ref.watch(hardwareAssetsProvider);
+    return hardwareAsync.when(
+      data: (assets) {
+        if (assets.isEmpty) {
+          return const Center(child: Text("No hardware devices found.", style: TextStyle(color: Colors.white70)));
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildSearchBar('Search hardware...'),
+            const SizedBox(height: 16),
+            ...assets.map((a) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _buildHardwareCard(a),
+            )),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
+    );
+  }
+
+  Widget _buildHardwareCard(HardwareAsset asset) {
+    final isInstalled = asset.installationStatus.toLowerCase() == 'installed';
+    return InkWell(
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.cardLight,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundCream,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.memory, color: AppTheme.primaryGreen),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(asset.model, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(asset.businessId, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(asset.operationalStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
+                Row(
+                  children: [
+                    Icon(Icons.circle, size: 8, color: isInstalled ? AppTheme.primaryGreen : Colors.orange),
+                    const SizedBox(width: 4),
+                    Text(asset.installationStatus, style: TextStyle(color: isInstalled ? AppTheme.primaryGreen : Colors.orange, fontSize: 12)),
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTrucksList() {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSearchBar('Search truck...'),
-        const SizedBox(height: 16),
-        _buildTruckCard('UK07AB1234', 'Ravi Kumar', 'On Trip', 'Healthy', AppTheme.primaryGreen),
-        const SizedBox(height: 12),
-        _buildTruckCard('UK07CD5678', 'Amit Singh', 'Available', 'Attention', AppTheme.warningAmber),
-        const SizedBox(height: 12),
-        _buildTruckCard('UK07EF9012', 'Suresh', 'Maintenance', 'Attention', AppTheme.criticalRed),
-      ],
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    return vehiclesAsync.when(
+      data: (vehicles) {
+        if (vehicles.isEmpty) {
+          return const Center(child: Text("No vehicles found.", style: TextStyle(color: Colors.white70)));
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildSearchBar('Search truck...'),
+            const SizedBox(height: 16),
+            ...vehicles.map((v) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _buildTruckCard(v.licensePlate, '${v.make} ${v.model}', v.status, 'Healthy', AppTheme.primaryGreen, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => VehicleDetailScreen(vehicle: v)));
+              }),
+            )),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
     );
   }
 
   Widget _buildDriversList() {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSearchBar('Search driver...'),
-        const SizedBox(height: 16),
-        _buildDriverCard('Ravi Kumar', 'UK07AB1234', 'Active', 'Good', AppTheme.primaryGreen),
-        const SizedBox(height: 12),
-        _buildDriverCard('Amit Singh', 'UK07CD5678', 'Active', 'License expiring', AppTheme.warningAmber),
-      ],
+    final driversAsync = ref.watch(driversProvider);
+    return driversAsync.when(
+      data: (drivers) {
+        if (drivers.isEmpty) {
+          return const Center(child: Text("No drivers found.", style: TextStyle(color: Colors.white70)));
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildSearchBar('Search driver...'),
+            const SizedBox(height: 16),
+            ...drivers.map((d) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _buildDriverCard(d.name, d.phoneNumber, d.status, 'Good', AppTheme.primaryGreen),
+            )),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
     );
   }
 
@@ -109,9 +220,9 @@ class _FleetScreenState extends State<FleetScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildTruckCard(String plate, String driver, String status, String health, Color healthColor) {
+  Widget _buildTruckCard(String plate, String driver, String status, String health, Color healthColor, [VoidCallback? onTap]) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
