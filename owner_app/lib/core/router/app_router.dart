@@ -9,6 +9,7 @@ import '../../features/trip/presentation/screens/trips_screen.dart';
 import '../../features/fleet/presentation/screens/add_driver_screen.dart';
 import '../../features/fleet/presentation/screens/add_truck_screen.dart';
 import '../../features/fleet/presentation/screens/invite_driver_screen.dart';
+import '../../features/fleet/presentation/screens/add_hardware_asset_screen.dart';
 import '../../features/navigation/presentation/screens/scaffold_with_nav_bar.dart';
 import '../../features/auth/presentation/screens/qr_scan_screen.dart';
 import '../../features/operations/presentation/screens/operations_screen.dart';
@@ -67,6 +68,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/fleet/add-truck',
             builder: (context, state) => const AddTruckScreen(),
+          ),
+          GoRoute(
+            path: '/fleet/add-device',
+            builder: (context, state) => const AddHardwareAssetScreen(),
           ),
           GoRoute(
             path: '/operations',

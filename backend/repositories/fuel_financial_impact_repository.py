@@ -18,6 +18,8 @@ class FuelFinancialImpactRepository:
         return result.scalar_one_or_none()
 
     async def get_impacts_for_entities(self, entity_ids: list[str], period_start, period_end) -> list[FuelFinancialImpact]:
+        if not entity_ids:
+            return []
         stmt = select(FuelFinancialImpact).where(
             FuelFinancialImpact.entity_id.in_(entity_ids),
             FuelFinancialImpact.period_start >= period_start,

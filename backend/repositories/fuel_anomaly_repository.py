@@ -22,6 +22,8 @@ class FuelAnomalyRepository:
         return result.scalar_one_or_none()
 
     async def get_anomalies_for_entities(self, entity_ids: list[str], period_start, period_end) -> list[FuelAnomaly]:
+        if not entity_ids:
+            return []
         stmt = select(FuelAnomaly).where(
             FuelAnomaly.entity_id.in_(entity_ids),
             FuelAnomaly.period_start >= period_start,
@@ -34,6 +36,8 @@ class FuelAnomalyRepository:
         """
         Retrieves a list of fuel anomalies by their unique observation references.
         """
+        if not observation_references:
+            return []
         stmt = select(FuelAnomaly).where(FuelAnomaly.observation_reference.in_(observation_references))
         result = await self.db.execute(stmt)
         return list(result.scalars().all())

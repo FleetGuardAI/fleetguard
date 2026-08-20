@@ -27,6 +27,7 @@ class OwnerDashboardKPIs(BaseModel):
     total_active_drivers: int
     active_trips: int
     monthly_expenses: float
+    attention_required: int
 
 
 @router.get("/kpis", response_model=OwnerDashboardKPIs)
@@ -40,6 +41,7 @@ async def get_owner_dashboard_kpis(
     - Total Active Drivers
     - Active Trips
     - Monthly Expenses
+    - Attention Required (Pending Tickets)
     """
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -83,12 +85,59 @@ async def get_owner_dashboard_kpis(
     )
     monthly_expenses = float(expenses_month_result.scalar() or 0)
 
+    from models.ticket import Ticket, TicketStatus
+    # Attention Required (Pending Tickets)
+    attention_result = await db.execute(
+        select(func.count(Ticket.id))
+        .join(Driver, Ticket.driver_id == Driver.id)
+        .where(
+            Ticket.status == TicketStatus.PENDING,
+            Driver.company_id == current_user.company_id
+        )
+    )
+    attention_required = attention_result.scalar() or 0
+
     return OwnerDashboardKPIs(
         total_active_trucks=active_trucks,
         total_active_drivers=active_drivers,
         active_trips=active_trips,
         monthly_expenses=monthly_expenses,
+        attention_required=attention_required,
     )
+
+@router.get("/recent-activity")
+async def get_recent_activity(
+    limit: int = 5,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get recent ticket/trip activity for the owner dashboard.
+    """
+    from models.ticket import Ticket
+    company_id = current_user.company_id
+
+    result = await db.execute(
+        select(Ticket, Driver.name, Vehicle.registration_number)
+        .join(Driver, Ticket.driver_id == Driver.id)
+        .outerjoin(Vehicle, Ticket.vehicle_id == Vehicle.id)
+        .where(Driver.company_id == company_id)
+        .order_by(Ticket.created_at.desc())
+        .limit(limit)
+    )
+    rows = result.all()
+
+    return [
+        {
+            "id": ticket.id,
+            "title": ticket.issue_type,
+            "description": f"Driver {driver_name} reported an issue for {truck_plate or 'Unknown Vehicle'}",
+            "type": "ticket",
+            "status": ticket.status.value,
+            "timestamp": ticket.created_at.isoformat() if ticket.created_at else None,
+        }
+        for ticket, driver_name, truck_plate in rows
+    ]
 
 @router.get("/trips", response_model=List[TripResponse])
 async def get_owner_trips(
