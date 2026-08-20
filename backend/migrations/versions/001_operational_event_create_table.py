@@ -42,7 +42,7 @@ from alembic import op
 # Revision identifiers
 # ---------------------------------------------------------------------------
 revision: str = "001_operational_event"
-down_revision: str | None = None   # First migration — no parent
+down_revision: str | None = "000_legacy_base"   # Revised to connect to the initial schema
 branch_labels: str | None = None
 depends_on: str | None = None
 
