@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../storage/secure_storage.dart';
-import '../../router/app_router.dart';
-import '../../network/api_client.dart';
+import '../storage/secure_storage.dart';
+import '../router/app_router.dart';
+import '../network/api_client.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref);

@@ -30,7 +30,7 @@ android {
         applicationId = "com.example.fleetguard_owner"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21 // Flutter google_maps needs 21 min
+        minSdk = flutter.minSdkVersion // Flutter google_maps needs 21 min
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

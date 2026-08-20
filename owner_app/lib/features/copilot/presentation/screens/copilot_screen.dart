@@ -50,7 +50,7 @@ class CopilotScreen extends StatelessWidget {
               color: AppTheme.cardLight,
               borderRadius: BorderRadius.circular(16).copyWith(topLeft: const Radius.circular(0)),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2)),
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
               ],
             ),
             child: Text(text, style: const TextStyle(fontSize: 16)),
@@ -69,9 +69,9 @@ class CopilotScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+            color: AppTheme.primaryGreen.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)),
+            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
           ),
           child: Text(text, style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.w600)),
         ),
@@ -85,7 +85,7 @@ class CopilotScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.cardLight,
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4)),
         ],
       ),
       child: Row(
