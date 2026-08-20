@@ -36,7 +36,7 @@ class Trip(Base):
         comment="Business identifier for the trip"
     )
     status: Mapped[TripStatus] = mapped_column(
-        Enum(TripStatus, name="trip_status"),
+        Enum(TripStatus, native_enum=False, length=50),
         nullable=False, default=TripStatus.CREATED, index=True
     )
 

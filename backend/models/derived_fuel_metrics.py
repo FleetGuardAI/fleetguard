@@ -50,15 +50,15 @@ class DerivedFuelMetric(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
     entity_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, name="metric_entity_type"), nullable=False, index=True)
+    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, native_enum=False, length=50), nullable=False, index=True)
     
-    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, name="fuel_metric_type"), nullable=False, index=True)
+    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, native_enum=False, length=50), nullable=False, index=True)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
     
-    source: Mapped[FuelSource] = mapped_column(Enum(FuelSource, name="fuel_source_type"), nullable=False)
-    quality: Mapped[DataQuality] = mapped_column(Enum(DataQuality, name="fuel_data_quality"), nullable=False)
-    measurement_type: Mapped[MeasurementType] = mapped_column(Enum(MeasurementType, name="fuel_measurement_type"), nullable=False)
+    source: Mapped[FuelSource] = mapped_column(Enum(FuelSource, native_enum=False, length=50), nullable=False)
+    quality: Mapped[DataQuality] = mapped_column(Enum(DataQuality, native_enum=False, length=50), nullable=False)
+    measurement_type: Mapped[MeasurementType] = mapped_column(Enum(MeasurementType, native_enum=False, length=50), nullable=False)
     
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)

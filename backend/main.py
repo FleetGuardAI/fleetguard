@@ -234,12 +234,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("✅ PostgreSQL database detected. Skipping create_all_tables() as Alembic manages the schema.")
     
-    validation_consumer_runner.start()
-    processing_consumer.start()
-    evidence_consumer_runner.start()
-    outbox_worker.start()
-    fuel_intelligence_consumer_runner.start()
-    logger.info("✅ Background Kafka runners started.")
+    try:
+        await validation_consumer_runner.start()
+        await processing_consumer.start()
+        await evidence_consumer_runner.start()
+        await outbox_worker.start()
+        await fuel_intelligence_consumer_runner.start()
+        logger.info("✅ Background Kafka runners started.")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
     
     yield
 

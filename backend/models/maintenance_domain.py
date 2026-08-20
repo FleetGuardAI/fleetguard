@@ -57,11 +57,11 @@ class MaintenanceRecord(Base):
         comment="Business identifier for the maintenance event"
     )
     status: Mapped[MaintenanceStatus] = mapped_column(
-        Enum(MaintenanceStatus, name="maintenance_status"),
+        Enum(MaintenanceStatus, native_enum=False, length=50),
         nullable=False, default=MaintenanceStatus.CREATED, index=True
     )
     category: Mapped[MaintenanceCategory] = mapped_column(
-        Enum(MaintenanceCategory, name="maintenance_category"),
+        Enum(MaintenanceCategory, native_enum=False, length=50),
         nullable=False, default=MaintenanceCategory.PREVENTIVE, index=True
     )
 
@@ -105,12 +105,12 @@ class MaintenanceTask(Base):
     )
 
     task_type: Mapped[TaskType] = mapped_column(
-        Enum(TaskType, name="task_type"),
+        Enum(TaskType, native_enum=False, length=50),
         nullable=False, default=TaskType.OTHER
     )
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[TaskStatus] = mapped_column(
-        Enum(TaskStatus, name="task_status"),
+        Enum(TaskStatus, native_enum=False, length=50),
         nullable=False, default=TaskStatus.PENDING
     )
     

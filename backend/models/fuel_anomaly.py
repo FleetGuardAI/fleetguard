@@ -35,17 +35,17 @@ class FuelAnomaly(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
     entity_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, name="anomaly_entity_type"), nullable=False, index=True)
-    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, name="anomaly_fuel_metric_type"), nullable=False, index=True)
+    entity_type: Mapped[EntityTypeEnum] = mapped_column(Enum(EntityTypeEnum, native_enum=False, length=50), nullable=False, index=True)
+    metric_type: Mapped[FuelMetricType] = mapped_column(Enum(FuelMetricType, native_enum=False, length=50), nullable=False, index=True)
     
     baseline_value: Mapped[float] = mapped_column(Float, nullable=False)
     observed_value: Mapped[float] = mapped_column(Float, nullable=False)
     
     deviation_percent: Mapped[float] = mapped_column(Float, nullable=False, doc="Actual percentage e.g. -12.42 for 12.42% degradation")
     
-    direction: Mapped[AnomalyDirection] = mapped_column(Enum(AnomalyDirection, name="anomaly_direction"), nullable=False)
-    severity: Mapped[AnomalySeverity] = mapped_column(Enum(AnomalySeverity, name="anomaly_severity"), nullable=False)
-    status: Mapped[AnomalyStatus] = mapped_column(Enum(AnomalyStatus, name="anomaly_status"), nullable=False)
+    direction: Mapped[AnomalyDirection] = mapped_column(Enum(AnomalyDirection, native_enum=False, length=50), nullable=False)
+    severity: Mapped[AnomalySeverity] = mapped_column(Enum(AnomalySeverity, native_enum=False, length=50), nullable=False)
+    status: Mapped[AnomalyStatus] = mapped_column(Enum(AnomalyStatus, native_enum=False, length=50), nullable=False)
     
     baseline_reference: Mapped[str] = mapped_column(String(255), nullable=False)
     observation_reference: Mapped[str] = mapped_column(String(255), nullable=False, index=True, doc="Unique reference to the observed metric event")
@@ -55,6 +55,6 @@ class FuelAnomaly(Base):
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
-        UniqueConstraint("observation_reference", name="uix_fuel_anomaly_observation"),
+        UniqueConstraint("observation_reference", ),
         Index("ix_fuel_anomalies_lookup", "entity_id", "entity_type", "metric_type"),
     )

@@ -59,7 +59,7 @@ class Tyre(Base):
     current_position: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     
     current_status: Mapped[TyreStatus] = mapped_column(
-        Enum(TyreStatus, name="tyre_status"),
+        Enum(TyreStatus, native_enum=False, length=50),
         nullable=False, default=TyreStatus.REGISTERED, index=True
     )
 
@@ -92,7 +92,7 @@ class TyreLifecycleRecord(Base):
     tyre: Mapped["Tyre"] = relationship("Tyre", back_populates="lifecycle_records")
 
     event_category: Mapped[LifecycleEventCategory] = mapped_column(
-        Enum(LifecycleEventCategory, name="lifecycle_event_category"),
+        Enum(LifecycleEventCategory, native_enum=False, length=50),
         nullable=False
     )
     performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

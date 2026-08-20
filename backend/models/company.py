@@ -54,7 +54,7 @@ class Company(Base):
         comment="Optional company contact email; must be globally unique if provided"
     )
     status: Mapped[CompanyStatus] = mapped_column(
-        Enum(CompanyStatus, name="company_status"),
+        Enum(CompanyStatus, native_enum=False, length=20),
         nullable=False,
         default=CompanyStatus.ACTIVE,
         server_default=CompanyStatus.ACTIVE.value,

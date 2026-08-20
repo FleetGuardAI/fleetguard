@@ -79,10 +79,10 @@ class Ticket(Base):
 
     # --- Status & Risk ---
     status: Mapped[TicketStatus] = mapped_column(
-        Enum(TicketStatus), nullable=False, default=TicketStatus.PENDING, index=True
+        Enum(TicketStatus, native_enum=False, length=50), nullable=False, default=TicketStatus.PENDING, index=True
     )
     risk_level: Mapped[RiskLevel] = mapped_column(
-        Enum(RiskLevel), nullable=False, default=RiskLevel.LOW
+        Enum(RiskLevel, native_enum=False, length=50), nullable=False, default=RiskLevel.LOW
     )
     risk_reasons: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True,

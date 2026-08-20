@@ -53,7 +53,7 @@ class EmergencyAlert(Base):
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     status: Mapped[EmergencyStatus] = mapped_column(
-        Enum(EmergencyStatus, name="emergency_status"),
+        Enum(EmergencyStatus, native_enum=False, length=50),
         nullable=False, default=EmergencyStatus.ACTIVE, index=True,
     )
 

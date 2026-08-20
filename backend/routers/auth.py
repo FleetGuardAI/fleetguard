@@ -92,46 +92,6 @@ async def login(
 
 
 @router.post(
-    "/logout",
-    status_code=status.HTTP_200_OK,
-    summary="Log out the current user and revoke their session",
-)
-async def logout(
-    token: str = Depends(_oauth2_scheme),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Log out the currently authenticated user.
-    Revokes the current JWT's session to prevent further use.
-    """
-    await logout_user(token=token, db=db)
-    # Commit changes from logout_user update
-    await db.commit()
-    return {"message": "Logged out successfully"}
-
-
-@router.post(
-    "/logout",
-    status_code=status.HTTP_200_OK,
-    summary="Log out the current user and revoke their session",
-)
-async def logout(
-    token: str = Depends(_oauth2_scheme),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Log out the currently authenticated user.
-    Revokes the current JWT's session to prevent further use.
-    """
-    await logout_user(token=token, db=db)
-    # Commit changes from logout_user update
-    await db.commit()
-    return {"message": "Logged out successfully"}
-
-
-@router.post(
     "/forgot-password/request",
     response_model=ForgotPasswordResponse,
     status_code=status.HTTP_200_OK,

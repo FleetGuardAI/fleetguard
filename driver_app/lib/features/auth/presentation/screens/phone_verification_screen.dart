@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,24 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
 
   bool _otpSent = false;
   bool _isLoading = false;
+  String? _reqId;
+  
+  int _countdown = 0;
+  Timer? _timer;
+
+  void _startCountdown() {
+    _countdown = 60;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown > 0) {
+        setState(() {
+          _countdown--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
 
   void _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -40,12 +59,15 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       setState(() {
         _isLoading = false;
         _otpSent = true;
+        _reqId = response['req_id'];
       });
+      _startCountdown();
 
       if (mounted) {
-        final demoOtp = response['demo_otp'] ?? '123456';
+        final demoOtp = response['demo_otp'];
+        final message = demoOtp != null ? 'OTP sent! Use code: $demoOtp' : 'OTP sent to your phone!';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('OTP sent! Use code: $demoOtp')),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {
@@ -53,6 +75,32 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send OTP: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
+    }
+  }
+
+  void _resendOtp() async {
+    if (_countdown > 0 || _reqId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.resendOtp(_reqId!);
+
+      setState(() => _isLoading = false);
+      _startCountdown();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'OTP resent successfully')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to resend OTP: $e'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }
@@ -72,6 +120,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       final repo = ref.read(authRepositoryProvider);
       final response = await repo.verifyOtp(
         _phoneController.text.trim(), 
+        _reqId ?? 'null_req',
         _otpController.text.trim(), 
         widget.inviteToken,
       );
@@ -107,6 +156,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
 
   @override
   void dispose() {
+    _timer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -183,10 +233,31 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                         : const Text('Verify & Continue'),
                   ),
                 ),
+                const SizedBox(height: 16),
                 Center(
-                  child: TextButton(
-                    onPressed: () => setState(() => _otpSent = false),
-                    child: const Text('Change Phone Number'),
+                  child: Column(
+                    children: [
+                      if (_countdown > 0)
+                        Text(
+                          'Resend OTP in $_countdown s',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        )
+                      else
+                        TextButton(
+                          onPressed: _isLoading ? null : _resendOtp,
+                          child: const Text('Resend OTP'),
+                        ),
+                      TextButton(
+                        onPressed: () => setState(() { 
+                          _otpSent = false;
+                          _reqId = null;
+                          _otpController.clear();
+                          _countdown = 0;
+                          _timer?.cancel();
+                        }),
+                        child: const Text('Change Phone Number'),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -11,7 +11,7 @@ import '../../features/fleet/presentation/screens/add_truck_screen.dart';
 import '../../features/fleet/presentation/screens/invite_driver_screen.dart';
 import '../../features/fleet/presentation/screens/add_hardware_asset_screen.dart';
 import '../../features/navigation/presentation/screens/scaffold_with_nav_bar.dart';
-import '../../features/auth/presentation/screens/qr_scan_screen.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/operations/presentation/screens/operations_screen.dart';
 import '../../features/more/presentation/screens/more_screen.dart';
 import '../storage/secure_storage.dart';
@@ -42,7 +42,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/auth/qr-scan',
-        builder: (context, state) => const QRScanScreen(),
+        builder: (context, state) => const LoginScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {

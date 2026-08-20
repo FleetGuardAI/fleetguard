@@ -81,7 +81,7 @@ class Driver(Base):
 
     # --- Verification (added for driver app) ---
     verification_status: Mapped[Optional[VerificationStatus]] = mapped_column(
-        Enum(VerificationStatus, name="driver_verification_status"),
+        Enum(VerificationStatus, native_enum=False, length=50),
         nullable=True, default=None, index=True,
         comment="Mobile app onboarding verification status"
     )
@@ -89,17 +89,17 @@ class Driver(Base):
 
     # --- Business Status ---
     employment_status: Mapped[Optional[EmploymentStatus]] = mapped_column(
-        Enum(EmploymentStatus, name="driver_employment_status"),
+        Enum(EmploymentStatus, native_enum=False, length=50),
         nullable=True
     )
     status: Mapped[DriverStatus] = mapped_column(
-        Enum(DriverStatus, name="driver_status"),
+        Enum(DriverStatus, native_enum=False, length=50),
         nullable=False, default=DriverStatus.ACTIVE, index=True
     )
 
     # --- Duty Status (added for driver app) ---
     duty_status: Mapped[Optional[DutyStatus]] = mapped_column(
-        Enum(DutyStatus, name="driver_duty_status"),
+        Enum(DutyStatus, native_enum=False, length=50),
         nullable=True, default=None,
         comment="Current duty status from the mobile app"
     )

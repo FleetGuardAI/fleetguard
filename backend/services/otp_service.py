@@ -1,124 +1,168 @@
 """
-FleetGuard — OTP Service
-
-Demo mode: accepts fixed OTP 123456.
-Production: plug in Twilio, MSG91, or any SMS provider.
+FleetGuard — OTP Service (MSG91 Widget Provider implementation)
 """
 
 import logging
-import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, Tuple
+import httpx
+import uuid
+from typing import Optional
 
 from config import settings
+from services.otp_provider import OTPProvider, OTPRequestResult, OTPVerificationResult
 
 logger = logging.getLogger("fleetguard.otp")
 
-# In-memory OTP store (demo). Production: use Redis.
-_otp_store: Dict[str, Tuple[str, datetime]] = {}
-
-# Demo mode OTP
-DEMO_OTP = "123456"
-
-
-class OTPService:
+class MSG91OTPProvider(OTPProvider):
     """
-    OTP generation and verification service.
-
-    Demo mode: always accepts 123456.
-    Production: integrate SMS provider (Twilio, MSG91, etc.)
+    Official MSG91 OTP Widget API integration.
+    Handles OTP generation, delivery, retry, and verification externally.
     """
-
-    @staticmethod
-    async def send_otp(phone_number: str) -> bool:
-        """
-        Generate and 'send' OTP to the given phone number.
-
-        Returns True if OTP was generated/sent successfully.
-        """
-        otp_code = DEMO_OTP if getattr(settings, 'DEBUG', True) else _generate_otp()
-        expires_at = datetime.now(tz=timezone.utc) + timedelta(minutes=5)
-
-        # Store OTP
-        _otp_store[phone_number] = (otp_code, expires_at)
-
-        if getattr(settings, 'DEBUG', True):
-            logger.info(f"[DEMO] OTP for {phone_number}: {otp_code}")
-        else:
-            # Production: call SMS API
-            await _send_sms(phone_number, otp_code)
-
-        return True
-
-    @staticmethod
-    async def verify_otp(phone_number: str, otp_code: str) -> bool:
-        """
-        Verify OTP code for the given phone number.
-
-        Returns True if valid and not expired.
-        """
-        # Demo mode: accept fixed OTP
-        if getattr(settings, 'DEBUG', True) and otp_code == DEMO_OTP:
-            _otp_store.pop(phone_number, None)
-            logger.info(f"[DEMO] OTP verified for {phone_number}")
-            return True
-
-        stored = _otp_store.get(phone_number)
-        if stored is None:
-            return False
-
-        stored_otp, expires_at = stored
-        now = datetime.now(tz=timezone.utc)
-
-        if now > expires_at:
-            _otp_store.pop(phone_number, None)
-            logger.warning(f"OTP expired for {phone_number}")
-            return False
-
-        if stored_otp != otp_code:
-            return False
-
-        # Clean up used OTP
-        _otp_store.pop(phone_number, None)
-        logger.info(f"OTP verified for {phone_number}")
-        return True
-
-
-def _generate_otp() -> str:
-    """Generate a cryptographically secure 6-digit OTP."""
-    return f"{secrets.randbelow(900000) + 100000}"
-
-
-async def _send_sms(phone_number: str, otp_code: str) -> None:
-    """
-    SMS provider integration point.
-    """
-    twilio_key = getattr(settings, 'TWILIO_API_KEY', None)
-    if not twilio_key:
-        logger.info(f"SMS OTP simulated to {phone_number} (TWILIO_API_KEY not set)")
-        return
-
-    try:
-        from twilio.rest import Client
-        # Using the key as both SID and Token for this mock representation,
-        # since typically TWILIO requires ACCOUNT_SID and AUTH_TOKEN. 
-        # But per requirements we use TWILIO_API_KEY.
-        client = Client(twilio_key, twilio_key) 
+    def __init__(self):
+        self.auth_key = settings.MSG91_AUTH_KEY
+        self.widget_id = settings.MSG91_WIDGET_ID
+        self.widget_token = settings.MSG91_WIDGET_TOKEN
         
-        # This will fail with auth errors if the key is just a dummy token, 
-        # but the integration pattern is proven.
-        message = client.messages.create(
-            body=f"Your FleetGuard OTP is: {otp_code}",
-            from_="+1234567890", # Replace with actual Twilio sender number
-            to=phone_number
-        )
-        logger.info(f"SMS OTP sent via Twilio to {phone_number}. SID: {message.sid}")
-    except ImportError:
-        logger.warning("twilio package not installed, simulating SMS")
-    except Exception as e:
-        logger.error(f"Failed to send Twilio SMS: {e}")
-        # Not raising to avoid breaking demo mode if key is invalid
+        if not self.auth_key or not self.widget_id or not self.widget_token:
+            logger.warning("MSG91 credentials are not fully configured!")
+            
+    def _get_headers(self):
+        return {
+            "authkey": self.auth_key or "",
+            "widgetToken": self.widget_token or "",
+            "Content-Type": "application/json"
+        }
+
+    async def request_otp(self, identifier: str) -> OTPRequestResult:
+        if not self.auth_key:
+            return OTPRequestResult(False, "MSG91 not fully configured")
+            
+        url = "https://api.msg91.com/api/v5/widget/sendOtp"
+        payload = {
+            "widgetId": self.widget_id,
+            "identifier": identifier
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=self._get_headers())
+                data = response.json()
+                
+                if data.get("type") == "success":
+                    req_id = data.get("message") # Often reqId is returned in message or response
+                    # If it's a dict, check for reqId
+                    if isinstance(data.get("message"), str) and len(data.get("message")) > 10:
+                        req_id = data.get("message")
+                    else:
+                        req_id = data.get("reqId") or data.get("request_id")
+                        
+                    logger.info(f"MSG91 OTP requested for {identifier}")
+                    return OTPRequestResult(True, "OTP sent successfully", provider_reference=req_id)
+                else:
+                    logger.error(f"MSG91 request failed: {data}")
+                    return OTPRequestResult(False, "Failed to send OTP via provider")
+        except Exception as e:
+            logger.error(f"MSG91 API exception: {e}")
+            return OTPRequestResult(False, "Provider API error")
+
+    async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
+        if not self.auth_key:
+            return OTPRequestResult(False, "MSG91 not fully configured")
+            
+        url = "https://api.msg91.com/api/v5/widget/retryOtp"
+        payload = {
+            "widgetId": self.widget_id,
+            "reqId": req_id,
+            "retryType": channel # e.g., 'text' or 'voice'
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=self._get_headers())
+                data = response.json()
+                
+                if data.get("type") == "success":
+                    logger.info(f"MSG91 OTP retried for reqId {req_id}")
+                    return OTPRequestResult(True, "OTP resent successfully", provider_reference=req_id)
+                else:
+                    logger.error(f"MSG91 retry failed: {data}")
+                    return OTPRequestResult(False, "Failed to resend OTP via provider")
+        except Exception as e:
+            logger.error(f"MSG91 API exception: {e}")
+            return OTPRequestResult(False, "Provider API error")
+
+    async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
+        if not self.auth_key:
+            return OTPVerificationResult(False, "MSG91 not fully configured")
+            
+        url = "https://api.msg91.com/api/v5/widget/verifyOtp"
+        payload = {
+            "widgetId": self.widget_id,
+            "reqId": req_id,
+            "otp": code
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=self._get_headers())
+                data = response.json()
+                
+                if data.get("type") == "success":
+                    logger.info(f"MSG91 OTP verified for reqId {req_id}")
+                    return OTPVerificationResult(True, "OTP verified successfully")
+                else:
+                    logger.warning(f"MSG91 verification failed for reqId {req_id}: {data}")
+                    return OTPVerificationResult(False, "Invalid or expired OTP")
+        except Exception as e:
+            logger.error(f"MSG91 API exception: {e}")
+            return OTPVerificationResult(False, "Provider API error")
 
 
-# Singleton
-otp_service = OTPService()
+class MockOTPProvider(OTPProvider):
+    """
+    Mock provider for local development and automated testing.
+    Requires OTP_MOCK_MODE=True in configuration.
+    """
+    def __init__(self):
+        if not settings.OTP_MOCK_MODE:
+            logger.error("MockOTPProvider instantiated but OTP_MOCK_MODE is false!")
+
+    async def request_otp(self, identifier: str) -> OTPRequestResult:
+        if not settings.OTP_MOCK_MODE:
+            return OTPRequestResult(False, "Mock mode disabled")
+        logger.info(f"[MOCK] OTP requested for {identifier}")
+        # Generate a fake req_id
+        mock_req_id = f"mock_req_{uuid.uuid4().hex[:12]}"
+        return OTPRequestResult(True, "Mock OTP sent (use 123456)", provider_reference=mock_req_id)
+
+    async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
+        if not settings.OTP_MOCK_MODE:
+            return OTPRequestResult(False, "Mock mode disabled")
+        logger.info(f"[MOCK] OTP retried for {req_id}")
+        return OTPRequestResult(True, "Mock OTP resent (use 123456)", provider_reference=req_id)
+
+    async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
+        if not settings.OTP_MOCK_MODE:
+            return OTPVerificationResult(False, "Mock mode disabled")
+            
+        if code == "123456" and req_id.startswith("mock_req_"):
+            logger.info(f"[MOCK] OTP verified for reqId {req_id}")
+            return OTPVerificationResult(True, "Mock OTP verified")
+            
+        logger.warning(f"[MOCK] OTP verification failed for reqId {req_id}")
+        return OTPVerificationResult(False, "Invalid mock OTP or reqId")
+
+
+def get_otp_provider() -> OTPProvider:
+    """Factory to return the configured OTP Provider."""
+    if settings.OTP_MOCK_MODE:
+        return MockOTPProvider()
+        
+    provider_name = getattr(settings, 'OTP_PROVIDER', 'MSG91').upper()
+    if provider_name == 'MSG91':
+        return MSG91OTPProvider()
+        
+    logger.error(f"Unknown OTP_PROVIDER {provider_name}, falling back to Mock (WARNING)")
+    return MockOTPProvider()
+
+# Singleton usage
+otp_provider = get_otp_provider()

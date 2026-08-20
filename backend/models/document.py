@@ -61,7 +61,7 @@ class Document(Base):
     )
     
     status: Mapped[DocumentStorageStatus] = mapped_column(
-        Enum(DocumentStorageStatus, name="documentstoragestatus"),
+        Enum(DocumentStorageStatus, native_enum=False, length=50),
         nullable=False,
         default=DocumentStorageStatus.UPLOADED,
         index=True,

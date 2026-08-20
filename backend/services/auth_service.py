@@ -593,6 +593,69 @@ async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
         )
         
     return await create_token_for_user(user, db=db, remember_me=True)
+async def request_otp(identifier: str, db: AsyncSession):
+    from schemas.auth import OTPRequestResponse
+    from services.otp_service import otp_provider
+    generic_message = "If an account exists for that identifier, a verification code has been sent."
+    identifier = identifier.strip()
+    
+    if "@" in identifier:
+        result = await db.execute(select(User).where(User.email == identifier))
+    else:
+        result = await db.execute(select(User).where(User.mobile_number == identifier))
+    
+    user = result.scalar_one_or_none()
+    
+    if user is None or not user.is_active:
+        dummy_verify()
+        return OTPRequestResponse(message=generic_message, req_id=None)
+        
+    result = await otp_provider.request_otp(identifier)
+    return OTPRequestResponse(message=generic_message, req_id=result.provider_reference)
 
+async def resend_otp(req_id: str, channel: str, db: AsyncSession):
+    from schemas.auth import OTPRequestResponse
+    from services.otp_service import otp_provider
+    
+    if req_id is None:
+        # Prevents enumeration if they try to resend to a null req_id
+        return OTPRequestResponse(message="OTP resent successfully.", req_id=None)
+        
+    result = await otp_provider.retry_otp(req_id, channel)
+    return OTPRequestResponse(message="OTP resent successfully.", req_id=result.provider_reference)
 
-
+async def verify_otp(identifier: str, req_id: str, code: str, db: AsyncSession) -> TokenResponse:
+    from services.otp_service import otp_provider
+    
+    identifier = identifier.strip()
+    if "@" in identifier:
+        result = await db.execute(select(User).where(User.email == identifier))
+    else:
+        result = await db.execute(select(User).where(User.mobile_number == identifier))
+    
+    user = result.scalar_one_or_none()
+    
+    if user is None:
+        dummy_verify()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Contact your administrator.",
+        )
+        
+    otp_result = await otp_provider.verify_otp(req_id, code)
+    if not otp_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OTP.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    logger.info("Successful OTP login: user_id=%d, role=%s", user.id, user.role.value)
+    return await create_token_for_user(user, db=db, remember_me=True)
