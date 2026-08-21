@@ -29,7 +29,6 @@ class MSG91OTPProvider(OTPProvider):
     def _get_headers(self):
         return {
             "authkey": self.auth_key or "",
-            "widgetToken": self.widget_token or "",
             "Content-Type": "application/json"
         }
 
@@ -61,7 +60,8 @@ class MSG91OTPProvider(OTPProvider):
                 else:
                     logger.error(f"MSG91 request failed: {data}")
                     error_detail = data.get("message", "Unknown MSG91 error")
-                    return OTPRequestResult(False, f"MSG91 Error: {error_detail}")
+                    diagnostic = f"widgetId_present: {bool(self.widget_id)}, auth_present: {bool(self.auth_key)}"
+                    return OTPRequestResult(False, f"MSG91 Error: {error_detail} | {diagnostic}")
         except Exception as e:
             logger.error(f"MSG91 API exception: {e}")
             return OTPRequestResult(False, f"Provider API error: {str(e)}")
