@@ -116,6 +116,36 @@ class MSG91OTPProvider(OTPProvider):
             logger.error(f"MSG91 API exception: {e}")
             return OTPVerificationResult(False, "Provider API error")
 
+    async def verify_access_token(self, token: str) -> OTPVerificationResult:
+        if not self.auth_key:
+            return OTPVerificationResult(False, "MSG91 not fully configured")
+            
+        url = "https://api.msg91.com/api/v5/widget/verifyAccessToken"
+        payload = {
+            "access-token": token
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                headers = {
+                    "authkey": self.auth_key or "",
+                    "Content-Type": "application/json"
+                }
+                response = await client.post(url, json=payload, headers=headers)
+                data = response.json()
+                
+                # Check for success format: either {"type": "success"} or similar.
+                # If msg91 fails, it usually returns error type or code
+                if data.get("type") == "success" or data.get("message") == "Token verified":
+                    logger.info("MSG91 Access Token verified successfully")
+                    return OTPVerificationResult(True, "Access Token verified successfully")
+                else:
+                    logger.warning(f"MSG91 access token verification failed: {data}")
+                    return OTPVerificationResult(False, "Invalid access token")
+        except Exception as e:
+            logger.error(f"MSG91 API exception during token verify: {e}")
+            return OTPVerificationResult(False, "Provider API error")
+
 
 class MockOTPProvider(OTPProvider):
     """
@@ -150,6 +180,17 @@ class MockOTPProvider(OTPProvider):
             
         logger.warning(f"[MOCK] OTP verification failed for reqId {req_id}")
         return OTPVerificationResult(False, "Invalid mock OTP or reqId")
+
+    async def verify_access_token(self, token: str) -> OTPVerificationResult:
+        if not settings.OTP_MOCK_MODE:
+            return OTPVerificationResult(False, "Mock mode disabled")
+            
+        if token.startswith("mock_token_"):
+            logger.info("[MOCK] Access Token verified")
+            return OTPVerificationResult(True, "Mock Access Token verified")
+            
+        logger.warning("[MOCK] Access Token verification failed")
+        return OTPVerificationResult(False, "Invalid mock token")
 
 
 def get_otp_provider() -> OTPProvider:

@@ -624,7 +624,7 @@ async def resend_otp(req_id: str, channel: str, db: AsyncSession):
     result = await otp_provider.retry_otp(req_id, channel)
     return OTPRequestResponse(message="OTP resent successfully.", req_id=result.provider_reference)
 
-async def verify_otp(identifier: str, req_id: str, code: str, db: AsyncSession) -> TokenResponse:
+async def verify_otp(identifier: str, req_id: Optional[str], code: Optional[str], db: AsyncSession, msg91_token: Optional[str] = None) -> TokenResponse:
     from services.otp_service import otp_provider
     
     identifier = identifier.strip()
@@ -649,7 +649,16 @@ async def verify_otp(identifier: str, req_id: str, code: str, db: AsyncSession) 
             detail="Your account has been deactivated. Contact your administrator.",
         )
         
-    otp_result = await otp_provider.verify_otp(req_id, code)
+    if msg91_token:
+        otp_result = await otp_provider.verify_access_token(msg91_token)
+    else:
+        if not req_id or not code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing req_id or code for OTP verification."
+            )
+        otp_result = await otp_provider.verify_otp(req_id, code)
+        
     if not otp_result.success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

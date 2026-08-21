@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { login, getCurrentUser, requestOtp, verifyOtp } from '@/api/authApi';
+import { login, getCurrentUser, requestOtp, verifyOtp as verifyOtpApi } from '@/api/authApi';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
@@ -43,6 +43,59 @@ export default function Login() {
       if (timer) clearInterval(timer);
     };
   }, [countdown]);
+
+  const msg91Handlers = useRef({
+    onSuccess: null,
+    onFailure: null
+  });
+
+  useEffect(() => {
+    const initMsg91 = () => {
+      if (window.initSendOTP && !window.msg91Initialized) {
+        const configuration = {
+          widgetId: import.meta.env.VITE_MSG91_WIDGET_ID,
+          widget: import.meta.env.VITE_MSG91_WIDGET_ID,
+          tokenAuth: import.meta.env.VITE_MSG91_WIDGET_TOKEN,
+          identifier: "identifier",
+          exposeMethods: true,
+          success: (data) => {
+            if (msg91Handlers.current.onSuccess) {
+              msg91Handlers.current.onSuccess(data);
+            }
+          },
+          failure: (error) => {
+            if (msg91Handlers.current.onFailure) {
+              msg91Handlers.current.onFailure(error);
+            }
+          }
+        };
+
+        console.log('[MSG91] initialized', {
+          widgetConfigured: Boolean(configuration.widget),
+          tokenConfigured: Boolean(configuration.tokenAuth),
+          successCallback: typeof configuration.success,
+          failureCallback: typeof configuration.failure,
+        });
+
+        window.initSendOTP(configuration);
+        window.msg91Initialized = true;
+      }
+    };
+    
+    const scriptTimer = setInterval(() => {
+      if (window.initSendOTP) {
+        initMsg91();
+        clearInterval(scriptTimer);
+      }
+    }, 500);
+    return () => clearInterval(scriptTimer);
+  }, []);
+
+  const formatMobileForMsg91 = (num) => {
+    let cleaned = num.replace(/\D/g, '');
+    if (cleaned.length === 10) return '91' + cleaned;
+    return cleaned;
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -95,6 +148,35 @@ export default function Login() {
       return;
     }
     setLoading(true);
+    
+    const isEmail = email.includes('@');
+    
+    if (!isEmail && window.sendOtp) {
+      const formattedMobile = formatMobileForMsg91(email);
+      
+      msg91Handlers.current.onSuccess = (data) => {
+        setLoading(false);
+        success('OTP Sent', 'A verification code has been sent to your mobile.');
+        setOtpStep(2);
+        setCountdown(60);
+        setErrors({});
+        setReqId('msg91-widget');
+      };
+      
+      msg91Handlers.current.onFailure = (errData) => {
+        setLoading(false);
+        error('OTP Request Failed', errData?.message || 'Could not send OTP.');
+      };
+
+      try {
+        window.sendOtp(formattedMobile);
+      } catch (err) {
+        setLoading(false);
+        error('OTP Request Failed', err.message || 'Error calling sendOtp.');
+      }
+      return;
+    }
+    
     try {
       const res = await requestOtp(email);
       success('OTP Sent', res.message);
@@ -112,7 +194,6 @@ export default function Login() {
   const handleResendOtp = async () => {
     if (countdown > 0) return;
     
-    // For non-existent users, we simulate success to avoid enumeration
     if (!reqId) {
       success('OTP Sent', 'A verification code has been sent.');
       setCountdown(60);
@@ -120,8 +201,32 @@ export default function Login() {
     }
 
     setLoading(true);
+    
+    const isEmail = email.includes('@');
+    if (!isEmail && window.retryOtp && reqId === 'msg91-widget') {
+      const formattedMobile = formatMobileForMsg91(email);
+      
+      msg91Handlers.current.onSuccess = (data) => {
+        setLoading(false);
+        success('OTP Resent', 'A new verification code has been sent.');
+        setCountdown(60);
+      };
+      
+      msg91Handlers.current.onFailure = (errData) => {
+        setLoading(false);
+        error('OTP Resend Failed', errData?.message || 'Could not resend OTP.');
+      };
+
+      try {
+        window.retryOtp(formattedMobile);
+      } catch (err) {
+        setLoading(false);
+        error('OTP Resend Failed', err.message || 'Error calling retryOtp.');
+      }
+      return;
+    }
+    
     try {
-      // Need to import resendOtp from api/authApi
       const { resendOtp } = await import('@/api/authApi');
       const res = await resendOtp(reqId);
       success('OTP Resent', res.message || 'A new verification code has been sent.');
@@ -140,10 +245,43 @@ export default function Login() {
       return;
     }
     setLoading(true);
+    
+    const isEmail = email.includes('@');
+    if (!isEmail && window.verifyOtp && reqId === 'msg91-widget') {
+      const formattedMobile = formatMobileForMsg91(email);
+      
+      msg91Handlers.current.onSuccess = async (data) => {
+        let msg91Token = data;
+        if (data && typeof data === 'object' && data.message) {
+           msg91Token = data.message;
+        }
+        
+        try {
+          const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token });
+          success('Login Successful', `Welcome back, ${res.user.name}!`);
+          navigate('/dashboard');
+        } catch (err) {
+          setLoading(false);
+          error('OTP Verification Failed', err.message || 'Invalid OTP.');
+        }
+      };
+
+      msg91Handlers.current.onFailure = (errData) => {
+        setLoading(false);
+        error('OTP Verification Failed', errData?.message || 'Invalid OTP.');
+      };
+
+      try {
+        window.verifyOtp(formattedMobile, otpCode);
+      } catch (err) {
+        setLoading(false);
+        error('OTP Verification Failed', err.message || 'Error calling verifyOtp.');
+      }
+      return;
+    }
+    
     try {
-      // If we don't have a reqId (null user case), the backend will fail it generically during verify or we can fail it
-      // but to prevent enumeration, we just send null string or handle it
-      const res = await verifyOtp(email, reqId || "null_req", otpCode, { rememberMe });
+      const res = await verifyOtpApi(email, reqId || "null_req", otpCode, { rememberMe });
       success('Login Successful', `Welcome back, ${res.user.name}!`);
       navigate('/dashboard');
     } catch (err) {
