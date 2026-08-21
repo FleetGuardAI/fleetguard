@@ -5,6 +5,7 @@ FleetGuard — OTP Service (MSG91 Widget Provider implementation)
 import logging
 import httpx
 import uuid
+import json
 from typing import Optional
 
 from config import settings
@@ -124,6 +125,13 @@ class MSG91OTPProvider(OTPProvider):
         payload = {
             "access-token": token
         }
+        
+        logger.info(f"[MSG91 DEBUG] verifyAccessToken diagnostic: " + json.dumps({
+            "tokenPresent": bool(token),
+            "tokenLength": len(token) if token else 0,
+            "widgetIdConfigured": bool(getattr(settings, 'MSG91_WIDGET_ID', None)),
+            "authKeyConfigured": bool(self.auth_key)
+        }))
         
         logger.info("[MSG91 DEBUG] access-token verification started")
         try:
