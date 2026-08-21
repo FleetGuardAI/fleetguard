@@ -80,6 +80,10 @@ class FleetInvite(Base):
             return False
         if self.max_uses is not None and self.use_count >= self.max_uses:
             return False
-        if self.expires_at is not None and datetime.utcnow() > self.expires_at:
-            return False
+        if self.expires_at is not None:
+            # Ensure we compare timezone-aware to timezone-aware
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
+            if now > self.expires_at:
+                return False
         return True
