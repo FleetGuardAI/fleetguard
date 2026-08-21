@@ -34,6 +34,9 @@ from services import (
     register_company,
     reset_password_with_token,
     logout_user,
+    request_otp,
+    verify_otp,
+    resend_otp,
     _oauth2_scheme,
 )
 
@@ -241,6 +244,54 @@ async def verify_owner_qr(
     """
     from services.auth_service import verify_owner_qr_token
     return await verify_owner_qr_token(payload.pairing_token, db)
+
+from schemas.auth import OTPRequest, OTPRequestResponse, OTPVerifyRequest, OTPResendRequest
+
+@router.post(
+    "/request-otp",
+    response_model=OTPRequestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Request an OTP for login via SMS",
+)
+async def request_otp_endpoint(
+    payload: OTPRequest,
+    db: AsyncSession = Depends(get_db),
+) -> OTPRequestResponse:
+    """Request an OTP to be sent to the user's mobile or email."""
+    return await request_otp(identifier=payload.identifier, db=db)
+
+
+@router.post(
+    "/verify-otp",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify an OTP and return a JWT access token",
+)
+async def verify_otp_endpoint(
+    payload: OTPVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Verify OTP and return a session token."""
+    return await verify_otp(
+        identifier=payload.identifier,
+        req_id=payload.req_id,
+        code=payload.code,
+        db=db,
+    )
+
+
+@router.post(
+    "/resend-otp",
+    response_model=OTPRequestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Resend an OTP",
+)
+async def resend_otp_endpoint(
+    payload: OTPResendRequest,
+    db: AsyncSession = Depends(get_db),
+) -> OTPRequestResponse:
+    """Resend the OTP if it hasn't expired."""
+    return await resend_otp(req_id=payload.req_id, channel=payload.channel, db=db)
 
 
 
