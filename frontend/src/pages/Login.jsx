@@ -55,34 +55,24 @@ export default function Login() {
       if (window.initSendOTP && !window.msg91Initialized) {
         const configuration = {
           widgetId: import.meta.env.VITE_MSG91_WIDGET_ID,
-          widget: import.meta.env.VITE_MSG91_WIDGET_ID,
           tokenAuth: import.meta.env.VITE_MSG91_WIDGET_TOKEN,
-          identifier: "identifier",
           exposeMethods: true,
           success: (data) => {
-            console.log('[MSG91 DEBUG] success callback fired');
-            console.log('[MSG91 DEBUG] success callback data:', data);
+            console.log('[MSG91 DEBUG] global success callback fired', data);
             if (msg91Handlers.current.onSuccess) {
               msg91Handlers.current.onSuccess(data);
             }
           },
           failure: (error) => {
-            console.log('[MSG91 DEBUG] failure callback fired');
-            console.log('[MSG91 DEBUG] failure data:', error);
+            console.log('[MSG91 DEBUG] global failure callback fired', error);
             if (msg91Handlers.current.onFailure) {
               msg91Handlers.current.onFailure(error);
             }
           }
         };
 
-        console.log('[MSG91 DEBUG] initialized', {
-          widgetConfigured: Boolean(configuration.widget),
-          tokenConfigured: Boolean(configuration.tokenAuth),
-          successCallback: typeof configuration.success,
-          failureCallback: typeof configuration.failure,
-        });
-
         window.initSendOTP(configuration);
+        console.log('[MSG91 DEBUG] initialized');
         window.msg91Initialized = true;
       }
     };
@@ -166,34 +156,42 @@ export default function Login() {
       console.log('[AUTH DEBUG] calling MSG91 sendOtp');
       const formattedMobile = formatMobileForMsg91(email);
       
-      msg91Handlers.current.onSuccess = (data) => {
+      let handled = false;
+      
+      const handleSuccess = (data) => {
+        if (handled) return;
+        handled = true;
+        console.log('[MSG91 DEBUG] sendOtp success callback fired', data);
+        
+        // Extract reqId if provided by MSG91, otherwise fallback
+        const returnedReqId = data?.message || data?.reqId || 'msg91-widget';
+        
         console.log('[AUTH DEBUG] showing OTP input');
         setLoading(false);
         success('OTP Sent', 'A verification code has been sent to your mobile.');
         setOtpStep(2);
         setCountdown(60);
         setErrors({});
-        setReqId('msg91-widget');
+        setReqId(returnedReqId);
       };
       
-      msg91Handlers.current.onFailure = (errData) => {
+      const handleFailure = (errData) => {
+        if (handled) return;
+        handled = true;
+        console.log('[AUTH DEBUG] MSG91 sendOtp failure callback fired', errData);
         setLoading(false);
         error('OTP Request Failed', errData?.message || 'Could not send OTP.');
       };
 
+      // Set global fallback just in case
+      msg91Handlers.current.onSuccess = handleSuccess;
+      msg91Handlers.current.onFailure = handleFailure;
+
       try {
-        const result = window.sendOtp(formattedMobile);
-        if (result && typeof result.then === 'function') {
-           result.then((data) => {
-             console.log('[AUTH DEBUG] MSG91 sendOtp resolved');
-             if (msg91Handlers.current.onSuccess) msg91Handlers.current.onSuccess(data);
-           }).catch((err) => {
-             if (msg91Handlers.current.onFailure) msg91Handlers.current.onFailure(err);
-           });
-        }
+        const result = window.sendOtp(formattedMobile, handleSuccess, handleFailure);
+        console.log('[MSG91 DEBUG] sendOtp return type:', typeof result);
       } catch (err) {
-        setLoading(false);
-        error('OTP Request Failed', err.message || 'Error calling sendOtp.');
+        handleFailure(err);
       }
       return;
     }
@@ -225,37 +223,39 @@ export default function Login() {
     setLoading(true);
     
     const isEmail = email.includes('@');
-    if (!isEmail && reqId === 'msg91-widget') {
+    if (!isEmail && (reqId === 'msg91-widget' || reqId)) {
       if (!window.retryOtp) {
          setLoading(false);
          error('OTP Resend Failed', 'MSG91 Web SDK is not loaded.');
          return;
       }
-      const formattedMobile = formatMobileForMsg91(email);
       
-      msg91Handlers.current.onSuccess = (data) => {
+      let handled = false;
+      
+      const handleSuccess = (data) => {
+        if (handled) return;
+        handled = true;
         setLoading(false);
         success('OTP Resent', 'A new verification code has been sent.');
         setCountdown(60);
       };
       
-      msg91Handlers.current.onFailure = (errData) => {
+      const handleFailure = (errData) => {
+        if (handled) return;
+        handled = true;
         setLoading(false);
         error('OTP Resend Failed', errData?.message || 'Could not resend OTP.');
       };
 
+      msg91Handlers.current.onSuccess = handleSuccess;
+      msg91Handlers.current.onFailure = handleFailure;
+
       try {
-        const result = window.retryOtp(formattedMobile);
-        if (result && typeof result.then === 'function') {
-           result.then((data) => {
-             if (msg91Handlers.current.onSuccess) msg91Handlers.current.onSuccess(data);
-           }).catch((err) => {
-             if (msg91Handlers.current.onFailure) msg91Handlers.current.onFailure(err);
-           });
-        }
+        // Channel 1 for SMS
+        const result = window.retryOtp(1, handleSuccess, handleFailure, reqId !== 'msg91-widget' ? reqId : undefined);
+        console.log('[MSG91 DEBUG] retryOtp return type:', typeof result);
       } catch (err) {
-        setLoading(false);
-        error('OTP Resend Failed', err.message || 'Error calling retryOtp.');
+        handleFailure(err);
       }
       return;
     }
@@ -281,24 +281,27 @@ export default function Login() {
     setLoading(true);
     
     const isEmail = email.includes('@');
-    if (!isEmail && reqId === 'msg91-widget') {
+    if (!isEmail && (reqId === 'msg91-widget' || reqId)) {
       if (!window.verifyOtp) {
          setLoading(false);
          error('OTP Verification Failed', 'MSG91 Web SDK is not loaded.');
          return;
       }
-      console.log('[AUTH DEBUG] MSG91 verifyOtp called');
-      const formattedMobile = formatMobileForMsg91(email);
       
-      msg91Handlers.current.onSuccess = async (data) => {
-        console.log('[AUTH DEBUG] MSG91 verification resolved');
+      let handled = false;
+      
+      const handleSuccess = async (data) => {
+        if (handled) return;
+        handled = true;
+        console.log('[AUTH DEBUG] MSG91 verifyOtp success callback fired', data);
+        
         let msg91Token = data;
         if (data && typeof data === 'object' && data.message) {
            msg91Token = data.message;
         }
         
         try {
-          console.log('[AUTH DEBUG] sending msg91_token to FleetGuard');
+          console.log('[AUTH DEBUG] sending MSG91 access token to FleetGuard');
           const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token });
           console.log('[AUTH DEBUG] FleetGuard verification response received');
           success('Login Successful', `Welcome back, ${res.user.name}!`);
@@ -309,23 +312,22 @@ export default function Login() {
         }
       };
 
-      msg91Handlers.current.onFailure = (errData) => {
+      const handleFailure = (errData) => {
+        if (handled) return;
+        handled = true;
+        console.log('[AUTH DEBUG] MSG91 verifyOtp failure callback fired', errData);
         setLoading(false);
         error('OTP Verification Failed', errData?.message || 'Invalid OTP.');
       };
 
+      msg91Handlers.current.onSuccess = handleSuccess;
+      msg91Handlers.current.onFailure = handleFailure;
+
       try {
-        const result = window.verifyOtp(formattedMobile, otpCode);
-        if (result && typeof result.then === 'function') {
-           result.then((data) => {
-             if (msg91Handlers.current.onSuccess) msg91Handlers.current.onSuccess(data);
-           }).catch((err) => {
-             if (msg91Handlers.current.onFailure) msg91Handlers.current.onFailure(err);
-           });
-        }
+        const result = window.verifyOtp(otpCode, handleSuccess, handleFailure, reqId !== 'msg91-widget' ? reqId : undefined);
+        console.log('[MSG91 DEBUG] verifyOtp return type:', typeof result);
       } catch (err) {
-        setLoading(false);
-        error('OTP Verification Failed', err.message || 'Error calling verifyOtp.');
+        handleFailure(err);
       }
       return;
     }
