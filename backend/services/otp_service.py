@@ -125,6 +125,7 @@ class MSG91OTPProvider(OTPProvider):
             "access-token": token
         }
         
+        logger.info("[MSG91 DEBUG] access-token verification started")
         try:
             async with httpx.AsyncClient() as client:
                 headers = {
@@ -132,14 +133,25 @@ class MSG91OTPProvider(OTPProvider):
                     "Content-Type": "application/json"
                 }
                 response = await client.post(url, json=payload, headers=headers)
-                data = response.json()
+                logger.info(f"[MSG91 DEBUG] MSG91 response status: {response.status_code}")
+                
+                try:
+                    data = response.json()
+                    logger.info(f"[MSG91 DEBUG] MSG91 response keys: {list(data.keys())}")
+                    
+                    if data.get("type") == "error":
+                         logger.warning(f"[MSG91 DEBUG] MSG91 returned error type: {data.get('message')}")
+                except Exception:
+                    data = {}
+                    logger.warning(f"[MSG91 DEBUG] MSG91 response was not valid JSON")
                 
                 # Check for success format: either {"type": "success"} or similar.
                 # If msg91 fails, it usually returns error type or code
                 if data.get("type") == "success" or data.get("message") == "Token verified":
-                    logger.info("MSG91 Access Token verified successfully")
+                    logger.info("[MSG91 DEBUG] MSG91 access-token verification successful: True")
                     return OTPVerificationResult(True, "Access Token verified successfully")
                 else:
+                    logger.info("[MSG91 DEBUG] MSG91 access-token verification successful: False")
                     logger.warning(f"MSG91 access token verification failed: {data}")
                     return OTPVerificationResult(False, "Invalid access token")
         except Exception as e:

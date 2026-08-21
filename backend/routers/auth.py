@@ -272,6 +272,13 @@ async def verify_otp_endpoint(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """Verify OTP and return a session token."""
+    logger.info(f"[AUTH DEBUG] verify-otp request received")
+    logger.info(f"[AUTH DEBUG] identifier present: {bool(payload.identifier)}")
+    logger.info(f"[AUTH DEBUG] msg91 token present: {bool(payload.msg91_token)}")
+    if payload.msg91_token:
+        logger.info(f"[AUTH DEBUG] msg91 token length: {len(payload.msg91_token)}")
+        logger.info(f"[AUTH DEBUG] verifying MSG91 access token")
+    
     return await verify_otp(
         identifier=payload.identifier,
         req_id=payload.req_id,
