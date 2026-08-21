@@ -28,9 +28,7 @@ class MSG91OTPProvider(OTPProvider):
             
     def _get_headers(self):
         return {
-            "authkey": self.auth_key or "",
             "tokenAuth": self.widget_token or "",
-            "widgetToken": self.widget_token or "",
             "Content-Type": "application/json"
         }
 
@@ -38,10 +36,15 @@ class MSG91OTPProvider(OTPProvider):
         if not self.auth_key:
             return OTPRequestResult(False, "MSG91 not fully configured")
             
+        # Normalize identifier exactly like the frontend does (remove + and ensure 91 prefix)
+        cleaned_id = "".join(filter(str.isdigit, identifier))
+        if len(cleaned_id) == 10:
+            cleaned_id = f"91{cleaned_id}"
+            
         url = "https://api.msg91.com/api/v5/widget/sendOtp"
         payload = {
             "widgetId": self.widget_id,
-            "identifier": identifier
+            "identifier": cleaned_id
         }
         
         try:
