@@ -28,12 +28,11 @@ class MSG91OTPProvider(OTPProvider):
             
     def _get_headers(self):
         return {
-            "tokenAuth": self.widget_token or "",
             "Content-Type": "application/json"
         }
 
     async def request_otp(self, identifier: str) -> OTPRequestResult:
-        if not self.auth_key:
+        if not self.widget_token or not self.widget_id:
             return OTPRequestResult(False, "MSG91 not fully configured")
             
         # Normalize identifier exactly like the frontend does (remove + and ensure 91 prefix)
@@ -44,6 +43,7 @@ class MSG91OTPProvider(OTPProvider):
         url = "https://api.msg91.com/api/v5/widget/sendOtp"
         payload = {
             "widgetId": self.widget_id,
+            "tokenAuth": self.widget_token,
             "identifier": cleaned_id
         }
         
@@ -72,12 +72,13 @@ class MSG91OTPProvider(OTPProvider):
             return OTPRequestResult(False, f"Provider API error: {str(e)}")
 
     async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
-        if not self.auth_key:
+        if not self.widget_token or not self.widget_id:
             return OTPRequestResult(False, "MSG91 not fully configured")
             
         url = "https://api.msg91.com/api/v5/widget/retryOtp"
         payload = {
             "widgetId": self.widget_id,
+            "tokenAuth": self.widget_token,
             "reqId": req_id,
             "retryType": channel # e.g., 'text' or 'voice'
         }
@@ -98,12 +99,13 @@ class MSG91OTPProvider(OTPProvider):
             return OTPRequestResult(False, "Provider API error")
 
     async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
-        if not self.auth_key:
+        if not self.widget_token or not self.widget_id:
             return OTPVerificationResult(False, "MSG91 not fully configured")
             
         url = "https://api.msg91.com/api/v5/widget/verifyOtp"
         payload = {
             "widgetId": self.widget_id,
+            "tokenAuth": self.widget_token,
             "reqId": req_id,
             "otp": code
         }
