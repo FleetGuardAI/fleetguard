@@ -28,7 +28,8 @@ class MSG91OTPProvider(OTPProvider):
             
     def _get_headers(self):
         return {
-            "authkey": self.auth_key or "",
+            "tokenAuth": self.widget_token or "",
+            "Origin": "https://fleetgaurd-delta.vercel.app",
             "Content-Type": "application/json"
         }
 
