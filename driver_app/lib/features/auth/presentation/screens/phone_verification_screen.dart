@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:convert';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/validators.dart';
 import '../../data/auth_repository.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class PhoneVerificationScreen extends ConsumerStatefulWidget {
   final String companyName;
@@ -31,8 +33,185 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   bool _isLoading = false;
   String? _reqId;
   
+  late final WebViewController _webViewController;
+  bool _isWebViewReady = false;
+  
   int _countdown = 0;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initWebView();
+  }
+
+  void _initWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..addJavaScriptChannel(
+        'Msg91Channel',
+        onMessageReceived: (JavaScriptMessage message) {
+          _handleMsg91Event(message.message);
+        },
+      )
+      ..loadHtmlString(_buildMsg91Html());
+  }
+
+  String _buildMsg91Html() {
+    return """
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <script type="text/javascript" src="https://control.msg91.com/app/assets/widget/chat-widget.js"></script>
+        <script>
+          window.onload = function() {
+            const configuration = {
+              widgetId: '${AppConfig.msg91WidgetId}',
+              tokenAuth: '${AppConfig.msg91WidgetToken}',
+              exposeMethods: true,
+              success: function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'success', data: data })); },
+              failure: function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'failure', data: error })); }
+            };
+            window.initSendOTP(configuration);
+            Msg91Channel.postMessage(JSON.stringify({ event: 'loaded' }));
+          };
+
+          function invokeSendOtp(mobile) {
+            window.sendOtp(mobile, 
+              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'sendOtpSuccess', data: data })); },
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'sendOtpFailure', data: error })); }
+            );
+          }
+
+          function invokeVerifyOtp(otp) {
+            window.verifyOtp(otp,
+              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'verifyOtpSuccess', data: data })); },
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'verifyOtpFailure', data: error })); }
+            );
+          }
+
+          function invokeRetryOtp() {
+            window.retryOtp(
+              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'retryOtpSuccess', data: data })); },
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'retryOtpFailure', data: error })); }
+            );
+          }
+        </script>
+      </head>
+      <body></body>
+      </html>
+    """;
+  }
+
+  void _handleMsg91Event(String message) {
+    try {
+      final parsed = jsonDecode(message);
+      final event = parsed['event'];
+      final data = parsed['data'];
+
+      if (event == 'loaded') {
+        setState(() => _isWebViewReady = true);
+      } else if (event == 'sendOtpSuccess') {
+        setState(() {
+          _isLoading = false;
+          _otpSent = true;
+          _reqId = data != null ? (data['message'] ?? data['reqId']) : 'widget-req';
+        });
+        _startCountdown();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your phone!')));
+        }
+      } else if (event == 'sendOtpFailure') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          final errMsg = data != null ? (data['message'] ?? data.toString()) : 'Unknown error';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send OTP: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
+        }
+      } else if (event == 'verifyOtpSuccess') {
+        String msg91Token = '';
+        if (data is String) {
+          msg91Token = data;
+        } else if (data is Map) {
+          if (data['message'] is String && data['type'] != 'error') {
+            msg91Token = data['message'];
+          } else if (data['token'] is String) {
+            msg91Token = data['token'];
+          } else if (data['access_token'] is String) {
+            msg91Token = data['access_token'];
+          } else if (data['jwt'] is String) {
+            msg91Token = data['jwt'];
+          } else if (data['data'] is String) {
+            msg91Token = data['data'];
+          }
+        }
+        if (msg91Token.isEmpty) {
+          msg91Token = jsonEncode(data);
+        }
+        
+        _executeFleetGuardVerification(msg91Token);
+      } else if (event == 'verifyOtpFailure') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          final errMsg = data != null ? (data['message'] ?? data.toString()) : 'Unknown error';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to verify OTP: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
+        }
+      } else if (event == 'retryOtpSuccess') {
+        setState(() => _isLoading = false);
+        _startCountdown();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP resent successfully')));
+        }
+      } else if (event == 'retryOtpFailure') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          final errMsg = data != null ? (data['message'] ?? data.toString()) : 'Unknown error';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to resend OTP: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing Msg91 message: $e');
+    }
+  }
+
+  void _executeFleetGuardVerification(String msg91Token) async {
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.verifyOtp(
+        _phoneController.text.trim(), 
+        _reqId ?? 'widget-req',
+        _otpController.text.trim(), 
+        widget.inviteToken,
+        msg91Token,
+      );
+
+      await SecureStorage.setPhoneNumber(_phoneController.text.trim());
+      await SecureStorage.setAccessToken(response['access_token']);
+      if (response['driver_id'] != null) {
+        await SecureStorage.setDriverId(response['driver_id']);
+      }
+      if (response['verification_status'] != null) {
+        await SecureStorage.setVerificationStatus(response['verification_status']);
+      }
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        if (response['is_new_driver'] == true || response['verification_status'] != 'APPROVED') {
+          context.go('/auth/profile');
+        } else {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('FleetGuard verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
+    }
+  }
 
   void _startCountdown() {
     _countdown = 60;
@@ -50,59 +229,33 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
 
   void _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    if (!_isWebViewReady) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+      return;
+    }
 
     setState(() => _isLoading = true);
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final response = await repo.sendOtp(_phoneController.text.trim());
-
-      setState(() {
-        _isLoading = false;
-        _otpSent = true;
-        _reqId = response['req_id'];
-      });
-      _startCountdown();
-
-      if (mounted) {
-        const message = 'OTP sent to your phone!';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send OTP: $e'), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
+    
+    String phone = _phoneController.text.trim();
+    String formattedMobile = phone.replaceAll(RegExp(r'\D'), '');
+    if (formattedMobile.length == 10) {
+      formattedMobile = '91$formattedMobile';
     }
+    
+    _webViewController.runJavaScript("invokeSendOtp('$formattedMobile');");
   }
 
   void _resendOtp() async {
-    if (_countdown > 0 || _reqId == null) return;
+    if (_countdown > 0) return;
+    
+    if (!_isWebViewReady) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+      return;
+    }
 
     setState(() => _isLoading = true);
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final response = await repo.resendOtp(_reqId!);
-
-      setState(() => _isLoading = false);
-      _startCountdown();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'OTP resent successfully')),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to resend OTP: $e'), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
-    }
+    _webViewController.runJavaScript("invokeRetryOtp();");
   }
 
   void _verifyOtp() async {
@@ -113,44 +266,13 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       return;
     }
 
-    setState(() => _isLoading = true);
-    
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final response = await repo.verifyOtp(
-        _phoneController.text.trim(), 
-        _reqId ?? 'null_req',
-        _otpController.text.trim(), 
-        widget.inviteToken,
-      );
-
-      // Save credentials to SecureStorage
-      await SecureStorage.setPhoneNumber(_phoneController.text.trim());
-      await SecureStorage.setAccessToken(response['access_token']);
-      if (response['driver_id'] != null) {
-        await SecureStorage.setDriverId(response['driver_id']);
-      }
-      if (response['verification_status'] != null) {
-        await SecureStorage.setVerificationStatus(response['verification_status']);
-      }
-
-      setState(() => _isLoading = false);
-
-      if (mounted) {
-        if (response['is_new_driver'] == true || response['verification_status'] != 'APPROVED') {
-          context.go('/auth/profile');
-        } else {
-          context.go('/home'); // Send straight to home if already approved
-        }
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid OTP or verify failed'), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
+    if (!_isWebViewReady) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+      return;
     }
+
+    setState(() => _isLoading = true);
+    _webViewController.runJavaScript("invokeVerifyOtp('${_otpController.text.trim()}');");
   }
 
   @override
@@ -165,9 +287,17 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Phone Verification')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
+      body: Stack(
+        children: [
+          // Invisible WebView for MSG91 Widget
+          SizedBox(
+            width: 1,
+            height: 1,
+            child: WebViewWidget(controller: _webViewController),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +392,9 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
               ],
             ],
           ),
+          ),
         ),
+        ],
       ),
     );
   }
