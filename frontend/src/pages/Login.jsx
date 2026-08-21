@@ -329,9 +329,37 @@ export default function Login() {
         handled = true;
         console.log('[AUTH DEBUG] MSG91 OTP verified successfully');
         
-        let msg91Token = data;
-        if (data && typeof data === 'object' && data.message) {
-           msg91Token = data.message;
+        console.log('[AUTH DEBUG] MSG91 verification response structure:', {
+          keys: data ? Object.keys(data) : [],
+          messageType: typeof data?.message,
+          reqIdType: typeof data?.reqId,
+          hasMessage: Boolean(data?.message),
+          hasToken: Boolean(data?.token),
+          hasAccessToken: Boolean(data?.access_token),
+          hasJwt: Boolean(data?.jwt)
+        });
+
+        // Extract the actual JWT from the MSG91 success response.
+        // The MSG91 widget typically returns { type: 'success', message: 'eyJ...' } 
+        // where message contains the token.
+        let msg91Token = null;
+        if (typeof data === 'string') {
+           msg91Token = data;
+        } else if (data && typeof data === 'object') {
+           if (data.message && data.type !== 'error') {
+              msg91Token = data.message;
+           } else if (data.token) {
+              msg91Token = data.token;
+           } else if (data.access_token) {
+              msg91Token = data.access_token;
+           } else if (data.jwt) {
+              msg91Token = data.jwt;
+           }
+        }
+        
+        // If we still couldn't find it, stringify the whole object so the backend logs can at least show it safely (redacting secrets in backend)
+        if (!msg91Token) {
+           msg91Token = typeof data === 'object' ? JSON.stringify(data) : String(data);
         }
         
         console.log('[AUTH DEBUG] MSG91 token received:', !!msg91Token);

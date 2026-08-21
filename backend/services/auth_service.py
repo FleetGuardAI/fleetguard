@@ -601,10 +601,22 @@ async def request_otp(identifier: str, db: AsyncSession):
     
     if "@" in identifier:
         result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
     else:
         result = await db.execute(select(User).where(User.mobile_number == identifier))
-    
-    user = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        
+        # Check normalized identifier (e.g. +91 prefix)
+        if user is None:
+            normalized_identifier = identifier
+            if len(identifier) == 10 and identifier.isdigit():
+                normalized_identifier = f"+91{identifier}"
+            elif identifier.startswith("91") and len(identifier) == 12:
+                normalized_identifier = f"+{identifier}"
+            
+            if normalized_identifier != identifier:
+                result = await db.execute(select(User).where(User.mobile_number == normalized_identifier))
+                user = result.scalar_one_or_none()
     
     if user is None or not user.is_active:
         dummy_verify()
@@ -630,10 +642,23 @@ async def verify_otp(identifier: str, req_id: Optional[str], code: Optional[str]
     identifier = identifier.strip()
     if "@" in identifier:
         result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
     else:
+        # Check raw identifier
         result = await db.execute(select(User).where(User.mobile_number == identifier))
-    
-    user = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        
+        # Check normalized identifier (e.g. +91 prefix)
+        if user is None:
+            normalized_identifier = identifier
+            if len(identifier) == 10 and identifier.isdigit():
+                normalized_identifier = f"+91{identifier}"
+            elif identifier.startswith("91") and len(identifier) == 12:
+                normalized_identifier = f"+{identifier}"
+            
+            if normalized_identifier != identifier:
+                result = await db.execute(select(User).where(User.mobile_number == normalized_identifier))
+                user = result.scalar_one_or_none()
     
     if user is None:
         dummy_verify()
