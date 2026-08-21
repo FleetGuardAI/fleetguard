@@ -276,6 +276,7 @@ async def verify_otp_endpoint(
         identifier=payload.identifier,
         req_id=payload.req_id,
         code=payload.code,
+        msg91_token=payload.msg91_token,
         db=db,
     )
 

@@ -42,3 +42,10 @@ class OTPProvider(ABC):
         Retry sending the OTP for a specific request ID.
         """
         pass
+
+    async def verify_access_token(self, token: str) -> OTPVerificationResult:
+        """
+        Verify the Web SDK JWT access token.
+        Default implementation returns failure.
+        """
+        return OTPVerificationResult(False, "Not implemented")

@@ -367,13 +367,18 @@ export async function requestOtp(identifier) {
  * Verify an OTP and receive an access token, storing it like a password login.
  */
 export async function verifyOtp(identifier, req_id, code, options = {}) {
-  const { rememberMe = true } = options;
+  const { rememberMe = true, msg91Token = null } = options;
   const response = await fetch(`${API_BASE}/v1/auth/verify-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ identifier, req_id, code }),
+    body: JSON.stringify({ 
+      identifier, 
+      req_id: req_id || null, 
+      code: code || null, 
+      msg91_token: msg91Token 
+    }),
   });
 
   if (!response.ok) {
