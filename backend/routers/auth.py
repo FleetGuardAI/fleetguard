@@ -8,7 +8,10 @@ and retrieval of current user profile context.
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import logging
 from database import get_db
+
+logger = logging.getLogger(__name__)
 from models import User
 from schemas import (
     CompanyOut,
