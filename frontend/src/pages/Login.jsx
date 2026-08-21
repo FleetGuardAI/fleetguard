@@ -307,11 +307,12 @@ export default function Login() {
         }
       };
 
-      if (verifiedMsg91Token) {
-        console.log('[AUTH DEBUG] Reusing cached MSG91 token');
-        await executeFleetGuardVerification(verifiedMsg91Token);
-        return;
-      }
+      // Temporarily disabled cache for diagnostics
+      // if (verifiedMsg91Token) {
+      //   console.log('[AUTH DEBUG] Reusing cached MSG91 token');
+      //   await executeFleetGuardVerification(verifiedMsg91Token);
+      //   return;
+      // }
 
       if (!window.verifyOtp) {
          setLoading(false);
@@ -330,34 +331,39 @@ export default function Login() {
         console.log('[AUTH DEBUG] MSG91 OTP verified successfully');
         
         console.log('[AUTH DEBUG] MSG91 verification response structure:', {
-          keys: data ? Object.keys(data) : [],
+          responseKeys: data ? Object.keys(data) : [],
           messageType: typeof data?.message,
-          reqIdType: typeof data?.reqId,
+          tokenType: typeof data?.token,
+          accessTokenType: typeof data?.access_token,
           hasMessage: Boolean(data?.message),
           hasToken: Boolean(data?.token),
           hasAccessToken: Boolean(data?.access_token),
-          hasJwt: Boolean(data?.jwt)
+          messageLength: typeof data?.message === "string" ? data.message.length : null,
+          tokenLength: typeof data?.token === "string" ? data.token.length : null,
+          accessTokenLength: typeof data?.access_token === "string" ? data.access_token.length : null
         });
 
         // Extract the actual JWT from the MSG91 success response.
-        // The MSG91 widget typically returns { type: 'success', message: 'eyJ...' } 
-        // where message contains the token.
         let msg91Token = null;
         if (typeof data === 'string') {
            msg91Token = data;
         } else if (data && typeof data === 'object') {
-           if (data.message && data.type !== 'error') {
+           // We'll check the structure above in the logs.
+           // Usually it's data.message or data.jwt
+           if (data.message && data.type !== 'error' && typeof data.message === 'string') {
               msg91Token = data.message;
-           } else if (data.token) {
+           } else if (data.token && typeof data.token === 'string') {
               msg91Token = data.token;
-           } else if (data.access_token) {
+           } else if (data.access_token && typeof data.access_token === 'string') {
               msg91Token = data.access_token;
-           } else if (data.jwt) {
+           } else if (data.jwt && typeof data.jwt === 'string') {
               msg91Token = data.jwt;
+           } else if (data.data && typeof data.data === 'string') {
+              msg91Token = data.data;
            }
         }
         
-        // If we still couldn't find it, stringify the whole object so the backend logs can at least show it safely (redacting secrets in backend)
+        // If we still couldn't find it, stringify the whole object so the backend logs can at least show it safely
         if (!msg91Token) {
            msg91Token = typeof data === 'object' ? JSON.stringify(data) : String(data);
         }
