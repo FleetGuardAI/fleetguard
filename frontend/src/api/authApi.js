@@ -3,6 +3,8 @@
  * Integrates with FastAPI backend security layer.
  */
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 function getAuthStorage(rememberMe = true) {
   return rememberMe ? localStorage : sessionStorage;
 }
@@ -79,7 +81,7 @@ export async function login(identifier, password, options = {}) {
     remember_me: rememberMe,
   };
 
-  const response = await fetch('/api/v1/auth/login', {
+  const response = await fetch(`${API_BASE}/v1/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,7 +118,7 @@ export async function login(identifier, password, options = {}) {
  */
 export async function registerCompany(payload, options = {}) {
   const { rememberMe = true } = options;
-  const response = await fetch('/api/v1/auth/register', {
+  const response = await fetch(`${API_BASE}/v1/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -154,7 +156,7 @@ export async function registerCompany(payload, options = {}) {
  * @returns {Promise<{ message: string, reset_token?: string, expires_at?: string }>} 
  */
 export async function requestPasswordReset(identifier) {
-  const response = await fetch('/api/v1/auth/forgot-password/request', {
+  const response = await fetch(`${API_BASE}/v1/auth/forgot-password/request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -179,7 +181,7 @@ export async function requestPasswordReset(identifier) {
  * @returns {Promise<{ message: string }>}
  */
 export async function resetPassword(payload) {
-  const response = await fetch('/api/v1/auth/forgot-password/reset', {
+  const response = await fetch(`${API_BASE}/v1/auth/forgot-password/reset`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -204,7 +206,7 @@ export async function logout() {
   if (tokenBundle) {
     const { token, tokenType } = tokenBundle;
     try {
-      await fetch('/api/v1/auth/logout', {
+      await fetch(`${API_BASE}/v1/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `${tokenType} ${token}`,
@@ -256,7 +258,7 @@ export async function getCurrentUser(preferredRememberMe = true) {
   const { token, tokenType, rememberMe } = tokenBundle;
 
   try {
-    const response = await fetch('/api/v1/auth/me', {
+    const response = await fetch(`${API_BASE}/v1/auth/me`, {
       method: 'GET',
       headers: {
         'Authorization': `${tokenType} ${token}`,
@@ -292,7 +294,7 @@ export async function updateCompany(payload) {
 
   const { token, tokenType, rememberMe } = tokenBundle;
 
-  const response = await fetch('/api/v1/auth/company', {
+  const response = await fetch(`${API_BASE}/v1/auth/company`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -326,7 +328,7 @@ export async function generateOwnerQR() {
 
   const { token, tokenType } = tokenBundle;
 
-  const response = await fetch('/api/v1/auth/owner-qr/generate', {
+  const response = await fetch(`${API_BASE}/v1/auth/owner-qr/generate`, {
     method: 'POST',
     headers: {
       'Authorization': `${tokenType} ${token}`,
@@ -345,7 +347,7 @@ export async function generateOwnerQR() {
  * Request an OTP for login via identifier.
  */
 export async function requestOtp(identifier) {
-  const response = await fetch('/api/v1/auth/request-otp', {
+  const response = await fetch(`${API_BASE}/v1/auth/request-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -366,7 +368,7 @@ export async function requestOtp(identifier) {
  */
 export async function verifyOtp(identifier, req_id, code, options = {}) {
   const { rememberMe = true } = options;
-  const response = await fetch('/api/v1/auth/verify-otp', {
+  const response = await fetch(`${API_BASE}/v1/auth/verify-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -395,7 +397,7 @@ export async function verifyOtp(identifier, req_id, code, options = {}) {
  * Resend an OTP.
  */
 export async function resendOtp(req_id, channel = 'SMS') {
-  const response = await fetch('/api/v1/auth/resend-otp', {
+  const response = await fetch(`${API_BASE}/v1/auth/resend-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
