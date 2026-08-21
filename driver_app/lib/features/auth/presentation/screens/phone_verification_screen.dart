@@ -57,15 +57,24 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
           onPageFinished: (_) {
             debugPrint('[MSG91 DEBUG] HTML_LOADED');
           },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint('[MSG91 DEBUG] WEB_RESOURCE_ERROR: ${error.description}');
+          }
         ),
       )
+      ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
+        debugPrint('[MSG91 CONSOLE] ${message.level}: ${message.message}');
+      })
       ..addJavaScriptChannel(
         'Msg91Channel',
         onMessageReceived: (JavaScriptMessage message) {
           _handleMsg91Event(message.message);
         },
       )
-      ..loadHtmlString(_buildMsg91Html());
+      ..loadHtmlString(
+        _buildMsg91Html(),
+        baseUrl: 'https://fleetguard-hpip.onrender.com', // Fix DOMException by providing a valid origin for localStorage
+      );
       
     _initTimer = Timer(const Duration(seconds: 15), () {
       if (!_isMsg91WidgetReady && mounted) {
@@ -349,11 +358,16 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       appBar: AppBar(title: const Text('Phone Verification')),
       body: Stack(
         children: [
-          // Invisible WebView for MSG91 Widget
-          SizedBox(
-            width: 1,
-            height: 1,
-            child: WebViewWidget(controller: _webViewController),
+          // Temporarily visible WebView for MSG91 Widget debugging
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 150,
+              decoration: BoxDecoration(border: Border.all(color: Colors.red, width: 2)),
+              child: WebViewWidget(controller: _webViewController),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(24.0),
