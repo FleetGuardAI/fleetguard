@@ -71,9 +71,8 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
           _handleMsg91Event(message.message);
         },
       )
-      ..loadHtmlString(
-        _buildMsg91Html(),
-        baseUrl: 'https://fleetguard-hpip.onrender.com', // Fix DOMException by providing a valid origin for localStorage
+      ..loadRequest(
+        Uri.parse('https://fleetgaurd-delta.vercel.app/bridge/driver-otp'),
       );
       
     _initTimer = Timer(const Duration(seconds: 15), () {
@@ -86,71 +85,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
     });
   }
 
-  String _buildMsg91Html() {
-    return """
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script>
-          function scriptLoaded() {
-            Msg91Channel.postMessage(JSON.stringify({ event: 'MSG91_SCRIPT_LOADED' }));
-          }
-          function checkWidgetReady() {
-             if (window.sendOtp && window.initSendOTP) {
-                const configuration = {
-                  widgetId: '${AppConfig.msg91WidgetId}',
-                  tokenAuth: '${AppConfig.msg91WidgetToken}',
-                  exposeMethods: true,
-                  success: function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_VERIFIED', data: data })); },
-                  failure: function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
-                };
-                try {
-                  window.initSendOTP(configuration);
-                  Msg91Channel.postMessage(JSON.stringify({ event: 'WIDGET_READY' }));
-                } catch (e) {
-                  Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: 'Init failed' }));
-                }
-             } else {
-                setTimeout(checkWidgetReady, 100);
-             }
-          }
-          window.onload = function() {
-            checkWidgetReady();
-          };
-        </script>
-        <script type="text/javascript" src="https://control.msg91.com/app/assets/widget/chat-widget.js" onload="scriptLoaded()"></script>
-        <script>
-          function invokeSendOtp(mobile) {
-            if(!window.sendOtp) {
-               Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: 'Widget not initialized' }));
-               return;
-            }
-            Msg91Channel.postMessage(JSON.stringify({ event: 'SEND_OTP_CALLED' }));
-            window.sendOtp(mobile, 
-              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_SENT', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
-            );
-          }
 
-          function invokeVerifyOtp(otp) {
-            window.verifyOtp(otp,
-              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_VERIFIED', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
-            );
-          }
-
-          function invokeRetryOtp() {
-            window.retryOtp(
-              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'retryOtpSuccess', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
-            );
-          }
-        </script>
-      </head>
-      <body></body>
-      </html>
-    """;
-  }
 
   void _handleMsg91Event(String message) {
     try {
