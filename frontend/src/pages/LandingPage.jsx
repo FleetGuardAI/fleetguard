@@ -358,8 +358,9 @@ function InteractiveScanner() {
     formData.append('driver_id', 'DRIVER-9921');
     formData.append('truck_id', 'RJ14-XX-1234');
 
+    const API_BASE = import.meta.env.VITE_API_URL || '/api';
     try {
-      const response = await fetch('/api/v1/receipts/analyze', {
+      const response = await fetch(`${API_BASE}/v1/receipts/analyze`, {
         method: 'POST',
         body: formData,
       });
