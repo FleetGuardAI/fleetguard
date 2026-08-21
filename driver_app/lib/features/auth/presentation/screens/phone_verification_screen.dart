@@ -34,7 +34,9 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   String? _reqId;
   
   late final WebViewController _webViewController;
-  bool _isWebViewReady = false;
+  bool _isMsg91WidgetReady = false;
+  bool _msg91InitError = false;
+  Timer? _initTimer;
   
   int _countdown = 0;
   Timer? _timer;
@@ -46,9 +48,17 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   }
 
   void _initWebView() {
+    debugPrint('[MSG91 DEBUG] WEBVIEW_CREATED');
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            debugPrint('[MSG91 DEBUG] HTML_LOADED');
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'Msg91Channel',
         onMessageReceived: (JavaScriptMessage message) {
@@ -56,6 +66,15 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         },
       )
       ..loadHtmlString(_buildMsg91Html());
+      
+    _initTimer = Timer(const Duration(seconds: 15), () {
+      if (!_isMsg91WidgetReady && mounted) {
+        setState(() {
+          _msg91InitError = true;
+        });
+        debugPrint('[MSG91 DEBUG] ERROR: Widget initialization timed out');
+      }
+    });
   }
 
   String _buildMsg91Html() {
@@ -63,38 +82,58 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       <!DOCTYPE html>
       <html>
       <head>
-        <script type="text/javascript" src="https://control.msg91.com/app/assets/widget/chat-widget.js"></script>
         <script>
+          function scriptLoaded() {
+            Msg91Channel.postMessage(JSON.stringify({ event: 'MSG91_SCRIPT_LOADED' }));
+          }
+          function checkWidgetReady() {
+             if (window.sendOtp && window.initSendOTP) {
+                const configuration = {
+                  widgetId: '${AppConfig.msg91WidgetId}',
+                  tokenAuth: '${AppConfig.msg91WidgetToken}',
+                  exposeMethods: true,
+                  success: function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_VERIFIED', data: data })); },
+                  failure: function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
+                };
+                try {
+                  window.initSendOTP(configuration);
+                  Msg91Channel.postMessage(JSON.stringify({ event: 'WIDGET_READY' }));
+                } catch (e) {
+                  Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: 'Init failed' }));
+                }
+             } else {
+                setTimeout(checkWidgetReady, 100);
+             }
+          }
           window.onload = function() {
-            const configuration = {
-              widgetId: '${AppConfig.msg91WidgetId}',
-              tokenAuth: '${AppConfig.msg91WidgetToken}',
-              exposeMethods: true,
-              success: function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'success', data: data })); },
-              failure: function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'failure', data: error })); }
-            };
-            window.initSendOTP(configuration);
-            Msg91Channel.postMessage(JSON.stringify({ event: 'loaded' }));
+            checkWidgetReady();
           };
-
+        </script>
+        <script type="text/javascript" src="https://control.msg91.com/app/assets/widget/chat-widget.js" onload="scriptLoaded()"></script>
+        <script>
           function invokeSendOtp(mobile) {
+            if(!window.sendOtp) {
+               Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: 'Widget not initialized' }));
+               return;
+            }
+            Msg91Channel.postMessage(JSON.stringify({ event: 'SEND_OTP_CALLED' }));
             window.sendOtp(mobile, 
-              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'sendOtpSuccess', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'sendOtpFailure', data: error })); }
+              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_SENT', data: data })); },
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
             );
           }
 
           function invokeVerifyOtp(otp) {
             window.verifyOtp(otp,
-              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'verifyOtpSuccess', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'verifyOtpFailure', data: error })); }
+              function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_VERIFIED', data: data })); },
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
             );
           }
 
           function invokeRetryOtp() {
             window.retryOtp(
               function(data) { Msg91Channel.postMessage(JSON.stringify({ event: 'retryOtpSuccess', data: data })); },
-              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'retryOtpFailure', data: error })); }
+              function(error) { Msg91Channel.postMessage(JSON.stringify({ event: 'OTP_ERROR', data: error })); }
             );
           }
         </script>
@@ -110,9 +149,16 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       final event = parsed['event'];
       final data = parsed['data'];
 
-      if (event == 'loaded') {
-        setState(() => _isWebViewReady = true);
-      } else if (event == 'sendOtpSuccess') {
+      if (event == 'MSG91_SCRIPT_LOADED') {
+        debugPrint('[MSG91 DEBUG] MSG91_SCRIPT_LOADED');
+      } else if (event == 'WIDGET_READY') {
+        debugPrint('[MSG91 DEBUG] WIDGET_READY');
+        setState(() => _isMsg91WidgetReady = true);
+        _initTimer?.cancel();
+      } else if (event == 'SEND_OTP_CALLED') {
+        debugPrint('[MSG91 DEBUG] SEND_OTP_CALLED');
+      } else if (event == 'OTP_SENT') {
+        debugPrint('[MSG91 DEBUG] OTP_SENT');
         setState(() {
           _isLoading = false;
           _otpSent = true;
@@ -122,13 +168,15 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your phone!')));
         }
-      } else if (event == 'sendOtpFailure') {
+      } else if (event == 'OTP_ERROR') {
+        debugPrint('[MSG91 DEBUG] OTP_ERROR');
         setState(() => _isLoading = false);
         if (mounted) {
           final errMsg = data != null ? (data['message'] ?? data.toString()) : 'Unknown error';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send OTP: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
         }
-      } else if (event == 'verifyOtpSuccess') {
+      } else if (event == 'OTP_VERIFIED') {
+        debugPrint('[MSG91 DEBUG] OTP_VERIFIED');
         String msg91Token = '';
         if (data is String) {
           msg91Token = data;
@@ -230,8 +278,12 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   void _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (!_isWebViewReady) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+    if (!_isMsg91WidgetReady) {
+      if (_msg91InitError) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to initialize OTP service')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP service is still loading. Please wait a moment and try again.')));
+      }
       return;
     }
 
@@ -249,8 +301,12 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   void _resendOtp() async {
     if (_countdown > 0) return;
     
-    if (!_isWebViewReady) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+    if (!_isMsg91WidgetReady) {
+      if (_msg91InitError) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to initialize OTP service')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP service is still loading. Please wait a moment and try again.')));
+      }
       return;
     }
 
@@ -266,8 +322,12 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       return;
     }
 
-    if (!_isWebViewReady) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widget not ready, please wait')));
+    if (!_isMsg91WidgetReady) {
+      if (_msg91InitError) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to initialize OTP service')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP service is still loading. Please wait a moment and try again.')));
+      }
       return;
     }
 
