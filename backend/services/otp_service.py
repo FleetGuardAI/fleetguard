@@ -28,6 +28,7 @@ class MSG91OTPProvider(OTPProvider):
             
     def _get_headers(self):
         return {
+            "authkey": self.auth_key or "",
             "Content-Type": "application/json"
         }
 
@@ -43,7 +44,6 @@ class MSG91OTPProvider(OTPProvider):
         url = "https://api.msg91.com/api/v5/widget/sendOtp"
         payload = {
             "widgetId": self.widget_id,
-            "tokenAuth": self.widget_token,
             "identifier": cleaned_id
         }
         
@@ -78,7 +78,6 @@ class MSG91OTPProvider(OTPProvider):
         url = "https://api.msg91.com/api/v5/widget/retryOtp"
         payload = {
             "widgetId": self.widget_id,
-            "tokenAuth": self.widget_token,
             "reqId": req_id,
             "retryType": channel # e.g., 'text' or 'voice'
         }
@@ -105,7 +104,6 @@ class MSG91OTPProvider(OTPProvider):
         url = "https://api.msg91.com/api/v5/widget/verifyOtp"
         payload = {
             "widgetId": self.widget_id,
-            "tokenAuth": self.widget_token,
             "reqId": req_id,
             "otp": code
         }
