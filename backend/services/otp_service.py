@@ -65,7 +65,7 @@ class MSG91OTPProvider(OTPProvider):
                 else:
                     logger.error(f"MSG91 request failed: {data}")
                     error_detail = data.get("message", "Unknown MSG91 error")
-                    diagnostic = f"widgetId_present: {bool(self.widget_id)}, auth_present: {bool(self.auth_key)}"
+                    diagnostic = f"widgetId: {bool(self.widget_id)}, auth: {bool(self.auth_key)}, token: {bool(self.widget_token)}"
                     return OTPRequestResult(False, f"MSG91 Error: {error_detail} | {diagnostic}")
         except Exception as e:
             logger.error(f"MSG91 API exception: {e}")
