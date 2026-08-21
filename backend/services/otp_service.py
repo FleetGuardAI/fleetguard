@@ -60,10 +60,11 @@ class MSG91OTPProvider(OTPProvider):
                     return OTPRequestResult(True, "OTP sent successfully", provider_reference=req_id)
                 else:
                     logger.error(f"MSG91 request failed: {data}")
-                    return OTPRequestResult(False, "Failed to send OTP via provider")
+                    error_detail = data.get("message", "Unknown MSG91 error")
+                    return OTPRequestResult(False, f"MSG91 Error: {error_detail}")
         except Exception as e:
             logger.error(f"MSG91 API exception: {e}")
-            return OTPRequestResult(False, "Provider API error")
+            return OTPRequestResult(False, f"Provider API error: {str(e)}")
 
     async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
         if not self.auth_key:
