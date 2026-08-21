@@ -29,6 +29,8 @@ class MSG91OTPProvider(OTPProvider):
     def _get_headers(self):
         return {
             "authkey": self.auth_key or "",
+            "tokenAuth": self.widget_token or "",
+            "widgetToken": self.widget_token or "",
             "Content-Type": "application/json"
         }
 
