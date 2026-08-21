@@ -8,7 +8,7 @@ class AppConfig {
   /// Backend API base URL
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'https://fleetguard-hpip.onrender.com',
   );
 
   /// WebSocket URL
@@ -23,15 +23,6 @@ class AppConfig {
 
   /// Driver app API prefix
   static const String driverApiPrefix = '/api/v1/driver-app';
-
-  /// Demo mode flag — enables mock OTP, simulated services
-  static const bool isDemoMode = bool.fromEnvironment(
-    'DEMO_MODE',
-    defaultValue: true,
-  );
-
-  /// Demo OTP code
-  static const String demoOtpCode = '123456';
 
   /// GPS tracking interval in seconds
   static const int gpsIntervalSeconds = 5;

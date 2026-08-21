@@ -120,21 +120,6 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                     style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white),
-                  ),
-                  onPressed: () {
-                    // Manual demo bypass button
-                    _processInviteCode("demo_invite_token_2026");
-                  },
-                  icon: _isProcessing 
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                      : const Icon(Icons.qr_code),
-                  label: Text(_isProcessing ? 'Verifying...' : 'Demo: Skip QR Scan'),
-                ),
               ],
             ),
           ),

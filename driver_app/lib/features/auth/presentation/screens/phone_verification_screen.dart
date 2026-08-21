@@ -64,8 +64,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       _startCountdown();
 
       if (mounted) {
-        final demoOtp = response['demo_otp'];
-        final message = demoOtp != null ? 'OTP sent! Use code: $demoOtp' : 'OTP sent to your phone!';
+        const message = 'OTP sent to your phone!';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
