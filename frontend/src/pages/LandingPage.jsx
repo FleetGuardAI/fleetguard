@@ -1000,6 +1000,17 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             <LanguageSelector variant={isScrolled ? "glass-scrolled" : "glass-transparent"} />
             <Link
+              to="/downloads"
+              className={cn(
+                "px-4 py-2 rounded-full border transition-all duration-300 hidden lg:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
+                isScrolled
+                  ? "bg-slate-100/80 border-slate-200/80 text-slate-700 hover:bg-slate-200/50"
+                  : "bg-white/10 border-white/15 text-white hover:bg-white/15"
+              )}
+            >
+              Get Apps
+            </Link>
+            <Link
               to="/login"
               className={cn(
                 "px-4 py-2 rounded-full border transition-all duration-300 hidden sm:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
@@ -1380,6 +1391,7 @@ export default function LandingPage() {
               <li><a href="#features" className="hover:text-slate-900:text-white transition-colors">{t('nav.features')}</a></li>
               <li><a href="#how-it-works" className="hover:text-slate-900:text-white transition-colors">{t('nav.howItWorks')}</a></li>
               <li><Link to="/dashboard" className="hover:text-slate-900:text-white transition-colors">{t('footer.liveDemo')}</Link></li>
+              <li><Link to="/downloads" className="hover:text-slate-900:text-white transition-colors">Get Apps</Link></li>
               <li><a href="#demo" className="hover:text-slate-900:text-white transition-colors">{t('nav.bookDemo')}</a></li>
             </ul>
           </div>
