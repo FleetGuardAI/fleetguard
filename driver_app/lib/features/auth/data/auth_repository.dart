@@ -46,13 +46,14 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String reqId, String otp, String inviteToken) async {
+  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String reqId, String otp, String inviteToken, [String? msg91Token]) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/verify-otp', data: {
         'phone_number': phoneNumber,
         'req_id': reqId,
-        'otp_code': otp,
+        'code': otp,
         'invite_token': inviteToken,
+        if (msg91Token != null) 'msg91_token': msg91Token,
       });
       return response.data; 
       // { "access_token": "...", "driver_id": 1, "is_new_driver": bool, "verification_status": "..." }
