@@ -16,6 +16,7 @@ export default function Login() {
   const [otpStep, setOtpStep] = useState(1); // 1 = enter identifier, 2 = enter otp
   const [otpCode, setOtpCode] = useState('');
   const [reqId, setReqId] = useState(null);
+  const [verifiedMsg91Token, setVerifiedMsg91Token] = useState(null);
   const [errors, setErrors] = useState({});
   const { success, error } = useToast();
   const navigate = useNavigate();
@@ -173,6 +174,7 @@ export default function Login() {
         setCountdown(60);
         setErrors({});
         setReqId(returnedReqId);
+        setVerifiedMsg91Token(null);
       };
       
       const handleFailure = (errData) => {
@@ -204,6 +206,7 @@ export default function Login() {
       setOtpStep(2);
       setCountdown(60);
       setErrors({});
+      setVerifiedMsg91Token(null);
     } catch (err) {
       error('OTP Request Failed', err.message || 'Could not send OTP.');
     } finally {
@@ -238,6 +241,7 @@ export default function Login() {
         setLoading(false);
         success('OTP Resent', 'A new verification code has been sent.');
         setCountdown(60);
+        setVerifiedMsg91Token(null);
       };
       
       const handleFailure = (errData) => {
@@ -282,34 +286,57 @@ export default function Login() {
     
     const isEmail = email.includes('@');
     if (!isEmail && (reqId === 'msg91-widget' || reqId)) {
+      
+      const executeFleetGuardVerification = async (token) => {
+        try {
+          console.log('[AUTH DEBUG] calling FleetGuard verify-otp');
+          // Optional: Add debug log for API URL, but VITE_API_URL might just be '/api' locally
+          console.log('[AUTH DEBUG] FleetGuard API URL:', import.meta.env.VITE_API_URL || 'default /api');
+          
+          const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token: token });
+          
+          console.log('[AUTH DEBUG] FleetGuard authentication successful');
+          success('Login Successful', `Welcome back, ${res.user.name}!`);
+          navigate('/dashboard');
+        } catch (err) {
+          setLoading(false);
+          console.log('[AUTH DEBUG] FleetGuard verify-otp failed');
+          console.log('[AUTH DEBUG] error type:', err.name);
+          console.log('[AUTH DEBUG] error message:', err.message);
+          error('OTP Verification Failed', err.message || 'Server error verifying OTP.');
+        }
+      };
+
+      if (verifiedMsg91Token) {
+        console.log('[AUTH DEBUG] Reusing cached MSG91 token');
+        await executeFleetGuardVerification(verifiedMsg91Token);
+        return;
+      }
+
       if (!window.verifyOtp) {
          setLoading(false);
          error('OTP Verification Failed', 'MSG91 Web SDK is not loaded.');
          return;
       }
       
+      console.log('[AUTH DEBUG] MSG91 verifyOtp called');
+      const formattedMobile = formatMobileForMsg91(email);
+      
       let handled = false;
       
       const handleSuccess = async (data) => {
         if (handled) return;
         handled = true;
-        console.log('[AUTH DEBUG] MSG91 verifyOtp success callback fired', data);
+        console.log('[AUTH DEBUG] MSG91 OTP verified successfully');
         
         let msg91Token = data;
         if (data && typeof data === 'object' && data.message) {
            msg91Token = data.message;
         }
         
-        try {
-          console.log('[AUTH DEBUG] sending MSG91 access token to FleetGuard');
-          const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token });
-          console.log('[AUTH DEBUG] FleetGuard verification response received');
-          success('Login Successful', `Welcome back, ${res.user.name}!`);
-          navigate('/dashboard');
-        } catch (err) {
-          setLoading(false);
-          error('OTP Verification Failed', err.message || 'Invalid OTP.');
-        }
+        console.log('[AUTH DEBUG] MSG91 token received:', !!msg91Token);
+        setVerifiedMsg91Token(msg91Token);
+        await executeFleetGuardVerification(msg91Token);
       };
 
       const handleFailure = (errData) => {
