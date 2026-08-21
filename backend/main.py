@@ -234,25 +234,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("✅ PostgreSQL database detected. Skipping create_all_tables() as Alembic manages the schema.")
     
-    try:
-        await validation_consumer_runner.start()
-        await processing_consumer.start()
-        await evidence_consumer_runner.start()
-        await outbox_worker.start()
-        await fuel_intelligence_consumer_runner.start()
-        logger.info("✅ Background Kafka runners started.")
-    except Exception as e:
-        logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
+    if settings.KAFKA_ENABLED:
+        try:
+            await validation_consumer_runner.start()
+            await processing_consumer.start()
+            await evidence_consumer_runner.start()
+            await outbox_worker.start()
+            await fuel_intelligence_consumer_runner.start()
+            logger.info("✅ Background Kafka runners started.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
+    else:
+        logger.info("Kafka workers disabled — KAFKA_ENABLED=False")
     
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
-    await validation_consumer_runner.stop()
-    await processing_consumer.stop()
-    await evidence_consumer_runner.stop()
-    await outbox_worker.stop()
-    await fuel_intelligence_consumer_runner.stop()
-    await event_bus.stop()
+    if settings.KAFKA_ENABLED:
+        await validation_consumer_runner.stop()
+        await processing_consumer.stop()
+        await evidence_consumer_runner.stop()
+        await outbox_worker.stop()
+        await fuel_intelligence_consumer_runner.stop()
+        await event_bus.stop()
 
 
 # --- FastAPI App ---

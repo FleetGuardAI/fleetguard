@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
 
     # --- Kafka (Event Bus) ---
+    KAFKA_ENABLED: bool = False
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
     KAFKA_SECURITY_PROTOCOL: str = "PLAINTEXT"
     KAFKA_SASL_MECHANISM: str | None = None
