@@ -334,6 +334,11 @@ const api = {
     },
   },
 
+  // ── Operations Engine (NEW - /api/v1/intelligence/operations) ──
+  operationsEngine: {
+    getInsights: () => request('/v1/intelligence/operations/insights'),
+  },
+
   // ── Copilot Domain (NEW - /api/v1/copilot) ─────────────────
   copilot: {
     chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),
