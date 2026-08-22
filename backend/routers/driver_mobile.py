@@ -62,6 +62,7 @@ class VerifyOtpRequest(BaseModel):
     req_id: str
     otp_code: str
     invite_token: str
+    msg91_token: Optional[str] = None
 
 class VerifyOtpResponse(BaseModel):
     access_token: str
@@ -190,7 +191,12 @@ async def verify_otp(
     """
     # Verify OTP
     otp_provider = get_otp_provider()
-    result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
+    
+    if payload.msg91_token:
+        result = await otp_provider.verify_access_token(payload.msg91_token)
+    else:
+        result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
+        
     if not result.success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
