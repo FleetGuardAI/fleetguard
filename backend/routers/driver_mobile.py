@@ -240,6 +240,13 @@ async def verify_otp(
             )
             db.add(user)
             await db.flush()
+        else:
+            # If the user already exists (e.g. they registered via another tenant),
+            # we must update their company_id to the invite's company_id so they
+            # appear in the inviting owner's dashboard.
+            user.company_id = company_id
+            db.add(user)
+            await db.flush()
 
         # Create new driver
         driver = Driver(
