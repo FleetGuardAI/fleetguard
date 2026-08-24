@@ -240,11 +240,25 @@ async def verify_otp(
             )
             db.add(user)
             await db.flush()
+        elif user.company_id == company_id and user.role == UserRole.DRIVER:
+            # Same company, same role — reuse the user as-is
+            pass
         else:
-            # If the user already exists (e.g. they registered via another tenant),
-            # we must update their company_id to the invite's company_id so they
-            # appear in the inviting owner's dashboard.
-            user.company_id = company_id
+            # User exists but belongs to a different company or has a non-DRIVER role
+            # (e.g., they are COMPANY_ADMIN for another tenant).
+            # We must NOT overwrite their company_id/role — create a fresh DRIVER user.
+            logger.info(
+                f"[DRIVER ONBOARD] Existing user {user.id} has role={user.role}, "
+                f"company_id={user.company_id}. Creating new DRIVER user for company {company_id}."
+            )
+            user = User(
+                company_id=company_id,
+                full_name=payload.phone_number,
+                mobile_number=f"{payload.phone_number}_d{company_id}",  # disambiguate
+                password_hash=hash_password(secrets.token_urlsafe(24)),
+                role=UserRole.DRIVER,
+                is_active=True,
+            )
             db.add(user)
             await db.flush()
 

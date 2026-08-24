@@ -64,12 +64,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
+    // --- Safe diagnostics (NEVER log actual token) ---
+    final api = ref.read(apiClientProvider);
+    debugPrint('[QR DIAG] Scanned payload length: ${token.length}');
+    debugPrint('[QR DIAG] Payload type: ${token.runtimeType}');
+    debugPrint('[QR DIAG] Starts with letter: ${token.isNotEmpty && RegExp(r'^[a-zA-Z0-9]').hasMatch(token)}');
+    debugPrint('[QR DIAG] Contains URL scheme: ${token.contains("://")}');
+    debugPrint('[QR DIAG] API base URL: ${api.dio.options.baseUrl}');
+    debugPrint('[QR DIAG] Target endpoint: /api/v1/auth/owner-qr/verify');
+
     try {
-      final api = ref.read(apiClientProvider);
       final response = await api.dio.post(
         '/api/v1/auth/owner-qr/verify',
         data: {'pairing_token': token},
       );
+
+      debugPrint('[QR DIAG] HTTP status: ${response.statusCode}');
+      debugPrint('[QR DIAG] Response keys: ${response.data?.keys?.toList()}');
 
       final accessToken = response.data['access_token'];
       if (accessToken != null) {
@@ -80,11 +91,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
     } on DioException catch (e) {
+      debugPrint('[QR DIAG] DioException status: ${e.response?.statusCode}');
+      debugPrint('[QR DIAG] DioException detail: ${e.response?.data}');
+      debugPrint('[QR DIAG] DioException type: ${e.type}');
+      debugPrint('[QR DIAG] Request URI: ${e.requestOptions.uri}');
       setState(() {
         _error = e.response?.data?['detail'] ?? 'Login failed. Invalid or expired QR token.';
         _hasScanned = false;
       });
     } catch (e) {
+      debugPrint('[QR DIAG] Unexpected error: ${e.runtimeType}: $e');
       setState(() {
         _error = 'An unexpected error occurred.';
         _hasScanned = false;
