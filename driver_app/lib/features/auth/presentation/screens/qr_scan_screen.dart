@@ -111,13 +111,13 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Scan the FleetGuard QR Code provided by your fleet manager to join',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(color: Colors.black87, fontSize: 14),
                   ),
                 ),
               ],

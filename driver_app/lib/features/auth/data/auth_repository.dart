@@ -51,12 +51,22 @@ class AuthRepository {
       final response = await _dio.post('/api/v1/driver-app/verify-otp', data: {
         'phone_number': phoneNumber,
         'req_id': reqId,
-        'code': otp,
+        'otp_code': otp,
         'invite_token': inviteToken,
         if (msg91Token != null) 'msg91_token': msg91Token,
       });
       return response.data; 
-      // { "access_token": "...", "driver_id": 1, "is_new_driver": bool, "verification_status": "..." }
+    } on DioException catch (e) {
+      final errorData = e.response?.data;
+      debugPrint('[AUTH REPO] HTTP ${e.response?.statusCode}: ${e.response?.statusMessage}');
+      debugPrint('[AUTH REPO] Endpoint: ${e.requestOptions.path}');
+      debugPrint('[AUTH REPO] Request keys: ${e.requestOptions.data.keys.toList()}');
+      if (errorData is Map) {
+        debugPrint('[AUTH REPO] Error body: $errorData');
+      } else {
+        debugPrint('[AUTH REPO] Error data string: $errorData');
+      }
+      throw Exception('Verification failed: ${errorData?['detail'] ?? e.message}');
     } catch (e) {
       throw Exception('Failed to verify OTP: $e');
     }
