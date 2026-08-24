@@ -18,22 +18,36 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
-    # Safely add column if it doesn't exist
     conn = op.get_bind()
     
-    # 1. Add company_id to expenses
-    op.add_column('expenses', sa.Column('company_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_expenses_company_id'), 'expenses', ['company_id'], unique=False)
+    # 1. Add company_id to expenses (idempotent)
+    result = conn.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name = 'expenses' AND column_name = 'company_id'"
+    ))
+    if result.fetchone() is None:
+        op.add_column('expenses', sa.Column('company_id', sa.Integer(), nullable=True))
+        op.create_index(op.f('ix_expenses_company_id'), 'expenses', ['company_id'], unique=False)
     
-    # 2. Make users.email nullable
-    op.alter_column('users', 'email',
-               existing_type=sa.VARCHAR(length=255),
-               nullable=True)
+    # 2. Make users.email nullable (idempotent)
+    result = conn.execute(sa.text(
+        "SELECT is_nullable FROM information_schema.columns "
+        "WHERE table_name = 'users' AND column_name = 'email'"
+    ))
+    row = result.fetchone()
+    if row and row[0] == 'NO':
+        op.alter_column('users', 'email',
+                   existing_type=sa.VARCHAR(length=255),
+                   nullable=True)
                
-    try:
+    # 3. Drop unique constraint on users.email if it exists (idempotent)
+    result = conn.execute(sa.text(
+        "SELECT constraint_name FROM information_schema.table_constraints "
+        "WHERE table_name = 'users' AND constraint_name = 'users_email_key'"
+    ))
+    if result.fetchone() is not None:
         op.drop_constraint('users_email_key', 'users', type_='unique')
-    except Exception:
-        pass
 
 def downgrade() -> None:
+    # Intentionally minimal — these are one-way schema fixes
     pass
