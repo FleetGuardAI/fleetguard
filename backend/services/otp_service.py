@@ -5,6 +5,7 @@ FleetGuard — OTP Service (MSG91 Widget Provider implementation)
 import logging
 import httpx
 import uuid
+import json
 from typing import Optional
 
 from config import settings
@@ -21,14 +22,14 @@ class MSG91OTPProvider(OTPProvider):
         self.auth_key = settings.MSG91_AUTH_KEY
         self.widget_id = settings.MSG91_WIDGET_ID
         self.widget_token = settings.MSG91_WIDGET_TOKEN
+        self.template_id = getattr(settings, "MSG91_TEMPLATE_ID", None)
         
-        if not self.auth_key or not self.widget_id or not self.widget_token:
-            logger.warning("MSG91 credentials are not fully configured!")
+        if not self.auth_key:
+            logger.warning("MSG91_AUTH_KEY is missing!")
             
     def _get_headers(self):
         return {
             "authkey": self.auth_key or "",
-            "widgetToken": self.widget_token or "",
             "Content-Type": "application/json"
         }
 
@@ -36,48 +37,48 @@ class MSG91OTPProvider(OTPProvider):
         if not self.auth_key:
             return OTPRequestResult(False, "MSG91 not fully configured")
             
-        url = "https://api.msg91.com/api/v5/widget/sendOtp"
-        payload = {
-            "widgetId": self.widget_id,
-            "identifier": identifier
-        }
+        if not self.template_id:
+            return OTPRequestResult(False, "MSG91_TEMPLATE_ID is required for Standard OTP API but not configured in backend environment")
+            
+        # Normalize identifier exactly like the frontend does (remove + and ensure 91 prefix)
+        cleaned_id = "".join(filter(str.isdigit, identifier))
+        if len(cleaned_id) == 10:
+            cleaned_id = f"91{cleaned_id}"
+            
+        url = f"https://control.msg91.com/api/v5/otp?template_id={self.template_id}&mobile={cleaned_id}"
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers=self._get_headers())
+                response = await client.post(url, headers=self._get_headers())
                 data = response.json()
                 
                 if data.get("type") == "success":
-                    req_id = data.get("message") # Often reqId is returned in message or response
-                    # If it's a dict, check for reqId
-                    if isinstance(data.get("message"), str) and len(data.get("message")) > 10:
-                        req_id = data.get("message")
-                    else:
-                        req_id = data.get("reqId") or data.get("request_id")
-                        
-                    logger.info(f"MSG91 OTP requested for {identifier}")
+                    req_id = data.get("message")
+                    # If message is "OTP sent successfully", just use the mobile number as req_id
+                    if not req_id or "successfully" in req_id.lower():
+                        req_id = cleaned_id
+                    
+                    logger.info(f"MSG91 Standard OTP sent for {cleaned_id}")
                     return OTPRequestResult(True, "OTP sent successfully", provider_reference=req_id)
                 else:
                     logger.error(f"MSG91 request failed: {data}")
-                    return OTPRequestResult(False, "Failed to send OTP via provider")
+                    error_detail = data.get("message", "Unknown MSG91 error")
+                    return OTPRequestResult(False, f"MSG91 Error: {error_detail}")
         except Exception as e:
             logger.error(f"MSG91 API exception: {e}")
-            return OTPRequestResult(False, "Provider API error")
+            return OTPRequestResult(False, f"Provider API error: {str(e)}")
 
     async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
         if not self.auth_key:
             return OTPRequestResult(False, "MSG91 not fully configured")
             
-        url = "https://api.msg91.com/api/v5/widget/retryOtp"
-        payload = {
-            "widgetId": self.widget_id,
-            "reqId": req_id,
-            "retryType": channel # e.g., 'text' or 'voice'
-        }
+        retry_type = "1" if channel.upper() == "VOICE" else "0" # 0=voice, 1=text (MSG91 Standard OTP expects retrytype)
+        # Standard MSG91 OTP retry: https://control.msg91.com/api/v5/otp/retry?retrytype=&mobile=
+        url = f"https://control.msg91.com/api/v5/otp/retry?retrytype={retry_type}&mobile={req_id}"
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers=self._get_headers())
+                response = await client.get(url, headers=self._get_headers())
                 data = response.json()
                 
                 if data.get("type") == "success":
@@ -94,16 +95,12 @@ class MSG91OTPProvider(OTPProvider):
         if not self.auth_key:
             return OTPVerificationResult(False, "MSG91 not fully configured")
             
-        url = "https://api.msg91.com/api/v5/widget/verifyOtp"
-        payload = {
-            "widgetId": self.widget_id,
-            "reqId": req_id,
-            "otp": code
-        }
+        # Standard MSG91 OTP verify: https://control.msg91.com/api/v5/otp/verify?otp=&mobile=
+        url = f"https://control.msg91.com/api/v5/otp/verify?otp={code}&mobile={req_id}"
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers=self._get_headers())
+                response = await client.get(url, headers=self._get_headers())
                 data = response.json()
                 
                 if data.get("type") == "success":
@@ -114,6 +111,33 @@ class MSG91OTPProvider(OTPProvider):
                     return OTPVerificationResult(False, "Invalid or expired OTP")
         except Exception as e:
             logger.error(f"MSG91 API exception: {e}")
+            return OTPVerificationResult(False, "Provider API error")
+
+    async def verify_access_token(self, token: str) -> OTPVerificationResult:
+        if not self.auth_key:
+            return OTPVerificationResult(False, "MSG91 not fully configured")
+            
+        url = "https://api.msg91.com/api/v5/widget/verifyAccessToken"
+        payload = {
+            "access-token": token
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                headers = {
+                    "authkey": self.auth_key or "",
+                    "Content-Type": "application/json"
+                }
+                response = await client.post(url, json=payload, headers=headers)
+                data = response.json()
+                
+                if data.get("type") == "success":
+                    return OTPVerificationResult(True, "Access Token verified successfully")
+                else:
+                    logger.warning(f"MSG91 access token verification failed: {data}")
+                    return OTPVerificationResult(False, "Invalid access token")
+        except Exception as e:
+            logger.error(f"MSG91 API exception during token verify: {e}")
             return OTPVerificationResult(False, "Provider API error")
 
 
@@ -150,6 +174,17 @@ class MockOTPProvider(OTPProvider):
             
         logger.warning(f"[MOCK] OTP verification failed for reqId {req_id}")
         return OTPVerificationResult(False, "Invalid mock OTP or reqId")
+
+    async def verify_access_token(self, token: str) -> OTPVerificationResult:
+        if not settings.OTP_MOCK_MODE:
+            return OTPVerificationResult(False, "Mock mode disabled")
+            
+        if token.startswith("mock_token_"):
+            logger.info("[MOCK] Access Token verified")
+            return OTPVerificationResult(True, "Mock Access Token verified")
+            
+        logger.warning("[MOCK] Access Token verification failed")
+        return OTPVerificationResult(False, "Invalid mock token")
 
 
 def get_otp_provider() -> OTPProvider:

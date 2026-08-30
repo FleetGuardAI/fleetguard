@@ -15,6 +15,8 @@ import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { QRCodeSVG } from 'qrcode.react';
+import api from '@/api/client';
 
 export default function DriverList() {
   const navigate = useNavigate();
@@ -36,6 +38,8 @@ export default function DriverList() {
   // QR Modal state
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrScanning, setQrScanning] = useState(false);
+  const [qrInvite, setQrInvite] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const loadDrivers = async () => {
     setLoading(true);
@@ -91,22 +95,23 @@ export default function DriverList() {
   };
 
   const handleSimulateQrScan = () => {
-    setQrScanning(true);
-    setTimeout(() => {
-      const mockDriver = {
-        id: `DRV-${Date.now().toString().slice(-4)}`,
-        name: 'New Scanned Driver',
-        phone_number: '+91 98765 43210',
-        risk_score: 95,
-        rating: 4.8,
-        status: 'active',
-        is_active: true
-      };
-      setDrivers(prev => [mockDriver, ...prev]);
-      success('Driver Onboarded', 'A new driver has successfully joined your fleet via QR code scan!');
-      setQrScanning(false);
+    // We are keeping this for testing the UI updates, but the real onboarding is done by the driver app.
+    loadDrivers();
+    success('Drivers Refreshed', 'Checking if any new drivers have joined...');
+  };
+
+  const handleOpenQrModal = async () => {
+    setQrModalOpen(true);
+    setQrLoading(true);
+    try {
+      const invite = await api.fleet.createInvite({ label: 'Dashboard Invite', max_uses: 1 });
+      setQrInvite(invite);
+    } catch (e) {
+      error('Invite Error', 'Failed to generate QR code invite.');
       setQrModalOpen(false);
-    }, 1500);
+    } finally {
+      setQrLoading(false);
+    }
   };
 
   const getRiskVariant = (score) => {
@@ -223,7 +228,7 @@ export default function DriverList() {
             {
               label: 'Scan QR Code',
               icon: <QrCode className="h-4 w-4" />,
-              onClick: () => setQrModalOpen(true)
+              onClick: handleOpenQrModal
             },
             {
               label: 'Add Driver Manually',
@@ -336,25 +341,34 @@ export default function DriverList() {
               Close
             </Button>
             <Button variant="primary" icon={<Smartphone className="w-4 h-4" />} onClick={handleSimulateQrScan} loading={qrScanning}>
-              Simulate Driver Scan
+              Refresh Driver List
             </Button>
           </div>
         }
       >
         <div className="flex flex-col items-center justify-center py-6 space-y-6">
           <div className="p-4 bg-white rounded-2xl shadow-sm border border-border">
-            {/* Mock QR Code Visual */}
-            <div className="w-48 h-48 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center rounded-xl border-2 border-brand-200 border-dashed relative">
-              <QrCode className="w-24 h-24 text-brand-600 opacity-60" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                   <img src="/assets/fleetguard-logo.png" alt="FG" className="w-6 h-6 object-contain" />
-                 </div>
-              </div>
+            {/* Real QR Code */}
+            <div className="w-48 h-48 bg-white flex items-center justify-center rounded-xl border-2 border-brand-200 border-dashed relative">
+              {qrLoading ? (
+                 <div className="animate-pulse w-full h-full bg-slate-100 rounded-xl"></div>
+              ) : qrInvite ? (
+                 <QRCodeSVG 
+                    value={qrInvite.qr_data} 
+                    size={160}
+                    level="H"
+                    includeMargin={false}
+                    fgColor="#0f172a" 
+                 />
+              ) : (
+                 <QrCode className="w-24 h-24 text-brand-600 opacity-60" />
+              )}
             </div>
           </div>
           <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-content">Fleet ID: FG-CORP-9021</p>
+            <p className="text-sm font-medium text-content">
+              {qrLoading ? 'Generating Invite...' : qrInvite ? `Fleet ID: FG-CORP-${qrInvite.company_id}` : 'Error'}
+            </p>
             <p className="text-xs text-content-muted max-w-[250px] mx-auto">
               Scanning this code binds the driver to your fleet and syncs their telematics data.
             </p>

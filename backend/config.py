@@ -48,7 +48,9 @@ class Settings(BaseSettings):
         "http://localhost:5174",
         "http://localhost:3000",
         "http://127.0.0.1:5174",
+        "https://fleetguard-delta.vercel.app",
         "https://fleetgaurd-delta.vercel.app",
+        "https://fleetguard-git-main-rudra810s-projects.vercel.app"
     ]
 
     # --- Fuel Theft & Anomaly Detection Thresholds ---
@@ -77,6 +79,7 @@ class Settings(BaseSettings):
     MSG91_AUTH_KEY: Optional[str] = None
     MSG91_WIDGET_ID: Optional[str] = None
     MSG91_WIDGET_TOKEN: Optional[str] = None
+    MSG91_TEMPLATE_ID: Optional[str] = None
     OTP_PROVIDER: str = "MSG91"
     OTP_MOCK_MODE: bool = False
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True

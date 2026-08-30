@@ -112,16 +112,8 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               child: ElevatedButton(
                 onPressed: _allUploaded
                     ? () => context.go('/auth/selfie-verify')
-                    : () {
-                        // Demo bypass allow proceeding
-                        setState(() {
-                          _dlFrontUploaded = true;
-                          _dlBackUploaded = true;
-                          _aadhaarFrontUploaded = true;
-                          _aadhaarBackUploaded = true;
-                        });
-                      },
-                child: Text(_allUploaded ? 'Next: Face Verification' : 'Demo: Quick Fill & Continue'),
+                    : null,
+                child: const Text('Next: Face Verification'),
               ),
             ),
           ],

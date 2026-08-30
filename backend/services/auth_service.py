@@ -567,13 +567,27 @@ async def generate_owner_qr_token(user: User, db: AsyncSession):
 
 async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
     from models.owner_pairing_token import OwnerPairingToken
+    import logging
+    
+    logger = logging.getLogger("fleetguard.auth")
+    logger.info(f"[QR Verify] Received token format: {type(token)}, length: {len(token)}")
     
     result = await db.execute(
         select(OwnerPairingToken).where(OwnerPairingToken.pairing_token == token)
     )
     token_entry = result.scalar_one_or_none()
     
-    if token_entry is None or not token_entry.is_valid:
+    if token_entry is None:
+        logger.warning(f"[QR Verify] Token lookup failed. Not found in database.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired QR token."
+        )
+        
+    logger.info(f"[QR Verify] Token found. ID: {token_entry.id}, is_used: {token_entry.is_used}, expires_at: {token_entry.expires_at}")
+    
+    if not token_entry.is_valid:
+        logger.warning(f"[QR Verify] Validation failure reason: is_used={token_entry.is_used}, expires_at={token_entry.expires_at}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired QR token."
@@ -587,11 +601,13 @@ async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
     user = result.scalar_one_or_none()
     
     if user is None or not user.is_active:
+        logger.warning(f"[QR Verify] User validation failed. User is None: {user is None}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled or deleted."
         )
         
+    logger.info(f"[QR Verify] Success for user {user.id} (Company: {user.company_id})")
     return await create_token_for_user(user, db=db, remember_me=True)
 async def request_otp(identifier: str, db: AsyncSession):
     from schemas.auth import OTPRequestResponse
@@ -601,10 +617,22 @@ async def request_otp(identifier: str, db: AsyncSession):
     
     if "@" in identifier:
         result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
     else:
         result = await db.execute(select(User).where(User.mobile_number == identifier))
-    
-    user = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        
+        # Check normalized identifier (e.g. +91 prefix)
+        if user is None:
+            normalized_identifier = identifier
+            if len(identifier) == 10 and identifier.isdigit():
+                normalized_identifier = f"+91{identifier}"
+            elif identifier.startswith("91") and len(identifier) == 12:
+                normalized_identifier = f"+{identifier}"
+            
+            if normalized_identifier != identifier:
+                result = await db.execute(select(User).where(User.mobile_number == normalized_identifier))
+                user = result.scalar_one_or_none()
     
     if user is None or not user.is_active:
         dummy_verify()
@@ -624,16 +652,29 @@ async def resend_otp(req_id: str, channel: str, db: AsyncSession):
     result = await otp_provider.retry_otp(req_id, channel)
     return OTPRequestResponse(message="OTP resent successfully.", req_id=result.provider_reference)
 
-async def verify_otp(identifier: str, req_id: str, code: str, db: AsyncSession) -> TokenResponse:
+async def verify_otp(identifier: str, req_id: Optional[str], code: Optional[str], db: AsyncSession, msg91_token: Optional[str] = None) -> TokenResponse:
     from services.otp_service import otp_provider
     
     identifier = identifier.strip()
     if "@" in identifier:
         result = await db.execute(select(User).where(User.email == identifier))
+        user = result.scalar_one_or_none()
     else:
+        # Check raw identifier
         result = await db.execute(select(User).where(User.mobile_number == identifier))
-    
-    user = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        
+        # Check normalized identifier (e.g. +91 prefix)
+        if user is None:
+            normalized_identifier = identifier
+            if len(identifier) == 10 and identifier.isdigit():
+                normalized_identifier = f"+91{identifier}"
+            elif identifier.startswith("91") and len(identifier) == 12:
+                normalized_identifier = f"+{identifier}"
+            
+            if normalized_identifier != identifier:
+                result = await db.execute(select(User).where(User.mobile_number == normalized_identifier))
+                user = result.scalar_one_or_none()
     
     if user is None:
         dummy_verify()
@@ -649,7 +690,16 @@ async def verify_otp(identifier: str, req_id: str, code: str, db: AsyncSession) 
             detail="Your account has been deactivated. Contact your administrator.",
         )
         
-    otp_result = await otp_provider.verify_otp(req_id, code)
+    if msg91_token:
+        otp_result = await otp_provider.verify_access_token(msg91_token)
+    else:
+        if not req_id or not code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing req_id or code for OTP verification."
+            )
+        otp_result = await otp_provider.verify_otp(req_id, code)
+        
     if not otp_result.success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -16,7 +16,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { getDashboardData, getFleetHealth, getUpcomingAlerts } from '@/api/dashboardApi';
 import { getLiveTracking } from '@/api/telematicsApi';
 import { FleetMap } from './dashboard-ai/FleetMap';
-import { FinancialIntelligenceEngine } from '@/components/dashboard/FinancialIntelligenceEngine';
+import { OperationsEngine } from '@/components/dashboard/OperationsEngine';
 // ── KPI Icon Map ──
 const kpiIcons = {
   Truck: Truck,
@@ -171,9 +171,9 @@ export default function DashboardOverview() {
           })}
         </div>
 
-        {/* ═══════════ FINANCIAL INTELLIGENCE ENGINE ═══════════ */}
+        {/* ═══════════ OPERATIONS ENGINE ═══════════ */}
         <div className="mt-6">
-          <FinancialIntelligenceEngine />
+          <OperationsEngine />
         </div>
 
         {/* ═══════════ FINANCIAL OVERVIEW & MAP ═══════════ */}
