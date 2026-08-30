@@ -17,6 +17,7 @@ class DriverResponse(BaseModel):
     id: int
     name: str
     phone_number: str
+    age: Optional[int] = None
     avatar_url: Optional[str] = None
     
     # --- Identity & License ---
@@ -24,9 +25,23 @@ class DriverResponse(BaseModel):
     license_number: Optional[str] = None
     license_valid_until: Optional[date] = None
 
+    # --- Document URLs ---
+    license_front_url: Optional[str] = None
+    license_back_url: Optional[str] = None
+    aadhaar_front_url: Optional[str] = None
+    aadhaar_back_url: Optional[str] = None
+    selfie_url: Optional[str] = None
+
+    # --- Onboarding & Verification ---
+    verification_status: Optional[str] = None
+    face_verified: Optional[bool] = None
+
     # --- Business Status ---
     employment_status: Optional[EmploymentStatus] = None
     status: DriverStatus
+    
+    # --- Assignment ---
+    assigned_vehicle: Optional[str] = None
     
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None

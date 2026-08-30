@@ -17,6 +17,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
   final _nameController = TextEditingController();
   final _licenseController = TextEditingController();
   final _aadhaarController = TextEditingController();
+  final _ageController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
@@ -27,10 +28,12 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
     
     try {
       final repo = ref.read(authRepositoryProvider);
+      final age = int.tryParse(_ageController.text.trim()) ?? 0;
       final response = await repo.registerProfile(
         _nameController.text.trim(),
         _licenseController.text.trim(),
         _aadhaarController.text.trim(),
+        age,
       );
 
       await SecureStorage.setDriverName(response['name']);
@@ -55,6 +58,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
     _nameController.dispose();
     _licenseController.dispose();
     _aadhaarController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -83,6 +87,24 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                   prefixIcon: Icon(Icons.person),
                 ),
                 validator: Validators.name,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Age',
+                  prefixIcon: Icon(Icons.cake),
+                  hintText: '18 - 80',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Age is required';
+                  final age = int.tryParse(v.trim());
+                  if (age == null || age < 18 || age > 80) {
+                    return 'Enter a valid age between 18 and 80';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(

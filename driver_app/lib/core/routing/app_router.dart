@@ -9,6 +9,7 @@ import '../../features/auth/presentation/screens/profile_creation_screen.dart';
 import '../../features/auth/presentation/screens/document_upload_screen.dart';
 import '../../features/auth/presentation/screens/selfie_verification_screen.dart';
 import '../../features/auth/presentation/screens/pending_approval_screen.dart';
+import '../../features/auth/presentation/screens/welcome_fleet_screen.dart';
 import '../../features/permissions/presentation/screens/permission_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/trip/presentation/screens/trip_list_screen.dart';
@@ -42,10 +43,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (isLoggedIn && isAuthRoute) {
         final status = await SecureStorage.getVerificationStatus();
-        if (status == 'PENDING_APPROVAL') {
-          return '/auth/pending-approval';
+        switch (status) {
+          case 'PENDING_DOCUMENTS':
+            // Allow navigation within the onboarding flow
+            if (state.matchedLocation == '/auth/profile' ||
+                state.matchedLocation == '/auth/documents' ||
+                state.matchedLocation == '/auth/selfie-verify' ||
+                state.matchedLocation == '/auth/welcome') {
+              return null;
+            }
+            return '/auth/profile';
+          case 'PENDING_APPROVAL':
+            if (state.matchedLocation == '/auth/pending-approval' ||
+                state.matchedLocation == '/auth/welcome') {
+              return null;
+            }
+            return '/auth/pending-approval';
+          case 'APPROVED':
+            return '/dashboard';
+          default:
+            return '/dashboard';
         }
-        return '/dashboard';
       }
 
       return null;
@@ -83,6 +101,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth/selfie-verify',
         builder: (context, state) => const SelfieVerificationScreen(),
+      ),
+      GoRoute(
+        path: '/auth/welcome',
+        builder: (context, state) => const WelcomeFleetScreen(),
       ),
       GoRoute(
         path: '/auth/pending-approval',
@@ -265,12 +287,16 @@ class _SplashScreenState extends State<_SplashScreen> {
     }
 
     final status = await SecureStorage.getVerificationStatus();
-    if (status == 'PENDING_APPROVAL') {
-      context.go('/auth/pending-approval');
-      return;
+    switch (status) {
+      case 'PENDING_DOCUMENTS':
+        context.go('/auth/profile');
+        return;
+      case 'PENDING_APPROVAL':
+        context.go('/auth/pending-approval');
+        return;
+      default:
+        context.go('/dashboard');
     }
-
-    context.go('/dashboard');
   }
 
   @override

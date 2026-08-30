@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/storage/secure_storage.dart';
 import '../../data/auth_repository.dart';
 
 class DocumentUploadScreen extends ConsumerStatefulWidget {
@@ -54,23 +53,19 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      final driverId = await SecureStorage.getDriverId();
-      
-      if (driverId != null) {
-        await repo.uploadDocument(File(pickedFile.path), type, driverId);
+      await repo.uploadDocument(File(pickedFile.path), type);
         
-        setState(() {
-          if (type == 'license_front') _dlFrontUploaded = true;
-          if (type == 'license_back') _dlBackUploaded = true;
-          if (type == 'aadhaar_front') _aadhaarFrontUploaded = true;
-          if (type == 'aadhaar_back') _aadhaarBackUploaded = true;
-        });
+      setState(() {
+        if (type == 'license_front') _dlFrontUploaded = true;
+        if (type == 'license_back') _dlBackUploaded = true;
+        if (type == 'aadhaar_front') _aadhaarFrontUploaded = true;
+        if (type == 'aadhaar_back') _aadhaarBackUploaded = true;
+      });
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Uploaded successfully!')),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploaded successfully!')),
+        );
       }
     } catch (e) {
       if (mounted) {

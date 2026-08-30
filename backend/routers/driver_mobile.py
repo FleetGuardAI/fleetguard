@@ -73,6 +73,7 @@ class VerifyOtpResponse(BaseModel):
 
 class DriverProfileRequest(BaseModel):
     name: str = Field(..., min_length=2)
+    age: Optional[int] = Field(None, ge=18, le=80)
     license_number: Optional[str] = None
     aadhaar_number: Optional[str] = None
     employee_id: Optional[str] = None
@@ -81,6 +82,7 @@ class DriverProfileResponse(BaseModel):
     id: int
     name: str
     phone_number: str
+    age: Optional[int] = None
     avatar_url: Optional[str] = None
     company_id: Optional[int] = None
     company_name: Optional[str] = None
@@ -327,6 +329,8 @@ async def register_driver_profile(
     Updates driver name, license, aadhaar, and sets status to PENDING_DOCUMENTS.
     """
     driver.name = payload.name
+    if payload.age:
+        driver.age = payload.age
     if payload.license_number:
         driver.license_number = payload.license_number
     if payload.aadhaar_number:
@@ -530,6 +534,7 @@ def _driver_to_response(driver: Driver) -> DriverProfileResponse:
         id=driver.id,
         name=driver.name,
         phone_number=driver.phone_number,
+        age=driver.age,
         avatar_url=driver.avatar_url or driver.selfie_url,
         company_id=driver.company_id,
         company_name=driver.company.company_name if driver.company else None,

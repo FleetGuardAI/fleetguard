@@ -49,6 +49,7 @@ from models.vehicle_inspection import VehicleInspection
 from models.proof_of_delivery import ProofOfDelivery
 from models.emergency import EmergencyAlert
 from models.driver_wallet import WalletTransaction
+from models.trip_start_selfie import TripStartSelfie
 
 __all__ = [
     # Auth
@@ -96,4 +97,5 @@ __all__ = [
     "ProofOfDelivery",
     "EmergencyAlert",
     "WalletTransaction",
+    "TripStartSelfie",
 ]
