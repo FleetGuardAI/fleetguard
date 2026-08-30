@@ -1046,6 +1046,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "sendotp_flutter_sdk",
+      "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/sendotp_flutter_sdk-0.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "shelf",
       "rootUri": "file:///C:/Users/ratho/AppData/Local/Pub/Cache/hosted/pub.dev/shelf-1.4.2",
       "packageUri": "lib/",

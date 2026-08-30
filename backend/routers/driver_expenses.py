@@ -21,6 +21,8 @@ from models.operational_event import EventType, CaptureMethod, EntityType
 from schemas.operational_event import OperationalEventCreate
 from services.operational_event_service import OperationalEventService
 from services.file_upload_service import storage_service
+from models.driver_domain import Driver
+from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.driver_expenses")
 
@@ -100,6 +102,7 @@ async def process_receipt_ocr(
 @router.post("/expenses", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(
     payload: ExpenseCreateRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
     uow = Depends(get_uow)
 ):
@@ -151,17 +154,18 @@ async def create_expense(
         description=payload.description,
         receipt_reference=payload.receipt_url,
         vehicle_id=payload.vehicle_id,
-        driver_id=payload.driver_id,
+        driver_id=driver.id,
+        company_id=driver.company_id,
         trip_id=payload.trip_id,
         origin_type="driver_app",
-        origin_id=f"driver_{payload.driver_id}",
+        origin_id=f"driver_{driver.id}",
     )
 
     db.add(expense)
     await db.commit()
     await db.refresh(expense)
 
-    logger.info(f"Expense {expense.id} created by driver {payload.driver_id}")
+    logger.info(f"Expense {expense.id} created by driver {driver.id}")
 
     return ExpenseResponse(
         id=expense.id,
@@ -182,18 +186,19 @@ async def create_expense(
 
 @router.get("/expenses", response_model=List[ExpenseResponse])
 async def list_driver_expenses(
-    driver_id: int = Query(...),
+    driver_id: Optional[int] = Query(None), # Kept for backwards compatibility but ignored
     limit: int = Query(50, ge=1, le=200),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """List expenses for a specific driver."""
     result = await db.execute(
         select(Expense)
-        .where(Expense.driver_id == driver_id)
+        .where(Expense.driver_id == driver.id)
         .order_by(desc(Expense.created_at))
         .limit(limit)
     )
-    expenses = result.scalars().all()
+    expenses = result.scalars().all() or []
 
     return [
         ExpenseResponse(

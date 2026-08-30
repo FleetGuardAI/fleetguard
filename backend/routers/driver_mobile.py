@@ -62,6 +62,7 @@ class VerifyOtpRequest(BaseModel):
     req_id: str
     otp_code: str
     invite_token: str
+    msg91_token: Optional[str] = None
 
 class VerifyOtpResponse(BaseModel):
     access_token: str
@@ -190,7 +191,12 @@ async def verify_otp(
     """
     # Verify OTP
     otp_provider = get_otp_provider()
-    result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
+    
+    if payload.msg91_token:
+        result = await otp_provider.verify_access_token(payload.msg91_token)
+    else:
+        result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
+        
     if not result.success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -229,6 +235,27 @@ async def verify_otp(
                 full_name=payload.phone_number,  # Will be updated during profile creation
                 mobile_number=payload.phone_number,
                 password_hash=hash_password(secrets.token_urlsafe(24)),  # Random password
+                role=UserRole.DRIVER,
+                is_active=True,
+            )
+            db.add(user)
+            await db.flush()
+        elif user.company_id == company_id and user.role == UserRole.DRIVER:
+            # Same company, same role — reuse the user as-is
+            pass
+        else:
+            # User exists but belongs to a different company or has a non-DRIVER role
+            # (e.g., they are COMPANY_ADMIN for another tenant).
+            # We must NOT overwrite their company_id/role — create a fresh DRIVER user.
+            logger.info(
+                f"[DRIVER ONBOARD] Existing user {user.id} has role={user.role}, "
+                f"company_id={user.company_id}. Creating new DRIVER user for company {company_id}."
+            )
+            user = User(
+                company_id=company_id,
+                full_name=payload.phone_number,
+                mobile_number=f"{payload.phone_number}_d{company_id}",  # disambiguate
+                password_hash=hash_password(secrets.token_urlsafe(24)),
                 role=UserRole.DRIVER,
                 is_active=True,
             )

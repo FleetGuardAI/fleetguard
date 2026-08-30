@@ -24,9 +24,13 @@ class AppConfig {
   /// Driver app API prefix
   static const String driverApiPrefix = '/api/v1/driver-app';
 
-  /// MSG91 Widget Configuration
-  static const String msg91WidgetId = String.fromEnvironment('MSG91_WIDGET_ID', defaultValue: '366874697076393730333730');
-  static const String msg91WidgetToken = String.fromEnvironment('MSG91_WIDGET_TOKEN', defaultValue: '562535TbXmX1q3SOo6a881f78P1');
+  static const String msg91MobileWidgetId = String.fromEnvironment(
+    'MSG91_MOBILE_WIDGET_ID',
+  );
+
+  static const String msg91MobileWidgetToken = String.fromEnvironment(
+    'MSG91_MOBILE_WIDGET_TOKEN',
+  );
 
   /// GPS tracking interval in seconds
   static const int gpsIntervalSeconds = 5;
