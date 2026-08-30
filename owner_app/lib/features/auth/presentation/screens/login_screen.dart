@@ -369,35 +369,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       if (_otpSent) ...[
-                        const SizedBox(height: 16),
-                        if (_countdown > 0)
-                          Text(
-                            'Resend OTP in $_countdown s',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
-                          )
-                        else
-                          TextButton(
-                            onPressed: _isLoading ? null : _resendOtp,
-                            child: const Text('Resend OTP'),
-                          ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _otpSent = false;
-                              _otpController.clear();
-                              _reqId = null;
-                              _error = null;
-                              _countdown = 0;
-                              _timer?.cancel();
-                            });
-                          },
-                          child: const Text('Change identifier'),
-                        )
-                      ]
-                  ),
-                ),
-              ),
-            ],
+  const SizedBox(height: 16),
+
+  if (_countdown > 0)
+    Text(
+      'Resend OTP in $_countdown s',
+      style: Theme.of(context)
+          .textTheme
+          .bodySmall
+          ?.copyWith(color: Colors.grey),
+    )
+  else
+    TextButton(
+      onPressed: _isLoading ? null : _resendOtp,
+      child: const Text('Resend OTP'),
+    ),
+
+  TextButton(
+    onPressed: () {
+      setState(() {
+        _otpSent = false;
+        _otpController.clear();
+        _reqId = null;
+        _error = null;
+        _countdown = 0;
+        _timer?.cancel();
+      });
+    },
+    child: const Text('Change identifier'),
+  ),
+],
             
             if (_error != null)
               Padding(
