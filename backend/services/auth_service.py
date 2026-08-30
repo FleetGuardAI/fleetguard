@@ -567,13 +567,27 @@ async def generate_owner_qr_token(user: User, db: AsyncSession):
 
 async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
     from models.owner_pairing_token import OwnerPairingToken
+    import logging
+    
+    logger = logging.getLogger("fleetguard.auth")
+    logger.info(f"[QR Verify] Received token format: {type(token)}, length: {len(token)}")
     
     result = await db.execute(
         select(OwnerPairingToken).where(OwnerPairingToken.pairing_token == token)
     )
     token_entry = result.scalar_one_or_none()
     
-    if token_entry is None or not token_entry.is_valid:
+    if token_entry is None:
+        logger.warning(f"[QR Verify] Token lookup failed. Not found in database.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired QR token."
+        )
+        
+    logger.info(f"[QR Verify] Token found. ID: {token_entry.id}, is_used: {token_entry.is_used}, expires_at: {token_entry.expires_at}")
+    
+    if not token_entry.is_valid:
+        logger.warning(f"[QR Verify] Validation failure reason: is_used={token_entry.is_used}, expires_at={token_entry.expires_at}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired QR token."
@@ -587,11 +601,13 @@ async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
     user = result.scalar_one_or_none()
     
     if user is None or not user.is_active:
+        logger.warning(f"[QR Verify] User validation failed. User is None: {user is None}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled or deleted."
         )
         
+    logger.info(f"[QR Verify] Success for user {user.id} (Company: {user.company_id})")
     return await create_token_for_user(user, db=db, remember_me=True)
 async def request_otp(identifier: str, db: AsyncSession):
     from schemas.auth import OTPRequestResponse

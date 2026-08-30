@@ -40,6 +40,7 @@
         "permission_handler",
         "qr_flutter",
         "riverpod_annotation",
+        "sendotp_flutter_sdk",
         "shimmer",
         "sqflite",
         "syncfusion_flutter_signaturepad",
@@ -57,18 +58,6 @@
         "json_serializable",
         "mockito",
         "riverpod_generator"
-      ]
-    },
-    {
-      "name": "flutter",
-      "version": "0.0.0",
-      "dependencies": [
-        "characters",
-        "collection",
-        "material_color_utilities",
-        "meta",
-        "sky_engine",
-        "vector_math"
       ]
     },
     {
@@ -226,6 +215,14 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "sendotp_flutter_sdk",
+      "version": "0.0.2",
+      "dependencies": [
+        "flutter",
+        "http"
       ]
     },
     {
@@ -612,36 +609,16 @@
       ]
     },
     {
-      "name": "sky_engine",
+      "name": "flutter",
       "version": "0.0.0",
-      "dependencies": []
-    },
-    {
-      "name": "vector_math",
-      "version": "2.2.0",
-      "dependencies": []
-    },
-    {
-      "name": "meta",
-      "version": "1.18.0",
-      "dependencies": []
-    },
-    {
-      "name": "material_color_utilities",
-      "version": "0.13.0",
       "dependencies": [
-        "collection"
+        "characters",
+        "collection",
+        "material_color_utilities",
+        "meta",
+        "sky_engine",
+        "vector_math"
       ]
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
-      "dependencies": []
-    },
-    {
-      "name": "characters",
-      "version": "1.4.1",
-      "dependencies": []
     },
     {
       "name": "yaml",
@@ -734,6 +711,11 @@
       ]
     },
     {
+      "name": "meta",
+      "version": "1.18.0",
+      "dependencies": []
+    },
+    {
       "name": "matcher",
       "version": "0.12.19",
       "dependencies": [
@@ -757,6 +739,11 @@
         "source_span",
         "yaml"
       ]
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
     },
     {
       "name": "code_builder",
@@ -837,16 +824,6 @@
         "path",
         "pubspec_parse",
         "yaml"
-      ]
-    },
-    {
-      "name": "riverpod",
-      "version": "2.6.1",
-      "dependencies": [
-        "collection",
-        "meta",
-        "stack_trace",
-        "state_notifier"
       ]
     },
     {
@@ -1108,6 +1085,11 @@
         "matcher",
         "meta"
       ]
+    },
+    {
+      "name": "vector_math",
+      "version": "2.2.0",
+      "dependencies": []
     },
     {
       "name": "clock",
@@ -1765,11 +1747,38 @@
       ]
     },
     {
+      "name": "riverpod",
+      "version": "2.6.1",
+      "dependencies": [
+        "collection",
+        "meta",
+        "stack_trace",
+        "state_notifier"
+      ]
+    },
+    {
       "name": "state_notifier",
       "version": "1.0.0",
       "dependencies": [
         "meta"
       ]
+    },
+    {
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "material_color_utilities",
+      "version": "0.13.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "characters",
+      "version": "1.4.1",
+      "dependencies": []
     },
     {
       "name": "string_scanner",
