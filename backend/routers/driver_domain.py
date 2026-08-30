@@ -105,6 +105,7 @@ async def create_driver(
         event_type=EventType.DRIVER_REGISTERED,
         entity_type=EntityType.DRIVER,
         entity_id=driver.phone_number,
+        company_id=current_user.company_id,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
         payload={"name": driver.name, "phone_number": driver.phone_number},
