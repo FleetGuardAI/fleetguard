@@ -29,3 +29,13 @@ dist/
 Thumbs.db
 .env
 .env.*
+
+# -----------------------
+# Debug scripts (never commit)
+# -----------------------
+backend/check_*.py
+backend/fix_*.py
+backend/reset_*.py
+backend/run_manual_*.py
+backend/update_*.py
+backend/test_db.py

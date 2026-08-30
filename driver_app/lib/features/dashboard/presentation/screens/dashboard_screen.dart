@@ -53,7 +53,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Text('FleetGuard Driver', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Flexible(
+              child: Text(
+                'FleetGuard Driver',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -122,11 +128,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               const Text(
                                 'Rajesh Kumar',
                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'MH-12 Fleet • DL-9876543210',
                                 style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -157,23 +165,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _getDutyColor(),
-                                shape: BoxShape.circle,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: _getDutyColor(),
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Duty Status: ${_dutyStatus.replaceAll('_', ' ')}',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Duty Status: ${_dutyStatus.replaceAll('_', ' ')}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         PopupMenuButton<String>(
                           onSelected: (status) => setState(() => _dutyStatus = status),
                           itemBuilder: (context) => const [
@@ -236,8 +250,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.directions_bus, size: 36, color: AppColors.primary),
-                title: const Text('Assigned Vehicle: MH-12-FG-2026', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Tata Prima 3530.K • Diesel • Insurance: Valid'),
+                title: const Text('Assigned Vehicle: MH-12-FG-2026', style: TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                subtitle: const Text('Tata Prima 3530.K • Diesel • Insurance: Valid', overflow: TextOverflow.ellipsis),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/vehicle'),
               ),
@@ -272,7 +286,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Icon(Icons.location_on, color: Colors.green, size: 20),
                         SizedBox(width: 8),
-                        Expanded(child: Text('Origin: JNPT Port, Navi Mumbai', style: TextStyle(fontWeight: FontWeight.w600))),
+                        Expanded(child: Text('Origin: JNPT Port, Navi Mumbai', style: TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                     const Padding(
@@ -283,7 +297,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Icon(Icons.flag, color: Colors.red, size: 20),
                         SizedBox(width: 8),
-                        Expanded(child: Text('Destination: Logistics Hub, Pune', style: TextStyle(fontWeight: FontWeight.w600))),
+                        Expanded(child: Text('Destination: Logistics Hub, Pune', style: TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                     const Divider(height: 24),

@@ -312,6 +312,12 @@ const api = {
     create: (data) => request('/v1/events', { method: 'POST', body: JSON.stringify(data) }),
   },
 
+  // ── Fleet (NEW - /api/v1/fleet) ──────────────────────────────
+  fleet: {
+    createInvite: (data) => request('/v1/fleet/invite', { method: 'POST', body: JSON.stringify(data) }),
+    listInvites: () => request('/v1/fleet/invites'),
+  },
+
   // ── Auth (NEW - /api/v1/auth) ──────────────────────────────
   auth: {
     updateCompany: (data) => request('/v1/auth/company', { method: 'PATCH', body: JSON.stringify(data) }),
@@ -332,6 +338,11 @@ const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/intelligence/fuel/trucks/${encodeURIComponent(truckId)}${query ? `?${query}` : ''}`);
     },
+  },
+
+  // ── Operations Engine (NEW - /api/v1/intelligence/operations) ──
+  operationsEngine: {
+    getInsights: () => request('/v1/intelligence/operations/insights'),
   },
 
   // ── Copilot Domain (NEW - /api/v1/copilot) ─────────────────

@@ -44,15 +44,12 @@ class PendingApprovalScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () async {
-                  // Demo bypass button for presentation / review
-                  await SecureStorage.setVerificationStatus('APPROVED');
-                  if (context.mounted) {
-                    context.go('/permissions');
-                  }
+                onPressed: () {
+                  // Simply reload the app route
+                  context.go('/');
                 },
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Demo: Auto-Approve & Enter App'),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh Status'),
               ),
             ),
           ],

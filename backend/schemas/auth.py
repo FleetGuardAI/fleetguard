@@ -133,8 +133,9 @@ class OTPRequestResponse(BaseModel):
 class OTPVerifyRequest(BaseModel):
     """Payload to verify an OTP."""
     identifier: str = Field(..., min_length=3, max_length=255)
-    req_id: str = Field(...)
-    code: str = Field(..., min_length=4, max_length=10)
+    req_id: Optional[str] = None
+    code: Optional[str] = Field(None, min_length=4, max_length=10)
+    msg91_token: Optional[str] = None
 
 
 class OTPResendRequest(BaseModel):

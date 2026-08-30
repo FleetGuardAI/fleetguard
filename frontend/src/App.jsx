@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import HomePage from './pages/HomePage';
 import Downloads from './pages/Downloads';
+import DriverOtpBridge from './pages/DriverOtpBridge';
 
 /**
  * FleetGuard Application Root
@@ -29,6 +30,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/downloads" element={<Downloads />} />
       <Route path="/homepage" element={<HomePage />} />
+      <Route path="/bridge/driver-otp" element={<DriverOtpBridge />} />
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
