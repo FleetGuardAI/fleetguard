@@ -279,6 +279,11 @@ class OperationalEvent(Base):
             "String type to accommodate heterogeneous entity key formats."
         ),
     )
+    company_id: Mapped[int] = mapped_column(
+        nullable=False,
+        index=True,
+        comment="Tenant isolation identifier",
+    )
 
     # --- Temporal ---
     occurred_at: Mapped[datetime] = mapped_column(
