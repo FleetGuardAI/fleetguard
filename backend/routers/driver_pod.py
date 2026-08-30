@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.proof_of_delivery import ProofOfDelivery
 from models.trip_domain import Trip, TripStatus
+from routers.driver_mobile import get_current_driver
+from models.driver_domain import Driver
 
 logger = logging.getLogger("fleetguard.pod")
 
@@ -21,8 +23,6 @@ router = APIRouter(prefix="/api/v1/driver-app", tags=["Proof of Delivery"])
 
 
 class PodCreateRequest(BaseModel):
-    driver_id: int
-    company_id: int
     signature_url: Optional[str] = None
     photos: List[str] = []
     invoice_url: Optional[str] = None
@@ -50,16 +50,17 @@ async def submit_pod(
     trip_id: int,
     payload: PodCreateRequest,
     db: AsyncSession = Depends(get_db),
+    driver: Driver = Depends(get_current_driver),
 ):
     """Submit proof of delivery for a trip."""
     trip = await db.get(Trip, trip_id)
-    if trip is None:
+    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
         raise HTTPException(404, "Trip not found")
 
     pod = ProofOfDelivery(
         trip_id=trip_id,
-        driver_id=payload.driver_id,
-        company_id=payload.company_id,
+        driver_id=driver.id,
+        company_id=driver.company_id,
         signature_url=payload.signature_url,
         photos=payload.photos,
         invoice_url=payload.invoice_url,
@@ -96,10 +97,15 @@ async def submit_pod(
 async def get_pod(
     trip_id: int,
     db: AsyncSession = Depends(get_db),
+    driver: Driver = Depends(get_current_driver),
 ):
     """Get POD for a specific trip."""
     result = await db.execute(
-        select(ProofOfDelivery).where(ProofOfDelivery.trip_id == trip_id)
+        select(ProofOfDelivery).where(
+            ProofOfDelivery.trip_id == trip_id,
+            ProofOfDelivery.driver_id == driver.id,
+            ProofOfDelivery.company_id == driver.company_id
+        )
     )
     pod = result.scalar_one_or_none()
 

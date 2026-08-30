@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User } from 'lucide-react';
 import { getDriverById, assignVehicle } from '@/api/driverApi';
 import { getVehicles } from '@/api/vehicleApi';
 import { getDocuments } from '@/api/documentApi';
@@ -160,6 +160,7 @@ export default function DriverProfile() {
             <p className="text-sm text-content-secondary mt-0.5 flex items-center gap-1">
               <Phone className="h-3.5 w-3.5 text-content-muted" />
               {driver.phone_number}
+              {driver.age && <span className="ml-2 text-content-muted">• Age: {driver.age}</span>}
             </p>
           </div>
         </div>
@@ -208,15 +209,36 @@ export default function DriverProfile() {
         <Card className="flex flex-col justify-between p-4">
           <span className="text-[10px] font-bold text-content-muted tracking-wider uppercase">Total Trips</span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-extrabold text-content">{driver.total_trips ?? 148}</span>
+            <span className="text-2xl font-extrabold text-content">{driver.total_trips ?? 0}</span>
             <span className="text-xs text-content-secondary">All-time dispatches</span>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col justify-between p-4">
+          <span className="text-[10px] font-bold text-content-muted tracking-wider uppercase">Onboarding Status</span>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-lg font-extrabold text-content">
+              {driver.verification_status === 'APPROVED' ? 'Approved' : 
+               driver.verification_status === 'PENDING_APPROVAL' ? 'Pending Approval' :
+               driver.verification_status === 'PENDING_DOCUMENTS' ? 'Pending Docs' :
+               driver.verification_status === 'REJECTED' ? 'Rejected' : 'Not Started'}
+            </span>
+            <Badge variant={
+              driver.verification_status === 'APPROVED' ? 'success' :
+              driver.verification_status === 'PENDING_APPROVAL' ? 'warning' :
+              driver.verification_status === 'REJECTED' ? 'danger' : 'neutral'
+            }>
+              {driver.verification_status === 'APPROVED' ? <CheckCircle className="h-3.5 w-3.5" /> : 
+               driver.verification_status === 'PENDING_APPROVAL' ? <Clock className="h-3.5 w-3.5" /> :
+               <AlertTriangle className="h-3.5 w-3.5" />}
+            </Badge>
           </div>
         </Card>
 
         <Card className="flex flex-col justify-between p-4">
           <span className="text-[10px] font-bold text-content-muted tracking-wider uppercase">Total Expenses Logging</span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-extrabold text-content">₹{(driver.total_expenses ?? 125600).toLocaleString()}</span>
+            <span className="text-2xl font-extrabold text-content">₹{(driver.total_expenses ?? 0).toLocaleString()}</span>
             <span className="text-xs text-content-secondary">WhatsApp verified</span>
           </div>
         </Card>
@@ -284,6 +306,32 @@ export default function DriverProfile() {
             </CardTitle>
           </CardHeader>
           <div className="space-y-4">
+            {/* Uploaded Driver Documents from Onboarding */}
+            {(driver.license_front_url || driver.license_back_url || driver.aadhaar_front_url || driver.aadhaar_back_url || driver.selfie_url) && (
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-content mb-3">Uploaded Documents</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'License Front', url: driver.license_front_url },
+                    { label: 'License Back', url: driver.license_back_url },
+                    { label: 'Aadhaar Front', url: driver.aadhaar_front_url },
+                    { label: 'Aadhaar Back', url: driver.aadhaar_back_url },
+                    { label: 'Selfie', url: driver.selfie_url },
+                  ].filter(d => d.url).map((doc) => (
+                    <div key={doc.label} className="p-2 border border-border rounded-xl text-center">
+                      <img 
+                        src={doc.url.startsWith('/') ? `${window.location.origin}${doc.url}` : doc.url}
+                        alt={doc.label}
+                        className="w-full h-24 object-cover rounded-lg mb-1"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                      <span className="text-xs text-content-secondary">{doc.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* System-level documents */}
             {documents.map((doc) => (
               <div
                 key={doc.id}

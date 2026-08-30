@@ -18,10 +18,17 @@ function normalizeDriver(d) {
     status: (d.status || d.employment_status || 'unknown').toLowerCase(),
     employment_status: d.employment_status || null,
     avatar_url: d.avatar_url || null,
+    age: d.age || null,
+    verification_status: d.verification_status || 'NOT_STARTED',
+    license_front_url: d.license_front_url || null,
+    license_back_url: d.license_back_url || null,
+    aadhaar_front_url: d.aadhaar_front_url || null,
+    aadhaar_back_url: d.aadhaar_back_url || null,
+    selfie_url: d.selfie_url || null,
     // These fields don't exist in the Driver Domain schema — only pass through if present
     rating: d.rating ?? null,
     risk_score: d.risk_score ?? null,
-    assigned_truck: d.assigned_truck || null,
+    assigned_truck: d.assigned_vehicle || d.assigned_truck || null,
     experience_years: d.experience_years || null,
   };
 }

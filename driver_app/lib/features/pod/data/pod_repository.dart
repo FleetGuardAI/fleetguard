@@ -16,9 +16,7 @@ class PodRepository {
 
   Future<String> uploadFile(File file, String documentType) async {
     try {
-      final driverId = await SecureStorage.getDriverId();
       final formData = FormData.fromMap({
-        'driver_id': driverId,
         'document_type': documentType,
         'file': await MultipartFile.fromFile(file.path),
       });
@@ -29,8 +27,7 @@ class PodRepository {
       );
       return response.data['url'] ?? '';
     } catch (e) {
-      // Return a dummy url for mock purposes if upload fails
-      return '/uploads/mock_${documentType}.jpg';
+      throw Exception('Failed to upload $documentType: $e');
     }
   }
 
@@ -42,13 +39,9 @@ class PodRepository {
     String? photoUrl,
   }) async {
     try {
-      final driverId = await SecureStorage.getDriverId() ?? 1;
-      
       await _dio.post(
         '/api/v1/driver-app/pod/$tripId',
         data: {
-          'driver_id': driverId,
-          'company_id': 1, // mock company id
           'signature_url': signatureUrl,
           'photos': photoUrl != null ? [photoUrl] : [],
           'remarks': remarks,
