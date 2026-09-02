@@ -52,6 +52,7 @@ class Driver(Base):
         String(20), unique=True, nullable=False, index=True,
         comment="WhatsApp phone number in E.164 format (e.g. +919876543210)"
     )
+    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # --- Multi-Tenancy (added for driver app) ---
@@ -131,6 +132,7 @@ class Driver(Base):
     )
     company: Mapped[Optional["Company"]] = relationship("Company", lazy="selectin")
     user: Mapped[Optional["User"]] = relationship("User", lazy="selectin")
+    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver")
 
     def __repr__(self) -> str:
         return f"<Driver(id={self.id}, name='{self.name}', status='{self.status.value}')>"

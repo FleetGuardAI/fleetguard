@@ -24,6 +24,7 @@ class ApiEndpoints {
   static String tripPause(int id) => '/api/v1/driver-app/trips/$id/pause';
   static String tripResume(int id) => '/api/v1/driver-app/trips/$id/resume';
   static String tripComplete(int id) => '/api/v1/driver-app/trips/$id/complete';
+  static String tripStartSelfie(int id) => '/api/v1/driver-app/trips/$id/start-selfie';
 
   // --- Vehicle ---
   static const String assignedVehicle = '/api/v1/driver-app/vehicle';

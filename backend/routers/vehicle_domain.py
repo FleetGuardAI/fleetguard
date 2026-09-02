@@ -86,9 +86,10 @@ async def create_vehicle(
         event_type=EventType.VEHICLE_REGISTERED,
         entity_type=EntityType.VEHICLE,
         entity_id=vehicle.registration_number,
+        company_id=current_user.company_id,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
-        payload={"make": vehicle.make, "registration_number": vehicle.registration_number, "company_id": current_user.company_id},
+        payload={"make": vehicle.make, "registration_number": vehicle.registration_number},
     )
     db.add(event)
     await db.commit()
@@ -199,3 +200,43 @@ async def upload_vehicle_document(
         "url": url,
         "extracted_fields": extracted_fields
     }
+
+
+@router.post("/vehicles/{vehicle_id}/assign-driver", response_model=VehicleResponse)
+async def assign_driver_to_vehicle(
+    vehicle_id: int,
+    driver_id: int = Query(..., description="Driver ID to assign to this vehicle"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> VehicleResponse:
+    """Explicitly assign a driver to a vehicle, with fleet isolation checks."""
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle or vehicle.company_id != current_user.company_id:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found")
+        
+    from models.driver_domain import Driver
+    driver = await db.get(Driver, driver_id)
+    if not driver or driver.company_id != current_user.company_id:
+        raise HTTPException(400, "Invalid driver or driver belongs to another fleet")
+
+    vehicle.assigned_driver_id = driver_id
+    await db.commit()
+    await db.refresh(vehicle)
+    return VehicleResponse.model_validate(vehicle)
+
+
+@router.delete("/vehicles/{vehicle_id}/unassign-driver", response_model=VehicleResponse)
+async def unassign_driver_from_vehicle(
+    vehicle_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> VehicleResponse:
+    """Remove driver assignment from a vehicle."""
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle or vehicle.company_id != current_user.company_id:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found")
+
+    vehicle.assigned_driver_id = None
+    await db.commit()
+    await db.refresh(vehicle)
+    return VehicleResponse.model_validate(vehicle)

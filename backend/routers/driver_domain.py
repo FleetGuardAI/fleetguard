@@ -8,11 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from database import get_db, get_read_uow
 from infrastructure.uow import AbstractUnitOfWork
 from services.driver_service import DriverService
 from models.driver_domain import Driver, DriverStatus
+from models.vehicle_domain import Vehicle
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
 from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
 from services.auth_service import get_current_user
@@ -32,7 +34,20 @@ async def list_drivers(
     """List all drivers with optional active filter."""
     service = DriverService(uow)
     drivers = await service.search_drivers(is_active=is_active, limit=limit, offset=offset, company_id=current_user.company_id)
-    return [DriverResponse.model_validate(d) for d in drivers]
+    
+    # Enrich with assigned vehicle registration numbers
+    results = []
+    for d in drivers:
+        resp = DriverResponse.model_validate(d)
+        # assigned_vehicle from vehicle table
+        async with uow:
+            v_result = await uow.session.execute(
+                select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == d.id).limit(1)
+            )
+            reg = v_result.scalar_one_or_none()
+            resp.assigned_vehicle = reg
+        results.append(resp)
+    return results
 
 
 @router.get("/drivers/{driver_id}", response_model=DriverResponse)
@@ -46,7 +61,14 @@ async def get_driver(
     driver = await service.get_driver(driver_id, company_id=current_user.company_id)
     if not driver:
         raise HTTPException(404, f"Driver {driver_id} not found")
-    return DriverResponse.model_validate(driver)
+    resp = DriverResponse.model_validate(driver)
+    # Enrich with assigned vehicle
+    async with uow:
+        v_result = await uow.session.execute(
+            select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == driver.id).limit(1)
+        )
+        resp.assigned_vehicle = v_result.scalar_one_or_none()
+    return resp
 
 
 @router.post("/drivers", response_model=DriverResponse, status_code=status.HTTP_201_CREATED)
@@ -84,6 +106,7 @@ async def create_driver(
         event_type=EventType.DRIVER_REGISTERED,
         entity_type=EntityType.DRIVER,
         entity_id=driver.phone_number,
+        company_id=current_user.company_id,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
         payload={"name": driver.name, "phone_number": driver.phone_number},

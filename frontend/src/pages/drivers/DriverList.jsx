@@ -114,11 +114,24 @@ export default function DriverList() {
     }
   };
 
-  const getRiskVariant = (score) => {
-    if (score == null) return 'neutral';
-    if (score > 60) return 'danger';
-    if (score > 30) return 'warning';
-    return 'success';
+  const getVerificationVariant = (status) => {
+    switch (status) {
+      case 'APPROVED': return 'success';
+      case 'PENDING_APPROVAL': return 'warning';
+      case 'PENDING_DOCUMENTS': return 'info';
+      case 'REJECTED': return 'danger';
+      default: return 'neutral';
+    }
+  };
+
+  const getVerificationLabel = (status) => {
+    switch (status) {
+      case 'APPROVED': return 'Approved';
+      case 'PENDING_APPROVAL': return 'Pending Approval';
+      case 'PENDING_DOCUMENTS': return 'Pending Docs';
+      case 'REJECTED': return 'Rejected';
+      default: return 'Not Started';
+    }
   };
 
   const columns = [
@@ -134,24 +147,28 @@ export default function DriverList() {
       render: (d) => <span>{d.phone_number || 'N/A'}</span>
     },
     {
-      key: 'risk_score',
-      label: 'Risk Score',
+      key: 'age',
+      label: 'Age',
+      sortable: true,
+      render: (d) => <span>{d.age ?? 'N/A'}</span>
+    },
+    {
+      key: 'verification_status',
+      label: 'Verification',
       sortable: true,
       render: (d) => (
-        <Badge variant={getRiskVariant(d.risk_score)}>
-          {d.risk_score != null ? `${d.risk_score} / 100` : 'N/A'}
+        <Badge variant={getVerificationVariant(d.verification_status)}>
+          {getVerificationLabel(d.verification_status)}
         </Badge>
       )
     },
     {
-      key: 'rating',
-      label: 'Rating',
-      sortable: true,
+      key: 'assigned_truck',
+      label: 'Assigned Truck',
       render: (d) => (
-        <div className="flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          <span className="text-sm font-medium">{d.rating != null ? Number(d.rating).toFixed(1) : 'N/A'}</span>
-        </div>
+        <span className={`text-sm font-mono ${d.assigned_truck ? 'text-content font-semibold' : 'text-content-muted'}`}>
+          {d.assigned_truck || 'Unassigned'}
+        </span>
       )
     },
     {

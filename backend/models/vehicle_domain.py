@@ -101,6 +101,7 @@ class Vehicle(Base):
     fuel_logs: Mapped[list["FuelLog"]] = relationship(
         "FuelLog", back_populates="vehicle", lazy="selectin"
     )
+    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="vehicle")
 
     def __repr__(self) -> str:
         return f"<Vehicle(id={self.id}, reg='{self.registration_number}', make='{self.make}')>"

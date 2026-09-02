@@ -73,12 +73,13 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> registerProfile(String name, String licenseNumber, String aadhaarNumber) async {
+  Future<Map<String, dynamic>> registerProfile(String name, String licenseNumber, String aadhaarNumber, int age) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/register', data: {
         'name': name,
         'license_number': licenseNumber,
         'aadhaar_number': aadhaarNumber,
+        'age': age,
       });
       return response.data;
     } catch (e) {
@@ -86,11 +87,19 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> uploadDocument(File file, String documentType, int driverId) async {
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/profile');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to get profile: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadDocument(File file, String documentType) async {
     try {
       final formData = FormData.fromMap({
         'document_type': documentType,
-        'driver_id': driverId,
         'file': await MultipartFile.fromFile(file.path),
       });
 
@@ -104,15 +113,10 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> verifyFace(int driverId) async {
+  Future<Map<String, dynamic>> verifyFace() async {
     try {
-      final formData = FormData.fromMap({
-        'driver_id': driverId,
-      });
-
       final response = await _dio.post(
         '/api/v1/driver-app/face-verify',
-        data: formData,
       );
       return response.data;
     } catch (e) {
