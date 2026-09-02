@@ -86,7 +86,6 @@ async def create_vehicle(
         event_type=EventType.VEHICLE_REGISTERED,
         entity_type=EntityType.VEHICLE,
         entity_id=vehicle.registration_number,
-        company_id=current_user.company_id,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
         payload={"make": vehicle.make, "registration_number": vehicle.registration_number},
