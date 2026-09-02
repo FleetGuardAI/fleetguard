@@ -2,13 +2,14 @@
 FleetGuard — Driver Trips & Assigned Vehicle Router
 
 Provides endpoints for driver trip management, assigned vehicle viewing, and trip lifecycle actions.
+Includes strict fleet isolation and mandatory selfie-with-truck verification.
 """
 
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,9 @@ from database import get_db
 from models.driver_domain import Driver
 from models.trip_domain import Trip, TripStatus
 from models.vehicle_domain import Vehicle
+from models.trip_start_selfie import TripStartSelfie
+from routers.driver_mobile import get_current_driver
+from services.file_upload_service import storage_service
 
 logger = logging.getLogger("fleetguard.driver_trips")
 
@@ -71,20 +75,22 @@ class DriverTripResponse(BaseModel):
     eta_minutes: Optional[int] = 45
     distance_remaining_km: Optional[float] = 28.5
     stops: List[StopPoint] = []
+    start_selfie_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
 
 @router.get("/trips/today", response_model=List[DriverTripResponse])
 async def get_today_trips(
-    driver_id: int = Query(...),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get today's assigned trips for the specified driver.
+    Get today's assigned trips for the authenticated driver.
+    Ensures strict tenant isolation by using the JWT driver profile.
     """
     result = await db.execute(
-        select(Trip).where(Trip.driver_id == driver_id)
+        select(Trip).where(Trip.driver_id == driver.id, Trip.company_id == driver.company_id)
     )
     trips = result.scalars().all()
 
@@ -111,21 +117,80 @@ async def get_today_trips(
                 vehicle_id=trip.vehicle_id,
                 driver_id=trip.driver_id,
                 stops=stops,
+                start_selfie_url=trip.start_selfie_url,
             )
         )
 
     return response_trips
 
 
+@router.post("/trips/{trip_id}/start-selfie")
+async def upload_trip_start_selfie(
+    trip_id: int,
+    file: UploadFile = File(...),
+    driver: Driver = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload mandatory selfie-with-truck before starting a trip."""
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if not trip.vehicle_id:
+        raise HTTPException(status_code=400, detail="No vehicle assigned to this trip")
+
+    vehicle = await db.get(Vehicle, trip.vehicle_id)
+    if not vehicle:
+        raise HTTPException(status_code=400, detail="Assigned vehicle not found")
+
+    # Upload selfie
+    url = await storage_service.upload_file(
+        file=file,
+        folder=f"trips/{trip_id}/selfies",
+    )
+
+    # Create verification record
+    selfie_record = TripStartSelfie(
+        trip_id=trip.id,
+        driver_id=driver.id,
+        vehicle_id=vehicle.id,
+        company_id=driver.company_id,
+        registration_number=vehicle.registration_number,
+        selfie_url=url,
+        verification_status="COMPLETED"
+    )
+    db.add(selfie_record)
+    
+    trip.start_selfie_url = url
+    await db.commit()
+
+    return {"message": "Selfie uploaded successfully", "url": url}
+
+
 @router.post("/trips/{trip_id}/start", response_model=DriverTripResponse)
 async def start_trip(
     trip_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
-    """Start an assigned trip."""
+    """Start an assigned trip, requiring prior selfie verification."""
     trip = await db.get(Trip, trip_id)
-    if trip is None:
+    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
         raise HTTPException(404, "Trip not found")
+
+    # Check for active trips
+    active_result = await db.execute(
+        select(Trip).where(
+            Trip.driver_id == driver.id, 
+            Trip.status == TripStatus.IN_PROGRESS
+        )
+    )
+    if active_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Another trip is currently in progress")
+
+    # Ensure selfie verification is complete
+    if not trip.start_selfie_url:
+        raise HTTPException(status_code=400, detail="Mandatory trip-start selfie is missing. Please upload selfie with truck first.")
 
     trip.status = TripStatus.IN_PROGRESS
     trip.actual_start_time = datetime.now(timezone.utc)
@@ -133,18 +198,19 @@ async def start_trip(
     await db.commit()
     await db.refresh(trip)
 
-    logger.info(f"Trip {trip_id} started")
+    logger.info(f"Trip {trip_id} started by driver {driver.id}")
     return DriverTripResponse.model_validate(trip)
 
 
 @router.post("/trips/{trip_id}/pause", response_model=DriverTripResponse)
 async def pause_trip(
     trip_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Pause an ongoing trip."""
     trip = await db.get(Trip, trip_id)
-    if trip is None:
+    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
         raise HTTPException(404, "Trip not found")
 
     trip.status = TripStatus.PAUSED
@@ -157,11 +223,12 @@ async def pause_trip(
 @router.post("/trips/{trip_id}/resume", response_model=DriverTripResponse)
 async def resume_trip(
     trip_id: int,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Resume a paused trip."""
     trip = await db.get(Trip, trip_id)
-    if trip is None:
+    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
         raise HTTPException(404, "Trip not found")
 
     trip.status = TripStatus.IN_PROGRESS
@@ -175,11 +242,12 @@ async def resume_trip(
 async def complete_trip(
     trip_id: int,
     actual_distance: Optional[float] = Query(None),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Complete a trip."""
     trip = await db.get(Trip, trip_id)
-    if trip is None:
+    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
         raise HTTPException(404, "Trip not found")
 
     trip.status = TripStatus.COMPLETED
@@ -190,27 +258,28 @@ async def complete_trip(
     await db.commit()
     await db.refresh(trip)
 
-    logger.info(f"Trip {trip_id} completed")
+    logger.info(f"Trip {trip_id} completed by driver {driver.id}")
     return DriverTripResponse.model_validate(trip)
 
 
 @router.get("/vehicle", response_model=VehicleDetailResponse)
 async def get_assigned_vehicle(
-    driver_id: int = Query(...),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get the vehicle currently assigned to the driver.
+    Get the vehicle currently assigned to the authenticated driver.
     """
     result = await db.execute(
-        select(Vehicle).where(Vehicle.assigned_driver_id == driver_id).limit(1)
+        select(Vehicle).where(
+            Vehicle.assigned_driver_id == driver.id,
+            Vehicle.company_id == driver.company_id
+        ).limit(1)
     )
     vehicle = result.scalar_one_or_none()
 
     if vehicle is None:
         raise HTTPException(404, "No vehicle assigned to this driver")
-
-
 
     return VehicleDetailResponse(
         id=vehicle.id,

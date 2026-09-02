@@ -58,8 +58,10 @@ class Trip(Base):
     vehicle_id: Mapped[Optional[int]] = mapped_column(ForeignKey("vehicles.id"), nullable=True, index=True)
     driver_id: Mapped[Optional[int]] = mapped_column(ForeignKey("drivers.id"), nullable=True, index=True)
 
-    vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", lazy="selectin")
-    driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin")
+    vehicle: Mapped[Optional["Vehicle"]] = relationship("Vehicle", lazy="selectin", back_populates="trips")
+    driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin", back_populates="trips")
+    start_selfies = relationship("TripStartSelfie", back_populates="trip", cascade="all, delete-orphan")
+    start_selfie_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # --- Isolation ---
     company_id: Mapped[int] = mapped_column(

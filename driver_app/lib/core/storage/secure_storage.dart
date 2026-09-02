@@ -16,6 +16,8 @@ class SecureStorage {
   static const _keyPhoneNumber = 'phone_number';
   static const _keyVerificationStatus = 'verification_status';
   static const _keyDutyStatus = 'duty_status';
+  static const _keyCompanyName = 'company_name';
+  static const _keyInviteToken = 'invite_token';
 
   // --- Access Token ---
   static Future<void> setAccessToken(String token) async {
@@ -90,6 +92,24 @@ class SecureStorage {
 
   static Future<String?> getDutyStatus() async {
     return await _storage.read(key: _keyDutyStatus);
+  }
+
+  // --- Company Name ---
+  static Future<void> setCompanyName(String name) async {
+    await _storage.write(key: _keyCompanyName, value: name);
+  }
+
+  static Future<String?> getCompanyName() async {
+    return await _storage.read(key: _keyCompanyName);
+  }
+
+  // --- Invite Token ---
+  static Future<void> setInviteToken(String token) async {
+    await _storage.write(key: _keyInviteToken, value: token);
+  }
+
+  static Future<String?> getInviteToken() async {
+    return await _storage.read(key: _keyInviteToken);
   }
 
   // --- Clear All ---

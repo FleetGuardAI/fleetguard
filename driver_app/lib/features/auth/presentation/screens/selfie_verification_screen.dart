@@ -36,13 +36,12 @@ class _SelfieVerificationScreenState extends ConsumerState<SelfieVerificationScr
     
     try {
       final repo = ref.read(authRepositoryProvider);
-      final driverId = await SecureStorage.getDriverId() ?? 1;
 
       // 1. Upload Selfie
-      await repo.uploadDocument(_selfieFile!, 'selfie', driverId);
+      await repo.uploadDocument(_selfieFile!, 'selfie');
 
       // 2. Trigger Face Verify
-      final verifyResponse = await repo.verifyFace(driverId);
+      final verifyResponse = await repo.verifyFace();
 
       await SecureStorage.setVerificationStatus('PENDING_APPROVAL');
 
@@ -53,7 +52,7 @@ class _SelfieVerificationScreenState extends ConsumerState<SelfieVerificationScr
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('AI Face Verification Match: $confidence% Confidence')),
         );
-        context.go('/auth/pending-approval');
+        context.go('/auth/welcome');
       }
     } catch (e) {
       setState(() => _isVerifying = false);

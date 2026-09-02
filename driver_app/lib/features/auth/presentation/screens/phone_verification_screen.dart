@@ -86,14 +86,22 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       if (response['verification_status'] != null) {
         await SecureStorage.setVerificationStatus(response['verification_status']);
       }
+      // Store company name for welcome screen
+      if (widget.companyName.isNotEmpty) {
+        await SecureStorage.setCompanyName(widget.companyName);
+      }
+      // Store invite token for session persistence
+      await SecureStorage.setInviteToken(widget.inviteToken);
 
       setState(() => _isLoading = false);
 
       if (mounted) {
-        if (response['is_new_driver'] == true || response['verification_status'] != 'APPROVED') {
+        if (response['is_new_driver'] == true || response['verification_status'] == 'PENDING_DOCUMENTS') {
           context.go('/auth/profile');
+        } else if (response['verification_status'] == 'PENDING_APPROVAL') {
+          context.go('/auth/pending-approval');
         } else {
-          context.go('/home');
+          context.go('/dashboard');
         }
       }
     } catch (e) {
