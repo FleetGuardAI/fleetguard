@@ -78,24 +78,106 @@ class OcrExtractResponse(BaseModel):
 @router.post("/expenses/ocr", response_model=OcrExtractResponse)
 async def process_receipt_ocr(
     file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    uow = Depends(get_uow),
 ):
     """
     Process receipt image via AI OCR framework.
-    Extracts Vendor, GST, Date, Amount, and runs receipt fraud detection.
+    Extracts Vendor, Date, Amount.
     """
+    content = await file.read()
+    await file.seek(0)
+    
     url = await storage_service.upload_file(file, folder="receipts")
+    
+    from infrastructure.ocr.provider import get_ocr_provider
+    provider = get_ocr_provider()
+    
+    try:
+        ocr_result = await provider.extract_text(
+            file_data=content, 
+            mime_type=file.content_type or "image/jpeg", 
+            document_type="receipt"
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"OCR failed: {e}")
+        raise HTTPException(status_code=500, detail="OCR processing failed")
+        
+    fields = ocr_result.extracted_fields
+    
+    # Parse extracted fields robustly
+    vendor = fields.get("MerchantName", "Unknown Vendor")
+    date = fields.get("TransactionDate", datetime.now().strftime("%Y-%m-%d"))
+    
+    # Attempt to normalize amount. 
+    # Handle typically parsed values.
+    amount_raw = fields.get("Total")
+    amount = 0.0
+    if amount_raw is not None:
+        try:
+            if isinstance(amount_raw, str):
+                # Clean up typical currency strings like "₹ 2,500.00"
+                clean_amount = amount_raw.replace("₹", "").replace("Rs.", "").replace("INR", "").replace(",", "").strip()
+                amount = float(clean_amount)
+            else:
+                amount = float(amount_raw)
+        except ValueError:
+            amount = 0.0
+            
+    gst_number = fields.get("MerchantTaxId")
 
-    # AI OCR extraction (Demo mode uses high accuracy simulated response adhering to production contract)
-    # If OpenAI key configured, can call vision API.
+    # Store OCR evidence using the existing Evidence framework
+    try:
+        from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+        from models.evidence import Evidence, EvidenceType, EvidenceStatus
+        import json
+        
+        # Create a document upload event
+        event = OperationalEvent(
+            event_type=EventType.DOCUMENT_UPLOADED,
+            entity_type=EntityType.DOCUMENT,
+            entity_id=url,
+            occurred_at=datetime.now(timezone.utc),
+            capture_method=CaptureMethod.SYSTEM_GENERATED,
+            created_by="system",
+            payload={"url": url, "filename": file.filename}
+        )
+        db.add(event)
+        await db.flush() # To get event.id
+        
+        # Create the OCR evidence record
+        evidence = Evidence(
+            event_id=event.id,
+            evidence_type=EvidenceType.OCR_EXTRACTION,
+            source=ocr_result.provider_name,
+            status=EvidenceStatus.COMPLETED,
+            summary=f"Extracted {amount} from {vendor}",
+            details=ocr_result.text[:500] if ocr_result.text else None,
+            raw_data={
+                "extracted_fields": ocr_result.extracted_fields,
+                "confidence": ocr_result.confidence,
+                "processing_time_ms": ocr_result.processing_time_ms,
+                "provider_request_id": ocr_result.provider_request_id,
+                "metadata": ocr_result.metadata
+            }
+        )
+        db.add(evidence)
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Failed to save OCR evidence: {e}")
+        await db.rollback()
+
     return OcrExtractResponse(
-        vendor="HP Fuel Station #482",
-        gst_number="27AAACH1234H1Z5",
-        date=datetime.now().strftime("%Y-%m-%d"),
-        amount=2500.0,
-        category="FUEL",
-        fraud_risk_score=0.08,
-        is_suspicious=False,
-        fraud_flags=[],
+        vendor=vendor,
+        gst_number=gst_number,
+        date=date,
+        amount=amount,
+        category="MISCELLANEOUS", # Default category
+        fraud_risk_score=0.0,     # Not implemented
+        is_suspicious=False,      # Not implemented
+        fraud_flags=[],           # Not implemented
     )
 
 
@@ -176,7 +258,7 @@ async def create_expense(
         status=expense.status.value,
         expense_date=expense.expense_date,
         description=expense.description,
-        receipt_reference=expense.receipt_reference,
+        receipt_reference=storage_service.create_signed_url(expense.receipt_reference) if expense.receipt_reference else None,
         vehicle_id=expense.vehicle_id,
         driver_id=expense.driver_id,
         trip_id=expense.trip_id,
@@ -210,7 +292,7 @@ async def list_driver_expenses(
             status=exp.status.value,
             expense_date=exp.expense_date,
             description=exp.description,
-            receipt_reference=exp.receipt_reference,
+            receipt_reference=storage_service.create_signed_url(exp.receipt_reference) if exp.receipt_reference else None,
             vehicle_id=exp.vehicle_id,
             driver_id=exp.driver_id,
             trip_id=exp.trip_id,

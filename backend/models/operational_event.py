@@ -38,6 +38,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
+import sqlalchemy as sa
 from sqlalchemy import DateTime, Enum, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -255,6 +256,15 @@ class OperationalEvent(Base):
         primary_key=True,
         default=uuid.uuid4,
         comment="Globally unique event identifier (UUID v4).",
+    )
+
+    # --- Multi-Tenancy ---
+    company_id: Mapped[int] = mapped_column(
+        sa.Integer,
+        sa.ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Tenant isolation boundary.",
     )
 
     # --- Event Classification ---

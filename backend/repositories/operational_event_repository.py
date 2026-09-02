@@ -120,16 +120,20 @@ class OperationalEventRepository:
         EventPersistenceError
             On any unexpected database error.
         """
+        if event.company_id is None:
+            raise EventPersistenceError("company_id is required for event creation.")
+            
         try:
             self._db.add(event)
             await self._db.flush()
             await self._db.refresh(event)
             logger.info(
-                "OperationalEvent created: id=%s type=%s entity=%s:%s",
+                "OperationalEvent created: id=%s type=%s entity=%s:%s company_id=%s",
                 event.id,
                 event.event_type.value,
                 event.entity_type.value,
                 event.entity_id,
+                event.company_id,
             )
             return event
         except IntegrityError as exc:
@@ -146,6 +150,7 @@ class OperationalEventRepository:
     async def update_event_notes(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         notes: str | None,
     ) -> OperationalEvent:
         """
@@ -158,6 +163,8 @@ class OperationalEventRepository:
         ----------
         event_id : uuid.UUID
             The UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         notes : str | None
             The new annotation text.  Pass ``None`` to clear the notes field.
 
@@ -173,7 +180,7 @@ class OperationalEventRepository:
         EventPersistenceError
             On any unexpected database error.
         """
-        event = await self._get_or_raise(event_id)
+        event = await self._get_or_raise(event_id, company_id)
         try:
             event.notes = notes
             await self._db.flush()
@@ -189,6 +196,7 @@ class OperationalEventRepository:
     async def update_event_metadata(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         event_metadata: dict[str, Any],
     ) -> OperationalEvent:
         """
@@ -201,6 +209,8 @@ class OperationalEventRepository:
         ----------
         event_id : uuid.UUID
             The UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         event_metadata : dict[str, Any]
             The new metadata payload.  Replaces the existing value entirely.
 
@@ -216,7 +226,7 @@ class OperationalEventRepository:
         EventPersistenceError
             On any unexpected database error.
         """
-        event = await self._get_or_raise(event_id)
+        event = await self._get_or_raise(event_id, company_id)
         try:
             event.event_metadata = event_metadata
             await self._db.flush()
@@ -232,6 +242,7 @@ class OperationalEventRepository:
     async def update_verification_status(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         status: VerificationStatus,
     ) -> OperationalEvent:
         """
@@ -245,6 +256,8 @@ class OperationalEventRepository:
         ----------
         event_id : uuid.UUID
             The UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         status : VerificationStatus
             The new verification status value.
 
@@ -260,7 +273,7 @@ class OperationalEventRepository:
         EventPersistenceError
             On any unexpected database error.
         """
-        event = await self._get_or_raise(event_id)
+        event = await self._get_or_raise(event_id, company_id)
         try:
             event.verification_status = status
             await self._db.flush()
@@ -281,7 +294,7 @@ class OperationalEventRepository:
     # Read Methods
     # -----------------------------------------------------------------------
 
-    async def get_event_by_id(self, event_id: uuid.UUID) -> OperationalEvent:
+    async def get_event_by_id(self, event_id: uuid.UUID, company_id: int) -> OperationalEvent:
         """
         Retrieve a single event by its UUID primary key.
 
@@ -289,6 +302,8 @@ class OperationalEventRepository:
         ----------
         event_id : uuid.UUID
             The UUID of the event to retrieve.
+        company_id : int
+            The tenant boundary.
 
         Returns
         -------
@@ -298,12 +313,13 @@ class OperationalEventRepository:
         Raises
         ------
         EventNotFoundError
-            If no event with the given ID exists.
+            If no event with the given ID exists in the specified company.
         """
-        return await self._get_or_raise(event_id)
+        return await self._get_or_raise(event_id, company_id)
 
     async def list_events(
         self,
+        company_id: int,
         *,
         limit: int = 50,
         offset: int = 0,
@@ -314,6 +330,8 @@ class OperationalEventRepository:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         limit : int
             Maximum number of records to return.  Default 50.
         offset : int
@@ -326,6 +344,7 @@ class OperationalEventRepository:
         """
         stmt = (
             select(OperationalEvent)
+            .where(OperationalEvent.company_id == company_id)
             .order_by(OperationalEvent.occurred_at.desc())
             .limit(limit)
             .offset(offset)
@@ -335,6 +354,7 @@ class OperationalEventRepository:
 
     async def list_events_by_entity(
         self,
+        company_id: int,
         entity_type: EntityType,
         entity_id: str,
         *,
@@ -350,6 +370,8 @@ class OperationalEventRepository:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         entity_type : EntityType
             The domain category of the entity (e.g. VEHICLE, DRIVER).
         entity_id : str
@@ -367,6 +389,7 @@ class OperationalEventRepository:
         stmt = (
             select(OperationalEvent)
             .where(
+                OperationalEvent.company_id == company_id,
                 OperationalEvent.entity_type == entity_type,
                 OperationalEvent.entity_id == entity_id,
             )
@@ -379,6 +402,7 @@ class OperationalEventRepository:
 
     async def list_events_by_type(
         self,
+        company_id: int,
         event_type: EventType,
         *,
         limit: int = 50,
@@ -391,6 +415,8 @@ class OperationalEventRepository:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         event_type : EventType
             The event type to filter by.
         limit : int
@@ -405,7 +431,10 @@ class OperationalEventRepository:
         """
         stmt = (
             select(OperationalEvent)
-            .where(OperationalEvent.event_type == event_type)
+            .where(
+                OperationalEvent.company_id == company_id,
+                OperationalEvent.event_type == event_type
+            )
             .order_by(OperationalEvent.occurred_at.desc())
             .limit(limit)
             .offset(offset)
@@ -415,6 +444,7 @@ class OperationalEventRepository:
 
     async def list_events_by_verification_status(
         self,
+        company_id: int,
         status: VerificationStatus,
         *,
         limit: int = 50,
@@ -430,6 +460,8 @@ class OperationalEventRepository:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         status : VerificationStatus
             The verification status to filter by (PENDING, VERIFIED, etc.).
         limit : int
@@ -444,7 +476,10 @@ class OperationalEventRepository:
         """
         stmt = (
             select(OperationalEvent)
-            .where(OperationalEvent.verification_status == status)
+            .where(
+                OperationalEvent.company_id == company_id,
+                OperationalEvent.verification_status == status
+            )
             .order_by(OperationalEvent.occurred_at.desc())
             .limit(limit)
             .offset(offset)
@@ -456,9 +491,9 @@ class OperationalEventRepository:
     # Private Helpers
     # -----------------------------------------------------------------------
 
-    async def _get_or_raise(self, event_id: uuid.UUID) -> OperationalEvent:
+    async def _get_or_raise(self, event_id: uuid.UUID, company_id: int) -> OperationalEvent:
         """
-        Retrieve an event by ID or raise ``EventNotFoundError``.
+        Retrieve an event by ID and company_id or raise ``EventNotFoundError``.
 
         Internal helper used by all methods that require the event to exist
         before performing an operation.
@@ -476,9 +511,12 @@ class OperationalEventRepository:
         Raises
         ------
         EventNotFoundError
-            If no event with the given UUID exists in the database.
+            If no event with the given UUID exists in the database for the company.
         """
-        stmt = select(OperationalEvent).where(OperationalEvent.id == event_id)
+        stmt = select(OperationalEvent).where(
+            OperationalEvent.id == event_id,
+            OperationalEvent.company_id == company_id
+        )
         result = await self._db.execute(stmt)
         event: OperationalEvent | None = result.scalar_one_or_none()
         if event is None:

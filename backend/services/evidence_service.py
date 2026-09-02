@@ -47,6 +47,7 @@ class EvidenceService:
     async def add_evidence(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         payload: EvidenceCreate,
     ) -> EvidenceResponse:
         """
@@ -54,19 +55,19 @@ class EvidenceService:
         """
         try:
             # Check if event exists. The repository raises EventNotFoundError if it doesn't.
-            await self._event_repo.get_event_by_id(event_id)
+            await self._event_repo.get_event_by_id(event_id, company_id)
         except EventNotFoundError:
             raise EventDoesNotExistError(event_id)
             
-        evidence = await self._repo.create(event_id, payload)
+        evidence = await self._repo.create(event_id, company_id, payload)
         return EvidenceResponse.model_validate(evidence)
 
-    async def get_evidence(self, evidence_id: uuid.UUID) -> EvidenceResponse:
+    async def get_evidence(self, evidence_id: uuid.UUID, company_id: int) -> EvidenceResponse:
         """
         Retrieve a specific evidence record by ID.
         """
         try:
-            evidence = await self._repo.get_by_id(evidence_id)
+            evidence = await self._repo.get_by_id(evidence_id, company_id)
             return EvidenceResponse.model_validate(evidence)
         except EvidenceNotFoundError:
             raise EvidenceNotFound(evidence_id)
@@ -74,29 +75,31 @@ class EvidenceService:
     async def list_evidence_for_event(
         self,
         event_id: uuid.UUID,
+        company_id: int,
     ) -> list[EvidenceResponse]:
         """
         List all evidence attached to a specific event.
         Also validates that the event exists.
         """
         try:
-            await self._event_repo.get_event_by_id(event_id)
+            await self._event_repo.get_event_by_id(event_id, company_id)
         except EventNotFoundError:
             raise EventDoesNotExistError(event_id)
             
-        evidence_list = await self._repo.get_for_event(event_id)
+        evidence_list = await self._repo.get_for_event(event_id, company_id)
         return [EvidenceResponse.model_validate(ev) for ev in evidence_list]
 
     async def update_evidence_status(
         self,
         evidence_id: uuid.UUID,
+        company_id: int,
         payload: EvidenceStatusUpdate,
     ) -> EvidenceResponse:
         """
         Update the status of an existing async evidence request.
         """
         try:
-            evidence = await self._repo.update_status(evidence_id, payload.status)
+            evidence = await self._repo.update_status(evidence_id, company_id, payload.status)
             return EvidenceResponse.model_validate(evidence)
         except EvidenceNotFoundError:
             raise EvidenceNotFound(evidence_id)

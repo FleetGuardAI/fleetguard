@@ -27,6 +27,17 @@ class VehicleResponse(BaseModel):
     origin_id: Optional[str] = None
     assigned_driver_id: Optional[int] = None
 
+    # --- Vehicle Documents ---
+    rc_url: Optional[str] = None
+    insurance_url: Optional[str] = None
+    insurance_expiry: Optional[str] = None
+    puc_url: Optional[str] = None
+    puc_expiry: Optional[str] = None
+    fitness_url: Optional[str] = None
+    fitness_expiry: Optional[str] = None
+    permit_url: Optional[str] = None
+    permit_expiry: Optional[str] = None
+
     model_config = {
         "from_attributes": True
     }

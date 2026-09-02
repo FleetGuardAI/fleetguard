@@ -4,7 +4,7 @@ Provides REST APIs for Vehicle Business Domain CRUD operations.
 """
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,6 +82,7 @@ async def create_vehicle(
 
     # Log operational event
     event = OperationalEvent(
+        company_id=current_user.company_id,
         event_type=EventType.VEHICLE_REGISTERED,
         entity_type=EntityType.VEHICLE,
         entity_id=vehicle.registration_number,
@@ -145,3 +146,56 @@ async def delete_vehicle(
     await db.delete(vehicle)
     await db.commit()
     return {"message": f"Vehicle {vehicle_id} deleted successfully"}
+
+
+@router.post("/vehicles/{vehicle_id}/upload-document")
+async def upload_vehicle_document(
+    vehicle_id: int,
+    document_type: str = Form(..., description="rc, insurance, puc, fitness_certificate, permit"),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload a vehicle document (RC, Insurance, PUC, Fitness, Permit).
+    Uses the unified document pipeline to upload, OCR, and store metadata/expiry.
+    """
+    vehicle = await db.get(Vehicle, vehicle_id)
+    if not vehicle or vehicle.company_id != current_user.company_id:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found")
+
+    valid_types = ["rc", "insurance", "puc", "fitness_certificate", "permit"]
+    if document_type not in valid_types:
+        raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
+
+    from services.unified_pipeline_service import UnifiedPipelineService
+    from models.operational_event import EntityType
+    
+    pipeline = UnifiedPipelineService(db)
+    
+    try:
+        url, extracted_fields = await pipeline.process_document(
+            file=file,
+            document_type=document_type,
+            entity_type=EntityType.VEHICLE,
+            entity_id=str(vehicle.id),
+            uploaded_by=f"user_{current_user.id}",
+            company_id=current_user.company_id
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger("fleetguard.vehicle_domain")
+        logger.error(f"Failed to process vehicle document upload: {e}")
+        raise HTTPException(500, "Failed to upload and process document")
+
+    # Update vehicle record
+    setattr(vehicle, f"{document_type}_url", url)
+
+    await db.commit()
+    await db.refresh(vehicle)
+
+    return {
+        "message": f"{document_type} uploaded successfully",
+        "url": url,
+        "extracted_fields": extracted_fields
+    }

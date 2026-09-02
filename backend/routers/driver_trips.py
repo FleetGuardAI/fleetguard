@@ -226,6 +226,6 @@ async def get_assigned_vehicle(
         puc_status="VALID",
         permit_status="NATIONAL_PERMIT",
         assigned_dispatcher="Fleet Operations Center",
-        image_url="/uploads/vehicles/demo_truck.jpg",
+        image_url=None,
         status=vehicle.status.value if vehicle.status else "ACTIVE",
     )

@@ -20,7 +20,6 @@ from schemas.document import DocumentCreate, DocumentResponse, DocumentUpdate
 
 
 # Define upload directory (relative to backend root)
-UPLOAD_DIR = Path("uploads")
 
 
 class DocumentServiceError(Exception):
@@ -45,7 +44,6 @@ class DocumentService:
         self._repo = DocumentRepository(db)
         
         # Ensure upload directory exists
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     async def upload_document(
         self,
@@ -65,12 +63,15 @@ class DocumentService:
         storage_filename = f"{document_id}{file_ext}"
         
         from services.file_upload_service import storage_service
+        from fastapi import HTTPException
         try:
             storage_path = await storage_service.upload_file(
                 file=file,
                 folder="documents",
                 filename=storage_filename
             )
+        except HTTPException:
+            raise
         except Exception as e:
             raise DocumentServiceError(f"Failed to upload document to storage: {e}")
             
@@ -85,7 +86,9 @@ class DocumentService:
         
         try:
             doc = await self._repo.create(create_schema)
-            return DocumentResponse.model_validate(doc)
+            resp = DocumentResponse.model_validate(doc)
+            resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+            return resp
         except Exception as e:
             # Cleanup if DB fails
             await storage_service.delete_file(storage_path)
@@ -95,7 +98,10 @@ class DocumentService:
         """Retrieve a document by ID."""
         try:
             doc = await self._repo.get_by_id(document_id, company_id=company_id)
-            return DocumentResponse.model_validate(doc)
+            resp = DocumentResponse.model_validate(doc)
+            from services.file_upload_service import storage_service
+            resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+            return resp
         except DocumentNotFoundError:
             raise DocumentNotFound(document_id)
 
@@ -114,7 +120,13 @@ class DocumentService:
             limit=limit,
             offset=offset
         )
-        return [DocumentResponse.model_validate(doc) for doc in docs]
+        from services.file_upload_service import storage_service
+        results = []
+        for doc in docs:
+            resp = DocumentResponse.model_validate(doc)
+            resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+            results.append(resp)
+        return results
 
     async def update_document_status(
         self,
@@ -126,6 +138,9 @@ class DocumentService:
         update_schema = DocumentUpdate(status=status)
         try:
             doc = await self._repo.update(document_id, update_schema, company_id=company_id)
-            return DocumentResponse.model_validate(doc)
+            resp = DocumentResponse.model_validate(doc)
+            from services.file_upload_service import storage_service
+            resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+            return resp
         except DocumentNotFoundError:
             raise DocumentNotFound(document_id)

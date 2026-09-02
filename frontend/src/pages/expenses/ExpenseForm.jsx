@@ -72,16 +72,37 @@ export default function ExpenseForm() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSimulateUpload = async () => {
+  const fileInputRef = React.useRef(null);
+  const [ocrData, setOcrData] = useState(null);
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
     setUploadingFile(true);
+    setOcrData(null);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setReceiptUrl('https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=600');
-      success('Receipt Uploaded', 'OCR receipt attached successfully.');
+      const { uploadExpenseReceiptOCR } = await import('@/api/expenseApi');
+      const response = await uploadExpenseReceiptOCR(file);
+      
+      // Assume the backend returns an object that can contain amount, vendor, date
+      if (response.amount) {
+        setAmount(response.amount.toString());
+      }
+      if (response.vendor) {
+        setTitle(response.vendor);
+      }
+      
+      setReceiptUrl(response.receipt_url || "uploaded"); // Assuming we don't have a direct URL immediately or we just mark it as uploaded
+      setOcrData(response);
+      success('Receipt Uploaded', 'OCR receipt processed successfully.');
     } catch (e) {
-      error('Upload Failed', 'Failed to scan receipt.');
+      error('Upload Failed', e.message || 'Failed to scan receipt.');
     } finally {
       setUploadingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -211,12 +232,19 @@ export default function ExpenseForm() {
           <div className="space-y-1.5">
             <span className="block text-sm font-medium text-content-secondary">Scanned Bill Receipt Photo</span>
             <div className="flex items-center gap-3">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*,.pdf"
+                onChange={handleFileUpload}
+              />
               <Button
                 type="button"
                 variant="outline"
                 loading={uploadingFile}
                 icon={<Upload className="h-4 w-4 text-brand-600" />}
-                onClick={handleSimulateUpload}
+                onClick={() => fileInputRef.current?.click()}
               >
                 Scan Receipt Bill
               </Button>
@@ -226,6 +254,11 @@ export default function ExpenseForm() {
                 <span className="text-xs text-content-secondary">No receipt attached</span>
               )}
             </div>
+            {ocrData && ocrData.amount && (
+               <div className="text-xs text-blue-600 mt-1">
+                 Auto-populated amount: ₹{ocrData.amount} from {ocrData.vendor}
+               </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
