@@ -54,11 +54,11 @@ class VehicleDetailScreen extends StatelessWidget {
             _buildComplianceRow('National Permit', 'PERMIT ACTIVE', Colors.green),
             _buildComplianceRow('Fuel Capacity', '400.0 Liters (Diesel)', Colors.blue),
             const SizedBox(height: 20),
-            Card(
+            const Card(
               child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: const Text('Assigned Dispatcher', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Rajesh Sharma • Fleet Ops HQ\nPhone: +91 98111 22233'),
+                leading: CircleAvatar(child: Icon(Icons.person)),
+                title: Text('Assigned Dispatcher', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('Rajesh Sharma • Fleet Ops HQ\nPhone: +91 98111 22233'),
               ),
             ),
           ],

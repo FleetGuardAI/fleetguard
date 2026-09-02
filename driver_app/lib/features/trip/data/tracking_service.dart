@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,11 +14,11 @@ final trackingServiceProvider = Provider<TrackingService>((ref) {
 });
 
 class TrackingService {
+
+  TrackingService(this._dio);
   final Dio _dio;
   WebSocketChannel? _channel;
   StreamSubscription<Position>? _positionSubscription;
-
-  TrackingService(this._dio);
 
   Future<void> startTracking() async {
     // 1. Request Permission
@@ -35,7 +34,7 @@ class TrackingService {
     }
 
     final driverId = await SecureStorage.getDriverId() ?? 1;
-    final token = await SecureStorage.getAccessToken() ?? "demo_token";
+    final token = await SecureStorage.getAccessToken() ?? 'demo_token';
 
     // 2. Connect to WebSocket
     final wsUrl = '${AppConfig.wsBaseUrl}/api/v1/ws/driver/$driverId?token=$token';

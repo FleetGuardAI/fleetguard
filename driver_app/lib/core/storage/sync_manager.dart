@@ -11,10 +11,6 @@ import 'local_database.dart';
 /// Manages offline-to-online data synchronization.
 /// Watches connectivity and automatically syncs pending items when online.
 class SyncManager {
-  final ApiClient _apiClient;
-  Timer? _syncTimer;
-  bool _isSyncing = false;
-  final Connectivity _connectivity = Connectivity();
 
   SyncManager(this._apiClient) {
     _connectivity.onConnectivityChanged.listen((dynamic results) {
@@ -27,12 +23,16 @@ class SyncManager {
       }
     });
   }
+  final ApiClient _apiClient;
+  Timer? _syncTimer;
+  bool _isSyncing = false;
+  final Connectivity _connectivity = Connectivity();
 
   /// Start periodic sync timer
   void startPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(
-      Duration(seconds: AppConfig.locationSyncIntervalSeconds),
+      const Duration(seconds: AppConfig.locationSyncIntervalSeconds),
       (_) => syncAll(),
     );
     AppLogger.info('Periodic sync started (every ${AppConfig.locationSyncIntervalSeconds}s)');

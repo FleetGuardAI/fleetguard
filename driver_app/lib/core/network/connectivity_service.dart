@@ -13,10 +13,6 @@ final connectivityProvider = StreamProvider<bool>((ref) {
 final isOnlineProvider = StateProvider<bool>((ref) => true);
 
 class ConnectivityService {
-  final Connectivity _connectivity = Connectivity();
-  final StreamController<bool> _controller = StreamController<bool>.broadcast();
-
-  Stream<bool> get connectivityStream => _controller.stream;
 
   ConnectivityService() {
     _connectivity.onConnectivityChanged.listen((dynamic results) {
@@ -25,6 +21,10 @@ class ConnectivityService {
       AppLogger.info('Connectivity changed: ${isOnline ? "ONLINE" : "OFFLINE"}');
     });
   }
+  final Connectivity _connectivity = Connectivity();
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
+
+  Stream<bool> get connectivityStream => _controller.stream;
 
   static bool _checkIsOnline(dynamic results) {
     if (results is List) {

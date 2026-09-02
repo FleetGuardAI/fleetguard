@@ -9,42 +9,105 @@ class MoreScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text('More', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.backgroundDark,
-        elevation: 0,
+        title: Text('More', style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+        elevation: 1,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          _buildSectionHeader('Financials'),
+          _buildSectionHeader('Fleet', isDark),
+          _buildOpCard(
+            context,
+            icon: Icons.local_shipping,
+            title: 'Vehicles',
+            subtitle: 'Manage trucks, hardware & assets',
+            onTap: () => context.push('/fleet'),
+            isDark: isDark,
+          ),
+          _buildOpCard(
+            context,
+            icon: Icons.people,
+            title: 'Drivers',
+            subtitle: 'Manage drivers, shifts & invites',
+            onTap: () => context.push('/fleet'),
+            isDark: isDark,
+          ),
+          const SizedBox(height: 16),
+          _buildSectionHeader('Operations', isDark),
+          _buildOpCard(
+            context,
+            icon: Icons.map,
+            title: 'Live Tracking',
+            subtitle: 'Full map view of fleet',
+            onTap: () => context.push('/tracking'),
+            isDark: isDark,
+          ),
+          _buildOpCard(
+            context,
+            icon: Icons.route,
+            title: 'Trips',
+            subtitle: 'Active, upcoming, and completed trips',
+            onTap: () => context.push('/trips'),
+            isDark: isDark,
+          ),
+          _buildOpCard(
+            context,
+            icon: Icons.smart_toy,
+            title: 'Copilot',
+            subtitle: 'AI fleet assistant',
+            onTap: () => context.push('/copilot'),
+            isDark: isDark,
+          ),
+          const SizedBox(height: 16),
+          _buildSectionHeader('Finance', isDark),
           _buildOpCard(
             context,
             icon: Icons.receipt_long,
             title: 'Expenses',
             subtitle: 'Track trip, fuel, and maintenance costs',
-            onTap: () => context.push('/expense'),
+            onTap: () => context.push('/finance'),
+            isDark: isDark,
+          ),
+          _buildOpCard(
+            context,
+            icon: Icons.account_balance_wallet,
+            title: 'Invoices',
+            subtitle: 'Manage payments & billing',
+            onTap: () => context.push('/finance'),
+            isDark: isDark,
           ),
           const SizedBox(height: 16),
-          _buildSectionHeader('System'),
+          _buildSectionHeader('Account & System', isDark),
+          _buildOpCard(
+            context,
+            icon: Icons.settings,
+            title: 'Settings',
+            subtitle: 'App preferences and notifications',
+            onTap: () => context.push('/settings'),
+            isDark: isDark,
+          ),
           _buildOpCard(
             context,
             icon: Icons.logout,
             title: 'Logout',
             subtitle: 'Sign out of Owner App',
-            iconColor: Colors.redAccent,
+            iconColor: AppColors.statusRed,
             onTap: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  backgroundColor: AppColors.surfaceDark,
-                  title: const Text('Logout', style: TextStyle(color: Colors.white)),
-                  content: const Text('Are you sure you want to log out?', style: TextStyle(color: Colors.white70)),
+                  backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+                  title: Text('Logout', style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  content: Text('Are you sure you want to log out?', style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant)),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: Colors.redAccent))),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: AppColors.statusRed))),
                   ],
                 ),
               );
@@ -55,19 +118,22 @@ class MoreScreen extends ConsumerWidget {
                 }
               }
             },
+            isDark: isDark,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+
+
+  Widget _buildSectionHeader(String title, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 8, top: 8),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white54,
+        style: TextStyle(
+          color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
           fontSize: 12,
@@ -76,16 +142,20 @@ class MoreScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildOpCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap, Color? iconColor}) {
+  Widget _buildOpCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap, Color? iconColor, required bool isDark}) {
     return Card(
-      color: AppColors.surfaceDark,
+      color: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+      ),
+      elevation: 0,
       child: ListTile(
-        leading: Icon(icon, color: iconColor ?? Colors.white70),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white30, size: 20),
+        leading: Icon(icon, color: iconColor ?? (isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant)),
+        title: Text(title, style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, fontSize: 12)),
+        trailing: Icon(Icons.chevron_right, color: isDark ? AppColors.darkBorder : AppColors.lightBorder, size: 20),
         onTap: onTap,
       ),
     );

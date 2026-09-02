@@ -7,12 +7,14 @@ class OperationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text('Operations', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.backgroundDark,
-        elevation: 0,
+        title: Text('Operations', style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+        elevation: 1,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -23,6 +25,7 @@ class OperationsScreen extends StatelessWidget {
             title: 'Trips',
             subtitle: 'Active, upcoming, and completed trips',
             onTap: () => context.push('/trips'),
+            isDark: isDark,
           ),
           _buildOpCard(
             context,
@@ -30,30 +33,35 @@ class OperationsScreen extends StatelessWidget {
             title: 'Copilot',
             subtitle: 'AI fleet assistant',
             onTap: () => context.push('/copilot'),
+            isDark: isDark,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOpCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildOpCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap, required bool isDark}) {
     return Card(
-      color: AppColors.surfaceDark,
+      color: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: AppColors.primary),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.6))),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+        title: Text(title, style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(subtitle, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant)),
+        trailing: Icon(Icons.chevron_right, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
         onTap: onTap,
       ),
     );

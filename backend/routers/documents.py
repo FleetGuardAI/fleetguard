@@ -39,6 +39,11 @@ def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentService:
 )
 async def upload_document(
     file: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    expiry_date: Optional[str] = Form(None),
+    target_id: Optional[str] = Form(None),
+    target_type: Optional[str] = Form(None),
     service: DocumentService = Depends(get_document_service),
     current_user: User = Depends(get_current_user),
 ):
@@ -56,9 +61,16 @@ async def upload_document(
     user_id_str = str(current_user.id)
     
     try:
-        return await service.upload_document(file=file, uploaded_by=user_id_str, company_id=current_user.company_id)
-    except HTTPException:
-        raise
+        return await service.upload_document(
+            file=file, 
+            uploaded_by=user_id_str, 
+            company_id=current_user.company_id,
+            name=name,
+            category=category,
+            expiry_date=expiry_date,
+            target_id=target_id,
+            target_type=target_type
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -126,7 +138,14 @@ async def ocr_driver_license(
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must have a filename."
+            detail="Please upload a valid image file."
+        )
+        
+    content_type = file.content_type
+    if content_type and not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This does not appear to be a valid image."
         )
 
     content = await file.read()
@@ -157,7 +176,6 @@ async def ocr_driver_license(
         }
     }
 
-
 @router.post(
     "/ocr/rc",
     response_model=Dict[str, Any],
@@ -173,7 +191,14 @@ async def ocr_vehicle_rc(
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must have a filename."
+            detail="Please upload a valid image file."
+        )
+        
+    content_type = file.content_type
+    if content_type and not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This does not appear to be a valid image."
         )
 
     content = await file.read()

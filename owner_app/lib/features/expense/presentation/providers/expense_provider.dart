@@ -17,3 +17,23 @@ final fleetExpensesProvider = StreamProvider.autoDispose<List<Map<String, dynami
     }
   }
 });
+
+final fleetWalletTransactionsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final repo = ref.watch(fleetExpenseRepositoryProvider);
+  return repo.listWalletTransactions();
+});
+
+final fleetExpenseAnalyticsProvider = StreamProvider.autoDispose<Map<String, dynamic>>((ref) async* {
+  final repo = ref.watch(fleetExpenseRepositoryProvider);
+  
+  yield await repo.getExpenseAnalytics();
+  
+  while (true) {
+    await Future.delayed(const Duration(seconds: 10));
+    try {
+      yield await repo.getExpenseAnalytics();
+    } catch (e) {
+      continue;
+    }
+  }
+});

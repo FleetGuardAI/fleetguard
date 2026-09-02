@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Eye, Trash2, Star, ShieldAlert, QrCode, UserPlus, Smartphone } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import api from '@/api/client';
 import { getDrivers, deleteDriver } from '@/api/driverApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -353,7 +355,7 @@ export default function DriverList() {
         title="Fleet Invite QR Code"
         description="Ask the driver to scan this unique QR code with their mobile device to instantly join your fleet."
         footer={
-          <div className="w-full flex justify-between items-center">
+          <div className="w-full flex justify-end items-center">
             <Button variant="outline" onClick={() => setQrModalOpen(false)} disabled={qrScanning}>
               Close
             </Button>

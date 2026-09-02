@@ -101,7 +101,12 @@ class TokenResponse(BaseModel):
     """JWT Access Token response payload."""
 
     access_token: str = Field(..., description="JWT access token")
+    refresh_token: Optional[str] = Field(None, description="JWT refresh token")
     token_type: str = Field("bearer", description="Token scheme (typically bearer)")
+
+class RefreshRequest(BaseModel):
+    """Payload to refresh an access token."""
+    refresh_token: str = Field(..., description="The refresh token")
 
 class OwnerQRLoginRequest(BaseModel):
     """Payload for Owner App QR login."""

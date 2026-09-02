@@ -1,15 +1,17 @@
-import urllib.request
-import json
+import traceback
+from fastapi.testclient import TestClient
+from main import app
 
-data = json.dumps({"email": "admin@example.com", "password": "password", "remember_me": True}).encode("utf-8")
-req = urllib.request.Request("http://localhost:8000/api/v1/auth/login", data=data, headers={"Content-Type": "application/json"})
-
-try:
-    with urllib.request.urlopen(req) as response:
-        print("Status:", response.status)
-        print("Body:", response.read().decode("utf-8"))
-except urllib.error.HTTPError as e:
-    print("Status:", e.code)
-    print("Body:", e.read().decode("utf-8"))
-except Exception as e:
-    print(e)
+def test_req():
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/auth/login",
+                json={"email": "admin@example.com", "password": "password", "remember_me": True}
+            )
+            print("Response status:", response.status_code)
+            assert response.status_code in [200, 400, 401, 404]
+    except Exception as e:
+        print("Caught Exception!")
+        traceback.print_exc()
+        raise e

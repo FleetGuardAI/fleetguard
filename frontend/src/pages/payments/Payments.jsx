@@ -57,7 +57,7 @@ export default function Payments() {
         name: vName,
         type: 'Registered Vendor',
         contact: 'N/A',
-        upi: `${vName.toLowerCase().replace(/[^a-z0-9]/g, '')}@okbiz`,
+        upi: 'N/A',
         status: 'verified'
       }));
       setVendors(uniqueVendors);
@@ -134,10 +134,14 @@ export default function Payments() {
   };
 
   const handleSettlePayout = async (id) => {
-    // Mock settle
-    setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'completed', ref_num: 'TXN-' + Math.floor(1000000000 + Math.random() * 9000000000) } : p));
-    success('Payout Settled', 'Transaction successfully completed.');
-    setPayoutDetailsModalOpen(false);
+    try {
+      await settlePayout(id);
+      success('Payout Settled', 'The settlement has been marked as completed.');
+      setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'completed', ref_num: `TXN-${Date.now()}` } : p));
+      setPayoutDetailsModalOpen(false);
+    } catch (e) {
+      error('Action Failed', 'Failed to settle payout.');
+    }
   };
 
   const columns = [

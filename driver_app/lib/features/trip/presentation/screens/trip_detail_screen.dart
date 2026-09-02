@@ -10,6 +10,7 @@ import '../../../../dashboard/presentation/providers/dashboard_providers.dart';
 class TripDetailScreen extends ConsumerStatefulWidget {
   final int tripId;
   const TripDetailScreen({super.key, required this.tripId});
+  final int tripId;
 
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();

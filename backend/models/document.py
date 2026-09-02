@@ -78,6 +78,38 @@ class Document(Base):
         index=True,
         doc="ID of the company that owns the document.",
     )
+
+    name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        doc="The user-provided title/name for the document.",
+    )
+
+    category: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        doc="Document category (e.g., Registration, Permit, License, Insurance).",
+    )
+
+    expiry_date: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Expiration date if applicable.",
+    )
+
+    target_id: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+        doc="ID of the entity this document is associated with (e.g., vehicle_id, driver_id).",
+    )
+
+    target_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+        doc="Type of the associated entity (e.g., vehicle, driver, permit).",
+    )
     
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),

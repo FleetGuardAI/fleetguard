@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
     LLM_BASE_URL: Optional[str] = None
+    OCR_PROVIDER: str = "mock"
 
 
 

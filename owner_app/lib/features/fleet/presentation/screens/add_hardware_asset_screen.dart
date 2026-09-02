@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_client.dart';
 import '../providers/fleet_provider.dart';
 import '../../data/fleet_repository.dart';
@@ -51,7 +51,7 @@ class _AddHardwareAssetScreenState extends ConsumerState<AddHardwareAssetScreen>
       
       ref.invalidate(hardwareAssetsProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hardware asset added successfully'), backgroundColor: AppTheme.primaryGreen));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hardware asset added successfully'), backgroundColor: AppColors.primary));
         context.pop();
       }
     } on DioException catch (e) {
@@ -87,7 +87,7 @@ class _AddHardwareAssetScreenState extends ConsumerState<AddHardwareAssetScreen>
               const SizedBox(height: 8),
               const Text(
                 'Connect a new GPS tracker, dashcam, or telematics device to a vehicle in your fleet.',
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: AppColors.coolGray),
               ),
               const SizedBox(height: 32),
 
@@ -174,7 +174,7 @@ class _AddHardwareAssetScreenState extends ConsumerState<AddHardwareAssetScreen>
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading

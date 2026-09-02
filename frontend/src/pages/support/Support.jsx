@@ -67,19 +67,7 @@ export default function Support() {
       setDescription('');
       loadTickets(); // Refresh list
     } catch (e) {
-      // Fallback if backend fails, mock the success to keep UI working
-      const mockTicket = {
-        id: `TICK-${Date.now()}`,
-        title: subject,
-        issue_type: category,
-        status: 'open',
-        created_at: new Date().toISOString(),
-      };
-      setTickets(prev => [mockTicket, ...prev]);
-      success('Ticket Submitted', 'Our support team will get back to you shortly.');
-      setModalOpen(false);
-      setSubject('');
-      setDescription('');
+      error('Submission Failed', e.message || 'Failed to submit ticket. Please try again.');
     } finally {
       setSubmitting(false);
     }

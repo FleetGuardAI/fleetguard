@@ -7,9 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import '../../data/tracking_service.dart';
 
 class ActiveTripScreen extends ConsumerStatefulWidget {
-  final int tripId;
 
   const ActiveTripScreen({super.key, required this.tripId});
+  final int tripId;
 
   @override
   ConsumerState<ActiveTripScreen> createState() => _ActiveTripScreenState();

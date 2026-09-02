@@ -242,6 +242,13 @@ class TripService:
         status: Optional[TripStatus] = None, 
         limit: int = 50, 
         offset: int = 0,
-        company_id: Optional[int] = None
+        company_id: Optional[int] = None,
+        search: Optional[str] = None
     ) -> Sequence[Trip]:
-        return await self.uow.repositories.trip.search_trips(status=status, limit=limit, offset=offset, company_id=company_id)
+        return await self.uow.repositories.trip.search_trips(
+            status=status, 
+            limit=limit, 
+            offset=offset, 
+            company_id=company_id,
+            search=search
+        )

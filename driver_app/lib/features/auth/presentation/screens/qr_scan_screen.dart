@@ -34,7 +34,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     
     // Parse invite token from QR code string (e.g., fleetguard://invite?token=xyz123)
     String token = rawCode;
-    if (rawCode.contains("token=")) {
+    if (rawCode.contains('token=')) {
       final uri = Uri.parse(rawCode);
       token = uri.queryParameters['token'] ?? rawCode;
     }
@@ -120,6 +120,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                     style: TextStyle(color: Colors.black87, fontSize: 14),
                   ),
                 ),
+
               ],
             ),
           ),

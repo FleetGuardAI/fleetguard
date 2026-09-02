@@ -133,6 +133,15 @@ class VehicleService:
         is_active: Optional[bool] = None, 
         limit: int = 50, 
         offset: int = 0,
-        company_id: Optional[int] = None
+        company_id: Optional[int] = None,
+        search: Optional[str] = None,
+        status: Optional[str] = None
     ) -> Sequence[Vehicle]:
-        return await self.uow.repositories.vehicle.search_vehicles(is_active=is_active, limit=limit, offset=offset, company_id=company_id)
+        return await self.uow.repositories.vehicle.search_vehicles(
+            is_active=is_active, 
+            limit=limit, 
+            offset=offset, 
+            company_id=company_id,
+            search=search,
+            status=status
+        )

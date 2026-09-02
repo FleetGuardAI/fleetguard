@@ -5,6 +5,21 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+function formatApiError(detail, fallbackMessage) {
+  if (!detail) return fallbackMessage;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map(err => {
+      const field = Array.isArray(err.loc) ? err.loc[err.loc.length - 1] : 'Field';
+      return `${field}: ${err.msg}`;
+    }).join(' | ');
+  }
+  if (typeof detail === 'object') {
+    return detail.message || detail.error || fallbackMessage;
+  }
+  return fallbackMessage;
+}
+
 function getAuthStorage(rememberMe = true) {
   return rememberMe ? localStorage : sessionStorage;
 }
@@ -128,7 +143,7 @@ export async function registerCompany(payload, options = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: 'Registration failed.' }));
-    throw new Error(errorData.detail || 'Registration failed.');
+    throw new Error(formatApiError(errorData.detail, 'Registration failed.'));
   }
 
   const data = await response.json();

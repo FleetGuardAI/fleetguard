@@ -1,0 +1,22 @@
+{
+  "@@locale": "hi",
+  "appTitle": "फ्लीटगार्ड (FleetGuard)",
+  "home": "होम",
+  "fleet": "फ्लीट",
+  "trips": "यात्राएं",
+  "finance": "वित्त",
+  "more": "अधिक",
+  "copilot": "कोपायलट",
+  "settings": "सेटिंग्स",
+  "profile": "प्रोफ़ाइल",
+  "language": "भाषा",
+  "theme": "थीम",
+  "light": "लाइट",
+  "dark": "डार्क",
+  "system": "सिस्टम",
+  "logout": "लॉग आउट",
+  "notifications": "सूचनाएं",
+  "noNotifications": "अभी तक कोई सूचना नहीं",
+  "activeVehicles": "सक्रिय वाहन",
+  "noActiveVehicles": "कोई सक्रिय वाहन नहीं"
+}

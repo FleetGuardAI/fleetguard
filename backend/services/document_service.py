@@ -50,6 +50,11 @@ class DocumentService:
         file: UploadFile,
         uploaded_by: Optional[str] = None,
         company_id: Optional[int] = None,
+        name: Optional[str] = None,
+        category: Optional[str] = None,
+        expiry_date: Optional[str] = None,
+        target_id: Optional[str] = None,
+        target_type: Optional[str] = None,
     ) -> DocumentResponse:
         """
         Save the uploaded file to disk and create a Document record.
@@ -82,6 +87,11 @@ class DocumentService:
             storage_path=storage_path,
             uploaded_by=uploaded_by,
             company_id=company_id,
+            name=name,
+            category=category,
+            expiry_date=expiry_date,
+            target_id=target_id,
+            target_type=target_type
         )
         
         try:

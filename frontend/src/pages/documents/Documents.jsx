@@ -37,8 +37,9 @@ export default function Documents() {
   const [docName, setDocName] = useState('');
   const [category, setCategory] = useState('Registration');
   const [expiryDate, setExpiryDate] = useState('');
-  const [fileAttached, setFileAttached] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -52,13 +53,7 @@ export default function Documents() {
       setVehicles(vData);
       setDrivers(dData);
       
-      // Initialize some mock documents based on existing data if the server is empty
-      const initialDocs = (docsData && docsData.length > 0) ? docsData : [
-        { id: 'd1', target_id: vData[0]?.id || '1', target_type: 'vehicle', name: 'RC Book', category: 'Registration', expiry_date: '2027-10-10', file_url: '#' },
-        { id: 'd2', target_id: dData[0]?.id || '1', target_type: 'driver', name: 'Driving License', category: 'License', expiry_date: '2025-05-12', file_url: '#' },
-        { id: 'd3', target_id: 'company', target_type: 'permit', name: 'National Carrier Permit', category: 'Permit', expiry_date: '2026-01-01', file_url: '#' }
-      ];
-      setAllDocs(initialDocs);
+      setAllDocs(docsData || []);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve directory.');
@@ -111,31 +106,43 @@ export default function Documents() {
   // --- Upload Logic ---
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (!docName || !fileAttached) {
+    if (!docName || !selectedFile) {
       error('Validation Failed', 'Please provide a document name and attach a file.');
       return;
     }
     
     setSubmitting(true);
-    // Simulate upload delay
-    setTimeout(() => {
-      const newDoc = {
-        id: `doc_${Date.now()}`,
-        target_id: selectedEntity.id,
-        target_type: selectedEntity.type,
+    try {
+      const metadata = {
         name: docName,
-        category,
-        expiry_date: expiryDate || 'N/A',
-        file_url: '#'
+        category: category,
+        expiry_date: expiryDate || null,
+        target_id: selectedEntity.id,
+        target_type: selectedEntity.type
       };
-      setAllDocs(prev => [newDoc, ...prev]);
-      success('Upload Successful', `Successfully saved document: ${docName}`);
-      setUploadModalOpen(false);
+      const newDoc = await uploadDocument(selectedFile, metadata);
+      setAllDocs(prev => [...prev, newDoc]);
+      success('Upload Complete', 'Document has been uploaded successfully.');
+      
+      // Reset form
       setDocName('');
+      setCategory('Registration');
       setExpiryDate('');
-      setFileAttached(false);
+      setSelectedFile(null);
+      setUploadModalOpen(false);
+    } catch (e) {
+      error('Upload Failed', e.message || 'Failed to upload document.');
+    } finally {
       setSubmitting(false);
-    }, 600);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      success('File Selected', `${file.name} ready to upload.`);
+    }
   };
 
   const handleDeleteDoc = (docId) => {
@@ -296,8 +303,8 @@ export default function Documents() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      {doc.file_url && (
-                        <a href={doc.file_url} target="_blank" rel="noreferrer" title="View Document">
+                      {doc.storage_path && (
+                        <a href={doc.storage_path} target="_blank" rel="noreferrer" title="View Document">
                           <Button variant="ghost" size="sm" icon={<Eye className="h-4 w-4 text-brand-600" />} />
                         </a>
                       )}
@@ -363,17 +370,24 @@ export default function Documents() {
           <div className="space-y-1.5 pt-2">
             <span className="block text-sm font-medium text-content-secondary">PDF/Image Document File</span>
             <div className="flex items-center gap-3">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileSelect} 
+                className="hidden" 
+                accept=".pdf,.jpg,.jpeg,.png"
+              />
               <Button
                 type="button"
                 variant="outline"
                 icon={<Upload className="h-4 w-4 text-brand-600" />}
-                onClick={() => { setFileAttached(true); success('File Selected', 'Document.pdf ready to upload.'); }}
+                onClick={() => fileInputRef.current?.click()}
               >
                 Select File
               </Button>
-              {fileAttached ? (
-                <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                  <CheckCircle className="h-4 w-4" /> Attached
+              {selectedFile ? (
+                <span className="text-xs text-green-600 font-semibold flex items-center gap-1 max-w-[200px] truncate" title={selectedFile.name}>
+                  <CheckCircle className="h-4 w-4 shrink-0" /> {selectedFile.name}
                 </span>
               ) : (
                 <span className="text-xs text-content-secondary">No file selected</span>

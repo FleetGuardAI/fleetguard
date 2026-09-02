@@ -118,10 +118,19 @@ processing_consumer = KafkaConsumerRunner(
 evidence_registry = EvidenceProviderRegistry()
 
 # Register OCR Provider
-from infrastructure.ocr.provider import MockOCRProvider
+from infrastructure.ocr.provider import MockOCRProvider, GoogleDocumentAIProvider
+if settings.OCR_PROVIDER.lower() == "openai":
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is required when OCR_PROVIDER=openai")
+    ocr_base_provider = OpenAIOCRProvider(api_key=settings.OPENAI_API_KEY)
+elif settings.OCR_PROVIDER.lower() == "mock":
+    ocr_base_provider = MockOCRProvider()
+else:
+    raise ValueError(f"Unknown OCR_PROVIDER: {settings.OCR_PROVIDER}")
+
 ocr_evidence_provider = OCREvidenceProvider(
     db_session_factory=async_session_factory, 
-    provider=MockOCRProvider()
+    provider=ocr_base_provider
 )
 evidence_registry.register(ocr_evidence_provider)
 
@@ -194,6 +203,7 @@ from routers.fuel_intelligence import router as fuel_intelligence_router
 from routers.copilot import router as copilot_router
 from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
+from routers.notifications import router as notifications_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -324,6 +334,7 @@ app.include_router(fuel_intelligence_router, prefix="/api/v1") # carries /intell
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
+app.include_router(notifications_router)
 
 
 # Mount Driver Mobile App Routers

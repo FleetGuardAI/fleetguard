@@ -102,7 +102,6 @@ async def create_driver(
 
     # Log operational event for auditability
     event = OperationalEvent(
-        company_id=current_user.company_id,
         event_type=EventType.DRIVER_REGISTERED,
         entity_type=EntityType.DRIVER,
         entity_id=driver.phone_number,

@@ -76,15 +76,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final response = await api.dio.post(
         '/api/v1/auth/owner-qr/verify',
-        data: {'pairing_token': token},
+        data: {'pairing_token': token.trim()},
       );
 
       debugPrint('[QR DIAG] HTTP status: ${response.statusCode}');
       debugPrint('[QR DIAG] Response keys: ${response.data?.keys?.toList()}');
 
       final accessToken = response.data['access_token'];
+      final refreshToken = response.data['refresh_token'];
       if (accessToken != null) {
         await SecureStorage.setAccessToken(accessToken);
+        if (refreshToken != null) {
+          await SecureStorage.setRefreshToken(refreshToken);
+        }
         ref.read(authStateProvider.notifier).state = true;
         if (mounted) {
           context.go('/dashboard');
@@ -96,8 +100,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       debugPrint('[QR DIAG] DioException type: ${e.type}');
       debugPrint('[QR DIAG] Request URI: ${e.requestOptions.uri}');
       setState(() {
-        _error = e.response?.data?['detail'] ?? 'Login failed. Invalid or expired QR token.';
-        _hasScanned = false;
+        if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
+          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+        } else {
+          final detail = e.response?.data?['detail']?.toString() ?? '';
+          final lowerDetail = detail.toLowerCase();
+          if (lowerDetail.contains('expired')) {
+            _error = 'QR code expired. Generate a new QR code and scan again.';
+          } else if (lowerDetail.contains('invalid')) {
+            _error = 'This QR code is not valid. Generate a new QR code.';
+          } else {
+            _error = 'Unable to sign in: $detail';
+          }
+        }
+        
+        // Wait briefly before allowing another scan to avoid retry storms
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _hasScanned = false;
+            });
+          }
+        });
       });
     } catch (e) {
       debugPrint('[QR DIAG] Unexpected error: ${e.runtimeType}: $e');
@@ -142,8 +166,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } on DioException catch (e) {
+      debugPrint('OTP Request Error: ${e.message}');
       setState(() {
-        _error = e.response?.data?['detail'] ?? 'Failed to send OTP.';
+        if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
+          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+        } else {
+          _error = e.response?.data?['detail']?.toString() ?? 'Failed to send OTP.';
+        }
       });
     } catch (e) {
       setState(() {
@@ -191,8 +220,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } on DioException catch (e) {
+      debugPrint('OTP Resend Error: ${e.message}');
       setState(() {
-        _error = e.response?.data?['detail'] ?? 'Failed to resend OTP.';
+        if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
+          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+        } else {
+          _error = e.response?.data?['detail']?.toString() ?? 'Failed to resend OTP.';
+        }
       });
     } catch (e) {
       setState(() {
@@ -225,16 +259,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
       final accessToken = response.data['access_token'];
+      final refreshToken = response.data['refresh_token'];
       if (accessToken != null) {
         await SecureStorage.setAccessToken(accessToken);
+        if (refreshToken != null) {
+          await SecureStorage.setRefreshToken(refreshToken);
+        }
         ref.read(authStateProvider.notifier).state = true;
         if (mounted) {
           context.go('/dashboard');
         }
       }
     } on DioException catch (e) {
+      debugPrint('OTP Verify Error: ${e.message}');
       setState(() {
-        _error = e.response?.data?['detail'] ?? 'Invalid or expired OTP.';
+        if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
+          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+        } else {
+          _error = e.response?.data?['detail']?.toString() ?? 'Invalid or expired OTP.';
+        }
       });
     } catch (e) {
       setState(() {
@@ -273,7 +316,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: !_isOtpMode ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
+                        backgroundColor: !_isOtpMode ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : null,
                       ),
                       onPressed: () => setState(() => _isOtpMode = false),
                       child: const Text('Scan QR Code'),
@@ -283,7 +326,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: _isOtpMode ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
+                        backgroundColor: _isOtpMode ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : null,
                       ),
                       onPressed: () => setState(() => _isOtpMode = true),
                       child: const Text('Use OTP'),
@@ -400,20 +443,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   ),
 ],
             
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              
-            if (!_isOtpMode) const SizedBox(height: 48),
-          ],
-        ),
-      ),
-    );
-  }
+            ], // Close Column children
+          ), // Close Column
+        ), // Close Padding
+      ), // Close Expanded
+    ], // Close else spread
+    if (!_isOtpMode) const SizedBox(height: 48),
+  ], // Close main Column children
+), // Close main Column
+), // Close SafeArea
+); // Close Scaffold
+}
 }

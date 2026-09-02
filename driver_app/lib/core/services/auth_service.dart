@@ -10,9 +10,9 @@ final authServiceProvider = Provider<AuthService>((ref) {
 });
 
 class AuthService {
-  final Ref _ref;
 
   AuthService(this._ref);
+  final Ref _ref;
 
   Future<void> logout() async {
     // 1. Notify Backend

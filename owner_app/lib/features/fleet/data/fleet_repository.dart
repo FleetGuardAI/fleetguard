@@ -62,12 +62,60 @@ class FleetRepository {
     }
   }
 
-  Future<List<Vehicle>> getVehicles() async {
+  Future<Map<String, dynamic>> uploadRCForOCR(String filePath) async {
     try {
-      final response = await _dio.get('/api/v1/vehicles');
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _dio.post('/api/v1/documents/ocr/rc', data: formData);
+      return response.data['data'] as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.response?.data ?? e.message;
+      throw Exception('$msg');
+    } catch (e) {
+      throw Exception('Failed to process OCR: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadLicenseForOCR(String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _dio.post('/api/v1/documents/ocr/license', data: formData);
+      return response.data['data'] as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.response?.data ?? e.message;
+      throw Exception('$msg');
+    } catch (e) {
+      throw Exception('Failed to process OCR: $e');
+    }
+  }
+
+  Future<List<Vehicle>> getVehicles({String? search, String? status}) async {
+    try {
+      final Map<String, dynamic> queryParameters = {};
+      if (search != null && search.isNotEmpty) queryParameters['search'] = search;
+      if (status != null && status != 'ALL') queryParameters['status'] = status;
+      
+      final response = await _dio.get(
+        '/api/v1/vehicles',
+        queryParameters: queryParameters,
+      );
       return (response.data as List).map((x) => Vehicle.fromJson(x)).toList();
     } catch (e) {
       throw Exception('Failed to load vehicles: $e');
+    }
+  }
+
+  Future<void> addVehicle(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/api/v1/vehicles', data: data);
+    } on DioException catch (e) {
+      final msg = e.response?.data ?? e.message;
+      throw Exception('Failed to add vehicle: $msg');
+    } catch (e) {
+      throw Exception('Failed to add vehicle: $e');
     }
   }
 
@@ -80,6 +128,14 @@ class FleetRepository {
     }
   }
 
+  Future<void> addDriver(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/api/v1/drivers', data: data);
+    } catch (e) {
+      throw Exception('Failed to add driver: $e');
+    }
+  }
+
   Future<List<HardwareAsset>> getHardwareAssets() async {
     try {
       final response = await _dio.get('/api/v1/assets');
@@ -88,7 +144,17 @@ class FleetRepository {
       throw Exception('Failed to load hardware assets: $e');
     }
   }
+
+  Future<Map<String, dynamic>> getVehicleInsights(int vehicleId) async {
+    try {
+      final response = await _dio.get('/api/v1/owner/dashboard/vehicle/$vehicleId/insights');
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to load vehicle insights: $e');
+    }
+  }
 }
+
 
 class HardwareAsset {
   final int id;

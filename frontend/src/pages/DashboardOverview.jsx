@@ -74,14 +74,17 @@ export default function DashboardOverview() {
     return 'Good evening';
   };
 
+  const [fetchError, setFetchError] = useState(null);
+
   const loadData = async (isSilent = false) => {
     if (isSilent) setRefreshing(true);
     else setLoading(true);
+    setFetchError(null);
     try {
       const [healthData, alertsData, dbData, tracking] = await Promise.all([
         getFleetHealth().catch(() => ({})),
         getUpcomingAlerts().catch(() => []),
-        getDashboardData().catch(() => ({ kpis: {}, recentActivity: [], fuelChart: [] })),
+        getDashboardData(), // Throws error now if real API fails
         getLiveTracking().catch(() => [])
       ]);
       setHealth(healthData || {});
@@ -93,7 +96,9 @@ export default function DashboardOverview() {
       });
       setLiveTrucks(tracking || []);
     } catch (e) {
-      console.error(e);
+      console.error('[Dashboard] Failed to load real data:', e);
+      setFetchError(e.message || 'Unable to load dashboard data. Check network connection.');
+      error(e.message || 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -101,6 +106,21 @@ export default function DashboardOverview() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  if (fetchError && !loading) {
+    return (
+      <div className="flex w-full min-h-full bg-surface-base items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-semibold text-content">Unable to load dashboard data</h2>
+          <p className="text-content-secondary text-sm">{fetchError}</p>
+          <button onClick={() => loadData()} className="mt-4 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors">
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
 
 
 

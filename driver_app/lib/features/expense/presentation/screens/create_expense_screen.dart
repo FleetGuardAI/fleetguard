@@ -45,7 +45,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
         _amountController.text = (ocrResult['amount'] ?? '').toString();
         
         // Auto-select category if matching
-        String suggestedCategory = ocrResult['category'] ?? 'FUEL';
+        final String suggestedCategory = ocrResult['category'] ?? 'FUEL';
         if (['FUEL', 'TOLL', 'PARKING', 'REPAIR', 'FOOD'].contains(suggestedCategory)) {
           _category = suggestedCategory;
         }
@@ -123,7 +123,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
             children: [
               // AI Camera OCR Scanner Card
               Card(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -144,7 +144,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
               ),
               const SizedBox(height: 24),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Expense Category', prefixIcon: Icon(Icons.category)),
                 items: const [
                   DropdownMenuItem(value: 'FUEL', child: Text('Fuel')),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class InspectionScreen extends StatefulWidget {
-  final String type; // PRE_TRIP or POST_TRIP
+class InspectionScreen extends StatefulWidget { // PRE_TRIP or POST_TRIP
 
   const InspectionScreen({super.key, required this.type});
+  final String type;
 
   @override
   State<InspectionScreen> createState() => _InspectionScreenState();
@@ -52,7 +52,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
       body: Column(
         children: [
           Container(
-            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -81,7 +81,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
                     title: Text(item, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(passed ? 'Condition: PASS' : 'Condition: FAIL (Auto-Ticket)'),
                     value: passed,
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                     inactiveThumbColor: Colors.red,
                     onChanged: (val) => setState(() => _checklist[item] = val),
                   ),

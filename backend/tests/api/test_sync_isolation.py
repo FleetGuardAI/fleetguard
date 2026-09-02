@@ -4,6 +4,11 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
 
 def test_cross_app_sync_and_isolation(client: TestClient):
     # --- Setup: Register two companies ---

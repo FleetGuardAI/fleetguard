@@ -20,6 +20,12 @@ class OwnerTrip {
   final String? plannedStartTime;
   final String? actualStartTime;
   final String? actualEndTime;
+  final double? revenue;
+  final double? plannedCost;
+  final double? plannedFuelLiters;
+  final double? cargoWeight;
+  final double? plannedDistance;
+  final double? actualDistance;
 
   OwnerTrip({
     required this.id,
@@ -34,6 +40,12 @@ class OwnerTrip {
     this.plannedStartTime,
     this.actualStartTime,
     this.actualEndTime,
+    this.revenue,
+    this.plannedCost,
+    this.plannedFuelLiters,
+    this.cargoWeight,
+    this.plannedDistance,
+    this.actualDistance,
   });
 
   factory OwnerTrip.fromJson(Map<String, dynamic> json) {
@@ -50,6 +62,12 @@ class OwnerTrip {
       plannedStartTime: json['planned_start_time'],
       actualStartTime: json['actual_start_time'],
       actualEndTime: json['actual_end_time'],
+      revenue: json['revenue'] != null ? (json['revenue'] as num).toDouble() : null,
+      plannedCost: json['planned_cost'] != null ? (json['planned_cost'] as num).toDouble() : null,
+      plannedFuelLiters: json['planned_fuel_liters'] != null ? (json['planned_fuel_liters'] as num).toDouble() : null,
+      cargoWeight: json['cargo_weight'] != null ? (json['cargo_weight'] as num).toDouble() : null,
+      plannedDistance: json['planned_distance'] != null ? (json['planned_distance'] as num).toDouble() : null,
+      actualDistance: json['actual_distance'] != null ? (json['actual_distance'] as num).toDouble() : null,
     );
   }
 }
@@ -59,9 +77,16 @@ class OwnerTripRepository {
 
   OwnerTripRepository(this._dio);
 
-  Future<List<OwnerTrip>> getFleetTrips() async {
+  Future<List<OwnerTrip>> getFleetTrips({String? search, String? status}) async {
     try {
-      final response = await _dio.get('/api/v1/owner/dashboard/trips');
+      final Map<String, dynamic> queryParameters = {};
+      if (search != null && search.isNotEmpty) queryParameters['search'] = search;
+      if (status != null && status != 'ALL') queryParameters['status'] = status;
+      
+      final response = await _dio.get(
+        '/api/v1/owner/dashboard/trips',
+        queryParameters: queryParameters,
+      );
       final data = response.data as List;
       return data.map((e) => OwnerTrip.fromJson(e)).toList();
     } catch (e) {

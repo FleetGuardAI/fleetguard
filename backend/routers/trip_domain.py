@@ -24,15 +24,16 @@ router = APIRouter(prefix="/v1", tags=["Trip Domain"])
 
 @router.get("/trips", response_model=List[TripResponse])
 async def list_trips(
+    search: Optional[str] = Query(None),
     status: Optional[TripStatus] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
     current_user: User = Depends(get_current_user)
 ) -> List[TripResponse]:
-    """List all trips with optional status filter."""
+    """List all trips with optional status and search filters."""
     service = TripService(uow)
-    trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id)
+    trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id, search=search)
     return [TripResponse.model_validate(t) for t in trips]
 
 @router.post("/trips", response_model=TripResponse, status_code=201)
@@ -78,6 +79,7 @@ async def create_trip(
 
 @router.get("/trips/search", response_model=List[TripResponse])
 async def search_trips(
+    search: Optional[str] = Query(None),
     status: Optional[TripStatus] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -86,7 +88,7 @@ async def search_trips(
 ) -> List[TripResponse]:
     """Search for trips based on criteria."""
     service = TripService(uow)
-    trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id)
+    trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id, search=search)
     return [TripResponse.model_validate(t) for t in trips]
 
 

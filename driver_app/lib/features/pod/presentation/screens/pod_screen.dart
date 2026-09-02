@@ -10,9 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import '../../data/pod_repository.dart';
 
 class PodScreen extends ConsumerStatefulWidget {
-  final int tripId;
 
   const PodScreen({super.key, required this.tripId});
+  final int tripId;
 
   @override
   ConsumerState<PodScreen> createState() => _PodScreenState();
@@ -82,7 +82,7 @@ class _PodScreenState extends ConsumerState<PodScreen> {
     try {
       final repo = ref.read(podRepositoryProvider);
       
-      String signatureUrl = await repo.uploadFile(_signatureFile!, 'signature');
+      final String signatureUrl = await repo.uploadFile(_signatureFile!, 'signature');
       String? photoUrl;
       if (_photoFile != null) {
         photoUrl = await repo.uploadFile(_photoFile!, 'pod_photo');
@@ -113,6 +113,7 @@ class _PodScreenState extends ConsumerState<PodScreen> {
       }
     }
   }
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Proof of Delivery — Trip #${widget.tripId}')),
@@ -146,7 +147,7 @@ class _PodScreenState extends ConsumerState<PodScreen> {
                       height: 180,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.05),
+                        color: Colors.grey.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: _signatureCaptured ? Colors.green : Colors.grey),
                       ),

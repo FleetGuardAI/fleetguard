@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Full-screen loading overlay with optional message
 class LoadingOverlay extends StatelessWidget {
-  final String? message;
 
   const LoadingOverlay({super.key, this.message});
+  final String? message;
 
   /// Show loading overlay on top of current screen
   static void show(BuildContext context, {String? message}) {
@@ -33,7 +33,7 @@ class LoadingOverlay extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),

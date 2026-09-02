@@ -1,0 +1,2 @@
+-keep class dev.steenbakker.mobile_scanner.** { *; }
+-keep class com.google.mlkit.** { *; }
