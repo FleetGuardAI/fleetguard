@@ -70,7 +70,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                     gradient: AppColors.dangerGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.red.withOpacity(0.4),
+                        color: Colors.red.withValues(alpha: 0.4),
                         blurRadius: 30,
                         spreadRadius: 10,
                       ),

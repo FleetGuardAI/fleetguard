@@ -7,27 +7,27 @@ import '../utils/logger.dart';
 class PermissionService {
   /// Permission metadata with explanations
   static final Map<Permission, PermissionInfo> permissionInfo = {
-    Permission.camera: PermissionInfo(
+    Permission.camera: const PermissionInfo(
       title: 'Camera Access',
       description: 'Required to scan QR codes, capture receipts, take inspection photos, and verify your identity.',
       icon: Icons.camera_alt,
     ),
-    Permission.notification: PermissionInfo(
+    Permission.notification: const PermissionInfo(
       title: 'Notifications',
       description: 'Stay informed about trip assignments, expense approvals, emergency alerts, and messages from your dispatcher.',
       icon: Icons.notifications,
     ),
-    Permission.location: PermissionInfo(
+    Permission.location: const PermissionInfo(
       title: 'Location (While Using)',
       description: 'Required to track your position during trips, calculate ETAs, and navigate to destinations.',
       icon: Icons.location_on,
     ),
-    Permission.locationAlways: PermissionInfo(
+    Permission.locationAlways: const PermissionInfo(
       title: 'Location (Always)',
       description: 'Enables continuous tracking while on duty, even when the app is minimized. This ensures accurate trip records and fleet visibility.',
       icon: Icons.share_location,
     ),
-    Permission.activityRecognition: PermissionInfo(
+    Permission.activityRecognition: const PermissionInfo(
       title: 'Activity Recognition',
       description: 'Detects whether you are driving, walking, or stationary. Helps optimize GPS tracking and detect trip events automatically.',
       icon: Icons.directions_walk,
@@ -93,13 +93,13 @@ class PermissionService {
 
 /// Metadata for permission explanation UI
 class PermissionInfo {
-  final String title;
-  final String description;
-  final IconData icon;
 
   const PermissionInfo({
     required this.title,
     required this.description,
     required this.icon,
   });
+  final String title;
+  final String description;
+  final IconData icon;
 }

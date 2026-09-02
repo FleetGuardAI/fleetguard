@@ -1,0 +1,25 @@
+{
+  "@@locale": "en",
+  "appTitle": "FleetGuard",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "home": "Home",
+  "fleet": "Fleet",
+  "trips": "Trips",
+  "finance": "Finance",
+  "more": "More",
+  "copilot": "Copilot",
+  "settings": "Settings",
+  "profile": "Profile",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "logout": "Logout",
+  "notifications": "Notifications",
+  "noNotifications": "No notifications yet",
+  "activeVehicles": "Active Vehicles",
+  "noActiveVehicles": "No active vehicles"
+}

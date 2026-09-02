@@ -10,9 +10,9 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
 });
 
 class ExpenseRepository {
-  final Dio _dio;
 
   ExpenseRepository(this._dio);
+  final Dio _dio;
 
   Future<Map<String, dynamic>> processReceiptOcr(File file) async {
     try {

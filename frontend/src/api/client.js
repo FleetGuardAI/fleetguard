@@ -349,6 +349,11 @@ const api = {
   copilot: {
     chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),
   },
+
+  // ── Fleet Domain (NEW - /api/v1/fleet) ─────────────────
+  fleet: {
+    generateInvite: (payload = {}) => request('/v1/fleet/invite', { method: 'POST', body: JSON.stringify(payload) }),
+  },
 };
 
 export default api;

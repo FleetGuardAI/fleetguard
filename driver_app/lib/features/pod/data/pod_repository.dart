@@ -10,9 +10,9 @@ final podRepositoryProvider = Provider<PodRepository>((ref) {
 });
 
 class PodRepository {
-  final Dio _dio;
 
   PodRepository(this._dio);
+  final Dio _dio;
 
   Future<String> uploadFile(File file, String documentType) async {
     try {

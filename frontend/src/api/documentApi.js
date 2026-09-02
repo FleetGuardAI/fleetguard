@@ -29,11 +29,19 @@ export async function getDocuments(params = {}) {
  * Upload a document via the backend Document API.
  *
  * @param {File} file - The file to upload
+ * @param {object} metadata - Document metadata (name, category, expiry_date, target_id, target_type)
  * @returns {Promise<object>}
  */
-export async function uploadDocument(file) {
+export async function uploadDocument(file, metadata = {}) {
   const formData = new FormData();
   formData.append('file', file);
+  
+  if (metadata.name) formData.append('name', metadata.name);
+  if (metadata.category) formData.append('category', metadata.category);
+  if (metadata.expiry_date) formData.append('expiry_date', metadata.expiry_date);
+  if (metadata.target_id) formData.append('target_id', metadata.target_id);
+  if (metadata.target_type) formData.append('target_type', metadata.target_type);
+  
   return await api.documents.upload(formData);
 }
 

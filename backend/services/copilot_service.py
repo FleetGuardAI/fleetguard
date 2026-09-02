@@ -113,6 +113,30 @@ TOOLS_DEFINITION = [
                 "required": ["entity_type", "entity_id"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_expiring_documents",
+            "description": "Retrieves a list of documents (e.g., driver licenses, vehicle permits) that are expiring within the next 30 days or have already expired.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_expense_analytics",
+            "description": "Retrieves analytics and aggregations of fleet expenses grouped by category and time period.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
     }
 ]
 
@@ -129,12 +153,28 @@ class CopilotService:
         # Load or initialize history
         messages = _conversation_history.get(conv_id, [])
         if not messages:
-            messages.append(LLMMessage(role="system", content=SYSTEM_PROMPT))
+            language_instruction = f"\nIMPORTANT: You MUST respond in the language code '{request.language}'. If '{request.language}' is 'hi', respond entirely in Hindi (Devanagari script). If 'en', respond in English."
+            messages.append(LLMMessage(role="system", content=SYSTEM_PROMPT + language_instruction))
 
         # Append Context if provided and it's a new turn
         user_message_content = request.message
-        if request.context:
-            context_str = f"[Context: Viewing {request.context.type} {request.context.id or ''}]\n"
+        if request.context and request.context.entity_id:
+            context_str = f"[Context: Viewing {request.context.entity_type} {request.context.entity_id} on screen {request.context.screen}]\n"
+            
+            # Secure Context Injection: Validate ownership before providing detailed context
+            try:
+                entity_id = int(request.context.entity_id)
+                if request.context.entity_type == "vehicle":
+                    vehicle = await self.uow.repositories.vehicle.get_vehicle_by_id(entity_id)
+                    if vehicle and str(vehicle.company_id) == str(self.company_id):
+                        context_str += f"[Vehicle Verified: {vehicle.registration_number}, Status: {vehicle.status.value if hasattr(vehicle.status, 'value') else vehicle.status}]\n"
+                elif request.context.entity_type == "trip":
+                    trip = await self.uow.repositories.trip.get_trip_by_id(entity_id)
+                    if trip and str(trip.company_id) == str(self.company_id):
+                        context_str += f"[Trip Verified: {trip.trip_id}, Route: {trip.origin_location} -> {trip.destination_location}]\n"
+            except Exception as e:
+                logger.warning(f"Failed to securely resolve context entity: {e}")
+
             user_message_content = context_str + user_message_content
 
         messages.append(LLMMessage(role="user", content=user_message_content))
@@ -281,5 +321,64 @@ class CopilotService:
                 return "No evidence found for this entity."
 
             return json.dumps({"related_evidence": all_evidence})
+
+        elif name == "get_expiring_documents":
+            from datetime import datetime, timedelta, date
+            from sqlalchemy import select
+            from models.driver_domain import Driver
+            
+            today = date.today()
+            thirty_days_from_now = today + timedelta(days=30)
+            
+            # Drivers with expiring or expired licenses
+            drivers_result = await self.uow.session.execute(
+                select(Driver).where(
+                    Driver.company_id == int(self.company_id),
+                    Driver.license_valid_until.isnot(None),
+                    Driver.license_valid_until <= thirty_days_from_now
+                )
+            )
+            expiring_drivers = drivers_result.scalars().all()
+            
+            expiring_docs = []
+            for d in expiring_drivers:
+                status = "EXPIRED" if d.license_valid_until < today else "EXPIRING_SOON"
+                expiring_docs.append({
+                    "entity_type": "DRIVER",
+                    "entity_id": d.id,
+                    "name": d.name,
+                    "document": "Driver License",
+                    "valid_until": d.license_valid_until.isoformat(),
+                    "status": status
+                })
+                
+            return json.dumps({"expiring_documents": expiring_docs})
+            
+        elif name == "get_expense_analytics":
+            from sqlalchemy import select, func
+            from models.expense_domain import Expense, ExpenseStatus
+            from models.driver_domain import Driver
+            
+            result = await self.uow.session.execute(
+                select(Expense.category, func.sum(Expense.amount).label("total_amount"))
+                .join(Driver, Driver.id == Expense.driver_id)
+                .where(
+                    Driver.company_id == int(self.company_id),
+                    Expense.status == ExpenseStatus.APPROVED
+                )
+                .group_by(Expense.category)
+            )
+            
+            analytics = {}
+            total = 0.0
+            for category, total_amount in result:
+                category_name = category.value if hasattr(category, 'value') else category
+                analytics[category_name] = float(total_amount)
+                total += float(total_amount)
+                
+            return json.dumps({
+                "expense_by_category": analytics,
+                "total_approved_expenses": total
+            })
 
         return f"Error: Unknown tool {name}"

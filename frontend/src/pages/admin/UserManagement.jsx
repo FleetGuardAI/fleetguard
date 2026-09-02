@@ -122,22 +122,7 @@ export default function UserManagement() {
   };
 
   const handleSimulateQrScan = () => {
-    setQrScanning(true);
-    setTimeout(() => {
-      const mockUser = {
-        id: `USR-${Date.now().toString().slice(-4)}`,
-        name: 'New Mobile User',
-        email: 'newuser@fleetguard.com',
-        role: 'Dispatcher',
-        department: 'Operations',
-        status: 'active',
-        platform: 'Mobile User'
-      };
-      setUsers(prev => [mockUser, ...prev]);
-      success('User Onboarded', 'A new user has successfully joined the workspace via QR code scan!');
-      setQrScanning(false);
-      setQrModalOpen(false);
-    }, 1500);
+    error('Action Unavailable', 'Simulation is disabled in production. Please use a real mobile device to scan.');
   };
 
   const handleToggleStatus = async (id, userName, currentStatus) => {
@@ -373,12 +358,9 @@ export default function UserManagement() {
         title="Owner App Invite QR Code"
         description="Ask the user to scan this unique QR code with their mobile device to instantly join the workspace."
         footer={
-          <div className="w-full flex justify-between items-center">
+          <div className="w-full flex justify-end items-center">
             <Button variant="outline" onClick={() => setQrModalOpen(false)} disabled={qrScanning}>
               Close
-            </Button>
-            <Button variant="primary" icon={<Smartphone className="w-4 h-4" />} onClick={handleSimulateQrScan} loading={qrScanning}>
-              Simulate App Scan
             </Button>
           </div>
         }

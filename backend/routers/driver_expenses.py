@@ -18,10 +18,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db, get_uow
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from models.operational_event import EventType, CaptureMethod, EntityType
+from models.driver_domain import Driver
+from services.auth_service import get_current_user
+from models.user import User
+from models.vehicle_domain import Vehicle
+from models.trip_domain import Trip
+from models.user import User
 from schemas.operational_event import OperationalEventCreate
 from services.operational_event_service import OperationalEventService
 from services.file_upload_service import storage_service
 from models.driver_domain import Driver
+from services.auth_service import get_current_user
+from models.user import User
 from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.driver_expenses")
@@ -85,6 +93,64 @@ async def process_receipt_ocr(
     Process receipt image via AI OCR framework.
     Extracts Vendor, Date, Amount.
     """
+    if not current_user.company_id:
+        raise HTTPException(status_code=403, detail="User is not associated with a company")
+
+    # Save temp file for OCR
+    import os
+    import tempfile
+    
+    file_ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    await file.seek(0)
+
+    try:
+        url = await storage_service.upload_file(file, folder="receipts")
+        
+        provider_type = settings.OCR_PROVIDER.lower()
+        if provider_type == "openai":
+            if not settings.OPENAI_API_KEY and not settings.GEMINI_API_KEY:
+                raise HTTPException(status_code=503, detail="OpenAI API key not configured for OCR")
+            provider = GoogleDocumentAIProvider()
+        else:
+            provider = MockOCRProvider()
+
+        ocr_result = await provider.extract_text(tmp_path, file.content_type or "image/jpeg")
+        
+        if provider_type == "openai":
+            try:
+                parsed_data = json.loads(ocr_result.text)
+                return OcrExtractResponse(
+                    vendor=parsed_data.get("vendor", "Unknown Vendor"),
+                    gst_number=parsed_data.get("gst_number"),
+                    date=parsed_data.get("date", datetime.now().strftime("%Y-%m-%d")),
+                    amount=float(parsed_data.get("amount", 0.0)),
+                    category=parsed_data.get("category", "MISCELLANEOUS"),
+                    fraud_risk_score=float(parsed_data.get("fraud_risk_score", 0.0)),
+                    is_suspicious=bool(parsed_data.get("is_suspicious", False)),
+                    fraud_flags=parsed_data.get("fraud_flags", [])
+                )
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse OCR JSON: {ocr_result.text}")
+                raise HTTPException(status_code=500, detail="Failed to parse OCR response")
+        else:
+            return OcrExtractResponse(
+                vendor="HP Fuel Station #482",
+                gst_number="27AAACH1234H1Z5",
+                date=datetime.now().strftime("%Y-%m-%d"),
+                amount=2500.0,
+                category="FUEL",
+                fraud_risk_score=0.08,
+                is_suspicious=False,
+                fraud_flags=[],
+            )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
     content = await file.read()
     await file.seek(0)
     
@@ -186,9 +252,30 @@ async def create_expense(
     payload: ExpenseCreateRequest,
     driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
-    uow = Depends(get_uow)
+    uow = Depends(get_uow),
+    current_user: User = Depends(get_current_user)
 ):
     """Submit a driver expense."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=403, detail="User is not associated with a company")
+
+    # Validate driver ownership
+    driver = await db.get(Driver, payload.driver_id)
+    if not driver or driver.company_id != current_user.company_id:
+        raise HTTPException(status_code=403, detail="Unauthorized driver")
+
+    # Validate vehicle ownership if present
+    if payload.vehicle_id:
+        vehicle = await db.get(Vehicle, payload.vehicle_id)
+        if not vehicle or vehicle.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Unauthorized vehicle")
+
+    # Validate trip ownership if present
+    if payload.trip_id:
+        trip = await db.get(Trip, payload.trip_id)
+        if not trip or trip.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Unauthorized trip")
+
     try:
         cat_enum = ExpenseCategory(payload.category.upper())
     except ValueError:
@@ -272,6 +359,7 @@ async def list_driver_expenses(
     limit: int = Query(50, ge=1, le=200),
     driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List expenses for a specific driver."""
     result = await db.execute(

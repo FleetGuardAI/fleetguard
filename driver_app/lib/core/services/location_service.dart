@@ -93,7 +93,7 @@ class LocationService {
       return AndroidSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 10,
-        intervalDuration: Duration(seconds: AppConfig.gpsIntervalSeconds),
+        intervalDuration: const Duration(seconds: AppConfig.gpsIntervalSeconds),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'FleetGuard Driver',
           notificationText: 'Tracking your location for fleet management',

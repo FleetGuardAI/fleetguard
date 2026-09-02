@@ -47,7 +47,7 @@ class ExpenseListScreen extends ConsumerWidget {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: exp['status'] == 'APPROVED' ? Colors.green.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
+                      color: exp['status'] == 'APPROVED' ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(

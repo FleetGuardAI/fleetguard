@@ -37,8 +37,10 @@ class TripRepository:
         status: Optional[TripStatus] = None, 
         limit: int = 50, 
         offset: int = 0,
-        company_id: Optional[int] = None
+        company_id: Optional[int] = None,
+        search: Optional[str] = None
     ) -> Sequence[Trip]:
+        from sqlalchemy import or_
         query = select(Trip)
         
         if company_id is not None:
@@ -46,6 +48,16 @@ class TripRepository:
 
         if status is not None:
             query = query.where(Trip.status == status)
+
+        if search is not None and search.strip():
+            search_term = f"%{search.strip()}%"
+            query = query.where(
+                or_(
+                    Trip.trip_id.ilike(search_term),
+                    Trip.origin_location.ilike(search_term),
+                    Trip.destination_location.ilike(search_term)
+                )
+            )
 
         query = query.order_by(Trip.id.desc()).offset(offset).limit(limit)
         result = await self.db.execute(query)

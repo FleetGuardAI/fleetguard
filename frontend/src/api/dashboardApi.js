@@ -6,28 +6,27 @@ import api from './client';
  * @returns {Promise<object>}
  */
 export async function getDashboardData() {
-  const [kpis, recentActivity] = await Promise.all([
-    api.ownerDashboard.getKPIs().catch(() => null),
-    api.expenses.list({ limit: 5 }).catch(() => []),
+  // Do NOT catch errors here. Let them propagate to the UI.
+  const [vehicles, events, expenses, recentActivity] = await Promise.all([
+    api.vehicles.list(),
+    api.events.list(),
+    api.expenses.list(),
+    api.expenses.list({ limit: 5 }), // Using expenses as recent activity for now
   ]);
 
-  const defaultKPIs = {
-    active_trucks: 0,
-    pending_approvals: 0,
-    theft_alerts: 0,
-    flagged_drivers: 0,
-    total_expenses_today: 0,
-    total_expenses_month: 0,
-  };
+  const activeTrucks = (vehicles || []).filter(v => v.status === 'ACTIVE').length;
+  const pendingApprovals = (events || []).filter(e => e.status === 'PENDING').length;
+  const theftAlerts = (events || []).filter(e => e.type === 'THEFT').length;
+  const totalExpensesMonth = (expenses || []).reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
-  const mappedKPIs = kpis ? {
-    active_trucks: kpis.total_active_trucks || 0,
-    pending_approvals: 0,
-    theft_alerts: 0,
-    flagged_drivers: 0,
+  const mappedKPIs = {
+    active_trucks: activeTrucks,
+    pending_approvals: pendingApprovals,
+    theft_alerts: theftAlerts,
+    flagged_drivers: 0, // Requires driver intelligence API
     total_expenses_today: 0,
-    total_expenses_month: kpis.monthly_expenses || 0,
-  } : defaultKPIs;
+    total_expenses_month: totalExpensesMonth,
+  };
 
   const mappedRecentActivity = (recentActivity || []).map(expense => ({
     id: expense.id,
@@ -46,9 +45,9 @@ export async function getDashboardData() {
   // Fetch real fuel chart data from backend
   let fuelChart = [];
   try {
-    const vehicles = await api.vehicles.list({ is_active: true }).catch(() => api.trucks.list({ is_active: true }));
     if (vehicles && vehicles.length > 0) {
-      const chartData = await api.fuel.getChartData(vehicles[0].id, 24);
+      const activeVehicle = vehicles.find(v => v.status === 'ACTIVE') || vehicles[0];
+      const chartData = await api.fuel.getChartData(activeVehicle.id, 24);
       fuelChart = (chartData || []).map(point => ({
         time: point.timestamp,
         expected: point.expected_level,
@@ -57,7 +56,7 @@ export async function getDashboardData() {
       }));
     }
   } catch {
-    // No fuel data available yet
+    // Graceful fallback for fuel chart since it's an optional visual layer
   }
 
   return {

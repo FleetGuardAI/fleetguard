@@ -11,14 +11,14 @@ import '../../data/auth_repository.dart';
 import 'package:sendotp_flutter_sdk/sendotp_flutter_sdk.dart';
 
 class PhoneVerificationScreen extends ConsumerStatefulWidget {
-  final String companyName;
-  final String inviteToken;
 
   const PhoneVerificationScreen({
     super.key,
     required this.companyName,
     required this.inviteToken,
   });
+  final String companyName;
+  final String inviteToken;
 
   @override
   ConsumerState<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();

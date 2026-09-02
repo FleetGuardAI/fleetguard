@@ -123,8 +123,26 @@ async def create_expense(
     current_user: User = Depends(get_current_user)
 ) -> ExpenseResponse:
     from models.expense_domain import Expense
+    from models.vehicle_domain import Vehicle
+    from models.driver_domain import Driver
+    from models.trip_domain import Trip
     from datetime import datetime
     import uuid
+
+    if payload.get("vehicle_id"):
+        vehicle = await db.get(Vehicle, payload.get("vehicle_id"))
+        if not vehicle or vehicle.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid vehicle_id or unauthorized")
+            
+    if payload.get("driver_id"):
+        driver = await db.get(Driver, payload.get("driver_id"))
+        if not driver or driver.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid driver_id or unauthorized")
+            
+    if payload.get("trip_id"):
+        trip = await db.get(Trip, payload.get("trip_id"))
+        if not trip or trip.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid trip_id or unauthorized")
 
     expense = Expense(
         business_id=f"EXP-{str(uuid.uuid4())[:8].upper()}",
@@ -136,6 +154,7 @@ async def create_expense(
         description=payload.get("description", ""),
         vehicle_id=payload.get("vehicle_id"),
         driver_id=payload.get("driver_id"),
+        trip_id=payload.get("trip_id"),
         origin_type="rest_api",
         origin_id="manual"
     )

@@ -51,6 +51,9 @@ from models.emergency import EmergencyAlert
 from models.driver_wallet import WalletTransaction
 from models.trip_start_selfie import TripStartSelfie
 
+# --- Owner App ---
+from models.notification import Notification, NotificationCategory
+
 __all__ = [
     # Auth
     "Company",
@@ -98,4 +101,5 @@ __all__ = [
     "EmergencyAlert",
     "WalletTransaction",
     "TripStartSelfie",
+    "Notification",
 ]

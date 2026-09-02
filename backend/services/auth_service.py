@@ -98,10 +98,18 @@ def _create_access_token(user: User, jti: str, remember_me: bool) -> str:
     Encode a signed JWT for *user*.
     """
     payload = _build_token_payload(user, jti=jti, remember_me=remember_me)
+    payload["type"] = "access"
     return create_access_token(
         payload,
         expires_delta=(_session_expiry(remember_me) - _utcnow()),
     )
+
+def _create_refresh_token(user: User, jti: str, remember_me: bool) -> str:
+    payload = _build_token_payload(user, jti=jti, remember_me=remember_me)
+    payload["type"] = "refresh"
+    # Refresh tokens last longer (e.g., 30 days)
+    expires_delta = timedelta(days=30)
+    return create_access_token(payload, expires_delta=expires_delta)
 
 
 def _user_to_out(user: User) -> UserOut:
@@ -461,6 +469,8 @@ async def get_current_user(
             raise _CREDENTIALS_EXCEPTION
         if token_jti is None:
             raise _CREDENTIALS_EXCEPTION
+        if payload.get("type") == "refresh":
+            raise _CREDENTIALS_EXCEPTION
         user_id = int(user_id_str)
     except (JWTError, ValueError):
         raise _CREDENTIALS_EXCEPTION
@@ -521,6 +531,7 @@ async def create_token_for_user(
 
     return TokenResponse(
         access_token=_create_access_token(user, jti=jti, remember_me=remember_me),
+        refresh_token=_create_refresh_token(user, jti=jti, remember_me=remember_me),
         token_type="bearer",
     )
 
@@ -539,11 +550,67 @@ async def logout_user(token: str, db: AsyncSession) -> None:
     except JWTError:
         pass  # Just ignore if token is invalid
 
+async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenResponse:
+    _CREDENTIALS_EXCEPTION = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = decode_access_token(refresh_token)
+        if payload.get("type") != "refresh":
+            raise _CREDENTIALS_EXCEPTION
+        user_id_str: Optional[str] = payload.get("sub")
+        token_jti: Optional[str] = payload.get("jti")
+        if user_id_str is None or token_jti is None:
+            raise _CREDENTIALS_EXCEPTION
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise _CREDENTIALS_EXCEPTION
+
+    now = _utcnow()
+    session_result = await db.execute(
+        select(AuthSession).where(
+            AuthSession.session_jti == token_jti,
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None)
+        )
+    )
+    auth_session = session_result.scalar_one_or_none()
+    if auth_session is None:
+        raise _CREDENTIALS_EXCEPTION
+        
+    result = await db.execute(select(User).where(User.id == user_id))
+    user: Optional[User] = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise _CREDENTIALS_EXCEPTION
+        
+    # Optional: we can roll the refresh token or keep the same session.
+    # To keep the session, we just issue a new access token (and same refresh token)
+    return TokenResponse(
+        access_token=_create_access_token(user, jti=token_jti, remember_me=auth_session.remember_me),
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
+
 
 async def generate_owner_qr_token(user: User, db: AsyncSession):
     from models.owner_pairing_token import OwnerPairingToken
     from schemas.auth import OwnerQRPairingResponse
+    from datetime import datetime, timezone
     
+    # Invalidate existing unused tokens for this company
+    now_utc = datetime.now(tz=timezone.utc)
+    await db.execute(
+        update(OwnerPairingToken)
+        .where(
+            OwnerPairingToken.company_id == user.company_id,
+            OwnerPairingToken.is_used == False,
+            OwnerPairingToken.expires_at > now_utc
+        )
+        .values(is_used=True)
+    )
+
     raw_token = secrets.token_urlsafe(32)
     token_entry = OwnerPairingToken(
         company_id=user.company_id,
@@ -571,33 +638,33 @@ async def verify_owner_qr_token(token: str, db: AsyncSession) -> TokenResponse:
     
     logger = logging.getLogger("fleetguard.auth")
     logger.info(f"[QR Verify] Received token format: {type(token)}, length: {len(token)}")
+    from datetime import datetime, timezone
     
+    token = token.strip()
+    now_utc = datetime.now(tz=timezone.utc)
+    
+    # Atomically mark the token as used if it is valid
     result = await db.execute(
-        select(OwnerPairingToken).where(OwnerPairingToken.pairing_token == token)
+        update(OwnerPairingToken)
+        .where(
+            OwnerPairingToken.pairing_token == token,
+            OwnerPairingToken.is_used == False,
+            OwnerPairingToken.expires_at > now_utc
+        )
+        .values(is_used=True)
+        .returning(OwnerPairingToken.user_id)
     )
-    token_entry = result.scalar_one_or_none()
+    user_id = result.scalar_one_or_none()
     
-    if token_entry is None:
-        logger.warning(f"[QR Verify] Token lookup failed. Not found in database.")
+    if user_id is None:
+        logger.warning(f"[QR Verify] Token lookup failed. Not found in database or already used.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired QR token."
         )
-        
-    logger.info(f"[QR Verify] Token found. ID: {token_entry.id}, is_used: {token_entry.is_used}, expires_at: {token_entry.expires_at}")
-    
-    if not token_entry.is_valid:
-        logger.warning(f"[QR Verify] Validation failure reason: is_used={token_entry.is_used}, expires_at={token_entry.expires_at}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired QR token."
-        )
-    
-    # Mark as used
-    token_entry.is_used = True
     
     # Get user
-    result = await db.execute(select(User).where(User.id == token_entry.user_id))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if user is None or not user.is_active:
@@ -639,6 +706,11 @@ async def request_otp(identifier: str, db: AsyncSession):
         return OTPRequestResponse(message=generic_message, req_id=None)
         
     result = await otp_provider.request_otp(identifier)
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send OTP: {result.message}"
+        )
     return OTPRequestResponse(message=generic_message, req_id=result.provider_reference)
 
 async def resend_otp(req_id: str, channel: str, db: AsyncSession):
@@ -650,6 +722,11 @@ async def resend_otp(req_id: str, channel: str, db: AsyncSession):
         return OTPRequestResponse(message="OTP resent successfully.", req_id=None)
         
     result = await otp_provider.retry_otp(req_id, channel)
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resend OTP: {result.message}"
+        )
     return OTPRequestResponse(message="OTP resent successfully.", req_id=result.provider_reference)
 
 async def verify_otp(identifier: str, req_id: Optional[str], code: Optional[str], db: AsyncSession, msg91_token: Optional[str] = None) -> TokenResponse:
@@ -701,6 +778,11 @@ async def verify_otp(identifier: str, req_id: Optional[str], code: Optional[str]
         otp_result = await otp_provider.verify_otp(req_id, code)
         
     if not otp_result.success:
+        if "MSG91 not fully configured" in otp_result.message:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to verify OTP: {otp_result.message}"
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired OTP.",

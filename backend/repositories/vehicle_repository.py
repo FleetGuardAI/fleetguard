@@ -33,8 +33,11 @@ class VehicleRepository:
         is_active: Optional[bool] = None, 
         limit: int = 50, 
         offset: int = 0,
-        company_id: Optional[int] = None
+        company_id: Optional[int] = None,
+        search: Optional[str] = None,
+        status: Optional[str] = None
     ) -> Sequence[Vehicle]:
+        from sqlalchemy import or_
         query = select(Vehicle)
         if company_id is not None:
             query = query.where(Vehicle.company_id == company_id)
@@ -44,6 +47,22 @@ class VehicleRepository:
                 query = query.where(Vehicle.status == VehicleStatus.ACTIVE)
             else:
                 query = query.where(Vehicle.status != VehicleStatus.ACTIVE)
+                
+        if status is not None and status.strip().upper() != 'ALL':
+            try:
+                query = query.where(Vehicle.status == VehicleStatus(status.strip().upper()))
+            except ValueError:
+                pass
+                
+        if search is not None and search.strip():
+            search_term = f"%{search.strip()}%"
+            query = query.where(
+                or_(
+                    Vehicle.registration_number.ilike(search_term),
+                    Vehicle.make.ilike(search_term),
+                    Vehicle.model.ilike(search_term)
+                )
+            )
 
         query = query.order_by(Vehicle.registration_number).offset(offset).limit(limit)
         result = await self.db.execute(query)

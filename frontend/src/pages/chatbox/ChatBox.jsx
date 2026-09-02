@@ -9,8 +9,14 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getInitials } from '@/utils/formatters';
-import { SUGGESTED_PROMPTS } from '@/data/chatMockData';
 import api from '@/api/client';
+
+const SUGGESTED_PROMPTS = [
+  "Show me the fleet health overview",
+  "Which vehicles need maintenance?",
+  "Are there any pending approvals?",
+  "Show me yesterday's fuel anomalies"
+];
 
 // ── Message Types ──
 function ChatMessageBubble({ message }) {
@@ -37,99 +43,11 @@ function ChatMessageBubble({ message }) {
           ? 'bg-fg-green/10 border-fg-green/20 text-content rounded-br-sm'
           : 'bg-surface/50 border-border text-content rounded-bl-sm'
       )}>
-        {/* Text content */}
+        {/* Text content - just raw text rendered pre-wrap to support basic markdown spacing */}
         {message.content?.text && (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content.text}</p>
-        )}
-
-        {/* Table response */}
-        {message.content?.data?.headers && (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-fg-border">
-                  {message.content.data.headers.map((h, i) => (
-                    <th key={i} className="text-left py-2 px-2 text-fg-text-sec font-semibold uppercase tracking-wider text-[10px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {message.content.data.rows.map((row, i) => (
-                  <tr key={i} className="border-b border-fg-border/50 hover:bg-white/[0.02]">
-                    {row.map((cell, j) => (
-                      <td key={j} className="py-2 px-2 text-fg-text">{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
+            {message.content.text}
           </div>
-        )}
-
-        {/* List response */}
-        {message.content?.data?.items && (
-          <div className="mt-3 space-y-2">
-            {message.content.data.items.map((item, i) => (
-              <div key={i} className="flex items-start gap-2 py-1.5 px-2 rounded-lg bg-white/[0.02]">
-                <span className="w-1.5 h-1.5 rounded-full bg-fg-green mt-2 flex-shrink-0" />
-                <div>
-                  <span className="text-sm text-fg-text font-medium">{item.label}</span>
-                  {item.detail && <span className="text-xs text-fg-text-sec ml-2">— {item.detail}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Metrics response */}
-        {message.content?.data?.metrics && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {message.content.data.metrics.map((m, i) => (
-              <div key={i} className="p-2.5 rounded-xl bg-white/[0.03] border border-fg-border">
-                <p className="text-[10px] text-fg-text-sec uppercase tracking-wider">{m.label}</p>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-lg font-bold text-fg-text">{m.value}</span>
-                  {m.trend && (
-                    <span className={cn(
-                      'text-[10px] font-semibold',
-                      m.trend.startsWith('+') ? 'text-red-400' : m.trend.startsWith('-') ? 'text-fg-green' : 'text-amber-400'
-                    )}>{m.trend}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Alerts response */}
-        {message.content?.data?.alerts && (
-          <div className="mt-3 space-y-2">
-            {message.content.data.alerts.map((a, i) => (
-              <div key={i} className={cn(
-                'flex items-start gap-2 py-2 px-3 rounded-xl border',
-                a.severity === 'critical' ? 'bg-red-500/5 border-red-500/20' :
-                a.severity === 'warning' ? 'bg-amber-500/5 border-amber-500/20' :
-                'bg-fg-green/5 border-fg-green/20'
-              )}>
-                <AlertTriangle className={cn(
-                  'w-3.5 h-3.5 mt-0.5 flex-shrink-0',
-                  a.severity === 'critical' ? 'text-red-400' :
-                  a.severity === 'warning' ? 'text-amber-400' : 'text-fg-green'
-                )} />
-                <div>
-                  <p className="text-sm text-fg-text">{a.title}</p>
-                  {a.time && <p className="text-[11px] text-fg-text-sec mt-0.5">{a.time}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Suggestion */}
-        {message.content?.suggestion && (
-          <p className="mt-3 pt-3 border-t border-fg-border text-xs text-fg-green italic">
-            {message.content.suggestion}
-          </p>
         )}
       </div>
     </motion.div>

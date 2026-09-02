@@ -3,11 +3,6 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Backwards-compatible aliases (preserve older code references)
-  static const Color backgroundDark = darkBackground;
-  static const Color surfaceDark = darkSurface;
-  static const Color statusOrange = warning;
-
   // --- Brand Colors ---
   static const Color primary = Color(0xFF0F9D58); // FleetGuard Green
   static const Color primaryLight = Color(0xFF34B26C);

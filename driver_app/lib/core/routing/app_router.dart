@@ -197,9 +197,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 /// Main shell with bottom navigation
 class _MainShell extends StatelessWidget {
-  final Widget child;
 
   const _MainShell({required this.child});
+  final Widget child;
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;

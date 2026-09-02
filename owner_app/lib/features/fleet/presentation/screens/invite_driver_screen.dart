@@ -1,8 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/fleet_repository.dart';
 
@@ -81,7 +79,7 @@ class _InviteDriverScreenState extends ConsumerState<InviteDriverScreen> {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: AppColors.primary.withValues(alpha: 0.15),
                         blurRadius: 40,
                         spreadRadius: 10,
                       )
@@ -123,7 +121,7 @@ class _InviteDriverScreenState extends ConsumerState<InviteDriverScreen> {
                   padding: const EdgeInsets.all(40),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                   ),
                   child: const Icon(
                     Icons.qr_code_scanner, 

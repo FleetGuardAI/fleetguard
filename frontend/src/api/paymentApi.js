@@ -21,11 +21,11 @@ export async function getPayments(params = {}) {
 
     return {
       id: `PAY-${t.id}`,
-      recipient_name: t.driver_name || t.vendor_name || (t.driver_id ? `Driver ID: ${t.driver_id}` : 'Driver Ramesh'),
+      recipient_name: t.driver_name || t.vendor_name || (t.driver_id ? `Driver ID: ${t.driver_id}` : 'Unknown'),
       truck_plate: t.truck_plate || (t.truck_id ? `Vehicle ID: ${t.truck_id}` : 'Unassigned'),
       category: t.issue_type || 'Expense Claim',
-      amount: t.amount || (Math.floor(Math.random() * 50) * 100 + 500),
-      method: t.method || 'UPI',
+      amount: t.amount || 0,
+      method: t.method || 'Unknown',
       date: t.updated_at || t.created_at || new Date().toISOString(),
       status: s,
       ref_num: s === 'completed' ? `TXN-${100000 + t.id}` : null,
@@ -64,7 +64,25 @@ export async function recordPayout(data) {
     id: `PAY-${ticket.id}`,
     date: new Date().toISOString(),
     status: 'completed',
-    ref_num: `TXN-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+    ref_num: `TXN-${Date.now()}`,
     ...data
   };
+}
+
+/**
+ * Settle a payout by approving the underlying ticket.
+ *
+ * @param {string} payoutId - The payout ID (e.g. "PAY-123")
+ * @returns {Promise<object>}
+ */
+export async function settlePayout(payoutId) {
+  // Extract ticket ID from PAY-xxx format
+  const ticketId = payoutId.startsWith('PAY-') ? payoutId.split('-')[1] : payoutId;
+  
+  const result = await api.tickets.action(ticketId, { 
+    action: 'approve', 
+    notes: 'Settled via Payout module' 
+  });
+  
+  return result;
 }

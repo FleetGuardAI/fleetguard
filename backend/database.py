@@ -14,14 +14,22 @@ from typing import AsyncGenerator, Any
 from config import settings
 
 
+from sqlalchemy.pool import NullPool
+import os
+
 # --- Engine ---
 connect_args = {}
+
+poolclass = None
+if os.environ.get("OTP_MOCK_MODE") == "True":
+    poolclass = NullPool
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     connect_args=connect_args,
     pool_pre_ping=True,
+    poolclass=poolclass,
 )
 
 # --- Session Factory ---

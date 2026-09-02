@@ -97,6 +97,22 @@ async def login(
 
 
 
+from schemas.auth import RefreshRequest
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Refresh an expired access token",
+)
+async def refresh_token_endpoint(
+    payload: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    from services.auth_service import refresh_access_token
+    return await refresh_access_token(payload.refresh_token, db=db)
+
+
 @router.post(
     "/forgot-password/request",
     response_model=ForgotPasswordResponse,

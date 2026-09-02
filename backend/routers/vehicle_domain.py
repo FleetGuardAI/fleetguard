@@ -24,14 +24,23 @@ router = APIRouter(prefix="/v1", tags=["Vehicle Domain"])
 @router.get("/vehicles", response_model=List[VehicleResponse])
 async def list_vehicles(
     is_active: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     uow: AbstractUnitOfWork = Depends(get_read_uow),
     current_user: User = Depends(get_current_user)
 ) -> List[VehicleResponse]:
-    """List all vehicles with optional active filter."""
+    """List all vehicles with optional active, search, and status filters."""
     service = VehicleService(uow)
-    vehicles = await service.search_vehicles(is_active=is_active, limit=limit, offset=offset, company_id=current_user.company_id)
+    vehicles = await service.search_vehicles(
+        is_active=is_active, 
+        limit=limit, 
+        offset=offset, 
+        company_id=current_user.company_id,
+        search=search,
+        status=status
+    )
     return [VehicleResponse.model_validate(v) for v in vehicles]
 
 
@@ -86,7 +95,6 @@ async def create_vehicle(
         event_type=EventType.VEHICLE_REGISTERED,
         entity_type=EntityType.VEHICLE,
         entity_id=vehicle.registration_number,
-        company_id=current_user.company_id,
         occurred_at=datetime.now(timezone.utc),
         capture_method=CaptureMethod.API_INTEGRATION,
         payload={"make": vehicle.make, "registration_number": vehicle.registration_number},

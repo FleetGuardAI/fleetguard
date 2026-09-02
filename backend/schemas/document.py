@@ -36,6 +36,26 @@ class DocumentBase(BaseModel):
         description="ID of the company that owns the document.",
         examples=[1],
     )
+    name: Optional[str] = Field(
+        None,
+        description="The user-provided title/name for the document.",
+    )
+    category: Optional[str] = Field(
+        None,
+        description="Document category (e.g., Registration, Permit).",
+    )
+    expiry_date: Optional[str] = Field(
+        None,
+        description="Expiration date if applicable.",
+    )
+    target_id: Optional[str] = Field(
+        None,
+        description="ID of the entity this document is associated with.",
+    )
+    target_type: Optional[str] = Field(
+        None,
+        description="Type of the associated entity (e.g., vehicle, driver).",
+    )
 
 
 class DocumentCreate(DocumentBase):

@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/fleet_provider.dart';
 import '../../data/fleet_repository.dart';
 import 'vehicle_detail_screen.dart';
+import 'driver_detail_screen.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/widgets/glass_text_field.dart';
+import '../../../../core/widgets/status_chip.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
+import '../../../../core/widgets/error_state_widget.dart';
 
 class FleetScreen extends ConsumerStatefulWidget {
   const FleetScreen({super.key});
@@ -15,7 +24,15 @@ class FleetScreen extends ConsumerStatefulWidget {
 }
 
 class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProviderStateMixin {
+
   late TabController _tabController;
+  final TextEditingController _truckSearchController = TextEditingController();
+  final TextEditingController _driverSearchController = TextEditingController();
+  final TextEditingController _hardwareSearchController = TextEditingController();
+  Timer? _truckDebounce;
+  Timer? _driverDebounce;
+  Timer? _hardwareDebounce;
+
 
   @override
   void initState() {
@@ -23,19 +40,98 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
     _tabController = TabController(length: 3, vsync: this);
   }
 
-  @override
+@override
   void dispose() {
     _tabController.dispose();
+    _truckSearchController.dispose();
+    _driverSearchController.dispose();
+    _hardwareSearchController.dispose();
+    _truckDebounce?.cancel();
+    _driverDebounce?.cancel();
+    _hardwareDebounce?.cancel();
     super.dispose();
+  }
+
+  String _selectedTruckStatus = 'ALL';
+  String _selectedDriverStatus = 'ALL';
+  String _selectedHardwareStatus = 'ALL';
+
+  void _showFilterBottomSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final int currentTab = _tabController.index;
+    
+    String title = 'Filter Trucks';
+    List<String> options = ['ALL', 'ACTIVE', 'IN_SHOP', 'IDLE', 'OUT_OF_SERVICE'];
+    String currentSelection = _selectedTruckStatus;
+    
+    if (currentTab == 1) {
+      title = 'Filter Drivers';
+      options = ['ALL', 'ACTIVE', 'ON_LEAVE', 'OFF_DUTY'];
+      currentSelection = _selectedDriverStatus;
+    } else if (currentTab == 2) {
+      title = 'Filter Hardware';
+      options = ['ALL', 'INSTALLED', 'UNINSTALLED'];
+      currentSelection = _selectedHardwareStatus;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: options.map((status) {
+                  final isSelected = currentSelection == status;
+                  return ChoiceChip(
+                    label: Text(status.replaceAll('_', ' ')),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        if (currentTab == 0) {
+                          ref.read(vehicleStatusProvider.notifier).state = status;
+                        } else if (currentTab == 1) {
+                          setState(() => _selectedDriverStatus = status);
+                        } else if (currentTab == 2) {
+                          setState(() => _selectedHardwareStatus = status);
+                        }
+                        Navigator.pop(context);
+                      }
+                    },
+                    selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                    labelStyle: TextStyle(color: isSelected ? AppColors.primary : (isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: AppTheme.backgroundCream,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
         title: const Text('Fleet'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.filter_list, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface),
+            onPressed: _showFilterBottomSheet,
+          ),
           TextButton.icon(
             onPressed: () {
               if (_tabController.index == 0) {
@@ -46,16 +142,16 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
                 context.push('/fleet/add-device');
               }
             },
-            icon: const Icon(Icons.add, color: AppTheme.primaryGreen),
-            label: const Text('Add', style: TextStyle(color: AppTheme.primaryGreen)),
+            icon: const Icon(Icons.add, color: AppColors.primary),
+            label: const Text('Add', style: TextStyle(color: AppColors.primary)),
           ),
           const SizedBox(width: 8),
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppTheme.primaryGreen,
-          unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primaryGreen,
+          labelColor: isDark ? AppColors.darkOnSurface : AppColors.primary,
+          unselectedLabelColor: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray,
+          indicatorColor: AppColors.primary,
           tabs: const [
             Tab(text: 'TRUCKS'),
             Tab(text: 'DRIVERS'),
@@ -77,74 +173,93 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
   Widget _buildHardwareList() {
     final hardwareAsync = ref.watch(hardwareAssetsProvider);
     return hardwareAsync.when(
-      data: (assets) {
-        if (assets.isEmpty) {
-          return const Center(child: Text("No hardware devices found.", style: TextStyle(color: Colors.white70)));
+      data: (allAssets) {
+        final search = ref.watch(hardwareSearchProvider).toLowerCase();
+        final filteredAssets = allAssets.where((a) {
+          final matchesStatus = _selectedHardwareStatus == 'ALL' || a.installationStatus.toUpperCase() == _selectedHardwareStatus;
+          final matchesSearch = a.model.toLowerCase().contains(search) || a.businessId.toLowerCase().contains(search);
+          return matchesStatus && matchesSearch;
+        }).toList();
+
+        if (filteredAssets.isEmpty) {
+          return EmptyStateWidget(
+            icon: Icons.memory,
+            title: 'No Hardware Found',
+            message: _selectedHardwareStatus == 'ALL'
+                ? 'You have not added any hardware devices.'
+                : 'No hardware devices found with status "$_selectedHardwareStatus".',
+          );
         }
         return ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            _buildSearchBar('Search hardware...'),
+            _buildSearchBar(
+              hint: 'Search hardware...',
+              controller: _hardwareSearchController,
+              onSearchChanged: (value) {
+                if (_hardwareDebounce?.isActive ?? false) _hardwareDebounce!.cancel();
+                _hardwareDebounce = Timer(const Duration(milliseconds: 500), () {
+                  ref.read(hardwareSearchProvider.notifier).state = value;
+                });
+              },
+            ),
             const SizedBox(height: 16),
-            ...assets.map((a) => Padding(
+            ...filteredAssets.map((a) => Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: _buildHardwareCard(a),
             )),
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
+      loading: () => ListView.separated(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: 4,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
+      ),
+      error: (e, st) => ErrorStateWidget(
+        message: 'Failed to load hardware.',
+        onRetry: () => ref.refresh(hardwareAssetsProvider),
+      ),
     );
   }
 
   Widget _buildHardwareCard(HardwareAsset asset) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isInstalled = asset.installationStatus.toLowerCase() == 'installed';
     return InkWell(
       onTap: () {},
-      child: Container(
+      child: GlassCard(
+        
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundCream,
+                color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.memory, color: AppTheme.primaryGreen),
+              child: const Icon(Icons.memory, color: AppColors.primary),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(asset.model, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(asset.businessId, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                  Text(asset.model, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  Text(asset.businessId, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(asset.operationalStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
-                Row(
-                  children: [
-                    Icon(Icons.circle, size: 8, color: isInstalled ? AppTheme.primaryGreen : Colors.orange),
-                    const SizedBox(width: 4),
-                    Text(asset.installationStatus, style: TextStyle(color: isInstalled ? AppTheme.primaryGreen : Colors.orange, fontSize: 12)),
-                  ],
+                Text(asset.operationalStatus, style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                const SizedBox(height: 4),
+                StatusChip(
+                  label: asset.installationStatus,
+                  color: isInstalled ? AppColors.statusGreen : AppColors.statusAmber,
                 ),
               ],
             )
@@ -156,86 +271,139 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
 
   Widget _buildTrucksList() {
     final vehiclesAsync = ref.watch(vehiclesProvider);
+    final status = ref.watch(vehicleStatusProvider);
     return vehiclesAsync.when(
       data: (vehicles) {
         if (vehicles.isEmpty) {
-          return const Center(child: Text("No vehicles found.", style: TextStyle(color: Colors.white70)));
+          return EmptyStateWidget(
+            icon: Icons.local_shipping,
+            title: 'No Trucks Found',
+            message: status == 'ALL'
+                ? 'Your fleet has no trucks registered.'
+                : 'No trucks found with status "$status".',
+          );
         }
         return ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            _buildSearchBar('Search truck...'),
+            _buildSearchBar(
+              hint: 'Search truck...',
+              controller: _truckSearchController,
+              onSearchChanged: (value) {
+                if (_truckDebounce?.isActive ?? false) _truckDebounce!.cancel();
+                _truckDebounce = Timer(const Duration(milliseconds: 500), () {
+                  ref.read(vehicleSearchProvider.notifier).state = value;
+                });
+              },
+            ),
             const SizedBox(height: 16),
             ...vehicles.map((v) => Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
-              child: _buildTruckCard(v.licensePlate, '${v.make} ${v.model}', v.status, 'Healthy', AppTheme.primaryGreen, () {
+              child: _buildTruckCard(v.licensePlate, '${v.make} ${v.model}', v.status, 'Healthy', AppColors.primary, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => VehicleDetailScreen(vehicle: v)));
               }),
             )),
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
+      loading: () => ListView.separated(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: 4,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
+      ),
+      error: (e, st) => ErrorStateWidget(
+        message: 'Failed to load trucks.',
+        onRetry: () => ref.refresh(vehiclesProvider),
+      ),
     );
   }
 
   Widget _buildDriversList() {
     final driversAsync = ref.watch(driversProvider);
     return driversAsync.when(
-      data: (drivers) {
-        if (drivers.isEmpty) {
-          return const Center(child: Text("No drivers found.", style: TextStyle(color: Colors.white70)));
+      data: (allDrivers) {
+        final search = ref.watch(driverSearchProvider).toLowerCase();
+        final drivers = _selectedDriverStatus == 'ALL' 
+            ? allDrivers 
+            : allDrivers.where((d) => d.status.toUpperCase() == _selectedDriverStatus).toList();
+        
+        final filteredDrivers = drivers.where((d) {
+          return d.name.toLowerCase().contains(search) || d.phoneNumber.toLowerCase().contains(search);
+        }).toList();
+
+        if (filteredDrivers.isEmpty) {
+          return EmptyStateWidget(
+            icon: Icons.person_off,
+            title: 'No Drivers Found',
+            message: _selectedDriverStatus == 'ALL'
+                ? 'Your fleet has no drivers added.'
+                : 'No drivers found with status "$_selectedDriverStatus".',
+          );
         }
         return ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            _buildSearchBar('Search driver...'),
+            _buildSearchBar(
+              hint: 'Search driver...',
+              controller: _driverSearchController,
+              onSearchChanged: (value) {
+                if (_driverDebounce?.isActive ?? false) _driverDebounce!.cancel();
+                _driverDebounce = Timer(const Duration(milliseconds: 500), () {
+                  ref.read(driverSearchProvider.notifier).state = value;
+                });
+              },
+            ),
             const SizedBox(height: 16),
-            ...drivers.map((d) => Padding(
+            ...filteredDrivers.map((d) => Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
-              child: _buildDriverCard(d.name, d.phoneNumber, d.status, 'Good', AppTheme.primaryGreen),
+              child: _buildDriverCard(d.name, d.phoneNumber, d.status, 'Good', AppColors.primary, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => DriverDetailScreen(driver: d)));
+              }),
             )),
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red))),
-    );
-  }
-
-  Widget _buildSearchBar(String hint) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
-        filled: true,
-        fillColor: AppTheme.cardLight,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      loading: () => ListView.separated(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: 4,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
+      ),
+      error: (e, st) => ErrorStateWidget(
+        message: 'Failed to load drivers.',
+        onRetry: () => ref.refresh(driversProvider),
       ),
     );
   }
 
+Widget _buildSearchBar({
+    required String hint, 
+    required TextEditingController controller, 
+    required void Function(String) onSearchChanged,
+  }) {
+    return GlassTextField(
+      
+      controller: controller,
+      hintText: hint,
+      prefixIcon: Icons.search,
+      onChanged: onSearchChanged,
+      onClear: () {
+        controller.clear();
+        onSearchChanged('');
+      },
+    );
+  }
+
   Widget _buildTruckCard(String plate, String driver, String status, String health, Color healthColor, [VoidCallback? onTap]) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color statusColor = status.toUpperCase() == 'ACTIVE' ? AppColors.statusGreen : AppColors.statusAmber;
+
     return InkWell(
       onTap: onTap,
-      child: Container(
+      child: GlassCard(
+        
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
         child: Row(
           children: [
             const Text('🚛', style: TextStyle(fontSize: 32)),
@@ -244,15 +412,19 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plate, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(driver, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                  Text(plate, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  Text(driver, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(status, style: const TextStyle(fontWeight: FontWeight.w500)),
+                StatusChip(
+                  label: status,
+                  color: statusColor,
+                ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(Icons.circle, size: 8, color: healthColor),
@@ -268,42 +440,39 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildDriverCard(String name, String plate, String status, String health, Color healthColor) {
+  Widget _buildDriverCard(String name, String plate, String status, String health, Color healthColor, [VoidCallback? onTap]) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color statusColor = status.toUpperCase() == 'ACTIVE' ? AppColors.statusGreen : AppColors.statusAmber;
+
     return InkWell(
-      onTap: () {},
-      child: Container(
+      onTap: onTap,
+      child: GlassCard(
+        
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
         child: Row(
           children: [
-            const CircleAvatar(
-              backgroundColor: AppTheme.backgroundCream,
-              child: Icon(Icons.person, color: AppTheme.textSecondary),
+            CircleAvatar(
+              backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+              child: Icon(Icons.person, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(plate, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                  Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  Text(plate, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(status, style: const TextStyle(fontWeight: FontWeight.w500)),
+                StatusChip(
+                  label: status,
+                  color: statusColor,
+                ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(Icons.circle, size: 8, color: healthColor),

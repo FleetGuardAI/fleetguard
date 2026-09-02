@@ -52,11 +52,11 @@ class RecentActivityItem {
 
   factory RecentActivityItem.fromJson(Map<String, dynamic> json) {
     return RecentActivityItem(
-      id: json['id'],
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      type: json['type'] ?? '',
-      status: json['status'] ?? '',
+      id: json['id'] ?? 0,
+      title: json['title'] ?? 'Unknown Issue',
+      description: json['description'] ?? 'No description',
+      type: json['type'] ?? 'ticket',
+      status: json['status'] ?? 'PENDING',
       timestamp: json['timestamp'],
     );
   }

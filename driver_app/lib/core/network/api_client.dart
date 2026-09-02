@@ -13,8 +13,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 class ApiClient {
-  final Ref _ref;
-  late final Dio _dio;
 
   ApiClient(this._ref) {
     _dio = Dio(
@@ -36,6 +34,8 @@ class ApiClient {
       _ErrorInterceptor(),
     ]);
   }
+  final Ref _ref;
+  late final Dio _dio;
 
   Dio get dio => _dio;
 
@@ -141,10 +141,10 @@ class ApiClient {
 
 /// Attaches JWT Bearer token to every request
 class _AuthInterceptor extends Interceptor {
-  // ignore: unused_field
-  final Ref _ref;
 
   _AuthInterceptor(this._ref);
+  // ignore: unused_field
+  final Ref _ref;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {

@@ -1,8 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/widgets/metric_card.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
+import '../../../../core/widgets/error_state_widget.dart';
 import '../providers/dashboard_provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
@@ -29,10 +34,10 @@ class DashboardScreen extends ConsumerWidget {
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                       blurRadius: 100,
                       spreadRadius: 100,
                     )
@@ -55,15 +60,15 @@ class DashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(ref, isDark),
+                    _buildHeader(context, ref, isDark),
                     const SizedBox(height: 24),
-                    _buildGreeting(isDark),
+                    _buildGreeting(ref, isDark),
                     const SizedBox(height: 24),
                     _buildAttentionRequired(ref, isDark),
                     const SizedBox(height: 24),
                     _buildPerformanceOverview(ref, isDark),
                     const SizedBox(height: 24),
-                    _buildLiveTrackingCard(ref, isDark),
+                    _buildLiveTrackingCard(context, ref, isDark),
                     const SizedBox(height: 24),
                     _buildRecentActivity(ref, isDark),
                     const SizedBox(height: 100), // Bottom padding for glass nav
@@ -86,16 +91,16 @@ class DashboardScreen extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.statusRed.withOpacity(0.1),
+            color: AppColors.statusRed.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.statusRed.withOpacity(0.3)),
+            border: Border.all(color: AppColors.statusRed.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.statusRed.withOpacity(0.2),
+                  color: AppColors.statusRed.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.warning_amber_rounded, color: AppColors.statusRed),
@@ -187,7 +192,7 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       child: Icon(
                         item.type == 'ticket' ? Icons.report_problem_outlined : Icons.info_outline,
-                        color: item.status == 'pending' ? AppColors.statusOrange : AppColors.primary,
+                        color: item.status == 'pending' ? AppColors.warning : AppColors.primary,
                         size: 20,
                       ),
                     ),
@@ -217,7 +222,7 @@ class DashboardScreen extends ConsumerWidget {
                             Text(
                               _formatTime(item.timestamp!),
                               style: TextStyle(
-                                color: isDark ? AppColors.darkOnSurfaceVariant.withOpacity(0.5) : AppColors.lightOnSurfaceVariant.withOpacity(0.5),
+                                color: isDark ? AppColors.darkOnSurfaceVariant.withValues(alpha: 0.5) : AppColors.lightOnSurfaceVariant.withValues(alpha: 0.5),
                                 fontSize: 11,
                               ),
                             ),
@@ -230,8 +235,17 @@ class DashboardScreen extends ConsumerWidget {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Failed to load activity', style: const TextStyle(color: AppColors.statusRed))),
+          loading: () => ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 3,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) => const SkeletonLoader(height: 72, borderRadius: 12),
+          ),
+          error: (err, stack) => ErrorStateWidget(
+            message: 'Failed to load activity.',
+            onRetry: () => ref.refresh(recentActivityProvider),
+          ),
         ),
       ],
     );
@@ -246,7 +260,7 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildHeader(WidgetRef ref, bool isDark) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -260,7 +274,7 @@ class DashboardScreen extends ConsumerWidget {
                 border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -292,8 +306,9 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _GlassIconButton(
               icon: Icons.notifications_outlined,
-              onPressed: () {},
+              onPressed: () => context.push('/notifications'),
               isDark: isDark,
+              semanticLabel: 'Open notifications',
             ),
             const SizedBox(width: 12),
             Container(
@@ -301,23 +316,14 @@ class DashboardScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 2),
               ),
-              child: PopupMenuButton(
-                icon: const CircleAvatar(
+              child: InkWell(
+                onTap: () => _showProfileSheet(context, ref, isDark),
+                borderRadius: BorderRadius.circular(20),
+                child: const CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.primary,
                   child: Icon(Icons.person, color: Colors.white, size: 20),
                 ),
-                onSelected: (value) {
-                  if (value == 'logout') {
-                    ref.read(authServiceProvider).logout();
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Text('Logout'),
-                  ),
-                ],
               ),
             ),
           ],
@@ -326,7 +332,101 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGreeting(bool isDark) {
+  void _showProfileSheet(BuildContext context, WidgetRef ref, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final userProfileAsync = ref.watch(userProfileProvider);
+        
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 32,
+                    backgroundColor: AppColors.primary,
+                    child: Icon(Icons.person, size: 36, color: Colors.white),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: userProfileAsync.when(
+                      data: (user) {
+                        if (user == null) {
+                          return const Text('Profile not available');
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.fullName,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Role: ${user.role.toUpperCase()}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const SkeletonLoader(height: 48, width: 150),
+                      error: (_, __) => const Text('Error loading profile'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ref.read(authServiceProvider).logout();
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.statusRed,
+                  side: const BorderSide(color: AppColors.statusRed),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGreeting(WidgetRef ref, bool isDark) {
     final hour = DateTime.now().hour;
     String timeGreeting = 'Good morning';
     if (hour >= 12 && hour < 17) {
@@ -335,11 +435,14 @@ class DashboardScreen extends ConsumerWidget {
       timeGreeting = 'Good evening';
     }
 
+    final userProfileAsync = ref.watch(userProfileProvider);
+    final userName = userProfileAsync.valueOrNull?.fullName ?? 'Owner';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$timeGreeting, Suryansh',
+          '$timeGreeting, $userName',
           style: TextStyle(
             fontSize: 28, 
             fontWeight: FontWeight.bold,
@@ -362,22 +465,36 @@ class DashboardScreen extends ConsumerWidget {
 
 
 
-  Widget _buildLiveTrackingCard(WidgetRef ref, bool isDark) {
+  Widget _buildLiveTrackingCard(BuildContext context, WidgetRef ref, bool isDark) {
     final locationsAsync = ref.watch(fleetLocationsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Live Tracking', 
-          style: TextStyle(
-            fontSize: 18, 
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-            color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Live Tracking', 
+              style: TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => context.push('/tracking'),
+              icon: const Icon(Icons.fullscreen, size: 20),
+              label: const Text('Full Map'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Container(
           height: 180,
           decoration: BoxDecoration(
@@ -385,7 +502,7 @@ class DashboardScreen extends ConsumerWidget {
             border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
@@ -403,11 +520,13 @@ class DashboardScreen extends ConsumerWidget {
                     infoWindow: InfoWindow(title: loc.driverName, snippet: loc.dutyStatus),
                   );
                 }).toSet();
+                
+                LatLng center = locations.isNotEmpty ? LatLng(locations.first.latitude, locations.first.longitude) : const LatLng(28.6139, 77.2090);
 
                 return GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(28.6139, 77.2090), // Default to New Delhi or dynamic center
-                    zoom: 10,
+                  initialCameraPosition: CameraPosition(
+                    target: center,
+                    zoom: locations.isNotEmpty ? 10 : 4,
                   ),
                   markers: markers,
                   myLocationEnabled: false,
@@ -415,8 +534,8 @@ class DashboardScreen extends ConsumerWidget {
                   mapToolbarEnabled: false,
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Map Error', style: TextStyle(color: AppColors.statusRed))),
+              loading: () => const SkeletonLoader(height: 180, borderRadius: 24),
+              error: (err, stack) => const Center(child: Text('Map Error', style: TextStyle(color: AppColors.error))),
             ),
           ),
         )
@@ -450,54 +569,27 @@ class DashboardScreen extends ConsumerWidget {
             childAspectRatio: 1.4,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _MetricCard(title: 'Active Trucks', value: kpis.totalActiveTrucks.toString(), icon: Icons.local_shipping_outlined, isDark: isDark),
-              _MetricCard(title: 'Active Drivers', value: kpis.totalActiveDrivers.toString(), icon: Icons.person_outline, isDark: isDark),
-              _MetricCard(title: 'Ongoing Trips', value: kpis.activeTrips.toString(), icon: Icons.route_outlined, isDark: isDark),
-              _MetricCard(title: 'Monthly Spend', value: currencyFormatter.format(kpis.monthlyExpenses), icon: Icons.account_balance_wallet_outlined, isDark: isDark),
+              MetricCard(title: 'Active Trucks', value: kpis.totalActiveTrucks.toString(), icon: Icons.local_shipping_outlined),
+              MetricCard(title: 'Active Drivers', value: kpis.totalActiveDrivers.toString(), icon: Icons.person_outline),
+              MetricCard(title: 'Ongoing Trips', value: kpis.activeTrips.toString(), icon: Icons.route_outlined),
+              MetricCard(title: 'Monthly Spend', value: currencyFormatter.format(kpis.monthlyExpenses), icon: Icons.account_balance_wallet_outlined),
             ],
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Failed to load KPIs: $err', style: const TextStyle(color: AppColors.statusRed))),
+          loading: () => GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.4,
+            physics: const NeverScrollableScrollPhysics(),
+            children: List.generate(4, (index) => const SkeletonLoader(height: 100, borderRadius: 24)),
+          ),
+          error: (err, stack) => ErrorStateWidget(
+            message: 'Failed to load KPIs.',
+            onRetry: () => ref.refresh(dashboardKPIsProvider),
+          ),
         ),
       ],
-    );
-  }
-
-
-}
-
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final bool isDark;
-
-  const _GlassCard({required this.child, required this.padding, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: (isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground).withOpacity(0.7),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 }
@@ -506,8 +598,9 @@ class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final bool isDark;
+  final String? semanticLabel;
 
-  const _GlassIconButton({required this.icon, required this.onPressed, required this.isDark});
+  const _GlassIconButton({required this.icon, required this.onPressed, required this.isDark, this.semanticLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -522,16 +615,17 @@ class _GlassIconButton extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                  color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
                 ),
               ),
               child: Icon(
                 icon, 
                 color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, 
                 size: 22,
+                semanticLabel: semanticLabel,
               ),
             ),
           ),
@@ -541,98 +635,6 @@ class _GlassIconButton extends StatelessWidget {
   }
 }
 
-class _ScoreRow extends StatelessWidget {
-  final String label;
-  final int score;
-  final Color color;
-  final bool isDark;
 
-  const _ScoreRow({required this.label, required this.score, required this.color, required this.isDark});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label, 
-          style: TextStyle(
-            fontSize: 14, 
-            fontWeight: FontWeight.w500,
-            color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            score.toString(),
-            style: TextStyle(
-              color: color, 
-              fontWeight: FontWeight.w700, 
-              fontSize: 13,
-            ),
-          ),
-        )
-      ],
-    );
-  }
-}
 
-class _MetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final bool isDark;
-
-  const _MetricCard({
-    required this.title, 
-    required this.value, 
-    required this.icon,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _GlassCard(
-      isDark: isDark,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title, 
-                style: TextStyle(
-                  color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, 
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Icon(
-                icon, 
-                color: isDark ? AppColors.darkOnSurfaceVariant.withOpacity(0.5) : AppColors.lightOnSurfaceVariant.withOpacity(0.5), 
-                size: 18,
-              ),
-            ],
-          ),
-          Text(
-            value, 
-            style: TextStyle(
-              fontWeight: FontWeight.w700, 
-              fontSize: 24,
-              letterSpacing: -0.5,
-              color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

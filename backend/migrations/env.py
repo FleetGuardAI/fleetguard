@@ -24,7 +24,7 @@ Show current revision:
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -121,6 +121,7 @@ async def run_async_migrations() -> None:
     )
 
     async with connectable.connect() as connection:
+        await connection.execute(text("SET statement_timeout = 0"))
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()

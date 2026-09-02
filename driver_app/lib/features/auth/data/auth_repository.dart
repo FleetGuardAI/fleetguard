@@ -10,9 +10,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 class AuthRepository {
-  final Dio _dio;
 
   AuthRepository(this._dio);
+  final Dio _dio;
 
   Future<Map<String, dynamic>> verifyInvite(String token) async {
     try {
