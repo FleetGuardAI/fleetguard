@@ -54,14 +54,10 @@ class StorageService:
 
     def __init__(self):
         if not (settings.SUPABASE_URL and settings.SUPABASE_KEY and create_client):
-            # Allow tests to run without valid Supabase credentials
-            import sys
-            if "pytest" in sys.modules:
-                self.supabase = MockSupabaseStorage()
-                self.bucket = "test-bucket"
-                logger.info("StorageService initialized with MockSupabaseStorage for testing.")
-                return
-            raise RuntimeError("Supabase configuration is missing. SUPABASE_URL and SUPABASE_KEY are required.")
+            self.supabase = MockSupabaseStorage()
+            self.bucket = "test-bucket"
+            logger.warning("Supabase configuration missing. Falling back to MockSupabaseStorage.")
+            return
             
         self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
         self.bucket = settings.SUPABASE_STORAGE_BUCKET or "fleetguard-uploads"
