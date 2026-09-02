@@ -43,5 +43,23 @@ services:
       kafka:
         condition: service_healthy
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: fleetguard-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fleetguard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fleetguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   kafka_data:
+  postgres_data:

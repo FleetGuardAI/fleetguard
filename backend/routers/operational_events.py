@@ -169,7 +169,7 @@ async def create_event(
         # Set the created_by field to the authenticated user
         if not payload.created_by:
             payload.created_by = str(current_user.id)
-        return await service.create_event(payload)
+        return await service.create_event(current_user.company_id, payload)
     except (EventNotFound, EventWriteError) as exc:
         _handle_service_error(exc)
 
@@ -192,7 +192,7 @@ async def list_events(
     current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
     """List all Operational Events with pagination. Requires authentication."""
-    events = await service.list_events(limit=limit, offset=offset)
+    events = await service.list_events(current_user.company_id, limit=limit, offset=offset)
     return list(events)
 
 
@@ -224,7 +224,7 @@ async def list_events_by_entity(
 ) -> list[OperationalEventResponse]:
     """List all events for a specific fleet entity. Requires authentication."""
     events = await service.list_events_by_entity(
-        entity_type, entity_id, limit=limit, offset=offset
+        current_user.company_id, entity_type, entity_id, limit=limit, offset=offset
     )
     return list(events)
 
@@ -248,7 +248,7 @@ async def list_events_by_type(
     current_user: User = Depends(get_current_user),
 ) -> list[OperationalEventResponse]:
     """List all events of a specific EventType. Requires authentication."""
-    events = await service.list_events_by_type(event_type, limit=limit, offset=offset)
+    events = await service.list_events_by_type(current_user.company_id, event_type, limit=limit, offset=offset)
     return list(events)
 
 
@@ -275,7 +275,7 @@ async def list_events_by_status(
 ) -> list[OperationalEventResponse]:
     """List all events in a specific VerificationStatus state. Requires authentication."""
     events = await service.list_events_by_verification_status(
-        verification_status, limit=limit, offset=offset
+        current_user.company_id, verification_status, limit=limit, offset=offset
     )
     return list(events)
 
@@ -298,7 +298,7 @@ async def get_event(
 ) -> OperationalEventResponse:
     """Retrieve a single Operational Event by UUID. Requires authentication."""
     try:
-        return await service.get_event(event_id)
+        return await service.get_event(event_id, current_user.company_id)
     except EventNotFound as exc:
         _handle_service_error(exc)
 
@@ -325,7 +325,7 @@ async def update_event_notes(
 ) -> OperationalEventResponse:
     """Update the notes annotation of an Operational Event. Requires authentication."""
     try:
-        return await service.update_notes(event_id, payload.notes)
+        return await service.update_notes(event_id, current_user.company_id, payload.notes)
     except (EventNotFound, EventWriteError) as exc:
         _handle_service_error(exc)
 
@@ -353,6 +353,6 @@ async def update_event_metadata(
 ) -> OperationalEventResponse:
     """Replace the event_metadata of an Operational Event. Requires authentication."""
     try:
-        return await service.update_metadata(event_id, payload.event_metadata)
+        return await service.update_metadata(event_id, current_user.company_id, payload.event_metadata)
     except (EventNotFound, EventWriteError) as exc:
         _handle_service_error(exc)

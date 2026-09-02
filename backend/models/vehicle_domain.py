@@ -3,10 +3,11 @@ FleetGuard — Vehicle Domain ORM Models
 Represents a vehicle and its state in the fleet.
 """
 
-from sqlalchemy import Integer, String, Float, Enum, ForeignKey
+from sqlalchemy import Integer, String, Float, Enum, ForeignKey, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, TYPE_CHECKING
 import enum
+import datetime
 
 from database import Base
 
@@ -74,6 +75,17 @@ class Vehicle(Base):
         Integer, ForeignKey("companies.id"), nullable=False, index=True, default=1
     )
     company: Mapped["Company"] = relationship("Company", lazy="selectin")
+
+    # --- Vehicle Documents ---
+    rc_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    insurance_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    insurance_expiry: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True)
+    puc_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    puc_expiry: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True)
+    fitness_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    fitness_expiry: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True)
+    permit_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    permit_expiry: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True)
 
     # --- Driver Assignment ---
     assigned_driver_id: Mapped[Optional[int]] = mapped_column(

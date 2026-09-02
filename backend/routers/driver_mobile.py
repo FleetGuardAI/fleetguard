@@ -359,18 +359,30 @@ async def upload_document(
 ):
     """
     Upload a driver document (license, aadhaar, selfie).
-    Stores locally for demo, abstracted for S3/R2 in production.
+    Uses the unified document pipeline to upload, OCR, and store metadata.
     """
     # Validate document type
     valid_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
     if document_type not in valid_types:
         raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
 
-    # Upload file
-    url = await storage_service.upload_file(
-        file=file,
-        folder=f"drivers/{driver.id}",
-    )
+    from services.unified_pipeline_service import UnifiedPipelineService
+    from models.operational_event import EntityType
+    
+    pipeline = UnifiedPipelineService(db)
+    
+    try:
+        url, extracted_fields = await pipeline.process_document(
+            file=file,
+            document_type="idDocument", # Default ID processor for these docs
+            entity_type=EntityType.DRIVER,
+            entity_id=str(driver.id),
+            uploaded_by=f"driver_{driver.id}",
+            company_id=driver.company_id
+        )
+    except Exception as e:
+        logger.error(f"Failed to process document upload: {e}")
+        raise HTTPException(500, "Failed to upload and process document")
 
     # Update driver record
     setattr(driver, f"{document_type}_url", url)
@@ -392,8 +404,9 @@ async def upload_document(
 
     return {
         "message": f"{document_type} uploaded successfully",
-        "url": url,
+        "url": storage_service.create_signed_url(url),
         "verification_status": driver.verification_status.value if driver.verification_status else None,
+        "extracted_fields": extracted_fields
     }
 
 
@@ -525,20 +538,22 @@ async def resume_duty(
 # ==========================================================================
 
 def _driver_to_response(driver: Driver) -> DriverProfileResponse:
-    """Convert Driver ORM to response schema."""
+    """Convert Driver ORM to response schema, resolving signed URLs."""
+    from services.file_upload_service import storage_service
+    
     return DriverProfileResponse(
         id=driver.id,
         name=driver.name,
         phone_number=driver.phone_number,
-        avatar_url=driver.avatar_url or driver.selfie_url,
+        avatar_url=storage_service.create_signed_url(driver.avatar_url or driver.selfie_url),
         company_id=driver.company_id,
         company_name=driver.company.company_name if driver.company else None,
         license_number=driver.license_number,
-        license_front_url=driver.license_front_url,
-        license_back_url=driver.license_back_url,
-        aadhaar_front_url=driver.aadhaar_front_url,
-        aadhaar_back_url=driver.aadhaar_back_url,
-        selfie_url=driver.selfie_url,
+        license_front_url=storage_service.create_signed_url(driver.license_front_url),
+        license_back_url=storage_service.create_signed_url(driver.license_back_url),
+        aadhaar_front_url=storage_service.create_signed_url(driver.aadhaar_front_url),
+        aadhaar_back_url=storage_service.create_signed_url(driver.aadhaar_back_url),
+        selfie_url=storage_service.create_signed_url(driver.selfie_url),
         verification_status=driver.verification_status.value if driver.verification_status else None,
         face_verified=driver.face_verified,
         duty_status=driver.duty_status.value if driver.duty_status else None,

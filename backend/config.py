@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # --- Database ---
-    # Default to SQLite for zero-config local dev. Switch to PostgreSQL for prod:
+    # PostgreSQL (production):
     # DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/fleetguard
-    DATABASE_URL: str = "sqlite+aiosqlite:///./fleetguard.db"
+    DATABASE_URL: str
 
     # --- OpenAI (for receipt OCR via Vision API) ---
     OPENAI_API_KEY: Optional[str] = None

@@ -137,6 +137,7 @@ class OperationalEventService:
 
     async def create_event(
         self,
+        company_id: int,
         payload: OperationalEventCreate,
     ) -> OperationalEventResponse:
         """
@@ -154,6 +155,8 @@ class OperationalEventService:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         payload : OperationalEventCreate
             Validated event data from the caller.
 
@@ -177,6 +180,7 @@ class OperationalEventService:
             payload=payload.payload,
             event_metadata=payload.event_metadata,
             notes=payload.notes,
+            company_id=company_id,
         )
 
         try:
@@ -201,11 +205,14 @@ class OperationalEventService:
             event_id=str(persisted.id)
         )
 
+        await self.uow.commit()
+
         return OperationalEventResponse.model_validate(persisted)
 
     async def update_notes(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         notes: str | None,
     ) -> OperationalEventResponse:
         """
@@ -215,6 +222,8 @@ class OperationalEventService:
         ----------
         event_id : uuid.UUID
             UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         notes : str | None
             New annotation text.  Pass ``None`` to clear.
 
@@ -231,7 +240,7 @@ class OperationalEventService:
             If the update cannot be persisted.
         """
         try:
-            updated = await self.uow.repositories.operational_event.update_event_notes(event_id, notes)
+            updated = await self.uow.repositories.operational_event.update_event_notes(event_id, company_id, notes)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
         except EventPersistenceError as exc:
@@ -242,6 +251,7 @@ class OperationalEventService:
     async def update_metadata(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         event_metadata: dict[str, Any],
     ) -> OperationalEventResponse:
         """
@@ -258,6 +268,8 @@ class OperationalEventService:
         ----------
         event_id : uuid.UUID
             UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         event_metadata : dict[str, Any]
             New metadata payload.  Replaces the existing value entirely.
 
@@ -274,7 +286,7 @@ class OperationalEventService:
             If the update cannot be persisted.
         """
         try:
-            updated = await self.uow.repositories.operational_event.update_event_metadata(event_id, event_metadata)
+            updated = await self.uow.repositories.operational_event.update_event_metadata(event_id, company_id, event_metadata)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
         except EventPersistenceError as exc:
@@ -288,6 +300,7 @@ class OperationalEventService:
     async def apply_update(
         self,
         event_id: uuid.UUID,
+        company_id: int,
         update: OperationalEventUpdate,
     ) -> OperationalEventResponse:
         """
@@ -304,6 +317,8 @@ class OperationalEventService:
         ----------
         event_id : uuid.UUID
             UUID of the event to update.
+        company_id : int
+            The tenant boundary.
         update : OperationalEventUpdate
             Partial update schema.  Fields left as ``None`` are not changed.
 
@@ -324,13 +339,13 @@ class OperationalEventService:
                 # Extension point — Validation Engine guard (not yet implemented)
                 await self._before_status_change(event_id, update.verification_status)
                 await self.uow.repositories.operational_event.update_verification_status(
-                    event_id, update.verification_status
+                    event_id, company_id, update.verification_status
                 )
 
             if update.notes is not None:
-                await self.uow.repositories.operational_event.update_event_notes(event_id, update.notes)
+                await self.uow.repositories.operational_event.update_event_notes(event_id, company_id, update.notes)
 
-            event = await self.uow.repositories.operational_event.get_event_by_id(event_id)
+            event = await self.uow.repositories.operational_event.get_event_by_id(event_id, company_id)
 
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
@@ -346,6 +361,7 @@ class OperationalEventService:
     async def get_event(
         self,
         event_id: uuid.UUID,
+        company_id: int,
     ) -> OperationalEventResponse:
         """
         Retrieve a single event by its UUID.
@@ -354,6 +370,8 @@ class OperationalEventService:
         ----------
         event_id : uuid.UUID
             UUID of the event to retrieve.
+        company_id : int
+            The tenant boundary.
 
         Returns
         -------
@@ -366,7 +384,7 @@ class OperationalEventService:
             If no event with the given UUID exists.
         """
         try:
-            event = await self.uow.repositories.operational_event.get_event_by_id(event_id)
+            event = await self.uow.repositories.operational_event.get_event_by_id(event_id, company_id)
         except EventNotFoundError as exc:
             raise EventNotFound(event_id) from exc
 
@@ -374,6 +392,7 @@ class OperationalEventService:
 
     async def list_events(
         self,
+        company_id: int,
         *,
         limit: int = 50,
         offset: int = 0,
@@ -383,6 +402,8 @@ class OperationalEventService:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         limit : int
             Maximum records to return.  Default 50.
         offset : int
@@ -393,11 +414,12 @@ class OperationalEventService:
         Sequence[OperationalEventResponse]
             Ordered list of event responses.
         """
-        events = await self.uow.repositories.operational_event.list_events(limit=limit, offset=offset)
+        events = await self.uow.repositories.operational_event.list_events(company_id=company_id, limit=limit, offset=offset)
         return [OperationalEventResponse.model_validate(e) for e in events]
 
     async def list_events_by_entity(
         self,
+        company_id: int,
         entity_type: EntityType,
         entity_id: str,
         *,
@@ -411,6 +433,8 @@ class OperationalEventService:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         entity_type : EntityType
             Domain category of the entity (VEHICLE, DRIVER, etc.).
         entity_id : str
@@ -426,12 +450,13 @@ class OperationalEventService:
             Events for the entity, ordered by ``occurred_at`` desc.
         """
         events = await self.uow.repositories.operational_event.list_events_by_entity(
-            entity_type, entity_id, limit=limit, offset=offset
+            company_id, entity_type, entity_id, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
 
     async def list_events_by_type(
         self,
+        company_id: int,
         event_type: EventType,
         *,
         limit: int = 50,
@@ -444,6 +469,8 @@ class OperationalEventService:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         event_type : EventType
             The event type to filter by.
         limit : int
@@ -457,12 +484,13 @@ class OperationalEventService:
             Matching events ordered by ``occurred_at`` desc.
         """
         events = await self.uow.repositories.operational_event.list_events_by_type(
-            event_type, limit=limit, offset=offset
+            company_id, event_type, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
 
     async def list_events_by_verification_status(
         self,
+        company_id: int,
         status: VerificationStatus,
         *,
         limit: int = 50,
@@ -477,6 +505,8 @@ class OperationalEventService:
 
         Parameters
         ----------
+        company_id : int
+            The tenant boundary.
         status : VerificationStatus
             The verification status to filter by.
         limit : int
@@ -490,7 +520,7 @@ class OperationalEventService:
             Matching events ordered by ``occurred_at`` desc.
         """
         events = await self.uow.repositories.operational_event.list_events_by_verification_status(
-            status, limit=limit, offset=offset
+            company_id, status, limit=limit, offset=offset
         )
         return [OperationalEventResponse.model_validate(e) for e in events]
 

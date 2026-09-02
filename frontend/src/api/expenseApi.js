@@ -189,3 +189,38 @@ export async function rejectExpense(id) {
   }
   return normalizeExpense(expense);
 }
+
+/**
+ * Upload an expense receipt for OCR analysis.
+ * 
+ * @param {File} file
+ * @returns {Promise<object>}
+ */
+export async function uploadExpenseReceiptOCR(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const token = localStorage.getItem('token');
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Assuming api.client is not configured for FormData easily, we use native fetch
+  // Wait, let's look at how other api calls are made. 
+  // We'll use fetch directly since it's cleaner for FormData.
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  
+  const response = await fetch(`${API_BASE}/v1/driver-app/expenses/ocr`, {
+    method: 'POST',
+    body: formData,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to upload receipt: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+}

@@ -90,7 +90,8 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     async def __aenter__(self):
         self.session = self.session_factory()
         self.repositories = RepositoryRegistry(self.session)
-        return super().__aenter__()
+        await super().__aenter__()
+        return self
 
     async def __aexit__(self, exc_type, exc_val, tb):
         await super().__aexit__(exc_type, exc_val, tb)

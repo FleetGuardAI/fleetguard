@@ -48,7 +48,7 @@ class DocumentCreate(DocumentBase):
     storage_path: str = Field(
         ...,
         description="Location where the physical file is stored.",
-        examples=["uploads/uuid-fuel_receipt.jpg"],
+        examples=["documents/uuid-fuel_receipt.jpg"],
     )
 
 

@@ -228,12 +228,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   Event Bus: {event_bus}")
 
-    if settings.DATABASE_URL.startswith("sqlite"):
-        await create_all_tables()
-        logger.info("✅ Database tables created/verified (SQLite).")
-    else:
-        logger.info("✅ PostgreSQL database detected. Skipping create_all_tables() as Alembic manages the schema.")
-    
+    logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
     if settings.KAFKA_ENABLED:
         try:
             await validation_consumer_runner.start()
@@ -273,11 +268,7 @@ app = FastAPI(
 )
 
 # --- Mount Static Files (Uploads) ---
-import os
-from fastapi.staticfiles import StaticFiles
-uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+# REMOVED for production security: Files are now retrieved securely via Supabase Storage signed URLs.
 
 # --- CORS Middleware ---
 app.add_middleware(

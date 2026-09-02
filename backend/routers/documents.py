@@ -57,6 +57,8 @@ async def upload_document(
     
     try:
         return await service.upload_document(file=file, uploaded_by=user_id_str, company_id=current_user.company_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -112,14 +114,14 @@ async def list_documents(
 @router.post(
     "/ocr/license",
     response_model=Dict[str, Any],
-    summary="Mock OCR for Driver License",
+    summary="OCR for Driver License",
 )
 async def ocr_driver_license(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Mock OCR endpoint that takes an image and returns structured driver license data.
+    OCR endpoint that takes an image and returns structured driver license data.
     """
     if not file.filename:
         raise HTTPException(
@@ -127,17 +129,31 @@ async def ocr_driver_license(
             detail="File must have a filename."
         )
 
-    # Return mocked data for MVP
-    valid_until = datetime.now() + timedelta(days=365 * 10)
+    content = await file.read()
+    from infrastructure.ocr.provider import get_ocr_provider
+    provider = get_ocr_provider()
     
+    try:
+        result = await provider.extract_text(
+            file_data=content, 
+            mime_type=file.content_type or "image/jpeg", 
+            document_type="idDocument"
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    fields = result.extracted_fields
+
     return {
         "status": "success",
         "data": {
-            "name": "Ravi Kumar",
-            "license_number": f"UK{random.randint(10, 99)}{random.randint(1000000, 9999999)}",
-            "date_of_birth": "1998-04-12",
-            "valid_until": valid_until.strftime("%Y-%m-%d"),
-            "vehicle_class": "HMV",
+            "name": fields.get("FirstName", "") + " " + fields.get("LastName", "") if fields.get("FirstName") or fields.get("LastName") else None,
+            "license_number": fields.get("DocumentNumber"),
+            "date_of_birth": fields.get("DateOfBirth"),
+            "valid_until": fields.get("DateOfExpiration"),
+            "vehicle_class": fields.get("VehicleClass"),
         }
     }
 
@@ -145,14 +161,14 @@ async def ocr_driver_license(
 @router.post(
     "/ocr/rc",
     response_model=Dict[str, Any],
-    summary="Mock OCR for Vehicle RC",
+    summary="OCR for Vehicle RC",
 )
 async def ocr_vehicle_rc(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Mock OCR endpoint that takes an image and returns structured vehicle RC data.
+    OCR endpoint that takes an image and returns structured vehicle RC data.
     """
     if not file.filename:
         raise HTTPException(
@@ -160,15 +176,32 @@ async def ocr_vehicle_rc(
             detail="File must have a filename."
         )
 
-    # Return mocked data for MVP
+    content = await file.read()
+    from infrastructure.ocr.provider import get_ocr_provider
+    provider = get_ocr_provider()
+    
+    try:
+        # We can use idDocument or generic document model
+        result = await provider.extract_text(
+            file_data=content, 
+            mime_type=file.content_type or "image/jpeg", 
+            document_type="idDocument"
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    fields = result.extracted_fields
+
     return {
         "status": "success",
         "data": {
-            "registration_number": f"UK07AB{random.randint(1000, 9999)}",
-            "owner_name": current_user.name,
-            "manufacturer": "Tata Motors",
-            "model": "Prima",
-            "fuel_type": "Diesel",
-            "gvw": "55000 kg",
+            "registration_number": fields.get("DocumentNumber"),
+            "owner_name": fields.get("FirstName", "") + " " + fields.get("LastName", "") if fields.get("FirstName") or fields.get("LastName") else None,
+            "manufacturer": None,
+            "model": None,
+            "fuel_type": None,
+            "gvw": None,
         }
     }

@@ -43,97 +43,79 @@ async def analyze_receipt(
         try:
             # Stage 1 — Image Validation
             yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Initializing OCR Engine...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Image quality validated (Resolution OK, Blur check passed).', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
+            
             # Stage 2 — OCR
             yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Running OCR text extraction...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.4)
+            
+            from infrastructure.ocr.provider import get_ocr_provider
+            provider = get_ocr_provider()
+            ocr_result = await provider.extract_text(
+                file_data=contents, 
+                mime_type=receipt_image.content_type or "image/jpeg", 
+                document_type="receipt"
+            )
+            
             yield f"data: {json.dumps({'type': 'telemetry', 'step': f'Text extracted successfully from {filename}.', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 3 — Receipt Understanding
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Understanding receipt structure (Merchant & items classification)...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Merchant identified: National Highway Tyres, Udaipur.', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 4 — Receipt Consistency Check & GST
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Checking GSTIN format validity...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'GSTIN validated: 08AAAAA1111A1Z1 (Rajasthan).', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 5 & 6 — Price Intelligence
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Running price intelligence checks...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Prices compared: Puncture repair standard matches Udaipur region.', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 7 & 8 — Image Tampering & Duplicate Detection
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Running image integrity & duplicate detection hashes...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.4)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'No duplicate receipts or image tampering detected.', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 9 — Fleet & Trip Intelligence
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Loading truck and driver historical logs...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'GPS match confirmed: Truck was located at Udaipur NH-48 coordinates.', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 10 & 11 — AI Reasoning & Fraud Risk Scoring
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Generating AI reasoning summary...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.4)
-            yield f"data: {json.dumps({'type': 'telemetry', 'step': 'Calculating final fraud risk assessment score...', 'status': 'success'})}\n\n"
-            await asyncio.sleep(0.3)
-
-            # Stage 12 & 13 — Complete & Final API Response
+            
+            fields = ocr_result.extracted_fields
+            vendor = fields.get("MerchantName", "Unknown Merchant")
+            amount_raw = fields.get("Total")
+            amount = 0.0
+            if amount_raw is not None:
+                try:
+                    if isinstance(amount_raw, str):
+                        clean_amount = amount_raw.replace("₹", "").replace("Rs.", "").replace("INR", "").replace(",", "").strip()
+                        amount = float(clean_amount)
+                    else:
+                        amount = float(amount_raw)
+                except ValueError:
+                    amount = 0.0
+                    
+            gst = fields.get("MerchantTaxId", None)
+            
+            # Final API Response
             final_assessment = {
                 "type": "result",
                 "receipt": {
-                    "merchant": "National Highway Tyres, Udaipur",
-                    "category": "Maintenance",
-                    "purpose": "Tyre puncture repair",
-                    "amount": 450,
-                    "gst": "08AAAAA1111A1Z1",
-                    "invoice_number": "NHT-8831"
+                    "merchant": vendor,
+                    "category": "Expense",
+                    "purpose": "General Expense",
+                    "amount": amount,
+                    "gst": gst,
+                    "invoice_number": fields.get("InvoiceId", None)
                 },
                 "image_analysis": {
-                    "edited": False,
-                    "blur": False,
-                    "confidence": 98
+                    "edited": None,
+                    "blur": None,
+                    "confidence": int(ocr_result.confidence * 100) if ocr_result.confidence else None
                 },
                 "business_validation": {
-                    "merchant_verified": True,
-                    "gst_valid": True,
-                    "invoice_valid": True,
-                    "duplicate": False
+                    "merchant_verified": None,
+                    "gst_valid": None,
+                    "invoice_valid": None,
+                    "duplicate": None
                 },
                 "price_analysis": {
-                    "status": "Normal",
-                    "deviation_percent": 8
+                    "status": "Unknown",
+                    "deviation_percent": None
                 },
                 "truck_history": {
-                    "previous_repairs": 3,
-                    "last_repair_days": 48
+                    "previous_repairs": None,
+                    "last_repair_days": None
                 },
                 "driver_history": {
-                    "claims_this_month": 2,
-                    "duplicate_attempts": 0
+                    "claims_this_month": None,
+                    "duplicate_attempts": None
                 },
                 "fraud_assessment": {
-                    "risk_score": 18,
-                    "risk_level": "Low",
-                    "confidence": 94,
-                    "recommendation": "Approve"
+                    "risk_score": None,
+                    "risk_level": "Unknown",
+                    "confidence": None,
+                    "recommendation": "Manual Review Required"
                 },
                 "reasoning": [
-                    "Merchant is verified.",
-                    "Prices fall within expected market ranges (₹450 is standard).",
-                    "No image manipulation detected.",
-                    "Receipt matches truck location and maintenance history."
+                    "OCR Extraction completed.",
+                    "Fraud and advanced business validation are currently not implemented."
                 ]
             }
 
