@@ -930,79 +930,84 @@ function StaticEcosystemDiagram() {
 }
 
 function DesktopEcosystemScene({ activeStage, nodeScale, nodeOpacity }) {
-  const packet = activeStage.packet;
   const activeKey = activeStage.key;
 
   return (
-    <div className="relative min-h-[760px] overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,250,245,0.96))] p-4 sm:p-6">
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 760" aria-hidden="true">
-        <defs>
-          <linearGradient id="fg-line" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(0,200,83,0.08)" />
-            <stop offset="50%" stopColor="rgba(0,200,83,0.55)" />
-            <stop offset="100%" stopColor="rgba(0,200,83,0.10)" />
-          </linearGradient>
-        </defs>
-        <path d="M240 250 C 340 160, 430 150, 500 220" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M500 220 C 640 250, 720 230, 780 250" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M500 220 C 515 330, 520 430, 500 555" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
-      </svg>
+    <div className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,250,245,0.98))] p-5 sm:p-6 lg:p-8">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(0,200,83,0.05),transparent_24%),radial-gradient(circle_at_80%_20%,rgba(0,200,83,0.04),transparent_24%),radial-gradient(circle_at_50%_75%,rgba(0,200,83,0.04),transparent_22%)]" />
 
-      <motion.div
-        className="absolute left-[4%] top-[16%] w-[23%] min-w-[220px]"
-        animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }}
-        transition={{ duration: 0.35 }}
-      >
-        <DriverCaptureCard active={activeKey === 'driver'} />
-      </motion.div>
+      <div className="relative z-10 mb-5">
+        <div className="flex items-center justify-between gap-4 rounded-[28px] border border-emerald-500/10 bg-white px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Connected flow</p>
+            <p className="mt-1 text-sm font-semibold text-slate-700">One request moving cleanly through the ecosystem</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Active</p>
+            <p className="text-sm font-black text-slate-900">{activeStage.num} / 05</p>
+          </div>
+        </div>
+      </div>
 
-      <motion.div
-        className="absolute left-[35%] top-[9%] w-[24%] min-w-[240px]"
-        animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }}
-        transition={{ duration: 0.35 }}
-      >
-        <CoreVerificationCard active={activeKey === 'core'} />
-      </motion.div>
+      <div className="relative z-10 grid gap-4 xl:grid-cols-12">
+        <motion.div
+          className="xl:col-span-4"
+          animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }}
+          transition={{ duration: 0.28 }}
+        >
+          <DriverCaptureCard active={activeKey === 'driver'} />
+        </motion.div>
 
-      <motion.div
-        className="absolute left-[72%] top-[16%] w-[23%] min-w-[220px]"
-        animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }}
-        transition={{ duration: 0.35 }}
-      >
-        <OwnerDashboardCard active={activeKey === 'owner'} />
-      </motion.div>
+        <motion.div
+          className="xl:col-span-4"
+          animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }}
+          transition={{ duration: 0.28 }}
+        >
+          <CoreVerificationCard active={activeKey === 'core'} />
+        </motion.div>
 
-      <motion.div
-        className="absolute left-[43%] top-[61%] w-[26%] min-w-[240px]"
-        animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }}
-        transition={{ duration: 0.35 }}
-      >
-        <AuditTrailCard active={activeKey === 'audit'} />
-      </motion.div>
+        <motion.div
+          className="xl:col-span-4"
+          animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }}
+          transition={{ duration: 0.28 }}
+        >
+          <OwnerDashboardCard active={activeKey === 'owner'} />
+        </motion.div>
 
-      <motion.div
-        key={`packet-${activeKey}`}
-        className="absolute z-20 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_0_10px_rgba(0,200,83,0.10)]"
-        style={{ left: packet.left, top: packet.top, transform: 'translate(-50%, -50%)' }}
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.45 }}
-      >
-        <span className="h-2 w-2 rounded-full bg-white" />
-      </motion.div>
+        <div className="xl:col-span-12">
+          <div className="flex justify-center py-1">
+            <div className="h-10 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
+          </div>
+        </div>
+
+        <motion.div
+          className="xl:col-span-8 xl:col-start-3"
+          animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }}
+          transition={{ duration: 0.28 }}
+        >
+          <AuditTrailCard active={activeKey === 'audit'} />
+        </motion.div>
+
+        <motion.div
+          className="xl:col-span-8 xl:col-start-3"
+          animate={{ scale: nodeScale('complete'), opacity: nodeOpacity('complete') }}
+          transition={{ duration: 0.28 }}
+        >
+          <CompleteVisibilityCard active={activeKey === 'complete'} />
+        </motion.div>
+      </div>
 
       <AnimatePresence mode="wait">
         {activeKey === 'complete' && (
           <motion.div
             key="complete-banner"
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12 }}
-            className="absolute left-1/2 top-[48%] z-30 w-[52%] min-w-[420px] -translate-x-1/2 rounded-[28px] border border-emerald-500/15 bg-white/95 px-6 py-5 text-center shadow-[0_24px_60px_rgba(0,200,83,0.12)] backdrop-blur-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="relative z-10 mt-4 rounded-2xl border border-emerald-500/15 bg-emerald-50 px-5 py-4 text-center shadow-sm"
           >
-            <p className="text-xs font-bold uppercase tracking-[0.26em] text-emerald-600">Complete visibility</p>
-            <p className="mt-2 text-2xl font-black text-slate-900">COMPLETE VISIBILITY ✓</p>
-            <p className="mt-2 text-sm text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">Complete visibility ✓</p>
+            <p className="mt-1 text-sm text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
           </motion.div>
         )}
       </AnimatePresence>
