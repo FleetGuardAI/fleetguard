@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
     LLM_BASE_URL: Optional[str] = None
     OCR_PROVIDER: str = "mock"
+    OCR_SPACE_API_KEY: str | None = None
 
 
 
