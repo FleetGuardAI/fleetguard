@@ -88,6 +88,7 @@ async def process_receipt_ocr(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     uow = Depends(get_uow),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Process receipt image via AI OCR framework.
@@ -208,7 +209,8 @@ async def process_receipt_ocr(
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.SYSTEM_GENERATED,
             created_by="system",
-            payload={"url": url, "filename": file.filename}
+            payload={"url": url, "filename": file.filename},
+            company_id=current_user.company_id
         )
         db.add(event)
         await db.flush() # To get event.id
