@@ -25,7 +25,9 @@ class MSG91OTPProvider(OTPProvider):
         self.template_id = getattr(settings, "MSG91_TEMPLATE_ID", None)
         
         if not self.auth_key:
-            logger.warning("MSG91_AUTH_KEY is missing!")
+            logger.error("MSG91_AUTH_KEY is missing! OTP sends will fail.")
+        if not self.template_id:
+            logger.error("MSG91_TEMPLATE_ID is missing! Standard OTP API will fail.")
             
     def _get_headers(self):
         return {
@@ -35,10 +37,12 @@ class MSG91OTPProvider(OTPProvider):
 
     async def request_otp(self, identifier: str) -> OTPRequestResult:
         if not self.auth_key:
-            return OTPRequestResult(False, "MSG91 not fully configured")
+            logger.error("OTP Request Failed: MSG91_AUTH_KEY is missing from backend configuration.")
+            return OTPRequestResult(False, "Configuration Error: MSG91_AUTH_KEY is missing from backend environment")
             
         if not self.template_id:
-            return OTPRequestResult(False, "MSG91_TEMPLATE_ID is required for Standard OTP API but not configured in backend environment")
+            logger.error("OTP Request Failed: MSG91_TEMPLATE_ID is missing from backend configuration.")
+            return OTPRequestResult(False, "Configuration Error: MSG91_TEMPLATE_ID is required for Standard OTP API but not configured in backend environment")
             
         # Normalize identifier exactly like the frontend does (remove + and ensure 91 prefix)
         cleaned_id = "".join(filter(str.isdigit, identifier))
@@ -70,7 +74,8 @@ class MSG91OTPProvider(OTPProvider):
 
     async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
         if not self.auth_key:
-            return OTPRequestResult(False, "MSG91 not fully configured")
+            logger.error("OTP Retry Failed: MSG91_AUTH_KEY is missing from backend configuration.")
+            return OTPRequestResult(False, "Configuration Error: MSG91_AUTH_KEY is missing from backend environment")
             
         retry_type = "1" if channel.upper() == "VOICE" else "0" # 0=voice, 1=text (MSG91 Standard OTP expects retrytype)
         # Standard MSG91 OTP retry: https://control.msg91.com/api/v5/otp/retry?retrytype=&mobile=
@@ -93,7 +98,8 @@ class MSG91OTPProvider(OTPProvider):
 
     async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
         if not self.auth_key:
-            return OTPVerificationResult(False, "MSG91 not fully configured")
+            logger.error("OTP Verify Failed: MSG91_AUTH_KEY is missing from backend configuration.")
+            return OTPVerificationResult(False, "Configuration Error: MSG91_AUTH_KEY is missing from backend environment")
             
         # Standard MSG91 OTP verify: https://control.msg91.com/api/v5/otp/verify?otp=&mobile=
         url = f"https://control.msg91.com/api/v5/otp/verify?otp={code}&mobile={req_id}"
@@ -115,7 +121,8 @@ class MSG91OTPProvider(OTPProvider):
 
     async def verify_access_token(self, token: str) -> OTPVerificationResult:
         if not self.auth_key:
-            return OTPVerificationResult(False, "MSG91 not fully configured")
+            logger.error("OTP Access Token Verify Failed: MSG91_AUTH_KEY is missing from backend configuration.")
+            return OTPVerificationResult(False, "Configuration Error: MSG91_AUTH_KEY is missing from backend environment")
             
         url = "https://api.msg91.com/api/v5/widget/verifyAccessToken"
         payload = {

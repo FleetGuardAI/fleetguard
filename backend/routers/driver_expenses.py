@@ -88,6 +88,7 @@ async def process_receipt_ocr(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     uow = Depends(get_uow),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Process receipt image via AI OCR framework.
@@ -96,66 +97,14 @@ async def process_receipt_ocr(
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User is not associated with a company")
 
-    # Save temp file for OCR
-    import os
-    import tempfile
-    
-    file_ext = os.path.splitext(file.filename or "")[1] or ".jpg"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
-
-    await file.seek(0)
-
-    try:
-        url = await storage_service.upload_file(file, folder="receipts")
-        
-        provider_type = settings.OCR_PROVIDER.lower()
-        if provider_type == "openai":
-            if not settings.OPENAI_API_KEY and not settings.GEMINI_API_KEY:
-                raise HTTPException(status_code=503, detail="OpenAI API key not configured for OCR")
-            provider = GoogleDocumentAIProvider()
-        else:
-            provider = MockOCRProvider()
-
-        ocr_result = await provider.extract_text(tmp_path, file.content_type or "image/jpeg")
-        
-        if provider_type == "openai":
-            try:
-                parsed_data = json.loads(ocr_result.text)
-                return OcrExtractResponse(
-                    vendor=parsed_data.get("vendor", "Unknown Vendor"),
-                    gst_number=parsed_data.get("gst_number"),
-                    date=parsed_data.get("date", datetime.now().strftime("%Y-%m-%d")),
-                    amount=float(parsed_data.get("amount", 0.0)),
-                    category=parsed_data.get("category", "MISCELLANEOUS"),
-                    fraud_risk_score=float(parsed_data.get("fraud_risk_score", 0.0)),
-                    is_suspicious=bool(parsed_data.get("is_suspicious", False)),
-                    fraud_flags=parsed_data.get("fraud_flags", [])
-                )
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse OCR JSON: {ocr_result.text}")
-                raise HTTPException(status_code=500, detail="Failed to parse OCR response")
-        else:
-            return OcrExtractResponse(
-                vendor="HP Fuel Station #482",
-                gst_number="27AAACH1234H1Z5",
-                date=datetime.now().strftime("%Y-%m-%d"),
-                amount=2500.0,
-                category="FUEL",
-                fraud_risk_score=0.08,
-                is_suspicious=False,
-                fraud_flags=[],
-            )
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
     content = await file.read()
     await file.seek(0)
     
     url = await storage_service.upload_file(file, folder="receipts")
     
+    # We use get_ocr_provider which instantiates based on settings.
+    # Note: If openai is missing key, main.py injects a warning. For driver_expenses,
+    # we can try to use it and catch RuntimeError.
     from infrastructure.ocr.provider import get_ocr_provider
     provider = get_ocr_provider()
     
@@ -165,6 +114,9 @@ async def process_receipt_ocr(
             mime_type=file.content_type or "image/jpeg", 
             document_type="receipt"
         )
+    except RuntimeError as re:
+        logger.error(f"OCR AI service unavailable: {re}")
+        raise HTTPException(status_code=503, detail=str(re))
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -178,13 +130,11 @@ async def process_receipt_ocr(
     date = fields.get("TransactionDate", datetime.now().strftime("%Y-%m-%d"))
     
     # Attempt to normalize amount. 
-    # Handle typically parsed values.
     amount_raw = fields.get("Total")
     amount = 0.0
     if amount_raw is not None:
         try:
             if isinstance(amount_raw, str):
-                # Clean up typical currency strings like "₹ 2,500.00"
                 clean_amount = amount_raw.replace("₹", "").replace("Rs.", "").replace("INR", "").replace(",", "").strip()
                 amount = float(clean_amount)
             else:
@@ -198,16 +148,16 @@ async def process_receipt_ocr(
     try:
         from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
         from models.evidence import Evidence, EvidenceType, EvidenceStatus
-        import json
         
         # Create a document upload event
         event = OperationalEvent(
+            company_id=current_user.company_id,
             event_type=EventType.DOCUMENT_UPLOADED,
             entity_type=EntityType.DOCUMENT,
             entity_id=url,
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.SYSTEM_GENERATED,
-            created_by="system",
+            created_by=f"user_{current_user.id}",
             payload={"url": url, "filename": file.filename}
         )
         db.add(event)
@@ -240,10 +190,10 @@ async def process_receipt_ocr(
         gst_number=gst_number,
         date=date,
         amount=amount,
-        category="MISCELLANEOUS", # Default category
-        fraud_risk_score=0.0,     # Not implemented
-        is_suspicious=False,      # Not implemented
-        fraud_flags=[],           # Not implemented
+        category="MISCELLANEOUS",
+        fraud_risk_score=0.0,
+        is_suspicious=False,
+        fraud_flags=[],
     )
 
 
