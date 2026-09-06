@@ -737,8 +737,213 @@ function InteractiveScanner() {
   );
 }
 
+const ecosystemNodes = [
+  {
+    badge: '01',
+    title: 'Driver App',
+    desc: 'Drivers capture proof, location and request data in the field.',
+    icon: Phone,
+    x: 32,
+    y: 104,
+    center: { x: 107, y: 154 },
+    accent: 'from-emerald-400 to-lime-300',
+  },
+  {
+    badge: '02',
+    title: 'AI Verification',
+    desc: 'OCR, GPS and fraud signals run inside FleetGuard Core.',
+    icon: Cpu,
+    x: 186,
+    y: 24,
+    center: { x: 261, y: 74 },
+    accent: 'from-emerald-500 to-cyan-300',
+  },
+  {
+    badge: '03',
+    title: 'Owner Dashboard',
+    desc: 'Owners review a verified packet with clear approval status.',
+    icon: LayoutDashboard,
+    x: 338,
+    y: 104,
+    center: { x: 413, y: 154 },
+    accent: 'from-cyan-400 to-emerald-300',
+  },
+  {
+    badge: '04',
+    title: 'Audit Trail',
+    desc: 'Every action is logged for finance, operations and compliance.',
+    icon: Shield,
+    x: 186,
+    y: 306,
+    center: { x: 261, y: 356 },
+    accent: 'from-amber-400 to-emerald-300',
+  },
+];
+
 /**
- * 3D WhatsApp Live Simulator
+ * Ecosystem flow animation
+ */
+function EcosystemFlowAnimation() {
+  const [activeNode, setActiveNode] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveNode((current) => (current + 1) % ecosystemNodes.length);
+    }, 2400);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const currentNode = ecosystemNodes[activeNode];
+  const routePoints = ecosystemNodes.map((node) => node.center);
+
+  return (
+    <div className="w-full max-w-[540px] mx-auto">
+      <div className="relative min-h-[560px] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/60">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,200,83,0.22),_transparent_42%),linear-gradient(180deg,rgba(5,10,20,0.97),rgba(9,15,28,1))]" />
+        <div className="absolute inset-0 opacity-80">
+          <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-400/15" />
+          <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-400/10 animate-pulse" />
+        </div>
+
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 520 520" aria-hidden="true">
+          <defs>
+            <linearGradient id="ecosystem-route" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(16,185,129,0.10)" />
+              <stop offset="50%" stopColor="rgba(34,197,94,0.55)" />
+              <stop offset="100%" stopColor="rgba(103,232,249,0.12)" />
+            </linearGradient>
+            <linearGradient id="ecosystem-glow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="100%" stopColor="#00c853" />
+            </linearGradient>
+          </defs>
+          {routePoints.map((point, index) => {
+            const nextPoint = routePoints[(index + 1) % routePoints.length];
+            const isActive = index === activeNode;
+            return (
+              <line
+                key={`${point.x}-${point.y}`}
+                x1={point.x}
+                y1={point.y}
+                x2={nextPoint.x}
+                y2={nextPoint.y}
+                stroke="url(#ecosystem-route)"
+                strokeWidth={isActive ? 3.5 : 2}
+                strokeLinecap="round"
+                strokeDasharray={isActive ? '0' : '8 10'}
+                opacity={isActive ? 1 : 0.45}
+              />
+            );
+          })}
+          <circle
+            cx={currentNode.center.x}
+            cy={currentNode.center.y}
+            r="8"
+            fill="url(#ecosystem-glow)"
+            opacity="0.95"
+          />
+          <circle
+            cx={currentNode.center.x}
+            cy={currentNode.center.y}
+            r="24"
+            fill="none"
+            stroke="rgba(134,239,172,0.25)"
+            strokeWidth="2"
+          />
+        </svg>
+
+        <div className="relative z-10 flex h-full min-h-[560px] flex-col justify-between p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+              <Sparkles className="h-3.5 w-3.5" />
+              Live ecosystem
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">Flow loop</p>
+              <p className="text-sm font-black text-white">
+                {String(activeNode + 1).padStart(2, '0')}/{ecosystemNodes.length}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative flex-1">
+            <div className="absolute left-1/2 top-1/2 z-10 w-40 -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-white/10 bg-white/8 px-4 py-4 text-center shadow-2xl shadow-black/30 backdrop-blur-md">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00c853]/15 text-[#8fffb8]">
+                <Shield className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-sm font-black uppercase tracking-[0.2em] text-white">FleetGuard Core</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
+                OCR • GPS • Risk Rules • Audit Trail
+              </p>
+            </div>
+
+            {ecosystemNodes.map((node, index) => {
+              const active = index === activeNode;
+              return (
+                <div
+                  key={node.title}
+                  className={`absolute w-40 sm:w-44 rounded-2xl border p-3 shadow-lg backdrop-blur-md transition-all duration-500 ${
+                    active
+                      ? 'scale-105 border-emerald-400/45 bg-white/12 shadow-emerald-500/20'
+                      : 'border-white/10 bg-white/6 shadow-black/20'
+                  }`}
+                  style={{ left: node.x, top: node.y }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${node.accent} text-slate-950 shadow-lg`}>
+                      <node.icon className="h-4.5 w-4.5" />
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-emerald-200' : 'text-white/40'}`}>
+                      {node.badge}
+                    </span>
+                  </div>
+                  <h4 className="mt-3 text-sm font-bold text-white">{node.title}</h4>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{node.desc}</p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${node.accent} transition-all duration-500 ${
+                        active ? 'w-full' : 'w-1/3'
+                      }`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {ecosystemNodes.map((node, index) => {
+              const active = index === activeNode;
+              return (
+                <button
+                  key={node.title}
+                  type="button"
+                  onClick={() => setActiveNode(index)}
+                  className={`rounded-xl border px-2 py-2 text-left transition-all duration-300 ${
+                    active
+                      ? 'border-emerald-400/50 bg-emerald-400/10 text-white'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/8'
+                  }`}
+                >
+                  <span className="block text-[9px] font-black uppercase tracking-[0.18em]">
+                    {node.badge}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-bold leading-tight">
+                    {node.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Legacy chat simulator
  */
 function WhatsAppSimulator({ t }) {
   const [messages, setMessages] = useState([]);
@@ -941,7 +1146,7 @@ export default function LandingPage() {
     { label: t('nav.problem'), href: '#problem' },
     { label: t('nav.howItWorks'), href: '#how-it-works' },
     { label: t('nav.features'), href: '#features' },
-    { label: t('nav.demo'), href: '#demo' },
+    { label: t('nav.ecosystem'), href: '#ecosystem' },
     { label: t('nav.about'), href: '#about' },
   ];
 
@@ -1243,30 +1448,30 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== LIVE DEMO (WhatsApp Simulator + Visual Merge) ===== */}
-      <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="demo">
+      {/* ===== ECOSYSTEM FLOW (Animated Ecosystem Overview) ===== */}
+      <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="ecosystem">
         <div className="max-w-6xl mx-auto grid md:grid-cols-12 gap-12 items-center">
           
           {/* Left - Narrative */}
           <div data-animate="slide-left" className="md:col-span-6 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#00c853]" />
-              <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('demo.label')}</span>
+              <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('ecosystem.label')}</span>
             </div>
             
             <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight transition-colors duration-300">
-              {t('demo.title1')}{' '}
-              <span className="text-[#00c853] italic font-black">{t('demo.title2')}</span>
+              {t('ecosystem.title1')}{' '}
+              <span className="text-[#00c853] italic font-black">{t('ecosystem.title2')}</span>
             </h2>
             <p className="text-sm md:text-base text-slate-650 mb-10 leading-relaxed transition-colors duration-300">
-              {t('demo.desc')}
+              {t('ecosystem.desc')}
             </p>
 
             <div className="space-y-4 max-w-md mx-auto md:mx-0">
               {[
-                { num: '01', title: t('demo.step1.title'), desc: t('demo.step1.desc') },
-                { num: '02', title: t('demo.step2.title'), desc: t('demo.step2.desc') },
-                { num: '03', title: t('demo.step3.title'), desc: t('demo.step3.desc') },
+                { num: '01', title: t('ecosystem.step1.title'), desc: t('ecosystem.step1.desc') },
+                { num: '02', title: t('ecosystem.step2.title'), desc: t('ecosystem.step2.desc') },
+                { num: '03', title: t('ecosystem.step3.title'), desc: t('ecosystem.step3.desc') },
               ].map((w) => (
                 <div key={w.num} className="flex gap-4 p-4 rounded-xl bg-white border border-slate-200 items-start text-left hover:border-[#00c853]/35 transition-colors shadow-sm duration-300">
                   <div className="text-xs font-extrabold text-[#00c853] bg-[#00c853]/10 w-6 h-6 rounded flex items-center justify-center shrink-0 border border-[#00c853]/20">
@@ -1281,14 +1486,14 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right - Live Self-typing Simulator (3D perspective tilt) */}
+          {/* Right - Animated ecosystem flow */}
           <div data-animate="slide-right" className="md:col-span-6 flex justify-center relative">
             
-            {/* Pulsing light rings behind simulated phone */}
+            {/* Pulsing light rings behind the ecosystem card */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00c853]/5 rounded-full blur-2xl pointer-events-none" />
 
             <TiltCard className="w-full max-w-xs">
-              <WhatsAppSimulator t={t} />
+              <EcosystemFlowAnimation />
             </TiltCard>
           </div>
 
@@ -1392,7 +1597,7 @@ export default function LandingPage() {
               <li><a href="#how-it-works" className="hover:text-slate-900:text-white transition-colors">{t('nav.howItWorks')}</a></li>
               <li><Link to="/dashboard" className="hover:text-slate-900:text-white transition-colors">{t('footer.liveDemo')}</Link></li>
               <li><Link to="/downloads" className="hover:text-slate-900:text-white transition-colors">Get Apps</Link></li>
-              <li><a href="#demo" className="hover:text-slate-900:text-white transition-colors">{t('nav.bookDemo')}</a></li>
+              <li><a href="#ecosystem" className="hover:text-slate-900:text-white transition-colors">{t('nav.bookDemo')}</a></li>
             </ul>
           </div>
 
