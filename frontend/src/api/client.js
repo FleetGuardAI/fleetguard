@@ -204,30 +204,7 @@ const api = {
     },
   },
 
-  // ── Expense Domain (NEW - /api/v1/expenses) ────────────────
-  expenses: {
-    list: (params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return request(`/v1/expenses${query ? `?${query}` : ''}`);
-    },
-    get: (id) => request(`/v1/expenses/${id}`),
-    search: (params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return request(`/v1/expenses/search${query ? `?${query}` : ''}`);
-    },
-    byVehicle: (vehicleId, params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return request(`/v1/vehicles/${vehicleId}/expenses${query ? `?${query}` : ''}`);
-    },
-    byDriver: (driverId, params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return request(`/v1/drivers/${driverId}/expenses${query ? `?${query}` : ''}`);
-    },
-    byTrip: (tripId, params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return request(`/v1/trips/${tripId}/expenses${query ? `?${query}` : ''}`);
-    },
-  },
+  // (duplicate expenses block removed — see expenses definition above)
 
   // ── Vehicle Domain (NEW - /api/v1/vehicles) ────────────────
   vehicles: {
@@ -315,6 +292,7 @@ const api = {
   // ── Fleet (NEW - /api/v1/fleet) ──────────────────────────────
   fleet: {
     createInvite: (data) => request('/v1/fleet/invite', { method: 'POST', body: JSON.stringify(data) }),
+    generateInvite: (data = {}) => request('/v1/fleet/invite', { method: 'POST', body: JSON.stringify(data) }),
     listInvites: () => request('/v1/fleet/invites'),
   },
 
@@ -350,10 +328,7 @@ const api = {
     chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),
   },
 
-  // ── Fleet Domain (NEW - /api/v1/fleet) ─────────────────
-  fleet: {
-    generateInvite: (payload = {}) => request('/v1/fleet/invite', { method: 'POST', body: JSON.stringify(payload) }),
-  },
+  // (duplicate fleet block removed — see fleet definition above)
 };
 
 export default api;
