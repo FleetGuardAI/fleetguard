@@ -17,8 +17,6 @@ import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { QRCodeSVG } from 'qrcode.react';
-import api from '@/api/client';
 
 export default function DriverList() {
   const navigate = useNavigate();
