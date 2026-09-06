@@ -127,6 +127,11 @@ elif settings.OCR_PROVIDER.lower() == "mock":
     ocr_base_provider = MockOCRProvider()
 elif settings.OCR_PROVIDER.lower() == "google":
     ocr_base_provider = GoogleDocumentAIProvider()
+elif settings.OCR_PROVIDER.lower() == "ocr_space":
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    if not settings.OCR_SPACE_API_KEY:
+        raise ValueError("OCR_SPACE_API_KEY must be set when OCR_PROVIDER is ocr_space.")
+    ocr_base_provider = OCRSpaceProvider(api_key=settings.OCR_SPACE_API_KEY)
 else:
     raise ValueError(f"Unknown OCR_PROVIDER: {settings.OCR_PROVIDER}")
 

@@ -78,3 +78,122 @@ def test_get_ocr_provider_google():
     with patch.dict(os.environ, {"OCR_PROVIDER": "google", "GOOGLE_DOCUMENT_AI_PROJECT_ID": "test"}):
         provider = get_ocr_provider()
         assert isinstance(provider, GoogleDocumentAIProvider)
+
+def test_get_ocr_provider_ocr_space():
+    import os
+    with patch.dict(os.environ, {"OCR_PROVIDER": "ocr_space", "OCR_SPACE_API_KEY": "test-key"}):
+        from infrastructure.ocr.provider import OCRSpaceProvider
+        provider = get_ocr_provider()
+        assert isinstance(provider, OCRSpaceProvider)
+        assert provider.api_key == "test-key"
+
+def test_ocr_space_provider_missing_key():
+    import os
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    with patch.dict(os.environ, {"OCR_PROVIDER": "ocr_space"}, clear=True):
+        with pytest.raises(ValueError, match="OCR_SPACE_API_KEY must be set"):
+            OCRSpaceProvider(api_key="")
+
+@pytest.mark.asyncio
+async def test_ocr_space_provider_success():
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    import httpx
+    provider = OCRSpaceProvider(api_key="test-key")
+    
+    # Mock httpx.AsyncClient.post
+    mock_post = AsyncMock()
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {
+        "IsErroredOnProcessing": False,
+        "ParsedResults": [
+            {"ParsedText": "Line 1"},
+            {"ParsedText": "Line 2"}
+        ],
+        "SearchablePDFURL": "https://test.url"
+    }
+    mock_post.return_value = mock_response
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        result = await provider.extract_text(b"test_image", "image/jpeg", "receipt")
+        
+        assert result.provider_name == "ocr_space"
+        assert result.text == "Line 1\nLine 2"
+        assert result.provider_request_id == "https://test.url"
+        
+        # Verify API key is sent via header
+        mock_post.assert_called_once()
+        kwargs = mock_post.call_args.kwargs
+        assert "headers" in kwargs
+        assert kwargs["headers"]["apikey"] == "test-key"
+        
+        # Verify file is not logged or in URL
+        assert "test_image" not in kwargs.get("params", {})
+
+@pytest.mark.asyncio
+async def test_ocr_space_provider_api_error():
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    import httpx
+    provider = OCRSpaceProvider(api_key="test-key")
+    
+    mock_post = AsyncMock()
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {
+        "IsErroredOnProcessing": True,
+        "ErrorMessage": ["File too large"]
+    }
+    mock_post.return_value = mock_response
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        with pytest.raises(RuntimeError, match="OCR Space processing failed"):
+            await provider.extract_text(b"test_image", "image/jpeg", "receipt")
+
+@pytest.mark.asyncio
+async def test_ocr_space_provider_timeout():
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    import httpx
+    provider = OCRSpaceProvider(api_key="test-key")
+    
+    mock_post = AsyncMock(side_effect=httpx.TimeoutException("Timeout"))
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        with pytest.raises(RuntimeError, match="OCR Space API request timed out"):
+            await provider.extract_text(b"test_image", "image/jpeg", "receipt")
+
+@pytest.mark.asyncio
+async def test_ocr_space_provider_malformed_json():
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    import httpx
+    provider = OCRSpaceProvider(api_key="test-key")
+    
+    mock_post = AsyncMock()
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.side_effect = ValueError("Invalid JSON")
+    mock_post.return_value = mock_response
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        with pytest.raises(RuntimeError, match="OCR Space returned malformed JSON"):
+            await provider.extract_text(b"test_image", "image/jpeg", "receipt")
+
+@pytest.mark.asyncio
+async def test_ocr_space_provider_empty_result():
+    from infrastructure.ocr.provider import OCRSpaceProvider
+    import httpx
+    provider = OCRSpaceProvider(api_key="test-key")
+    
+    mock_post = AsyncMock()
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {
+        "IsErroredOnProcessing": False,
+        "ParsedResults": []
+    }
+    mock_post.return_value = mock_response
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        result = await provider.extract_text(b"test_image", "image/jpeg", "receipt")
+        assert result.provider_name == "ocr_space"
+        assert result.text == ""
+        assert "No ParsedResults" in result.metadata["info"]

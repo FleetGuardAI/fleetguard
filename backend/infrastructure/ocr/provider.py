@@ -69,6 +69,102 @@ class MockOCRProvider(OCRProvider):
         )
 
 
+class OCRSpaceProvider(OCRProvider):
+    """
+    OCR.space free API integration.
+    """
+    def __init__(self, api_key: str):
+        if not api_key:
+            raise ValueError("OCR_SPACE_API_KEY must be set when OCR_PROVIDER is ocr_space.")
+        self.api_key = api_key
+        self.endpoint = "https://api.ocr.space/parse/image"
+
+    async def extract_text(self, file_data: bytes, mime_type: str, document_type: str = "receipt") -> OCRResult:
+        import httpx
+        start_time = time.monotonic()
+        
+        # Derive extension from mime_type
+        ext = "jpg"
+        if "pdf" in mime_type:
+            ext = "pdf"
+        elif "png" in mime_type:
+            ext = "png"
+        elif "jpeg" in mime_type or "jpg" in mime_type:
+            ext = "jpg"
+            
+        filename = f"upload.{ext}"
+
+        # Setup multipart payload
+        files = {"file": (filename, file_data, mime_type)}
+        headers = {"apikey": self.api_key}
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self.endpoint,
+                    files=files,
+                    headers=headers
+                )
+                response.raise_for_status()
+                
+                # Parse JSON, but catch Malformed JSON safely
+                try:
+                    data = response.json()
+                except ValueError as json_err:
+                    raise RuntimeError("OCR Space returned malformed JSON") from json_err
+
+                # Detect OCR.space internal processing errors
+                if data.get("IsErroredOnProcessing"):
+                    error_msgs = data.get("ErrorMessage", ["Unknown error"])
+                    raise RuntimeError(f"OCR Space processing failed: {error_msgs}")
+
+                if data.get("OCRExitCode") in [3, 4]:
+                    raise RuntimeError(f"OCR Space failed with exit code: {data.get('OCRExitCode')}")
+
+                parsed_results = data.get("ParsedResults", [])
+                if not parsed_results:
+                    # Return empty result safely
+                    end_time = time.monotonic()
+                    return OCRResult(
+                        text="",
+                        confidence=0.0,
+                        provider_name="ocr_space",
+                        extracted_fields={},
+                        processing_time_ms=int((end_time - start_time) * 1000),
+                        metadata={"info": "No ParsedResults returned by OCR.space"}
+                    )
+                
+                # Concatenate all pages text
+                full_text = "\n".join(
+                    page.get("ParsedText", "") 
+                    for page in parsed_results
+                )
+                
+                # Try to extract a confidence score if present (OCR.space usually doesn't provide word-level in free unless requested)
+                # But we default to 1.0 or extract it if available.
+                avg_confidence = 1.0
+
+                end_time = time.monotonic()
+                processing_time_ms = int((end_time - start_time) * 1000)
+
+                return OCRResult(
+                    text=full_text,
+                    confidence=avg_confidence,
+                    provider_name="ocr_space",
+                    extracted_fields={},
+                    processing_time_ms=processing_time_ms,
+                    provider_request_id=data.get("SearchablePDFURL"),  # Use a tracking id if available
+                    metadata={"document_type": document_type}
+                )
+                
+        except httpx.TimeoutException:
+            raise RuntimeError("OCR Space API request timed out")
+        except httpx.RequestError as e:
+            raise RuntimeError(f"OCR Space API network error: {type(e).__name__}")
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(f"OCR Space API HTTP error: {e.response.status_code}")
+
+
 class GoogleDocumentAIProvider(OCRProvider):
     """
     Google Cloud Document AI provider for extracting text and structured fields.
@@ -225,5 +321,11 @@ def get_ocr_provider() -> OCRProvider:
         return MockOCRProvider()
     elif provider_type == "google":
         return GoogleDocumentAIProvider()
+    elif provider_type == "ocr_space":
+        api_key = os.environ.get("OCR_SPACE_API_KEY")
+        if not api_key:
+            from config import settings
+            api_key = settings.OCR_SPACE_API_KEY
+        return OCRSpaceProvider(api_key=api_key)
     else:
         raise ValueError(f"Unknown OCR_PROVIDER configured: {provider_type}")
