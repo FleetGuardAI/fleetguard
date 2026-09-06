@@ -37,6 +37,12 @@ async def chat_with_copilot(
         service = CopilotService(uow=uow, company_id=current_user.company_id)
         response = await service.chat(request)
         return response
+    except RuntimeError as re:
+        logger.error(f"Copilot AI service unavailable: {re}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(re)
+        )
     except Exception as e:
         logger.error(f"Error in Copilot chat: {e}", exc_info=True)
         # Return the actual error message so the frontend can display it

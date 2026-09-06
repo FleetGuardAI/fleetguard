@@ -29,7 +29,7 @@ class OpenAIProvider(LLMProvider):
             if model == "gpt-4o": # Only override if it wasn't explicitly changed from the default
                 model = "gemini-3.6-flash"
             
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
         self.model = model
 
     async def chat(
@@ -89,6 +89,12 @@ class OpenAIProvider(LLMProvider):
                 message=llm_message,
                 finish_reason=choice.finish_reason,
             )
+        except openai.APIConnectionError as e:
+            logger.error("OpenAI API connection error: %s", e)
+            raise RuntimeError("AI service temporarily unavailable (connection error).") from e
+        except openai.APITimeoutError as e:
+            logger.error("OpenAI API timeout error: %s", e)
+            raise RuntimeError("AI service temporarily unavailable (timeout).") from e
         except Exception as e:
             logger.error("OpenAI chat completion failed: %s", e)
-            raise
+            raise RuntimeError(f"AI service error: {str(e)}") from e

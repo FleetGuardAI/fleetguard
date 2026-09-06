@@ -118,11 +118,20 @@ processing_consumer = KafkaConsumerRunner(
 evidence_registry = EvidenceProviderRegistry()
 
 # Register OCR Provider
-from infrastructure.ocr.provider import MockOCRProvider, GoogleDocumentAIProvider
+from infrastructure.ocr.provider import MockOCRProvider, GoogleDocumentAIProvider, OCRProvider
+from infrastructure.ocr.models import OCRResult
+from infrastructure.ocr.openai_provider import OpenAIOCRProvider
+
+class UnconfiguredOCRProvider(OCRProvider):
+    async def extract_text(self, file_data: bytes, mime_type: str, document_type: str = "receipt") -> OCRResult:
+        raise RuntimeError("AI service temporarily unavailable")
+
 if settings.OCR_PROVIDER.lower() == "openai":
     if not settings.OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY is required when OCR_PROVIDER=openai")
-    ocr_base_provider = OpenAIOCRProvider(api_key=settings.OPENAI_API_KEY)
+        logger.warning("⚠️ OPENAI_API_KEY is not set. OCR will return 503 errors.")
+        ocr_base_provider = UnconfiguredOCRProvider()
+    else:
+        ocr_base_provider = OpenAIOCRProvider(api_key=settings.OPENAI_API_KEY)
 elif settings.OCR_PROVIDER.lower() == "mock":
     ocr_base_provider = MockOCRProvider()
 elif settings.OCR_PROVIDER.lower() == "google":
@@ -136,7 +145,7 @@ else:
     raise ValueError(f"Unknown OCR_PROVIDER: {settings.OCR_PROVIDER}")
 
 ocr_evidence_provider = OCREvidenceProvider(
-    db_session_factory=async_session_factory, 
+    db_session_factory=async_session_factory,
     provider=ocr_base_provider
 )
 evidence_registry.register(ocr_evidence_provider)
@@ -246,6 +255,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"   Event Bus: {event_bus}")
 
     logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
+
+    # --- Schema Patcher ---
+    from infrastructure.database_patcher import apply_schema_patches
+    async with async_session_factory() as session:
+        await apply_schema_patches(session)
+
+    # --- MSG91 OTP Configuration Validation ---
+    if not settings.OTP_MOCK_MODE and getattr(settings, 'OTP_PROVIDER', 'MSG91').upper() == 'MSG91':
+        if not settings.MSG91_AUTH_KEY:
+            logger.error("❌ CRITICAL CONFIGURATION ERROR: MSG91_AUTH_KEY is not set in environment variables. OTP sends will fail.")
+        if not getattr(settings, 'MSG91_TEMPLATE_ID', None):
+            logger.error("❌ CRITICAL CONFIGURATION ERROR: MSG91_TEMPLATE_ID is not set in environment variables. MSG91 Standard OTP API requires a template ID.")
+
     if settings.KAFKA_ENABLED:
         try:
             await validation_consumer_runner.start()
@@ -258,7 +280,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
     else:
         logger.info("Kafka workers disabled — KAFKA_ENABLED=False")
-    
+
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")

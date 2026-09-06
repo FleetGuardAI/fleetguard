@@ -42,7 +42,7 @@ class MockSupabaseStorage:
             return {"signedURL": f"https://mock-supabase.com/storage/v1/object/sign/{path}?token=mock"}
         def remove(self, paths):
             pass
-    
+
     def __init__(self):
         self.storage = self.StorageMock()
 
@@ -53,19 +53,26 @@ class StorageService:
     """
 
     def __init__(self):
-        if not (settings.SUPABASE_URL and settings.SUPABASE_KEY and create_client):
-            # Allow tests to run without valid Supabase credentials
-            import sys
-            if "pytest" in sys.modules:
-                self.supabase = MockSupabaseStorage()
-                self.bucket = "test-bucket"
-                logger.info("StorageService initialized with MockSupabaseStorage for testing.")
-                return
-            raise RuntimeError("Supabase configuration is missing. SUPABASE_URL and SUPABASE_KEY are required.")
-            
-        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        self._supabase = None
         self.bucket = settings.SUPABASE_STORAGE_BUCKET or "fleetguard-uploads"
-        logger.info(f"StorageService initialized with Supabase (bucket: {self.bucket})")
+
+    @property
+    def supabase(self):
+        if not self._supabase:
+            if not (settings.SUPABASE_URL and settings.SUPABASE_KEY and create_client):
+                # Allow tests to run without valid Supabase credentials
+                import sys
+                if "pytest" in sys.modules:
+                    self._supabase = MockSupabaseStorage()
+                    logger.info("StorageService initialized with MockSupabaseStorage for testing.")
+                    return self._supabase
+
+                # In production/dev, if storage is accessed but not configured, fail gracefully.
+                raise HTTPException(status_code=503, detail="Storage service is unavailable. Supabase configuration is missing.")
+
+            self._supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            logger.info(f"StorageService initialized with Supabase (bucket: {self.bucket})")
+        return self._supabase
 
     def _validate_file(self, content: bytes, content_type: str):
         if content_type not in ALLOWED_MIME_TYPES:
@@ -85,16 +92,16 @@ class StorageService:
         """
         content = await file.read()
         content_type = file.content_type or "application/octet-stream"
-        
+
         self._validate_file(content, content_type)
 
         ext = os.path.splitext(file.filename or "file")[1].lower() or ".bin"
         if ext == ".jpeg":
             ext = ".jpg"
-            
+
         final_name = filename or f"{uuid.uuid4().hex}{ext}"
         object_path = f"{folder}/{final_name}"
-        
+
         try:
             self.supabase.storage.from_(self.bucket).upload(
                 file=content,
@@ -116,7 +123,7 @@ class StorageService:
     ) -> str:
         """Save raw bytes and return object path."""
         self._validate_file(data, content_type)
-        
+
         object_path = f"{folder}/{filename}"
         try:
             self.supabase.storage.from_(self.bucket).upload(
@@ -137,10 +144,10 @@ class StorageService:
         """
         if not object_path:
             return None
-            
+
         try:
             res = self.supabase.storage.from_(self.bucket).create_signed_url(
-                path=object_path, 
+                path=object_path,
                 expires_in=expires_in
             )
             return res.get("signedURL")
@@ -152,7 +159,7 @@ class StorageService:
         """Delete an object by its path."""
         if not object_path:
             return False
-            
+
         try:
             self.supabase.storage.from_(self.bucket).remove([object_path])
             logger.info(f"File deleted from Supabase: {object_path}")
