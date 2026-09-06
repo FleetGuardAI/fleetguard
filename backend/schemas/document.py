@@ -92,7 +92,11 @@ class DocumentResponse(DocumentBase):
     )
     storage_path: str = Field(
         ...,
-        description="Location where the physical file is stored.",
+        description="Location where the physical file is stored (signed URL when returned via API).",
+    )
+    raw_storage_path: Optional[str] = Field(
+        None,
+        description="Raw internal object path (not signed). Used internally by the pipeline.",
     )
     status: DocumentStorageStatus = Field(
         ...,
