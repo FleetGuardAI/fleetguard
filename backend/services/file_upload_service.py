@@ -54,16 +54,14 @@ class StorageService:
 
     def __init__(self):
         if not (settings.SUPABASE_URL and settings.SUPABASE_KEY and create_client):
+            # Allow tests to run without valid Supabase credentials
             import sys
             if "pytest" in sys.modules:
                 self.supabase = MockSupabaseStorage()
                 self.bucket = "test-bucket"
                 logger.info("StorageService initialized with MockSupabaseStorage for testing.")
-            else:
-                self.supabase = None
-                self.bucket = None
-                logger.warning("Supabase configuration missing. StorageService will raise 503 on use.")
-            return
+                return
+            raise RuntimeError("Supabase configuration is missing. SUPABASE_URL and SUPABASE_KEY are required.")
             
         self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
         self.bucket = settings.SUPABASE_STORAGE_BUCKET or "fleetguard-uploads"
@@ -85,9 +83,6 @@ class StorageService:
         Save uploaded file and return its object path.
         Returns a path formatted as `{folder}/{uuid}.{ext}`.
         """
-        if not self.supabase:
-            raise HTTPException(status_code=503, detail="Storage service is not configured.")
-
         content = await file.read()
         content_type = file.content_type or "application/octet-stream"
         
@@ -120,9 +115,6 @@ class StorageService:
         content_type: str = "application/octet-stream"
     ) -> str:
         """Save raw bytes and return object path."""
-        if not self.supabase:
-            raise HTTPException(status_code=503, detail="Storage service is not configured.")
-
         self._validate_file(data, content_type)
         
         object_path = f"{folder}/{filename}"
@@ -143,7 +135,7 @@ class StorageService:
         Generate a temporary signed URL for a given object path.
         Expires in 3600 seconds by default.
         """
-        if not self.supabase or not object_path:
+        if not object_path:
             return None
             
         try:
@@ -158,7 +150,7 @@ class StorageService:
 
     async def delete_file(self, object_path: str) -> bool:
         """Delete an object by its path."""
-        if not self.supabase or not object_path:
+        if not object_path:
             return False
             
         try:
