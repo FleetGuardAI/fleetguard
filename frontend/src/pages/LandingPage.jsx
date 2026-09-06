@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Shield,
   ArrowRight,
@@ -737,207 +738,555 @@ function InteractiveScanner() {
   );
 }
 
-const ecosystemNodes = [
+const ecosystemStages = [
   {
-    badge: '01',
-    title: 'Driver App',
-    desc: 'Drivers capture proof, location and request data in the field.',
-    icon: Phone,
-    x: 32,
-    y: 104,
-    center: { x: 107, y: 154 },
-    accent: 'from-emerald-400 to-lime-300',
+    key: 'driver',
+    num: '01',
+    nav: 'Driver',
+    title: 'Driver captures proof',
+    desc: 'Photos, videos, location and request details enter FleetGuard.',
+    tooltip: 'A request begins in the field.',
+    duration: 2800,
+    packet: { left: '22%', top: '53%' },
   },
   {
-    badge: '02',
-    title: 'AI Verification',
-    desc: 'OCR, GPS and fraud signals run inside FleetGuard Core.',
-    icon: Cpu,
-    x: 186,
-    y: 24,
-    center: { x: 261, y: 74 },
-    accent: 'from-emerald-500 to-cyan-300',
+    key: 'core',
+    num: '02',
+    nav: 'Core',
+    title: 'FleetGuard Core verifies',
+    desc: 'OCR, GPS, risk rules and fraud detection scan the request one by one.',
+    tooltip: 'The core checks every signal.',
+    duration: 3400,
+    packet: { left: '49%', top: '40%' },
   },
   {
-    badge: '03',
-    title: 'Owner Dashboard',
-    desc: 'Owners review a verified packet with clear approval status.',
-    icon: LayoutDashboard,
-    x: 338,
-    y: 104,
-    center: { x: 413, y: 154 },
-    accent: 'from-cyan-400 to-emerald-300',
+    key: 'owner',
+    num: '03',
+    nav: 'Owner',
+    title: 'Owner reviews the packet',
+    desc: 'The approved request arrives with amount, risk and verification status.',
+    tooltip: 'A calm approval surface for the owner.',
+    duration: 3000,
+    packet: { left: '74%', top: '53%' },
   },
   {
-    badge: '04',
-    title: 'Audit Trail',
-    desc: 'Every action is logged for finance, operations and compliance.',
-    icon: Shield,
-    x: 186,
-    y: 306,
-    center: { x: 261, y: 356 },
-    accent: 'from-amber-400 to-emerald-300',
+    key: 'audit',
+    num: '04',
+    nav: 'Audit',
+    title: 'Audit trail records everything',
+    desc: 'Every event is time-stamped for compliance, reporting and traceability.',
+    tooltip: 'The full chain stays searchable.',
+    duration: 2800,
+    packet: { left: '58%', top: '76%' },
+  },
+  {
+    key: 'complete',
+    num: '05',
+    nav: 'Complete',
+    title: 'Complete visibility',
+    desc: 'One connected system. Every action verified. Every decision traceable.',
+    tooltip: 'The full ecosystem is visible end-to-end.',
+    duration: 2200,
+    packet: { left: '49%', top: '52%' },
   },
 ];
 
-/**
- * Ecosystem flow animation
- */
-function EcosystemFlowAnimation() {
-  const [activeNode, setActiveNode] = useState(0);
+function EcosystemFlowAnimation({ onStageChange }) {
+  const reduceMotion = useReducedMotion();
+  const [stageIndex, setStageIndex] = useState(0);
+  const [hoveredStage, setHoveredStage] = useState(null);
+
+  const activeIndex = hoveredStage !== null ? hoveredStage : stageIndex;
+  const activeStage = ecosystemStages[activeIndex];
+  const stageCount = ecosystemStages.length;
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveNode((current) => (current + 1) % ecosystemNodes.length);
-    }, 2400);
+    if (onStageChange) {
+      onStageChange(activeIndex);
+    }
+  }, [activeIndex, onStageChange]);
 
-    return () => window.clearInterval(timer);
-  }, []);
+  useEffect(() => {
+    if (reduceMotion || hoveredStage !== null) return;
 
-  const currentNode = ecosystemNodes[activeNode];
-  const routePoints = ecosystemNodes.map((node) => node.center);
+    const timer = window.setTimeout(() => {
+      setStageIndex((current) => (current + 1) % stageCount);
+    }, activeStage.duration);
+
+    return () => window.clearTimeout(timer);
+  }, [activeStage.duration, hoveredStage, reduceMotion, stageCount]);
+
+  const replayStage = (index) => {
+    setHoveredStage(null);
+    setStageIndex(index);
+  };
+
+  const nodeScale = (key) => {
+    if (activeStage.key === key) return 1.04;
+    if (reduceMotion) return 1;
+    return 0.98;
+  };
+
+  const nodeOpacity = (key) => {
+    if (activeStage.key === key) return 1;
+    return reduceMotion ? 1 : 0.72;
+  };
 
   return (
-    <div className="w-full max-w-[540px] mx-auto">
-      <div className="relative min-h-[560px] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/60">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,200,83,0.22),_transparent_42%),linear-gradient(180deg,rgba(5,10,20,0.97),rgba(9,15,28,1))]" />
-        <div className="absolute inset-0 opacity-80">
-          <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-400/15" />
-          <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-400/10 animate-pulse" />
-        </div>
+    <div className="w-full">
+      <div className="relative overflow-hidden rounded-[36px] border border-slate-200 bg-white shadow-[0_24px_90px_rgba(15,23,42,0.08)]">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,250,244,0.96))]" />
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_20%,rgba(0,200,83,0.08),transparent_28%),radial-gradient(circle_at_80%_24%,rgba(0,200,83,0.06),transparent_24%),radial-gradient(circle_at_50%_85%,rgba(0,200,83,0.05),transparent_22%)]" />
 
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 520 520" aria-hidden="true">
-          <defs>
-            <linearGradient id="ecosystem-route" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(16,185,129,0.10)" />
-              <stop offset="50%" stopColor="rgba(34,197,94,0.55)" />
-              <stop offset="100%" stopColor="rgba(103,232,249,0.12)" />
-            </linearGradient>
-            <linearGradient id="ecosystem-glow" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#86efac" />
-              <stop offset="100%" stopColor="#00c853" />
-            </linearGradient>
-          </defs>
-          {routePoints.map((point, index) => {
-            const nextPoint = routePoints[(index + 1) % routePoints.length];
-            const isActive = index === activeNode;
-            return (
-              <line
-                key={`${point.x}-${point.y}`}
-                x1={point.x}
-                y1={point.y}
-                x2={nextPoint.x}
-                y2={nextPoint.y}
-                stroke="url(#ecosystem-route)"
-                strokeWidth={isActive ? 3.5 : 2}
-                strokeLinecap="round"
-                strokeDasharray={isActive ? '0' : '8 10'}
-                opacity={isActive ? 1 : 0.45}
-              />
-            );
-          })}
-          <circle
-            cx={currentNode.center.x}
-            cy={currentNode.center.y}
-            r="8"
-            fill="url(#ecosystem-glow)"
-            opacity="0.95"
-          />
-          <circle
-            cx={currentNode.center.x}
-            cy={currentNode.center.y}
-            r="24"
-            fill="none"
-            stroke="rgba(134,239,172,0.25)"
-            strokeWidth="2"
-          />
-        </svg>
-
-        <div className="relative z-10 flex h-full min-h-[560px] flex-col justify-between p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+        <div className="relative p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-700">
               <Sparkles className="h-3.5 w-3.5" />
-              Live ecosystem
+              FleetGuard ecosystem in motion
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">Flow loop</p>
-              <p className="text-sm font-black text-white">
-                {String(activeNode + 1).padStart(2, '0')}/{ecosystemNodes.length}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Loop</p>
+              <p className="text-sm font-black text-slate-900">{String(activeIndex + 1).padStart(2, '0')}/{stageCount}</p>
             </div>
           </div>
 
-          <div className="relative flex-1">
-            <div className="absolute left-1/2 top-1/2 z-10 w-40 -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-white/10 bg-white/8 px-4 py-4 text-center shadow-2xl shadow-black/30 backdrop-blur-md">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00c853]/15 text-[#8fffb8]">
-                <Shield className="h-5 w-5" />
+          {reduceMotion ? (
+            <StaticEcosystemDiagram />
+          ) : (
+            <>
+              <div className="hidden lg:block">
+                <DesktopEcosystemScene activeStage={activeStage} nodeScale={nodeScale} nodeOpacity={nodeOpacity} />
               </div>
-              <p className="mt-3 text-sm font-black uppercase tracking-[0.2em] text-white">FleetGuard Core</p>
-              <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
-                OCR • GPS • Risk Rules • Audit Trail
-              </p>
-            </div>
+              <div className="lg:hidden">
+                <MobileEcosystemScene activeStage={activeStage} nodeScale={nodeScale} nodeOpacity={nodeOpacity} />
+              </div>
+            </>
+          )}
 
-            {ecosystemNodes.map((node, index) => {
-              const active = index === activeNode;
-              return (
-                <div
-                  key={node.title}
-                  className={`absolute w-40 sm:w-44 rounded-2xl border p-3 shadow-lg backdrop-blur-md transition-all duration-500 ${
-                    active
-                      ? 'scale-105 border-emerald-400/45 bg-white/12 shadow-emerald-500/20'
-                      : 'border-white/10 bg-white/6 shadow-black/20'
-                  }`}
-                  style={{ left: node.x, top: node.y }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${node.accent} text-slate-950 shadow-lg`}>
-                      <node.icon className="h-4.5 w-4.5" />
-                    </div>
-                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-emerald-200' : 'text-white/40'}`}>
-                      {node.badge}
-                    </span>
-                  </div>
-                  <h4 className="mt-3 text-sm font-bold text-white">{node.title}</h4>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{node.desc}</p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r ${node.accent} transition-all duration-500 ${
-                        active ? 'w-full' : 'w-1/3'
-                      }`}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {ecosystemNodes.map((node, index) => {
-              const active = index === activeNode;
+          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {ecosystemStages.map((stage, index) => {
+              const active = index === activeIndex;
               return (
                 <button
-                  key={node.title}
+                  key={stage.key}
                   type="button"
-                  onClick={() => setActiveNode(index)}
-                  className={`rounded-xl border px-2 py-2 text-left transition-all duration-300 ${
+                  onMouseEnter={() => setHoveredStage(index)}
+                  onMouseLeave={() => setHoveredStage(null)}
+                  onFocus={() => setHoveredStage(index)}
+                  onBlur={() => setHoveredStage(null)}
+                  onClick={() => replayStage(index)}
+                  className={`rounded-2xl border px-3 py-2 text-left transition-all duration-200 ${
                     active
-                      ? 'border-emerald-400/50 bg-emerald-400/10 text-white'
-                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/8'
+                      ? 'border-emerald-500/30 bg-emerald-50 text-slate-900 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/60'
                   }`}
                 >
-                  <span className="block text-[9px] font-black uppercase tracking-[0.18em]">
-                    {node.badge}
-                  </span>
-                  <span className="mt-1 block text-[10px] font-bold leading-tight">
-                    {node.title}
-                  </span>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.22em] text-emerald-600">{stage.num}</span>
+                  <span className="mt-1 block text-[11px] font-bold leading-tight">{stage.nav}</span>
                 </button>
               );
             })}
           </div>
+
+          <AnimatePresence>
+            {hoveredStage !== null && (
+              <motion.div
+                key={`tooltip-${ecosystemStages[hoveredStage].key}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm"
+              >
+                <span className="font-bold text-slate-900">{ecosystemStages[hoveredStage].nav}:</span> {ecosystemStages[hoveredStage].tooltip}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StaticEcosystemDiagram() {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <DriverCaptureCard active reducedMotion />
+      </div>
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <CoreVerificationCard active reducedMotion />
+      </div>
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <OwnerDashboardCard active reducedMotion />
+      </div>
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AuditTrailCard active reducedMotion />
+      </div>
+      <div className="rounded-3xl border border-emerald-500/15 bg-emerald-50 p-4 shadow-sm lg:col-span-2">
+        <CompleteVisibilityCard active reducedMotion />
+      </div>
+    </div>
+  );
+}
+
+function DesktopEcosystemScene({ activeStage, nodeScale, nodeOpacity }) {
+  const packet = activeStage.packet;
+  const activeKey = activeStage.key;
+
+  return (
+    <div className="relative min-h-[760px] overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,250,245,0.96))] p-4 sm:p-6">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 760" aria-hidden="true">
+        <defs>
+          <linearGradient id="fg-line" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(0,200,83,0.08)" />
+            <stop offset="50%" stopColor="rgba(0,200,83,0.55)" />
+            <stop offset="100%" stopColor="rgba(0,200,83,0.10)" />
+          </linearGradient>
+        </defs>
+        <path d="M240 250 C 340 160, 430 150, 500 220" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <path d="M500 220 C 640 250, 720 230, 780 250" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <path d="M500 220 C 515 330, 520 430, 500 555" stroke="url(#fg-line)" strokeWidth="3" fill="none" strokeLinecap="round" />
+      </svg>
+
+      <motion.div
+        className="absolute left-[4%] top-[16%] w-[23%] min-w-[220px]"
+        animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }}
+        transition={{ duration: 0.35 }}
+      >
+        <DriverCaptureCard active={activeKey === 'driver'} />
+      </motion.div>
+
+      <motion.div
+        className="absolute left-[35%] top-[9%] w-[24%] min-w-[240px]"
+        animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }}
+        transition={{ duration: 0.35 }}
+      >
+        <CoreVerificationCard active={activeKey === 'core'} />
+      </motion.div>
+
+      <motion.div
+        className="absolute left-[72%] top-[16%] w-[23%] min-w-[220px]"
+        animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }}
+        transition={{ duration: 0.35 }}
+      >
+        <OwnerDashboardCard active={activeKey === 'owner'} />
+      </motion.div>
+
+      <motion.div
+        className="absolute left-[43%] top-[61%] w-[26%] min-w-[240px]"
+        animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }}
+        transition={{ duration: 0.35 }}
+      >
+        <AuditTrailCard active={activeKey === 'audit'} />
+      </motion.div>
+
+      <motion.div
+        key={`packet-${activeKey}`}
+        className="absolute z-20 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_0_10px_rgba(0,200,83,0.10)]"
+        style={{ left: packet.left, top: packet.top, transform: 'translate(-50%, -50%)' }}
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45 }}
+      >
+        <span className="h-2 w-2 rounded-full bg-white" />
+      </motion.div>
+
+      <AnimatePresence mode="wait">
+        {activeKey === 'complete' && (
+          <motion.div
+            key="complete-banner"
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="absolute left-1/2 top-[48%] z-30 w-[52%] min-w-[420px] -translate-x-1/2 rounded-[28px] border border-emerald-500/15 bg-white/95 px-6 py-5 text-center shadow-[0_24px_60px_rgba(0,200,83,0.12)] backdrop-blur-sm"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.26em] text-emerald-600">Complete visibility</p>
+            <p className="mt-2 text-2xl font-black text-slate-900">COMPLETE VISIBILITY ✓</p>
+            <p className="mt-2 text-sm text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function MobileEcosystemScene({ activeStage, nodeScale, nodeOpacity }) {
+  const activeKey = activeStage.key;
+  const packet = activeStage.packet;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+        <motion.div animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }} transition={{ duration: 0.3 }}>
+          <DriverCaptureCard active={activeKey === 'driver'} mobile />
+        </motion.div>
+      </div>
+      <div className="flex justify-center">
+        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
+      </div>
+      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+        <motion.div animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }} transition={{ duration: 0.3 }}>
+          <CoreVerificationCard active={activeKey === 'core'} mobile />
+        </motion.div>
+      </div>
+      <div className="flex justify-center">
+        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
+      </div>
+      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+        <motion.div animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }} transition={{ duration: 0.3 }}>
+          <OwnerDashboardCard active={activeKey === 'owner'} mobile />
+        </motion.div>
+      </div>
+      <div className="flex justify-center">
+        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
+      </div>
+      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+        <motion.div animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }} transition={{ duration: 0.3 }}>
+          <AuditTrailCard active={activeKey === 'audit'} mobile />
+        </motion.div>
+      </div>
+      <div className="rounded-[28px] border border-emerald-500/15 bg-emerald-50 p-4 shadow-sm">
+        <CompleteVisibilityCard active={activeKey === 'complete'} packet={packet} mobile />
+      </div>
+    </div>
+  );
+}
+
+function DriverCaptureCard({ active, mobile }) {
+  return (
+    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Driver App</p>
+          <p className="mt-1 text-sm font-black text-slate-900">Driver captures proof</p>
+        </div>
+        <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Live</div>
+      </div>
+      <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+            <Phone className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-900">Rahul • Delhi ↔ Jaipur</p>
+            <p className="text-xs text-slate-500">Request #FG-2481</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[
+            { icon: Truck, label: 'Trip', value: 'Delhi → Jaipur' },
+            { icon: MapPin, label: 'Location', value: 'NH-48 • Verified' },
+            { icon: Upload, label: 'Photos', value: '2 repair images' },
+            { icon: FileWarning, label: 'Video', value: '1 incident clip' },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <row.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{row.label}</p>
+                  <p className="text-xs font-semibold text-slate-700">{row.value}</p>
+                </div>
+              </div>
+              <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+              {active ? 'Submitting request…' : 'Submit request'}
+            </span>
+            {active ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Zap className="h-4 w-4 text-emerald-600" /></motion.span> : <CheckCircle className="h-4 w-4 text-emerald-600" />}
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-emerald-100">
+            <motion.div
+              className="h-2 rounded-full bg-emerald-500"
+              initial={false}
+              animate={{ width: active ? '100%' : '74%' }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoreVerificationCard({ active, mobile }) {
+  const modules = ['OCR', 'GPS', 'Risk Rules', 'Fraud Detection'];
+
+  return (
+    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
+      <div className="text-center">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">FleetGuard Core</p>
+        <p className="mt-1 text-sm font-black text-slate-900">Secure • Intelligent • Trusted</p>
+      </div>
+      <div className="relative mx-auto mt-5 flex h-[260px] max-w-[320px] items-center justify-center">
+        <div className="absolute inset-0 rounded-full border border-emerald-100" />
+        <div className="absolute inset-6 rounded-full border border-emerald-200/70" />
+        <motion.div
+          className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-center shadow-sm"
+          animate={active ? { boxShadow: ['0 0 0 0 rgba(0,200,83,0.14)', '0 0 0 18px rgba(0,200,83,0)', '0 0 0 0 rgba(0,200,83,0.14)'] } : {}}
+          transition={{ duration: 2.4, repeat: active ? Infinity : 0 }}
+        >
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">FleetGuard</p>
+            <p className="text-lg font-black text-slate-900">CORE</p>
+          </div>
+        </motion.div>
+        {modules.map((module, index) => (
+          <motion.div
+            key={module}
+            className="absolute rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center shadow-sm"
+            style={{
+              left: index === 0 ? '12%' : index === 1 ? '62%' : index === 2 ? '12%' : '62%',
+              top: index === 0 ? '12%' : index === 1 ? '12%' : index === 2 ? '64%' : '64%',
+            }}
+            initial={false}
+            animate={active ? { opacity: 1, scale: 1 } : { opacity: 0.9, scale: 0.98 }}
+            transition={{ duration: 0.35, delay: active ? index * 0.14 : 0 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <Check className="h-3.5 w-3.5" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{module}</p>
+                <p className="text-xs font-semibold text-slate-700">Passed</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        {active && (
+          <motion.div
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-black text-emerald-700 shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            VERIFIED ✓
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OwnerDashboardCard({ active, mobile }) {
+  return (
+    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Owner Dashboard</p>
+          <p className="mt-1 text-sm font-black text-slate-900">Verified request arrives</p>
+        </div>
+        <BadgeCheck className="h-5 w-5 text-emerald-500" />
+      </div>
+      <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Verified request</p>
+        <div className="mt-3 space-y-2 text-sm text-slate-700">
+          <div className="flex justify-between gap-3"><span className="text-slate-500">Driver</span><span className="font-semibold text-slate-900">Rahul</span></div>
+          <div className="flex justify-between gap-3"><span className="text-slate-500">Trip</span><span className="font-semibold text-slate-900">Delhi → Jaipur</span></div>
+          <div className="flex justify-between gap-3"><span className="text-slate-500">Amount</span><span className="font-semibold text-slate-900">₹12,450</span></div>
+          <div className="flex justify-between gap-3"><span className="text-slate-500">Risk</span><span className="font-semibold text-emerald-600">Low</span></div>
+          <div className="flex justify-between gap-3"><span className="text-slate-500">AI Verification</span><span className="font-semibold text-emerald-600">Passed</span></div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Approve</button>
+          <button className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700">Review</button>
+        </div>
+        <AnimatePresence>
+          {active && (
+            <motion.div
+              key="approved"
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-emerald-700"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em]">APPROVED ✓</p>
+              <p className="mt-1 text-xs font-semibold">Green confirmation sent to operations.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function AuditTrailCard({ active, mobile }) {
+  const events = [
+    'Driver submitted',
+    'AI verified',
+    'Owner approved',
+    'Transaction recorded',
+    'Compliance ready',
+  ];
+
+  return (
+    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Audit Trail</p>
+          <p className="mt-1 text-sm font-black text-slate-900">Every action is traceable</p>
+        </div>
+        <BarChart3 className="h-5 w-5 text-emerald-500" />
+      </div>
+      <div className="mt-4 space-y-3">
+        {events.map((event, index) => (
+          <motion.div
+            key={event}
+            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+            initial={false}
+            animate={active ? { opacity: 1, x: 0 } : { opacity: index === 0 ? 1 : 0.86, x: 0 }}
+            transition={{ duration: 0.28, delay: active ? index * 0.12 : 0 }}
+          >
+            <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <Check className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-900">{event}</p>
+              <p className="text-[10px] text-slate-500">10:4{index} AM</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompleteVisibilityCard({ active, mobile }) {
+  return (
+    <div className={`rounded-[28px] border border-emerald-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Complete ecosystem</p>
+          <p className="mt-1 text-sm font-black text-slate-900">One connected request journey</p>
+        </div>
+        <Shield className="h-5 w-5 text-emerald-500" />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        {['Driver App', 'FleetGuard Core', 'Owner Dashboard', 'Audit Trail'].map((item) => (
+          <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{item}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-700">COMPLETE VISIBILITY ✓</p>
+        <p className="mt-1 text-xs text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
+      </div>
+      {active && (
+        <motion.div
+          className="mt-4 flex justify-center"
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="h-2 w-36 rounded-full bg-emerald-500/20">
+            <div className="h-2 w-full rounded-full bg-emerald-500" />
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -1128,6 +1477,7 @@ function WhatsAppSimulator({ t }) {
 export default function LandingPage() {
   const { t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [ecosystemStageIndex, setEcosystemStageIndex] = useState(0);
 
   // ——— Smooth Scrolling & Scroll Animations ———
   const pageRef = useRef(null);
@@ -1450,53 +1800,46 @@ export default function LandingPage() {
 
       {/* ===== ECOSYSTEM FLOW (Animated Ecosystem Overview) ===== */}
       <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="ecosystem">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-12 gap-12 items-center">
-          
-          {/* Left - Narrative */}
-          <div data-animate="slide-left" className="md:col-span-6 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-start">
+          <div data-animate="slide-left" className="lg:col-span-4 text-center lg:text-left lg:sticky lg:top-24">
+            <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#00c853]" />
               <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('ecosystem.label')}</span>
             </div>
-            
+
             <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight transition-colors duration-300">
               {t('ecosystem.title1')}{' '}
               <span className="text-[#00c853] italic font-black">{t('ecosystem.title2')}</span>
             </h2>
-            <p className="text-sm md:text-base text-slate-650 mb-10 leading-relaxed transition-colors duration-300">
+            <p className="text-sm md:text-base text-slate-650 mb-8 leading-relaxed transition-colors duration-300">
               {t('ecosystem.desc')}
             </p>
 
-            <div className="space-y-4 max-w-md mx-auto md:mx-0">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Current stage</p>
+              <h3 className="mt-2 text-lg font-black text-slate-900">{ecosystemStages[ecosystemStageIndex].title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                {ecosystemStages[ecosystemStageIndex].desc}
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               {[
-                { num: '01', title: t('ecosystem.step1.title'), desc: t('ecosystem.step1.desc') },
-                { num: '02', title: t('ecosystem.step2.title'), desc: t('ecosystem.step2.desc') },
-                { num: '03', title: t('ecosystem.step3.title'), desc: t('ecosystem.step3.desc') },
-              ].map((w) => (
-                <div key={w.num} className="flex gap-4 p-4 rounded-xl bg-white border border-slate-200 items-start text-left hover:border-[#00c853]/35 transition-colors shadow-sm duration-300">
-                  <div className="text-xs font-extrabold text-[#00c853] bg-[#00c853]/10 w-6 h-6 rounded flex items-center justify-center shrink-0 border border-[#00c853]/20">
-                    {w.num}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-xs tracking-wide transition-colors duration-300">{w.title}</h3>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed transition-colors duration-300">{w.desc}</p>
-                  </div>
+                'Faster Verification',
+                'Lower Fraud Risk',
+                'Complete Audit Trail',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+                  <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
+                  {item}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right - Animated ecosystem flow */}
-          <div data-animate="slide-right" className="md:col-span-6 flex justify-center relative">
-            
-            {/* Pulsing light rings behind the ecosystem card */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00c853]/5 rounded-full blur-2xl pointer-events-none" />
-
-            <TiltCard className="w-full max-w-xs">
-              <EcosystemFlowAnimation />
-            </TiltCard>
+          <div data-animate="slide-right" className="lg:col-span-8">
+            <EcosystemFlowAnimation onStageChange={setEcosystemStageIndex} />
           </div>
-
         </div>
       </section>
 
