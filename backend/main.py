@@ -125,6 +125,8 @@ if settings.OCR_PROVIDER.lower() == "openai":
     ocr_base_provider = OpenAIOCRProvider(api_key=settings.OPENAI_API_KEY)
 elif settings.OCR_PROVIDER.lower() == "mock":
     ocr_base_provider = MockOCRProvider()
+elif settings.OCR_PROVIDER.lower() == "google":
+    ocr_base_provider = GoogleDocumentAIProvider()
 else:
     raise ValueError(f"Unknown OCR_PROVIDER: {settings.OCR_PROVIDER}")
 
