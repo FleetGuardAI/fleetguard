@@ -40,12 +40,12 @@ async def list_drivers(
     for d in drivers:
         resp = DriverResponse.model_validate(d)
         # assigned_vehicle from vehicle table
-        async with uow:
-            v_result = await uow.session.execute(
-                select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == d.id).limit(1)
-            )
-            reg = v_result.scalar_one_or_none()
-            resp.assigned_vehicle = reg
+        session = getattr(uow, 'session', getattr(uow, '_session', None))
+        v_result = await session.execute(
+            select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == d.id).limit(1)
+        )
+        reg = v_result.scalar_one_or_none()
+        resp.assigned_vehicle = reg
         results.append(resp)
     return results
 
@@ -63,11 +63,11 @@ async def get_driver(
         raise HTTPException(404, f"Driver {driver_id} not found")
     resp = DriverResponse.model_validate(driver)
     # Enrich with assigned vehicle
-    async with uow:
-        v_result = await uow.session.execute(
-            select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == driver.id).limit(1)
-        )
-        resp.assigned_vehicle = v_result.scalar_one_or_none()
+    session = getattr(uow, 'session', getattr(uow, '_session', None))
+    v_result = await session.execute(
+        select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == driver.id).limit(1)
+    )
+    resp.assigned_vehicle = v_result.scalar_one_or_none()
     return resp
 
 
