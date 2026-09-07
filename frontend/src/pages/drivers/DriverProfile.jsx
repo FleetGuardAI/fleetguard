@@ -310,24 +310,7 @@ export default function DriverProfile() {
           <div className="space-y-4">
             {/* We no longer show old fields like driver.license_front_url directly here, 
                 since they are managed via the documents table now. */}
-            {/* System-level documents */}
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-surface border border-border rounded-xl hover:border-brand-300 transition-colors gap-3"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-surface-secondary text-content-secondary mt-0.5">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
-                    <span className="text-xs text-content-secondary mt-0.5 block flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-content-muted" />
-                      Expiry: {doc.expiry}
-                    </span>
-                  </div>
-                </div>
+
 
             {/* System-level documents */}
             {documents.length === 0 ? (
