@@ -14,6 +14,8 @@ from services.trip_service import TripService
 from services.trip_intelligence_service import TripIntelligenceService
 from schemas.trip_domain import TripResponse, TripCreate, TripUpdated
 from schemas.trip_intelligence import TripIntelligenceResponse
+from schemas.pre_trip_intelligence import PreTripIntelligenceResponse, PreTripEvaluateRequest
+from schemas.live_trip_intelligence import LiveTripIntelligenceResponse
 from services.auth_service import get_current_user
 from models.user import User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,8 +70,49 @@ async def create_trip(
         vehicle_id=payload.vehicle_id,
         driver_id=payload.driver_id,
         company_id=current_user.company_id,
+        revenue=payload.revenue,
+        planned_cost=payload.planned_cost,
+        planned_fuel_liters=payload.planned_fuel_liters,
+        cargo_weight=payload.cargo_weight,
         origin_type="rest_api"
     )
+    
+    # Run Pre-Trip Intelligence to capture snapshot
+    try:
+        from services.pre_trip_intelligence import PreTripIntelligenceService
+        from schemas.pre_trip_intelligence import PreTripEvaluateRequest
+        
+        pre_req = PreTripEvaluateRequest(
+            vehicle_id=payload.vehicle_id,
+            driver_id=payload.driver_id,
+            origin_location=payload.origin_location,
+            destination_location=payload.destination_location,
+            planned_distance=payload.planned_distance,
+            planned_start_time=payload.planned_start_time,
+            planned_end_time=payload.planned_end_time,
+            revenue=payload.revenue,
+            planned_cost=payload.planned_cost,
+            planned_fuel_liters=payload.planned_fuel_liters,
+            cargo_weight=payload.cargo_weight
+        )
+        
+        pre_service = PreTripIntelligenceService(db)
+        eval_resp = await pre_service.evaluate_trip(pre_req, current_user.company_id)
+        
+        trip.expected_revenue = eval_resp.expected_revenue
+        trip.expected_cost = eval_resp.expected_total_cost
+        trip.expected_profit = eval_resp.expected_profit
+        trip.expected_margin = eval_resp.expected_margin_pct
+        trip.recommendation_decision = eval_resp.recommendation.value
+        trip.recommendation_at = eval_resp.calculated_at
+        trip.intelligence_version = eval_resp.intelligence_version
+        trip.confidence_level = eval_resp.confidence_level.value
+        trip.risk_level = eval_resp.risk_level.value
+        trip.intelligence_snapshot = eval_resp.model_dump(mode='json')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to calculate pre-trip intelligence: {e}")
+        
     db.add(trip)
     await db.commit()
     await db.refresh(trip)
@@ -128,6 +171,40 @@ async def update_trip(
     await db.commit()
     await db.refresh(trip)
     return TripResponse.model_validate(trip)
+
+
+@router.post("/trips/intelligence/evaluate", response_model=PreTripIntelligenceResponse)
+async def evaluate_trip_intelligence(
+    payload: PreTripEvaluateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> PreTripIntelligenceResponse:
+    """
+    Evaluate a potential trip before creation to determine economics, risk, and TAKE/REVIEW/AVOID decision.
+    """
+    from services.pre_trip_intelligence import PreTripIntelligenceService
+    service = PreTripIntelligenceService(db)
+    return await service.evaluate_trip(payload, current_user.company_id)
+
+
+@router.get("/trips/{trip_id}/intelligence/live", response_model=LiveTripIntelligenceResponse)
+async def get_live_trip_intelligence(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> LiveTripIntelligenceResponse:
+    """
+    Get live health (ON_TRACK/AT_RISK/CRITICAL) and projected profitability for an IN_PROGRESS trip.
+    """
+    from models.trip_domain import Trip
+    from services.live_trip_intelligence import LiveTripIntelligenceService
+    
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.company_id != current_user.company_id:
+        raise HTTPException(404, f"Trip {trip_id} not found")
+        
+    service = LiveTripIntelligenceService(db)
+    return await service.compute_live_health(trip)
 
 
 @router.get("/trips/{trip_id}/intelligence", response_model=TripIntelligenceResponse)

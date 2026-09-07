@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/trip_repository.dart';
+import '../../data/trip_intelligence_repository.dart';
+import '../../data/trip_intelligence_models.dart';
+import '../widgets/live_trip_health_card.dart';
+import '../widgets/post_trip_performance_card.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/info_row.dart';
 import '../../../../core/widgets/section_header.dart';
@@ -17,6 +21,34 @@ class TripDetailScreen extends StatefulWidget {
 }
 
 class _TripDetailScreenState extends State<TripDetailScreen> {
+  final _intelRepo = TripIntelligenceRepository();
+  LiveTripIntelligenceResponse? _liveIntel;
+  PostTripIntelligenceResponse? _postIntel;
+  bool _isLoadingIntel = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIntelligence();
+  }
+
+  Future<void> _loadIntelligence() async {
+    setState(() => _isLoadingIntel = true);
+    try {
+      if (widget.trip.status == 'IN_PROGRESS' || widget.trip.status == 'PAUSED') {
+        final data = await _intelRepo.getLiveTripIntelligence(widget.trip.id);
+        setState(() => _liveIntel = data);
+      } else if (widget.trip.status == 'COMPLETED') {
+        final data = await _intelRepo.getTripIntelligence(widget.trip.id);
+        setState(() => _postIntel = data);
+      }
+    } catch (e) {
+      debugPrint('Failed to load intelligence: $e');
+    } finally {
+      setState(() => _isLoadingIntel = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -100,6 +132,20 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             padding: const EdgeInsets.all(16.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (widget.trip.status == 'IN_PROGRESS' || widget.trip.status == 'PAUSED') ...[
+                  if (_isLoadingIntel)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_liveIntel != null)
+                    LiveTripHealthCard(data: _liveIntel!),
+                  const SizedBox(height: 16),
+                ],
+                if (widget.trip.status == 'COMPLETED') ...[
+                  if (_isLoadingIntel)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_postIntel != null)
+                    PostTripPerformanceCard(data: _postIntel!),
+                  const SizedBox(height: 16),
+                ],
                 GlassCard(
                   
                   padding: const EdgeInsets.all(16),

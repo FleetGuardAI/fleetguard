@@ -62,6 +62,11 @@ class TripCreate(BaseModel):
     planned_distance: Optional[float] = None
     planned_start_time: Optional[datetime] = None
     planned_end_time: Optional[datetime] = None
+    # --- Intelligence / Financial Inputs ---
+    revenue: Optional[float] = None
+    planned_cost: Optional[float] = None
+    planned_fuel_liters: Optional[float] = None
+    cargo_weight: Optional[float] = None
 
 class TripUpdated(BaseModel):
     status: Optional[TripStatus] = None
