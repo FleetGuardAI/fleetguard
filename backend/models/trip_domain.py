@@ -4,8 +4,9 @@ Represents a trip's identity, status, locations, distance, and time.
 """
 
 from sqlalchemy import Integer, String, Enum, DateTime, Float, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 import enum
 from datetime import datetime
 
@@ -85,6 +86,54 @@ class Trip(Base):
     cargo_weight: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True,
         comment="Cargo weight in tonnes"
+    )
+
+    # --- Trip Intelligence: Queryable Fields ---
+    expected_revenue: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Expected revenue at time of intelligence evaluation"
+    )
+    expected_cost: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Expected total cost at time of intelligence evaluation"
+    )
+    expected_profit: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Expected profit at time of intelligence evaluation"
+    )
+    expected_margin: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Expected profit margin percentage at dispatch"
+    )
+    recommendation_decision: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, index=True,
+        comment="TAKE, REVIEW, or AVOID"
+    )
+    recommendation_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="When the intelligence evaluation was computed"
+    )
+    intelligence_version: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default="trip-intelligence-v1",
+        comment="Version of the calculation engine that produced this prediction"
+    )
+    confidence_level: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True,
+        comment="HIGH, MEDIUM, LOW, INSUFFICIENT"
+    )
+    risk_level: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True,
+        comment="LOW, MEDIUM, HIGH"
+    )
+    recommendation_outcome: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True,
+        comment="OUTPERFORMED, MET_EXPECTATION, UNDERPERFORMED, LOSS, INSUFFICIENT_DATA"
+    )
+
+    # --- Intelligence: Immutable Snapshot ---
+    intelligence_snapshot: Mapped[Optional[Any]] = mapped_column(
+        JSONB, nullable=True,
+        comment="Immutable pre-trip intelligence calculation preserved at dispatch"
     )
 
     # --- Traceability ---
