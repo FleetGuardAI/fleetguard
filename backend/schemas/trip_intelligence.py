@@ -148,6 +148,19 @@ class Recommendation(BaseModel):
     related_insight_type: Optional[InsightType] = None
 
 
+class OriginalExpectation(BaseModel):
+    """Immutable original expectations saved at dispatch."""
+    revenue: Optional[float] = None
+    cost: Optional[float] = None
+    profit: Optional[float] = None
+    margin_pct: Optional[float] = None
+    recommendation: Optional[str] = None
+    confidence: Optional[str] = None
+    version: Optional[str] = None
+    currency: str = "INR"
+    has_data: bool = False
+
+
 # ===========================================================================
 # Top-Level Response
 # ===========================================================================
@@ -181,9 +194,14 @@ class TripIntelligenceResponse(BaseModel):
 
     # Section 8: Recommendations
     recommendations: List[Recommendation] = Field(default_factory=list)
+    
+    # Section 9: Original Expectation vs Actual Outcome
+    original_expectation: Optional[OriginalExpectation] = None
+    recommendation_outcome: Optional[str] = None
 
     # Metadata
     data_quality: DataQuality = DataQuality.INSUFFICIENT
     data_sources_used: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
