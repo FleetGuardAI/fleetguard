@@ -126,6 +126,57 @@ export default function TripIntelligence({ tripId, trip }) {
         />
       </div>
 
+      {/* ══════ Section 1.5: Original Expectation vs Outcome ══════ */}
+      {data.original_expectation && data.original_expectation.has_data && (
+        <Card className="border-indigo-500/20 bg-indigo-50/10 dark:bg-indigo-900/10">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                <Brain className="h-4 w-4" />
+                Original Dispatch Intelligence
+              </CardTitle>
+              {data.recommendation_outcome && (
+                <div className={`px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded border ${
+                  data.recommendation_outcome === 'OUTPERFORMED' ? 'bg-green-500/10 border-green-500/20 text-green-700' :
+                  data.recommendation_outcome === 'LOSS' ? 'bg-red-500/10 border-red-500/20 text-red-700' :
+                  data.recommendation_outcome === 'UNDERPERFORMED' ? 'bg-amber-500/10 border-amber-500/20 text-amber-700' :
+                  'bg-surface-elevated border-border text-content-secondary'
+                }`}>
+                  Outcome: {data.recommendation_outcome.replace('_', ' ')}
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+            <div>
+              <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Expected Profit</div>
+              <div className="font-semibold text-content">
+                {data.original_expectation.profit != null ? `₹${data.original_expectation.profit.toLocaleString()}` : '---'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Expected Margin</div>
+              <div className="font-semibold text-content">
+                {data.original_expectation.margin_pct != null ? `${data.original_expectation.margin_pct.toFixed(1)}%` : '---'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Dispatch Rec.</div>
+              <div className={`font-semibold ${
+                data.original_expectation.recommendation === 'TAKE' ? 'text-green-600' :
+                data.original_expectation.recommendation === 'REVIEW' ? 'text-amber-600' : 'text-red-600'
+              }`}>
+                {data.original_expectation.recommendation || '---'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Confidence</div>
+              <div className="font-semibold text-content">{data.original_expectation.confidence || '---'}</div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* ══════ Section 2: Efficiency Score + Why Underperform ══════ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Score Card */}
