@@ -353,7 +353,7 @@ export default function DriverList() {
         title="Fleet Invite QR Code"
         description="Ask the driver to scan this unique QR code with their mobile device to instantly join your fleet."
         footer={
-          <div className="w-full flex justify-end items-center">
+          <div className="w-full flex justify-end items-center gap-3">
             <Button variant="outline" onClick={() => setQrModalOpen(false)} disabled={qrScanning}>
               Close
             </Button>

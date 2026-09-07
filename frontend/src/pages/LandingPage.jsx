@@ -1486,7 +1486,7 @@ export default function LandingPage() {
 
   // ——— Smooth Scrolling & Scroll Animations ———
   const pageRef = useRef(null);
-  useLenis();
+  // useLenis(); removed due to scroll lag
   useScrollAnimations(pageRef);
 
   useEffect(() => {
@@ -1619,14 +1619,11 @@ export default function LandingPage() {
             <img
               src="/assets/hero_bg_1920.jpg"
               alt="Hero background"
-              className="w-full h-full object-cover object-center cinematic-ken-burns"
-              style={{ imageRendering: 'auto' }}
+              className="w-full h-full object-cover object-center"
               loading="eager"
               fetchpriority="high"
             />
           </picture>
-          {/* Cinematic Canvas Overlay — god rays, mist, water shimmer, dust */}
-          <CinematicHeroBackground />
           {/* Subtle overlay to guarantee high-contrast text readability */}
           <div className="absolute inset-0 bg-black/30 transition-colors duration-300" style={{ zIndex: 3 }} />
           {/* Top scrim overlay to make navbar options pop against sky */}
@@ -1803,51 +1800,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== ECOSYSTEM FLOW (Animated Ecosystem Overview) ===== */}
-      <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="ecosystem">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 items-start">
-          <div data-animate="slide-left" className="lg:col-span-4 text-center lg:text-left lg:sticky lg:top-24">
-            <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
-              <div className="w-8 h-0.5 bg-[#00c853]" />
-              <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('ecosystem.label')}</span>
-            </div>
-
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 leading-tight transition-colors duration-300">
-              {t('ecosystem.title1')}{' '}
-              <span className="text-[#00c853] italic font-black">{t('ecosystem.title2')}</span>
-            </h2>
-            <p className="text-sm md:text-base text-slate-650 mb-8 leading-relaxed transition-colors duration-300">
-              {t('ecosystem.desc')}
-            </p>
-
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Current stage</p>
-              <h3 className="mt-2 text-lg font-black text-slate-900">{ecosystemStages[ecosystemStageIndex].title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {ecosystemStages[ecosystemStageIndex].desc}
-              </p>
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              {[
-                'Faster Verification',
-                'Lower Fraud Risk',
-                'Complete Audit Trail',
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-                  <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div data-animate="slide-right" className="lg:col-span-8">
-            <EcosystemFlowAnimation onStageChange={setEcosystemStageIndex} />
-          </div>
-        </div>
-      </section>
-
       {/* ===== FEATURES GRID (Obsidian Glassmorphism SaaS Grid) ===== */}
       <section className="py-24 px-6 bg-slate-100/30 border-t border-slate-200 relative z-10 transition-colors duration-300" id="features">
         <div className="max-w-7xl mx-auto">
@@ -1954,8 +1906,6 @@ export default function LandingPage() {
             <ul className="space-y-2.5 text-xs font-semibold font-sans">
               <li><a href="#about" className="hover:text-slate-900:text-white transition-colors">{t('nav.about')}</a></li>
               <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.testimonials')}</a></li>
-              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.careers')}</a></li>
-              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.blog')}</a></li>
             </ul>
           </div>
 
