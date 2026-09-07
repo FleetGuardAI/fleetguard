@@ -29,7 +29,7 @@ export function Modal({ open, onClose, title, description, size = 'md', children
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         ref={overlayRef}
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={closable ? onClose : undefined}
       />
       <div className={cn(
