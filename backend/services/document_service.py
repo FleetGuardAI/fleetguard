@@ -97,6 +97,7 @@ class DocumentService:
         try:
             doc = await self._repo.create(create_schema)
             resp = DocumentResponse.model_validate(doc)
+            resp.raw_storage_path = doc.storage_path  # preserve raw path for pipeline use
             resp.storage_path = storage_service.create_signed_url(doc.storage_path)
             return resp
         except Exception as e:

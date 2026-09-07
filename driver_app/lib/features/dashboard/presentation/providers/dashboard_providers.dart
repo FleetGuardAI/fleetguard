@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/data/auth_repository.dart';
-import '../../trip/data/trip_repository.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../trip/data/trip_repository.dart';
 
 final driverProfileProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final authRepo = ref.watch(authRepositoryProvider);

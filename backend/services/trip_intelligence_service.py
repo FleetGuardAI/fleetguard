@@ -121,6 +121,12 @@ class TripIntelligenceService:
         )
         recommendations = self._generate_recommendations(insights)
 
+        # Original Expectation & Outcome
+        original_expectation = self._build_original_expectation(trip)
+        recommendation_outcome = None
+        if trip.status == TripStatus.COMPLETED and original_expectation and original_expectation.has_data:
+            recommendation_outcome = self._compute_recommendation_outcome(trip, financial_summary.net_profit)
+
         # Overall data quality
         data_quality = self._assess_data_quality(trip, active_expenses, fuel_transactions)
 
@@ -136,9 +142,43 @@ class TripIntelligenceService:
             insights=insights,
             historical_comparisons=historical_comparisons,
             recommendations=recommendations,
+            original_expectation=original_expectation,
+            recommendation_outcome=recommendation_outcome,
             data_quality=data_quality,
             data_sources_used=data_sources,
         )
+
+    def _build_original_expectation(self, trip: Trip):
+        from schemas.trip_intelligence import OriginalExpectation
+        has_data = trip.expected_profit is not None or trip.expected_revenue is not None
+        if not has_data and not trip.intelligence_snapshot:
+             return None
+        return OriginalExpectation(
+            revenue=trip.expected_revenue,
+            cost=trip.expected_cost,
+            profit=trip.expected_profit,
+            margin_pct=trip.expected_margin,
+            recommendation=trip.recommendation_decision,
+            confidence=trip.confidence_level,
+            version=trip.intelligence_version,
+            has_data=True
+        )
+
+    def _compute_recommendation_outcome(self, trip: Trip, actual_profit: Optional[float]) -> str:
+        if trip.expected_profit is None or actual_profit is None:
+            return "INSUFFICIENT_DATA"
+        
+        expected = trip.expected_profit
+        actual = actual_profit
+        
+        if actual < 0:
+            return "LOSS"
+        if actual >= expected * 1.1:
+            return "OUTPERFORMED"
+        if actual >= expected * 0.8:
+            return "MET_EXPECTATION"
+        return "UNDERPERFORMED"
+
 
     # ══════════════════════════════════════════════════════════════
     # Data Gathering

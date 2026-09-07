@@ -155,6 +155,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
       {/* Support & Logout Action */}
       <div className="p-4 mt-auto border-t border-border space-y-2">
         <button
+          type="button"
           onClick={() => navigate('/dashboard/support')}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-surface-tertiary hover:bg-brand-50 border border-border text-sm font-medium text-content-secondary hover:text-brand-600 transition-all duration-200 group"
           aria-label="Open support"
@@ -163,6 +164,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
           {t("Support")}
         </button>
         <button
+          type="button"
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl hover:bg-red-50 text-sm font-medium text-content-secondary hover:text-red-600 transition-all duration-200 group"
           aria-label="Log out"

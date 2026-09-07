@@ -365,17 +365,26 @@ async def upload_document(
     Upload a driver document (license, aadhaar, selfie).
     Uses the unified document pipeline to upload, OCR, and store metadata.
     """
-    # Validate document type
-    valid_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
-    if document_type not in valid_types:
-        raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
-
-    from services.unified_pipeline_service import UnifiedPipelineService
-    from models.operational_event import EntityType
-    
-    pipeline = UnifiedPipelineService(db)
-    
     try:
+        logger.info("[UPLOAD DEBUG] REQUEST START")
+        logger.info("[UPLOAD DEBUG] authenticated user/driver resolved")
+        logger.info(f"[UPLOAD DEBUG] document type: {document_type}")
+        logger.info(f"[UPLOAD DEBUG] filename: {file.filename}")
+        logger.info(f"[UPLOAD DEBUG] content type: {file.content_type}")
+        logger.info(f"[UPLOAD DEBUG] file size: {getattr(file, 'size', 'unknown')}")
+        logger.info("[UPLOAD DEBUG] database lookup completed")
+
+        # Validate document type
+        valid_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+        if document_type not in valid_types:
+            raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
+
+        from services.unified_pipeline_service import UnifiedPipelineService
+        from models.operational_event import EntityType
+        
+        pipeline = UnifiedPipelineService(db)
+        
+        logger.info("[UPLOAD DEBUG] storage upload started")
         url, extracted_fields = await pipeline.process_document(
             file=file,
             document_type="idDocument", # Default ID processor for these docs
@@ -384,34 +393,43 @@ async def upload_document(
             uploaded_by=f"driver_{driver.id}",
             company_id=driver.company_id
         )
+        logger.info("[UPLOAD DEBUG] storage upload completed")
+
+        logger.info("[UPLOAD DEBUG] database insert/update started")
+        # Update driver record
+        setattr(driver, f"{document_type}_url", url)
+
+        # Check if all documents are uploaded
+        has_all_docs = all([
+            driver.license_front_url,
+            driver.license_back_url,
+            driver.aadhaar_front_url,
+            driver.aadhaar_back_url,
+            driver.selfie_url,
+        ])
+
+        if has_all_docs and driver.verification_status == VerificationStatus.PENDING_DOCUMENTS:
+            driver.verification_status = VerificationStatus.PENDING_APPROVAL
+
+        await db.commit()
+        await db.refresh(driver)
+        logger.info("[UPLOAD DEBUG] database insert/update completed")
+
+        result = {
+            "message": f"{document_type} uploaded successfully",
+            "url": storage_service.create_signed_url(url),
+            "verification_status": driver.verification_status.value if driver.verification_status else None,
+            "extracted_fields": extracted_fields
+        }
+        logger.info("[UPLOAD DEBUG] RESPONSE SUCCESS")
+        return result
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to process document upload: {e}")
+        logger.exception(f"[UPLOAD DEBUG] EXCEPTION\nexception class: {e.__class__.__name__}\nexception message: {str(e)}")
         raise HTTPException(500, "Failed to upload and process document")
 
-    # Update driver record
-    setattr(driver, f"{document_type}_url", url)
-
-    # Check if all documents are uploaded
-    has_all_docs = all([
-        driver.license_front_url,
-        driver.license_back_url,
-        driver.aadhaar_front_url,
-        driver.aadhaar_back_url,
-        driver.selfie_url,
-    ])
-
-    if has_all_docs and driver.verification_status == VerificationStatus.PENDING_DOCUMENTS:
-        driver.verification_status = VerificationStatus.PENDING_APPROVAL
-
-    await db.commit()
-    await db.refresh(driver)
-
-    return {
-        "message": f"{document_type} uploaded successfully",
-        "url": storage_service.create_signed_url(url),
-        "verification_status": driver.verification_status.value if driver.verification_status else None,
-        "extracted_fields": extracted_fields
-    }
 
 
 @router.post("/face-verify", response_model=FaceVerifyResponse)

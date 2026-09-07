@@ -95,4 +95,5 @@ class DocumentRepository:
             doc.status = payload.status
             
         await self._session.flush()
+        await self._session.refresh(doc)
         return doc

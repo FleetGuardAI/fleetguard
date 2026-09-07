@@ -45,6 +45,12 @@ class UnifiedPipelineService:
         Process a document upload through the unified pipeline.
         Returns the stored URL and extracted fields (if OCR succeeded).
         """
+        # Read file bytes once upfront so both upload and OCR can use them
+        # without re-reading an exhausted UploadFile stream.
+        file_content = await file.read()
+        file_content_type = file.content_type or "image/jpeg"
+        await file.seek(0)
+
         # Step 1 & 2: Upload and Create Document Record
         try:
             doc_response = await self.document_service.upload_document(
@@ -52,15 +58,14 @@ class UnifiedPipelineService:
                 uploaded_by=uploaded_by,
                 company_id=company_id
             )
-            url = doc_response.storage_path
+            # Use raw_storage_path (the actual Supabase object path) not the signed URL
+            url = doc_response.raw_storage_path or doc_response.storage_path
             doc_id = doc_response.id
         except Exception as e:
             logger.error(f"Failed to upload document: {e}")
             raise RuntimeError(f"Document upload failed: {e}")
 
-        # Step 3: Trigger OCR
-        content = await file.read()
-        await file.seek(0)
+        # Step 3: Trigger OCR using pre-read bytes (stream already exhausted after upload)
         provider = get_ocr_provider()
         
         extracted_fields = None
@@ -70,8 +75,8 @@ class UnifiedPipelineService:
 
         try:
             ocr_result = await provider.extract_text(
-                file_data=content,
-                mime_type=file.content_type or "image/jpeg",
+                file_data=file_content,
+                mime_type=file_content_type,
                 document_type=document_type
             )
             extracted_fields = ocr_result.extracted_fields
@@ -90,7 +95,8 @@ class UnifiedPipelineService:
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.SYSTEM_GENERATED,
             created_by=uploaded_by,
-            payload={"url": url, "filename": file.filename, "document_type": document_type}
+            payload={"url": url, "filename": file.filename, "document_type": document_type},
+            company_id=company_id
         )
         self.db.add(event)
         await self.db.flush()
