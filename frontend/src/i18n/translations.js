@@ -15,6 +15,7 @@ const translations = {
     'nav.about': 'About',
     'nav.dashboard': 'Dashboard',
     'nav.bookDemo': 'Book Demo',
+    'nav.ecosystem': 'Ecosystem',
     'nav.dashboardLogin': 'Dashboard Login',
 
     // Hero
@@ -61,6 +62,18 @@ const translations = {
     'how.step2.desc': 'Our system checks bill authenticity, duplicate claims, location match and suspicious pricing.',
     'how.step3.title': 'Owner Gets Verified Report',
     'how.step3.desc': 'Fleet owner receives a complete verified approval request with all proof before making payment.',
+
+    // Ecosystem flow
+    'ecosystem.label': 'Ecosystem Flow',
+    'ecosystem.title1': 'See FleetGuard',
+    'ecosystem.title2': 'in Motion',
+    'ecosystem.desc': 'Watch a request move from the driver in the field through AI verification, owner approval, and compliance — all inside one connected system.',
+    'ecosystem.step1.title': 'Driver captures proof',
+    'ecosystem.step1.desc': 'Photos, videos, location and request details enter FleetGuard.',
+    'ecosystem.step2.title': 'FleetGuard Core verifies',
+    'ecosystem.step2.desc': 'OCR, GPS, risk rules and fraud detection scan the request one by one.',
+    'ecosystem.step3.title': 'Owner reviews the packet',
+    'ecosystem.step3.desc': 'The approved request arrives with amount, risk and verification status.',
 
     // Demo section
     'demo.label': 'Live Demo',

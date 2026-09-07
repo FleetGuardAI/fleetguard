@@ -5,12 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/trip_providers.dart';
 import '../../data/trip_repository.dart';
-import '../../../../dashboard/presentation/providers/dashboard_providers.dart';
+import '../../../dashboard/presentation/providers/dashboard_providers.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final int tripId;
   const TripDetailScreen({super.key, required this.tripId});
-  final int tripId;
 
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();

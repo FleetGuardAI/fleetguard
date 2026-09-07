@@ -13,6 +13,7 @@ import { Input, Select } from '@/components/ui/Input';
 import './TripIntelligence.css';
 
 const TripIntelligence = lazy(() => import('./TripIntelligence'));
+const LiveTripHealthCard = lazy(() => import('./LiveTripHealthCard'));
 
 export default function TripDetail() {
   const { id } = useParams();
@@ -218,6 +219,13 @@ export default function TripDetail() {
               </div>
             </Card>
           </div>
+
+          {/* Live Trip Intelligence Card - IN PROGRESS ONLY */}
+          {(trip.status.toLowerCase() === 'in_progress' || trip.status.toLowerCase() === 'on-trip' || trip.status.toLowerCase() === 'paused') && (
+            <Suspense fallback={<Loader />}>
+              <LiveTripHealthCard tripId={trip.id} />
+            </Suspense>
+          )}
 
           {/* Telemetry coordinate map placeholder */}
           <Card className="flex flex-col items-center justify-center py-16 text-center border border-dashed">

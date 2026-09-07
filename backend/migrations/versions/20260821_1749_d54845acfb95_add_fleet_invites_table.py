@@ -19,7 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table('fleet_invites',
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    
+    if 'fleet_invites' not in inspector.get_table_names():
+        op.create_table('fleet_invites',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('company_id', sa.Integer(), nullable=False, comment='The company this invite belongs to'),
     sa.Column('invite_token', sa.String(length=255), nullable=False, comment='Unique token embedded in QR code'),
@@ -31,9 +35,9 @@ def upgrade() -> None:
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True, comment='Optional expiry date for the invite'),
     sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_fleet_invites_company_id'), 'fleet_invites', ['company_id'], unique=False)
-    op.create_index(op.f('ix_fleet_invites_invite_token'), 'fleet_invites', ['invite_token'], unique=True)
+        )
+        op.create_index(op.f('ix_fleet_invites_company_id'), 'fleet_invites', ['company_id'], unique=False)
+        op.create_index(op.f('ix_fleet_invites_invite_token'), 'fleet_invites', ['invite_token'], unique=True)
 
 
 def downgrade() -> None:
