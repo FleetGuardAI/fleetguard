@@ -24,8 +24,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from schemas.document import DocumentResponse
 
 from database import get_db
 from models.user import User, UserRole
@@ -399,17 +400,47 @@ async def upload_document(
         # Update driver record
         setattr(driver, f"{document_type}_url", url)
 
-        # Check if all documents are uploaded
-        has_all_docs = all([
-            driver.license_front_url,
-            driver.license_back_url,
-            driver.aadhaar_front_url,
-            driver.aadhaar_back_url,
-            driver.selfie_url,
-        ])
-
-        if has_all_docs and driver.verification_status == VerificationStatus.PENDING_DOCUMENTS:
+        # Check driver verification status by looking at the latest document in each category
+        from models.document import Document, DocumentVerificationStatus
+        
+        all_docs_result = await db.execute(
+            select(Document)
+            .where(Document.target_id == str(driver.id))
+            .where(Document.target_type == "DRIVER")
+            .order_by(desc(Document.created_at))
+        )
+        all_docs = all_docs_result.scalars().all()
+        
+        latest_by_category = {}
+        for d in all_docs:
+            if d.category and d.category not in latest_by_category:
+                latest_by_category[d.category] = d
+                
+        required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+        
+        all_required_approved = True
+        any_latest_rejected = False
+        has_all_required = True
+        
+        for cat in required_categories:
+            latest_doc = latest_by_category.get(cat)
+            if not latest_doc:
+                has_all_required = False
+                all_required_approved = False
+                continue
+            if latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
+                all_required_approved = False
+            if latest_doc.verification_status == DocumentVerificationStatus.REJECTED:
+                any_latest_rejected = True
+                
+        if has_all_required and all_required_approved:
+            driver.verification_status = VerificationStatus.APPROVED
+        elif any_latest_rejected:
+            driver.verification_status = VerificationStatus.REJECTED
+        elif has_all_required:
             driver.verification_status = VerificationStatus.PENDING_APPROVAL
+        else:
+            driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
 
         await db.commit()
         await db.refresh(driver)
@@ -429,6 +460,40 @@ async def upload_document(
     except Exception as e:
         logger.exception(f"[UPLOAD DEBUG] EXCEPTION\nexception class: {e.__class__.__name__}\nexception message: {str(e)}")
         raise HTTPException(500, "Failed to upload and process document")
+
+@router.get("/documents", response_model=list[DocumentResponse])
+async def get_my_documents(
+    driver: Driver = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the latest documents for each category for the current driver.
+    Provides document status and rejection reasons if any.
+    """
+    from models.document import Document
+    from services.file_upload_service import storage_service
+    
+    result = await db.execute(
+        select(Document)
+        .where(Document.target_id == str(driver.id))
+        .where(Document.target_type == "DRIVER")
+        .order_by(desc(Document.created_at))
+    )
+    all_docs = result.scalars().all()
+    
+    # Only return the latest document per category
+    latest_by_category = {}
+    for d in all_docs:
+        if d.category and d.category not in latest_by_category:
+            latest_by_category[d.category] = d
+            
+    results = []
+    for doc in latest_by_category.values():
+        resp = DocumentResponse.model_validate(doc)
+        resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+        results.append(resp)
+        
+    return results
 
 
 

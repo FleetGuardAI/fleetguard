@@ -1693,19 +1693,7 @@ export default function LandingPage() {
 
       </section>
 
-      {/* ===== INTEGRATIONS BAR ===== */}
-      <section className="py-8 bg-slate-100/60 border-y border-slate-200 relative z-10 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p data-animate="fade-in" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Compatible Fleet Telematics Systems</p>
-          <div data-animate="logos-stagger" className="flex flex-wrap items-center justify-center gap-8 md:gap-16" style={{opacity: 0}}>
-            {['Volvo', 'Scania', 'Tata Fleets', 'Daimler', 'BharatBenz'].map((logo, i) => (
-              <span key={i} className="text-sm md:text-base font-black tracking-widest text-slate-850 font-mono select-none transition-colors duration-300">
-                {logo.toUpperCase()}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Integration Bar Removed per user request */}
 
       {/* ===== THE PROBLEM (Glassmorphism & Glow Accents) ===== */}
       <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="problem">

@@ -10,7 +10,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.document import DocumentStorageStatus
+from models.document import DocumentStorageStatus, DocumentVerificationStatus
 
 
 class DocumentBase(BaseModel):
@@ -80,6 +80,22 @@ class DocumentUpdate(BaseModel):
         None,
         description="New storage status.",
     )
+    verification_status: Optional[DocumentVerificationStatus] = Field(
+        None,
+        description="New verification status.",
+    )
+    rejection_reason: Optional[str] = Field(
+        None,
+        description="Reason for rejection.",
+    )
+    verified_by: Optional[str] = Field(
+        None,
+        description="Admin who verified the document.",
+    )
+    verified_at: Optional[datetime] = Field(
+        None,
+        description="When the document was verified.",
+    )
 
 
 class DocumentResponse(DocumentBase):
@@ -102,7 +118,19 @@ class DocumentResponse(DocumentBase):
         ...,
         description="Current storage status.",
     )
+    verification_status: DocumentVerificationStatus = Field(
+        ...,
+        description="Verification status.",
+    )
+    rejection_reason: Optional[str] = None
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentVerifyRequest(BaseModel):
+    status: DocumentVerificationStatus = Field(..., description="APPROVED or REJECTED")
+    rejection_reason: Optional[str] = Field(None, description="Required if status is REJECTED")
