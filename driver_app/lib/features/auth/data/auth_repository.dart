@@ -113,6 +113,15 @@ class AuthRepository {
     }
   }
 
+  Future<List<dynamic>> getDocuments() async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/documents');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to get documents: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> verifyFace() async {
     try {
       final response = await _dio.post(

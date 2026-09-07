@@ -18,7 +18,11 @@ from models.document import DocumentStorageStatus
 from schemas.document import DocumentResponse
 from services.document_service import DocumentService, DocumentNotFound
 from routers.auth import get_current_user
-from models.user import User
+from models.user import User, UserRole
+from models.document import Document, DocumentVerificationStatus
+from schemas.document import DocumentVerifyRequest
+from sqlalchemy import select, desc
+from models.driver_domain import Driver, VerificationStatus
 
 router = APIRouter(
     prefix="/api/v1/documents",
@@ -230,3 +234,133 @@ async def ocr_vehicle_rc(
             "gvw": None,
         }
     }
+
+
+@router.get(
+    "/driver/{driver_id}",
+    response_model=list[DocumentResponse],
+    summary="List all documents for a driver (Admin)",
+)
+async def list_driver_documents(
+    driver_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List all documents associated with a specific driver.
+    """
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can view driver documents")
+
+    # Fetch documents where target_id == str(driver_id) and target_type == "DRIVER"
+    result = await db.execute(
+        select(Document)
+        .where(Document.target_id == str(driver_id))
+        .where(Document.target_type == "DRIVER")
+        .where(Document.company_id == current_user.company_id)
+        .order_by(desc(Document.created_at))
+    )
+    docs = result.scalars().all()
+    
+    from services.file_upload_service import storage_service
+    results = []
+    for doc in docs:
+        resp = DocumentResponse.model_validate(doc)
+        resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+        results.append(resp)
+    return results
+
+
+@router.post(
+    "/{document_id}/verify",
+    response_model=DocumentResponse,
+    summary="Verify or reject a document (Admin)",
+)
+async def verify_document(
+    document_id: uuid.UUID,
+    payload: DocumentVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Approve or reject a document.
+    """
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can verify documents")
+
+    if payload.status == DocumentVerificationStatus.REJECTED and not payload.rejection_reason:
+        raise HTTPException(status_code=400, detail="Rejection reason is required when rejecting")
+
+    result = await db.execute(
+        select(Document).where(Document.id == document_id, Document.company_id == current_user.company_id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Update document status
+    doc.verification_status = payload.status
+    if payload.status == DocumentVerificationStatus.APPROVED:
+        doc.rejection_reason = None
+    else:
+        doc.rejection_reason = payload.rejection_reason
+    doc.verified_by = str(current_user.id)
+    doc.verified_at = datetime.now()
+    
+    await db.flush()
+
+    # If it's a driver document, re-evaluate the overall driver verification status
+    if doc.target_type == "DRIVER" and doc.target_id:
+        driver_id = int(doc.target_id)
+        driver_result = await db.execute(select(Driver).where(Driver.id == driver_id))
+        driver = driver_result.scalar_one_or_none()
+        if driver:
+            # Re-evaluate logic:
+            # 1. Fetch all docs for this driver
+            all_docs_result = await db.execute(
+                select(Document)
+                .where(Document.target_id == str(driver_id))
+                .where(Document.target_type == "DRIVER")
+                .order_by(desc(Document.created_at))
+            )
+            all_docs = all_docs_result.scalars().all()
+            
+            # 2. Get latest doc per category
+            latest_by_category = {}
+            for d in all_docs:
+                if d.category and d.category not in latest_by_category:
+                    latest_by_category[d.category] = d
+                    
+            required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+            
+            all_required_approved = True
+            any_latest_rejected = False
+            has_all_required = True
+            
+            for cat in required_categories:
+                latest_doc = latest_by_category.get(cat)
+                if not latest_doc:
+                    has_all_required = False
+                    all_required_approved = False
+                    continue
+                if latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
+                    all_required_approved = False
+                if latest_doc.verification_status == DocumentVerificationStatus.REJECTED:
+                    any_latest_rejected = True
+                    
+            if has_all_required and all_required_approved:
+                driver.verification_status = VerificationStatus.APPROVED
+            elif any_latest_rejected:
+                driver.verification_status = VerificationStatus.REJECTED
+            elif has_all_required:
+                driver.verification_status = VerificationStatus.PENDING_APPROVAL
+            else:
+                driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
+
+    await db.commit()
+    await db.refresh(doc)
+    
+    from services.file_upload_service import storage_service
+    resp = DocumentResponse.model_validate(doc)
+    resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+    return resp

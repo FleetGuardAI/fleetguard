@@ -106,3 +106,15 @@ export async function assignVehicle(driverId, vehicleId) {
   await api.trucks.update(vehicleId, { driver_id: driverId });
   return { success: true, message: `Vehicle ID ${vehicleId} assigned to driver ID ${driverId}.` };
 }
+
+export async function getDriverDocuments(driverId) {
+  return await api.get(`/api/v1/documents/driver/${driverId}`);
+}
+
+export async function verifyDriverDocument(documentId, status, rejectionReason = null) {
+  const payload = { status };
+  if (rejectionReason) {
+    payload.rejection_reason = rejectionReason;
+  }
+  return await api.post(`/api/v1/documents/${documentId}/verify`, payload);
+}

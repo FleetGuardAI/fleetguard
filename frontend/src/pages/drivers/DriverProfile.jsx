@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User } from 'lucide-react';
-import { getDriverById, assignVehicle } from '@/api/driverApi';
+import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument } from '@/api/driverApi';
 import { getVehicles } from '@/api/vehicleApi';
-import { getDocuments } from '@/api/documentApi';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -32,7 +31,9 @@ export default function DriverProfile() {
   const [deleting, setDeleting] = useState(false);
 
   const [documents, setDocuments] = useState([]);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [verifyingDoc, setVerifyingDoc] = useState(null);
+  const [verifyStatus, setVerifyStatus] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -41,16 +42,18 @@ export default function DriverProfile() {
       const [d, v, docsData] = await Promise.all([
         getDriverById(id),
         getVehicles(),
-        getDocuments().catch(() => [])
+        getDriverDocuments(id).catch(() => [])
       ]);
       setDriver(d);
       setVehicles(v);
 
       const mappedDocs = (docsData || []).map(doc => ({
         id: doc.id,
-        name: doc.original_filename || doc.filename || `Document #${doc.id}`,
-        status: doc.storage_status === 'uploaded' ? 'verified' : 'pending',
-        expiry: doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'N/A'
+        name: doc.category ? doc.category.replace('_', ' ').toUpperCase() : `Document #${doc.id}`,
+        status: doc.verification_status.toLowerCase(),
+        url: doc.storage_path,
+        rejection_reason: doc.rejection_reason,
+        created_at: new Date(doc.created_at).toLocaleDateString()
       }));
       setDocuments(mappedDocs);
     } catch (e) {
@@ -98,20 +101,19 @@ export default function DriverProfile() {
     }
   };
 
-  const handleUploadDocument = async (docName) => {
-    setUploadingDoc(true);
+  const handleVerifyDocument = async () => {
+    if (verifyStatus === 'REJECTED' && !rejectionReason) {
+      error('Rejection Reason Required', 'Please provide a reason for rejecting the document.');
+      return;
+    }
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setDocuments(prev => prev.map(doc => 
-        doc.name === docName 
-          ? { ...doc, status: 'verified', expiry: '2029-01-01' } 
-          : doc
-      ));
-      success('Upload Successful', `Renewed ${docName} successfully.`);
+      await verifyDriverDocument(verifyingDoc.id, verifyStatus, rejectionReason);
+      success('Verification Updated', `Document marked as ${verifyStatus.toLowerCase()}.`);
+      setVerifyingDoc(null);
+      setRejectionReason('');
+      loadData(); // reload to get new driver status and updated doc
     } catch (e) {
-      error('Upload Failed', 'Failed to submit document.');
-    } finally {
-      setUploadingDoc(false);
+      error('Verification Error', 'Failed to update document status.');
     }
   };
 
@@ -306,62 +308,55 @@ export default function DriverProfile() {
             </CardTitle>
           </CardHeader>
           <div className="space-y-4">
-            {/* Uploaded Driver Documents from Onboarding */}
-            {(driver.license_front_url || driver.license_back_url || driver.aadhaar_front_url || driver.aadhaar_back_url || driver.selfie_url) && (
-              <div className="mb-4">
-                <h4 className="text-sm font-semibold text-content mb-3">Uploaded Documents</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
-                    { label: 'License Front', url: driver.license_front_url },
-                    { label: 'License Back', url: driver.license_back_url },
-                    { label: 'Aadhaar Front', url: driver.aadhaar_front_url },
-                    { label: 'Aadhaar Back', url: driver.aadhaar_back_url },
-                    { label: 'Selfie', url: driver.selfie_url },
-                  ].filter(d => d.url).map((doc) => (
-                    <div key={doc.label} className="p-2 border border-border rounded-xl text-center">
-                      <img 
-                        src={doc.url.startsWith('/') ? `${window.location.origin}${doc.url}` : doc.url}
-                        alt={doc.label}
-                        className="w-full h-24 object-cover rounded-lg mb-1"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                      <span className="text-xs text-content-secondary">{doc.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* We no longer show old fields like driver.license_front_url directly here, 
+                since they are managed via the documents table now. */}
+
+
             {/* System-level documents */}
-            {documents.map((doc) => (
+            {documents.length === 0 ? (
+              <div className="text-sm text-content-secondary py-4">No documents uploaded.</div>
+            ) : documents.map((doc) => (
               <div
                 key={doc.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-surface border border-border rounded-xl hover:border-brand-300 transition-colors gap-3"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-surface-secondary text-content-secondary mt-0.5">
-                    <FileText className="h-4 w-4" />
+                    {doc.url ? (
+                      <img src={doc.url} alt={doc.name} className="h-10 w-10 object-cover rounded" onError={(e) => { e.target.style.display = 'none'; }} />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
                     <span className="text-xs text-content-secondary mt-0.5 block flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-content-muted" />
-                      Expiry: {doc.expiry}
+                      Uploaded: {doc.created_at}
                     </span>
+                    {doc.rejection_reason && (
+                      <span className="text-xs text-red-600 mt-0.5 block">
+                        Rejected: {doc.rejection_reason}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Badge variant={doc.status === 'verified' ? 'success' : 'warning'}>
+                  <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
                     {doc.status.toUpperCase()}
                   </Badge>
                   <Button
                     variant="outline"
                     size="sm"
-                    loading={uploadingDoc}
-                    icon={<Upload className="h-3.5 w-3.5 text-brand-600" />}
-                    onClick={() => handleUploadDocument(doc.name)}
+                    icon={<CheckCircle className="h-3.5 w-3.5 text-brand-600" />}
+                    onClick={() => {
+                      setVerifyingDoc(doc);
+                      setVerifyStatus('');
+                      setRejectionReason('');
+                    }}
                   >
-                    Upload Renew
+                    Verify
                   </Button>
                 </div>
               </div>
@@ -369,6 +364,79 @@ export default function DriverProfile() {
           </div>
         </Card>
       </div>
+
+      {/* Verify Document Modal */}
+      <Modal
+        open={!!verifyingDoc}
+        onClose={() => setVerifyingDoc(null)}
+        title="Verify Document"
+        description={`Review the document for ${verifyingDoc?.name}`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setVerifyingDoc(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleVerifyDocument} 
+              disabled={!verifyStatus || (verifyStatus === 'REJECTED' && !rejectionReason)}
+            >
+              Confirm
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {verifyingDoc?.url && (
+            <div className="flex justify-center bg-surface-secondary p-2 rounded-lg border border-border">
+              <img src={verifyingDoc.url} alt="Document preview" className="max-h-64 object-contain rounded" />
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-content-secondary">
+              Verification Decision
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input 
+                  type="radio" 
+                  name="status" 
+                  value="APPROVED" 
+                  checked={verifyStatus === 'APPROVED'} 
+                  onChange={(e) => setVerifyStatus(e.target.value)} 
+                />
+                <span className="text-sm font-medium text-green-700">Approve</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input 
+                  type="radio" 
+                  name="status" 
+                  value="REJECTED" 
+                  checked={verifyStatus === 'REJECTED'} 
+                  onChange={(e) => setVerifyStatus(e.target.value)} 
+                />
+                <span className="text-sm font-medium text-red-700">Reject</span>
+              </label>
+            </div>
+          </div>
+
+          {verifyStatus === 'REJECTED' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-content-secondary">
+                Rejection Reason (Required)
+              </label>
+              <input
+                type="text"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g. Image is blurry, name mismatch..."
+                className="w-full h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Allocation Selection Modal */}
       <Modal
