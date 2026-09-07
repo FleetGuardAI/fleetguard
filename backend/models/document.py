@@ -29,6 +29,15 @@ class DocumentStorageStatus(str, enum.Enum):
     FAILED = "FAILED"           # Storage encountered an error
 
 
+class DocumentVerificationStatus(str, enum.Enum):
+    """
+    Business-level verification status of a document.
+    """
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 class Document(Base):
     """
     Domain model for all documents ingested into FleetGuard.
@@ -109,6 +118,31 @@ class Document(Base):
         nullable=True,
         index=True,
         doc="Type of the associated entity (e.g., vehicle, driver, permit).",
+    )
+    
+    verification_status: Mapped[DocumentVerificationStatus] = mapped_column(
+        Enum(DocumentVerificationStatus, native_enum=False, length=50),
+        nullable=False,
+        default=DocumentVerificationStatus.PENDING,
+        index=True,
+        doc="Business verification status (e.g. pending, approved, rejected)."
+    )
+    
+    rejection_reason: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        doc="Reason why the document was rejected by an admin."
+    )
+    
+    verified_by: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        doc="ID of the admin who verified or rejected the document."
+    )
+    
+    verified_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        doc="Timestamp when the document was verified."
     )
     
     created_at: Mapped[datetime] = mapped_column(
