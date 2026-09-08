@@ -8,7 +8,7 @@ import Dashboard from './pages/Dashboard';
 import HomePage from './pages/HomePage';
 import Downloads from './pages/Downloads';
 import DriverOtpBridge from './pages/DriverOtpBridge';
-
+import TripForm from './pages/trips/TripForm';
 /**
  * FleetGuard Application Root
  * Routes:
@@ -24,7 +24,7 @@ import DriverOtpBridge from './pages/DriverOtpBridge';
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<TripForm />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
