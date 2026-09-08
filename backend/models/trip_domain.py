@@ -3,7 +3,7 @@ FleetGuard — Trip Domain ORM Models
 Represents a trip's identity, status, locations, distance, and time.
 """
 
-from sqlalchemy import Integer, String, Enum, DateTime, Float, ForeignKey
+from sqlalchemy import Integer, String, Enum, DateTime, Float, ForeignKey, Column, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, Any, TYPE_CHECKING
@@ -42,8 +42,24 @@ class Trip(Base):
     )
 
     # --- Locations ---
-    origin_location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    destination_location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Routing & Location Fields
+    origin_location = Column(String(255))
+    origin_lat = Column(Float, nullable=True)
+    origin_lng = Column(Float, nullable=True)
+    origin_place_id = Column(String(255), nullable=True)
+    origin_address = Column(String(500), nullable=True)
+
+    destination_location = Column(String(255))
+    destination_lat = Column(Float, nullable=True)
+    destination_lng = Column(Float, nullable=True)
+    destination_place_id = Column(String(255), nullable=True)
+    destination_address = Column(String(500), nullable=True)
+
+    route_distance_km = Column(Float, nullable=True)
+    route_duration_hours = Column(Float, nullable=True)
+    route_toll_estimate = Column(Float, nullable=True)
+    route_provider = Column(String(50), nullable=True)
+    route_polyline = Column(Text, nullable=True)
 
     # --- Distance (in km or standard unit) ---
     planned_distance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

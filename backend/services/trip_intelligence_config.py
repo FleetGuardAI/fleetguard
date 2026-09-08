@@ -41,7 +41,9 @@ class TripIntelligenceConfig:
     # System default fuel price — used ONLY when no expense-derived price
     default_fuel_price_per_liter: float = 100.0
 
-    # System default driver cost per day
+    # Economics 2.0 defaults
+    default_toll_rate_per_km: float = 2.5
+    default_operating_cost_per_km: float = 5.0
     default_driver_cost_per_day: float = 1500.0
 
     # Average speed assumption (km/h) for duration estimation

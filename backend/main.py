@@ -220,6 +220,7 @@ from routers.copilot import router as copilot_router
 from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
+from routers.location import router as location_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -364,6 +365,7 @@ app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
+app.include_router(location_router, prefix="/api")
 
 
 # Mount Driver Mobile App Routers
