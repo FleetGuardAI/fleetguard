@@ -14,6 +14,7 @@ import { LocationAutocomplete } from '@/components/trip/LocationAutocomplete';
 import { RouteMap } from '@/components/trip/RouteMap';
 import { IntelligencePanel } from '@/components/trip/IntelligencePanel';
 import { motion } from 'framer-motion';
+import { cn } from '@/utils/cn';
 
 export default function TripForm() {
   const navigate = useNavigate();
