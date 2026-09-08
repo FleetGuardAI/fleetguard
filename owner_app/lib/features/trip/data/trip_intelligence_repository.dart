@@ -62,4 +62,20 @@ class TripIntelligenceRepository {
       throw Exception('Failed to load post-trip intelligence');
     }
   }
+
+  Future<PreTripIntelligenceResponse> getPreTripIntelligenceSnapshot(int tripId) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/v1/trips/$tripId/intelligence/snapshot'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return PreTripIntelligenceResponse.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load pre-trip intelligence snapshot');
+    }
+  }
 }

@@ -113,16 +113,13 @@ export async function updateTripStatus(id, status, description) {
  * @returns {Promise<object>}
  */
 export const getTripIntelligence = async (tripId) => {
-  const res = await api.get(`/v1/trips/${tripId}/intelligence`);
-  return res.data;
+  return await api.get(`/v1/trips/${tripId}/intelligence`);
 };
 
 export const evaluateTripIntelligence = async (payload) => {
-  const res = await api.post('/v1/trips/intelligence/evaluate', payload);
-  return res.data;
+  return await api.post('/v1/trips/intelligence/evaluate', payload);
 };
 
 export const getLiveTripIntelligence = async (tripId) => {
-  const res = await api.get(`/v1/trips/${tripId}/intelligence/live`);
-  return res.data;
+  return await api.get(`/v1/trips/${tripId}/intelligence/live`);
 };

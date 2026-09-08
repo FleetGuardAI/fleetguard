@@ -1,156 +1,156 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Brain, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { createTrip, evaluateTripIntelligence } from '@/api/tripApi';
+import { Truck, User, Calendar, MapPin, DollarSign, Activity, AlertCircle, Loader2 } from 'lucide-react';
 import { getVehicles } from '@/api/vehicleApi';
 import { getDrivers } from '@/api/driverApi';
+import { createTrip, evaluateTripIntelligence } from '@/api/tripApi';
+import { locationApi } from '@/api/locationApi';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Input, Select } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
-import { Loader } from '@/components/ui/Loader';
-import { ErrorState } from '@/components/shared/ErrorState';
+import { LocationAutocomplete } from '@/components/trip/LocationAutocomplete';
+import { RouteMap } from '@/components/trip/RouteMap';
+import { IntelligencePanel } from '@/components/trip/IntelligencePanel';
+import { motion } from 'framer-motion';
 
 export default function TripForm() {
   const navigate = useNavigate();
   const { success, error } = useToast();
 
+  const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [evaluating, setEvaluating] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-
-  // Form states
-  const [vehicleId, setVehicleId] = useState('');
-  const [driverId, setDriverId] = useState('');
-  const [routeName, setRouteName] = useState('');
-  const [startPoint, setStartPoint] = useState('');
-  const [endPoint, setEndPoint] = useState('');
-  const [distanceKm, setDistanceKm] = useState('');
-  const [expectedDelivery, setExpectedDelivery] = useState('');
   
-  // Financial & Intelligence states
-  const [revenue, setRevenue] = useState('');
-  const [plannedCost, setPlannedCost] = useState('');
-  const [plannedFuel, setPlannedFuel] = useState('');
-  const [cargoWeight, setCargoWeight] = useState('');
-  const [intelligenceResult, setIntelligenceResult] = useState(null);
+  // Trip Data
+  const [origin, setOrigin] = useState(null);
+  const [destination, setDestination] = useState(null);
+  const [routeData, setRouteData] = useState(null);
+  
+  const [formData, setFormData] = useState({
+    vehicle_id: '',
+    driver_id: '',
+    planned_start_time: '',
+    planned_end_time: '',
+    revenue: '',
+    cargo_weight: ''
+  });
 
-  const [errors, setErrors] = useState({});
-
-  const loadResources = async () => {
-    setFetching(true);
-    setFetchError(null);
-    try {
-      const [vData, dData] = await Promise.all([
-        getVehicles({ status: 'active' }),
-        getDrivers({ status: 'active' })
-      ]);
-      setVehicles(vData);
-      setDrivers(dData);
-    } catch (e) {
-      setFetchError(e);
-      error('Load Error', 'Failed to retrieve active resources.');
-    } finally {
-      setFetching(false);
-    }
-  };
+  // Intelligence State
+  const [intelligence, setIntelligence] = useState(null);
+  const [evaluating, setEvaluating] = useState(false);
 
   useEffect(() => {
-    loadResources();
+    Promise.all([getVehicles(), getDrivers()])
+      .then(([v, d]) => {
+        setVehicles(v);
+        setDrivers(d);
+      })
+      .catch(err => error('Load Error', 'Failed to load master data.'));
   }, []);
 
-  const validate = () => {
-    const errs = {};
-    if (!vehicleId) errs.vehicleId = 'Vehicle allocation is required';
-    if (!driverId) errs.driverId = 'Driver allocation is required';
-    if (!routeName.trim()) errs.routeName = 'Route name is required';
-    if (!startPoint.trim()) errs.startPoint = 'Dispatch start point is required';
-    if (!endPoint.trim()) errs.endPoint = 'Delivery destination is required';
-
-    if (!distanceKm) {
-      errs.distanceKm = 'Trip distance is required';
-    } else if (Number(distanceKm) <= 0) {
-      errs.distanceKm = 'Distance must be greater than 0';
-    }
-
-    if (!expectedDelivery) {
-      errs.expectedDelivery = 'Expected delivery date is required';
+  // Effect: Auto-calculate route when origin and destination change
+  useEffect(() => {
+    if (origin?.lat && destination?.lat) {
+      const fetchRoute = async () => {
+        try {
+          const res = await locationApi.calculateRoute({
+            origin_lat: origin.lat,
+            origin_lng: origin.lng,
+            destination_lat: destination.lat,
+            destination_lng: destination.lng
+          });
+          // Decode polyline for map
+          const polyline = locationApi.decodePolyline(res.polyline);
+          setRouteData({ ...res, polylineArray: polyline });
+        } catch (e) {
+          console.error("Routing error:", e);
+        }
+      };
+      fetchRoute();
     } else {
-      const selectedDate = new Date(expectedDelivery);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selectedDate < today) {
-        errs.expectedDelivery = 'Delivery date cannot be in the past';
+      setRouteData(null);
+    }
+  }, [origin, destination]);
+
+  // Effect: Debounced Progressive Intelligence Evaluation
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      // Don't evaluate if we have absolutely nothing
+      if (!origin && !destination && !formData.vehicle_id && !formData.revenue) {
+        setIntelligence(null);
+        return;
       }
-    }
 
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+      setEvaluating(true);
+      try {
+        const payload = {
+          origin_location: origin?.address || origin?.description || origin?.main_text || null,
+          origin_lat: origin?.lat,
+          origin_lng: origin?.lng,
+          origin_place_id: origin?.place_id,
+          destination_location: destination?.address || destination?.description || destination?.main_text || null,
+          destination_lat: destination?.lat,
+          destination_lng: destination?.lng,
+          destination_place_id: destination?.place_id,
+          route_distance_km: routeData?.distance_km,
+          route_duration_hours: routeData?.duration_hours,
+          vehicle_id: formData.vehicle_id ? Number(formData.vehicle_id) : null,
+          driver_id: formData.driver_id ? Number(formData.driver_id) : null,
+          revenue: formData.revenue ? Number(formData.revenue) : null,
+          planned_start_time: formData.planned_start_time || null,
+          planned_end_time: formData.planned_end_time || null
+        };
+        const intel = await evaluateTripIntelligence(payload);
+        setIntelligence(intel);
+      } catch (e) {
+        console.error("Intelligence Eval Error", e);
+      } finally {
+        setEvaluating(false);
+      }
+    }, 800); // 800ms debounce
 
-  const getIntelligencePayload = () => {
-    return {
-      vehicle_id: Number(vehicleId),
-      driver_id: Number(driverId),
-      origin_location: startPoint.trim(),
-      destination_location: endPoint.trim(),
-      planned_distance: distanceKm ? Number(distanceKm) : null,
-      planned_start_time: new Date().toISOString(),
-      planned_end_time: expectedDelivery ? new Date(expectedDelivery).toISOString() : null,
-      revenue: revenue ? Number(revenue) : null,
-      planned_cost: plannedCost ? Number(plannedCost) : null,
-      planned_fuel_liters: plannedFuel ? Number(plannedFuel) : null,
-      cargo_weight: cargoWeight ? Number(cargoWeight) : null,
-    };
-  };
-
-  const handleEvaluate = async () => {
-    if (!validate()) return;
-    setEvaluating(true);
-    setIntelligenceResult(null);
-    try {
-      const result = await evaluateTripIntelligence(getIntelligencePayload());
-      setIntelligenceResult(result);
-    } catch (e) {
-      error('Evaluation Failed', e.message || 'Could not evaluate trip intelligence.');
-    } finally {
-      setEvaluating(false);
-    }
-  };
+    return () => clearTimeout(timer);
+  }, [origin, destination, routeData, formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!origin || !destination) {
+      error('Validation Error', 'Please select pickup and dropoff locations.');
+      return;
+    }
+    if (!formData.vehicle_id || !formData.driver_id) {
+      error('Validation Error', 'Please assign a vehicle and driver.');
+      return;
+    }
 
     setLoading(true);
-
-    const selectedTruck = vehicles.find(v => v.id === Number(vehicleId));
-    const selectedDriver = drivers.find(d => d.id === Number(driverId));
-
-    const payload = {
-      truck_id: Number(vehicleId),
-      truck_plate: selectedTruck?.license_plate || '',
-      driver_id: Number(driverId),
-      driver_name: selectedDriver?.name || '',
-      route_name: routeName.trim(),
-      start_point: startPoint.trim(),
-      end_point: endPoint.trim(),
-      distance_km: Number(distanceKm),
-      start_date: new Date().toISOString(),
-      expected_delivery: new Date(expectedDelivery).toISOString(),
-      revenue: revenue ? Number(revenue) : null,
-      planned_cost: plannedCost ? Number(plannedCost) : null,
-      planned_fuel_liters: plannedFuel ? Number(plannedFuel) : null,
-      cargo_weight: cargoWeight ? Number(cargoWeight) : null,
-    };
-
     try {
-      await createTrip(payload);
-      success('Trip Dispatched', `Cargo trip successfully planned for vehicle ${payload.truck_plate}.`);
-      navigate('/dashboard/trips');
+      const payload = {
+        ...formData,
+        origin_location: origin.address || origin.description,
+        origin_lat: origin.lat,
+        origin_lng: origin.lng,
+        origin_place_id: origin.place_id,
+        origin_address: origin.address,
+        destination_location: destination.address || destination.description,
+        destination_lat: destination.lat,
+        destination_lng: destination.lng,
+        destination_place_id: destination.place_id,
+        destination_address: destination.address,
+        route_distance_km: routeData?.distance_km,
+        route_duration_hours: routeData?.duration_hours,
+        route_toll_estimate: routeData?.toll_estimate,
+        route_provider: routeData?.source,
+        route_polyline: routeData?.polyline,
+        revenue: formData.revenue ? Number(formData.revenue) : null,
+        cargo_weight: formData.cargo_weight ? Number(formData.cargo_weight) : null,
+      };
+      
+      const trip = await createTrip(payload);
+      success('Dispatch Successful', `Trip ${trip.trip_id} created.`);
+      navigate(`/trips/${trip.id}`);
     } catch (e) {
       error('Dispatch Error', e.message || 'Failed to dispatch trip.');
     } finally {
@@ -158,289 +158,180 @@ export default function TripForm() {
     }
   };
 
-  if (fetching) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader size="lg" />
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <ErrorState
-        title="Resources Error"
-        message="Could not load active trucks or drivers to plan dispatch."
-        onRetry={loadResources}
-      />
-    );
-  }
-
-  const vehicleOptions = vehicles.map(v => ({ value: v.id, label: `${v.license_plate} - ${v.make} ${v.model}` }));
-  const driverOptions = drivers.map(d => ({ value: d.id, label: d.name }));
-
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Title */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          icon={<ArrowLeft className="h-4 w-4" />}
-          onClick={() => navigate('/dashboard/trips')}
-        />
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-content">Dispatch Cargo Trip</h1>
-          <p className="text-sm text-content-secondary mt-0.5">Plan and assign operational routes to active drivers.</p>
+          <h1 className="text-2xl font-bold text-content flex items-center gap-2">
+            Intelligent Dispatch
+            <Badge variant="brand" className="ml-2">Trip Intel 2.0</Badge>
+          </h1>
+          <p className="text-content-muted">Progressive evaluation powered by FleetGuard AI</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-content border-b border-border pb-2">Logistics & Assignment</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Select
-                    label="Allocate Vehicle"
-                    placeholder="-- Select Truck --"
-                    options={vehicleOptions}
-                    value={vehicleId}
-                    onChange={(e) => setVehicleId(e.target.value)}
-                    error={errors.vehicleId}
-                    required
-                  />
-                  <Select
-                    label="Allocate Driver"
-                    placeholder="-- Select Operator --"
-                    options={driverOptions}
-                    value={driverId}
-                    onChange={(e) => setDriverId(e.target.value)}
-                    error={errors.driverId}
-                    required
-                  />
-                </div>
-
-                <Input
-                  label="Route / Trip Identifier"
-                  placeholder="e.g. Pune - Hyderabad Express Load"
-                  value={routeName}
-                  onChange={(e) => setRouteName(e.target.value)}
-                  error={errors.routeName}
-                  required
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Start Location (Origin)"
-                    placeholder="e.g. Pune Yard, Maharashtra"
-                    value={startPoint}
-                    onChange={(e) => setStartPoint(e.target.value)}
-                    error={errors.startPoint}
-                    required
-                  />
-                  <Input
-                    label="End Location (Destination)"
-                    placeholder="e.g. Hyderabad Depot, Telangana"
-                    value={endPoint}
-                    onChange={(e) => setEndPoint(e.target.value)}
-                    error={errors.endPoint}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Est. Distance (km)"
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 560"
-                    value={distanceKm}
-                    onChange={(e) => setDistanceKm(e.target.value)}
-                    error={errors.distanceKm}
-                    required
-                  />
-                  <Input
-                    label="Expected Delivery Date"
-                    type="date"
-                    value={expectedDelivery}
-                    onChange={(e) => setExpectedDelivery(e.target.value)}
-                    error={errors.expectedDelivery}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t border-border">
-                <h3 className="text-lg font-medium text-content border-b border-border pb-2">Economics (Optional)</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Freight Revenue (INR)"
-                    type="number"
-                    placeholder="e.g. 45000"
-                    value={revenue}
-                    onChange={(e) => setRevenue(e.target.value)}
-                  />
-                  <Input
-                    label="Planned Cost (INR)"
-                    type="number"
-                    placeholder="e.g. 35000"
-                    value={plannedCost}
-                    onChange={(e) => setPlannedCost(e.target.value)}
-                  />
-                  <Input
-                    label="Planned Fuel (Liters)"
-                    type="number"
-                    placeholder="e.g. 150"
-                    value={plannedFuel}
-                    onChange={(e) => setPlannedFuel(e.target.value)}
-                  />
-                  <Input
-                    label="Cargo Weight (Tonnes)"
-                    type="number"
-                    placeholder="e.g. 20"
-                    value={cargoWeight}
-                    onChange={(e) => setCargoWeight(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-6 border-t border-border">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  icon={<Brain className="h-4 w-4" />}
-                  onClick={handleEvaluate}
-                  loading={evaluating}
-                >
-                  Evaluate Economics
-                </Button>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/dashboard/trips')}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    icon={<Send className="h-4 w-4" />}
-                    loading={loading}
-                  >
-                    Confirm Dispatch
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Card>
-        </div>
-
-        {/* Intelligence Side Panel */}
-        <div className="lg:col-span-1">
-          <Card className="h-full sticky top-6">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border">
-              <Brain className="h-5 w-5 text-indigo-500" />
-              <h2 className="text-lg font-semibold text-content">Trip Intelligence</h2>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* LEFT COLUMN: Inputs */}
+        <div className="lg:col-span-5 space-y-6">
+          <form id="trip-form" onSubmit={handleSubmit} className="space-y-6">
             
-            {!intelligenceResult && !evaluating && (
-              <div className="text-center py-12 text-content-secondary">
-                <Brain className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>Click "Evaluate Economics" to analyze this trip before dispatch.</p>
-              </div>
-            )}
-
-            {evaluating && (
-              <div className="flex flex-col items-center justify-center py-12 text-content-secondary">
-                <Loader size="md" className="mb-4" />
-                <p>Analyzing route, feasibility, and economics...</p>
-              </div>
-            )}
-
-            {intelligenceResult && !evaluating && (
-              <div className="space-y-5 animate-in fade-in">
-                {/* Recommendation Banner */}
-                <div className={`p-4 rounded-lg flex items-start gap-3 ${
-                  intelligenceResult.recommendation === 'TAKE' ? 'bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400' :
-                  intelligenceResult.recommendation === 'REVIEW' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400' :
-                  'bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400'
-                }`}>
-                  {intelligenceResult.recommendation === 'TAKE' && <CheckCircle className="h-5 w-5 shrink-0 mt-0.5" />}
-                  {intelligenceResult.recommendation === 'REVIEW' && <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />}
-                  {intelligenceResult.recommendation === 'AVOID' && <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />}
-                  
-                  <div>
-                    <h3 className="font-bold text-lg mb-1">{intelligenceResult.recommendation}</h3>
-                    <ul className="text-sm space-y-1">
-                      {intelligenceResult.recommendation_reasons.map((r, i) => (
-                        <li key={i} className="flex gap-1.5">
-                          <span className={r.factor_type === 'positive' ? 'text-green-500' : 'text-red-500'}>•</span>
-                          <span>{r.description}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            {/* 1. Route Section */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-brand-500" />
+                1. Route Selection
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-content mb-1">Pickup Location</label>
+                  <LocationAutocomplete 
+                    value={origin} 
+                    onChange={setOrigin} 
+                    placeholder="Search origin..." 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content mb-1">Dropoff Location</label>
+                  <LocationAutocomplete 
+                    value={destination} 
+                    onChange={setDestination} 
+                    placeholder="Search destination..." 
+                  />
                 </div>
 
-                {/* Economics Summary */}
-                <div className="bg-surface-elevated rounded-lg p-3 border border-border">
-                  <h4 className="font-medium text-sm text-content-secondary mb-3 uppercase tracking-wider">Economics</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Expected Revenue</span>
-                      <span className="font-medium">₹{intelligenceResult.expected_revenue?.toLocaleString() || '---'}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Expected Cost</span>
-                      <span className="font-medium">₹{intelligenceResult.expected_total_cost?.toLocaleString() || '---'}</span>
-                    </div>
-                    <div className="pt-2 mt-2 border-t border-border flex justify-between">
-                      <span className="font-medium text-content">Expected Profit</span>
-                      <span className={`font-bold ${
-                        (intelligenceResult.expected_profit || 0) > 0 ? 'text-green-500' : 
-                        (intelligenceResult.expected_profit || 0) < 0 ? 'text-red-500' : 'text-content'
-                      }`}>
-                        ₹{intelligenceResult.expected_profit?.toLocaleString() || '---'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-content-secondary">Margin</span>
-                      <span className="font-medium">{intelligenceResult.expected_margin_pct?.toFixed(1) || '---'}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Risk & Confidence */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-surface-elevated rounded-lg p-3 border border-border">
-                    <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Risk Level</div>
-                    <div className={`font-semibold ${
-                      intelligenceResult.risk_level === 'HIGH' ? 'text-red-500' :
-                      intelligenceResult.risk_level === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
-                    }`}>{intelligenceResult.risk_level}</div>
-                  </div>
-                  <div className="bg-surface-elevated rounded-lg p-3 border border-border">
-                    <div className="text-xs text-content-secondary uppercase tracking-wider mb-1">Confidence</div>
-                    <div className="font-semibold text-content">{intelligenceResult.confidence_level}</div>
-                  </div>
-                </div>
-
-                {/* Assumptions warning */}
-                {intelligenceResult.assumptions.length > 0 && (
-                  <div className="text-xs text-content-tertiary flex gap-1.5 items-start mt-4">
-                    <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    <p>Based on {intelligenceResult.assumptions.filter(a => a.source.includes('default')).length} system defaults and {intelligenceResult.assumptions.filter(a => !a.source.includes('default')).length} actual data points. Snapshot will be saved on dispatch.</p>
-                  </div>
+                {origin?.lat && destination?.lat && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                    <RouteMap 
+                      origin={origin} 
+                      destination={destination} 
+                      routePolyline={routeData?.polylineArray} 
+                    />
+                    {routeData && (
+                      <div className="flex justify-between items-center mt-3 text-sm text-content-muted px-2">
+                        <span>Distance: <strong>{routeData.distance_km?.toFixed(0)} km</strong></span>
+                        <span>Time: <strong>{routeData.duration_hours?.toFixed(1)} hrs</strong></span>
+                      </div>
+                    )}
+                  </motion.div>
                 )}
               </div>
-            )}
-          </Card>
+            </Card>
+
+            {/* 2. Assignment Section */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+                <Truck className="w-5 h-5 text-brand-500" />
+                2. Assignment
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-content mb-1">Assign Truck</label>
+                  <Select
+                    value={formData.vehicle_id}
+                    onChange={(e) => setFormData({...formData, vehicle_id: e.target.value})}
+                  >
+                    <option value="">Select Truck</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.registration_number}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content mb-1">Assign Driver</label>
+                  <Select
+                    value={formData.driver_id}
+                    onChange={(e) => setFormData({...formData, driver_id: e.target.value})}
+                  >
+                    <option value="">Select Driver</option>
+                    {drivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+            </Card>
+
+            {/* 3. Freight & Timings */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-brand-500" />
+                3. Freight & Schedule
+              </h2>
+              <div className="space-y-4">
+                <Input
+                  label="Expected Freight Revenue (₹)"
+                  type="number"
+                  placeholder="e.g., 45000"
+                  icon={DollarSign}
+                  value={formData.revenue}
+                  onChange={(e) => setFormData({...formData, revenue: e.target.value})}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Start Date/Time"
+                    type="datetime-local"
+                    icon={Calendar}
+                    value={formData.planned_start_time}
+                    onChange={(e) => setFormData({...formData, planned_start_time: e.target.value})}
+                  />
+                  <Input
+                    label="Expected Delivery"
+                    type="datetime-local"
+                    icon={Calendar}
+                    value={formData.planned_end_time}
+                    onChange={(e) => setFormData({...formData, planned_end_time: e.target.value})}
+                  />
+                </div>
+                
+                <Input
+                  label="Cargo Weight (Tons) - Optional"
+                  type="number"
+                  placeholder="e.g., 18"
+                  value={formData.cargo_weight}
+                  onChange={(e) => setFormData({...formData, cargo_weight: e.target.value})}
+                />
+              </div>
+            </Card>
+
+          </form>
         </div>
+
+        {/* RIGHT COLUMN: Progressive Intelligence Panel */}
+        <div className="lg:col-span-7">
+          <div className="sticky top-24">
+            <IntelligencePanel intelligence={intelligence} isLoading={evaluating} />
+            
+            <div className="mt-6 flex justify-end gap-4">
+              <Button variant="outline" onClick={() => navigate('/trips')}>Cancel</Button>
+              <Button 
+                type="submit" 
+                form="trip-form"
+                isLoading={loading}
+                disabled={!origin || !destination || !formData.vehicle_id || !formData.driver_id}
+                variant={intelligence?.recommendation === 'AVOID' ? 'destructive' : 'brand'}
+              >
+                Dispatch Trip
+              </Button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
+  );
+}
+
+// Simple Badge fallback if missing
+function Badge({ children, variant, className }) {
+  return (
+    <span className={cn(
+      "px-2 py-0.5 text-xs font-semibold rounded-full",
+      variant === 'brand' ? "bg-brand-100 text-brand-800" : "bg-gray-100 text-gray-800",
+      className
+    )}>
+      {children}
+    </span>
   );
 }

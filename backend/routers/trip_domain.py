@@ -49,13 +49,17 @@ async def create_trip(
     from models.driver_domain import Driver
     from models.trip_domain import Trip, TripStatus
 
-    vehicle = await db.get(Vehicle, payload.vehicle_id)
-    driver = await db.get(Driver, payload.driver_id)
-
-    if not vehicle or vehicle.company_id != current_user.company_id:
-        raise HTTPException(400, "Invalid vehicle_id")
-    if not driver or driver.company_id != current_user.company_id:
-        raise HTTPException(400, "Invalid driver_id")
+    vehicle = None
+    if payload.vehicle_id:
+        vehicle = await db.get(Vehicle, payload.vehicle_id)
+        if not vehicle or vehicle.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid vehicle_id")
+            
+    driver = None
+    if payload.driver_id:
+        driver = await db.get(Driver, payload.driver_id)
+        if not driver or driver.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid driver_id")
 
     trip_id = f"TRP-{str(uuid.uuid4())[:8].upper()}"
 
@@ -63,7 +67,23 @@ async def create_trip(
         trip_id=trip_id,
         status=TripStatus.CREATED,
         origin_location=payload.origin_location,
+        origin_lat=payload.origin_lat,
+        origin_lng=payload.origin_lng,
+        origin_place_id=payload.origin_place_id,
+        origin_address=payload.origin_address,
+        
         destination_location=payload.destination_location,
+        destination_lat=payload.destination_lat,
+        destination_lng=payload.destination_lng,
+        destination_place_id=payload.destination_place_id,
+        destination_address=payload.destination_address,
+        
+        route_distance_km=payload.route_distance_km,
+        route_duration_hours=payload.route_duration_hours,
+        route_toll_estimate=payload.route_toll_estimate,
+        route_provider=payload.route_provider,
+        route_polyline=payload.route_polyline,
+        
         planned_distance=payload.planned_distance,
         planned_start_time=payload.planned_start_time,
         planned_end_time=payload.planned_end_time,
@@ -87,6 +107,12 @@ async def create_trip(
             driver_id=payload.driver_id,
             origin_location=payload.origin_location,
             destination_location=payload.destination_location,
+            origin_lat=payload.origin_lat,
+            origin_lng=payload.origin_lng,
+            destination_lat=payload.destination_lat,
+            destination_lng=payload.destination_lng,
+            route_distance_km=payload.route_distance_km,
+            route_duration_hours=payload.route_duration_hours,
             planned_distance=payload.planned_distance,
             planned_start_time=payload.planned_start_time,
             planned_end_time=payload.planned_end_time,
@@ -226,6 +252,25 @@ async def get_trip_intelligence(
 
     intelligence_service = TripIntelligenceService(uow)
     return await intelligence_service.compute_intelligence(trip)
+
+@router.get("/trips/{trip_id}/intelligence/snapshot", response_model=PreTripIntelligenceResponse)
+async def get_trip_intelligence_snapshot(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PreTripIntelligenceResponse:
+    """
+    Get the pre-trip intelligence snapshot that was saved when the trip was created.
+    """
+    from models.trip_domain import Trip
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.company_id != current_user.company_id:
+        raise HTTPException(404, f"Trip {trip_id} not found")
+        
+    if not trip.intelligence_snapshot:
+        raise HTTPException(404, f"No intelligence snapshot available for Trip {trip_id}")
+        
+    return PreTripIntelligenceResponse(**trip.intelligence_snapshot)
 
 @router.get("/vehicles/{vehicle_id}/trips", response_model=List[TripResponse])
 async def get_trips_by_vehicle(
