@@ -65,6 +65,12 @@ async function request(endpoint, options = {}) {
 }
 
 const api = {
+  // Generic methods
+  get: (url, options = {}) => request(url, { ...options, method: 'GET' }),
+  post: (url, body, options = {}) => request(url, { ...options, method: 'POST', body: JSON.stringify(body) }),
+  patch: (url, body, options = {}) => request(url, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (url, options = {}) => request(url, { ...options, method: 'DELETE' }),
+
   // ── Dashboard (existing) ───────────────────────────────────
   dashboard: {
     getKPIs: () => request('/dashboard/kpis'),

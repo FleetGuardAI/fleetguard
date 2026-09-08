@@ -20,7 +20,23 @@ class TripResponse(BaseModel):
     
     # --- Locations ---
     origin_location: Optional[str] = None
+    origin_lat: Optional[float] = None
+    origin_lng: Optional[float] = None
+    origin_place_id: Optional[str] = None
+    origin_address: Optional[str] = None
+    
     destination_location: Optional[str] = None
+    destination_lat: Optional[float] = None
+    destination_lng: Optional[float] = None
+    destination_place_id: Optional[str] = None
+    destination_address: Optional[str] = None
+
+    # --- Routing ---
+    route_distance_km: Optional[float] = None
+    route_duration_hours: Optional[float] = None
+    route_toll_estimate: Optional[float] = None
+    route_provider: Optional[str] = None
+    route_polyline: Optional[str] = None
 
     # --- Distance ---
     planned_distance: Optional[float] = None
@@ -55,10 +71,30 @@ class TripResponse(BaseModel):
 # ===========================================================================
 
 class TripCreate(BaseModel):
-    vehicle_id: int
-    driver_id: int
     origin_location: str
     destination_location: str
+    
+    # Optional routing and precise location
+    origin_lat: Optional[float] = None
+    origin_lng: Optional[float] = None
+    origin_place_id: Optional[str] = None
+    origin_address: Optional[str] = None
+    
+    destination_lat: Optional[float] = None
+    destination_lng: Optional[float] = None
+    destination_place_id: Optional[str] = None
+    destination_address: Optional[str] = None
+    
+    route_distance_km: Optional[float] = None
+    route_duration_hours: Optional[float] = None
+    route_toll_estimate: Optional[float] = None
+    route_provider: Optional[str] = None
+    route_polyline: Optional[str] = None
+    
+    # Assignments (now optional at creation)
+    vehicle_id: Optional[int] = None
+    driver_id: Optional[int] = None
+    
     planned_distance: Optional[float] = None
     planned_start_time: Optional[datetime] = None
     planned_end_time: Optional[datetime] = None

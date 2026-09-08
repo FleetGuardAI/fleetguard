@@ -98,19 +98,33 @@ class CostComponent(BaseModel):
 # ===========================================================================
 
 class PreTripEvaluateRequest(BaseModel):
-    """Request body for pre-trip intelligence evaluation."""
-    vehicle_id: int
-    driver_id: int
-    origin_location: str
-    destination_location: str
-    planned_distance: Optional[float] = None
+    """Request body for progressive pre-trip intelligence evaluation."""
+    # Step 1: Locations (required to start routing)
+    origin_location: Optional[str] = None
+    destination_location: Optional[str] = None
+    origin_lat: Optional[float] = None
+    origin_lng: Optional[float] = None
+    destination_lat: Optional[float] = None
+    destination_lng: Optional[float] = None
+    
+    # Pre-calculated route info (if frontend already called /routes/calculate)
+    route_distance_km: Optional[float] = None
+    route_duration_hours: Optional[float] = None
+    
+    # Step 2: Assignments (optional for initial evaluation)
+    vehicle_id: Optional[int] = None
+    driver_id: Optional[int] = None
+    
+    # Step 3: Timings & Financials
     planned_start_time: Optional[datetime] = None
     planned_end_time: Optional[datetime] = None
     revenue: Optional[float] = None
+    cargo_weight: Optional[float] = None
+    
+    # Legacy fields (optional now, mostly auto-derived)
+    planned_distance: Optional[float] = None
     planned_cost: Optional[float] = None
     planned_fuel_liters: Optional[float] = None
-    cargo_weight: Optional[float] = None
-
 
 # ===========================================================================
 # Response
@@ -126,9 +140,11 @@ class PreTripIntelligenceResponse(BaseModel):
     recommendation: RecommendationDecision
     recommendation_reasons: List[RecommendationReason] = Field(default_factory=list)
 
-    # --- Economics ---
+    # --- Route & Economics ---
     expected_distance: Optional[float] = None
     expected_duration_hours: Optional[float] = None
+    route_polyline: Optional[str] = None
+    
     expected_fuel_liters: Optional[float] = None
     expected_fuel_cost: Optional[float] = None
     expected_toll: Optional[float] = None
