@@ -8,7 +8,7 @@ import { locationApi } from '@/api/locationApi';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Select } from '@/components/ui/Select';
+
 import { useToast } from '@/components/ui/Toast';
 import { LocationAutocomplete } from '@/components/trip/LocationAutocomplete';
 import { RouteMap } from '@/components/trip/RouteMap';
