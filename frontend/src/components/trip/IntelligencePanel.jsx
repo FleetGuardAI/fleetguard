@@ -7,7 +7,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
-import { CostBreakdownChart } from '@/pages/trips/IntelligenceCharts';
+import { CostBreakdownBar } from '@/pages/trips/IntelligenceCharts';
 
 export function IntelligencePanel({ intelligence, isLoading }) {
   if (isLoading) {
@@ -43,6 +43,7 @@ export function IntelligencePanel({ intelligence, isLoading }) {
     expected_profit,
     expected_margin_pct,
     expected_total_cost,
+    expected_revenue,
     cost_breakdown = [],
     vehicle_suitability,
     driver_suitability,
@@ -157,7 +158,7 @@ export function IntelligencePanel({ intelligence, isLoading }) {
 
           {cost_breakdown.length > 0 && (
             <div className="pt-4 border-t border-border">
-              <CostBreakdownChart costBreakdown={cost_breakdown} />
+              <CostBreakdownBar items={cost_breakdown} revenue={expected_revenue} />
             </div>
           )}
         </Card>
