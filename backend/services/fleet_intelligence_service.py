@@ -58,6 +58,7 @@ class FleetIntelligenceService:
         for vehicle in vehicles:
             # 2. Fetch recent operational events for each vehicle via existing repository
             db_events = await self.uow.repositories.operational_event.list_events_by_entity(
+                company_id=company_id,
                 entity_type=EntityType.VEHICLE,
                 entity_id=vehicle.registration_number,
                 limit=100,
