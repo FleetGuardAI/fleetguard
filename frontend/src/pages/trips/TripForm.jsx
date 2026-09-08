@@ -6,7 +6,7 @@ import { getDrivers } from '@/api/driverApi';
 import { createTrip, evaluateTripIntelligence } from '@/api/tripApi';
 import { locationApi } from '@/api/locationApi';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 
 import { useToast } from '@/components/ui/Toast';
@@ -308,7 +308,7 @@ export default function TripForm() {
               <Button 
                 type="submit" 
                 form="trip-form"
-                isLoading={loading}
+                loading={loading}
                 disabled={!origin || !destination || !formData.vehicle_id || !formData.driver_id}
                 variant={intelligence?.recommendation === 'AVOID' ? 'destructive' : 'brand'}
               >
