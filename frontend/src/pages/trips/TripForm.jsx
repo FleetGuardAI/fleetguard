@@ -264,7 +264,7 @@ export default function TripForm() {
                   label="Expected Freight Revenue (₹)"
                   type="number"
                   placeholder="e.g., 45000"
-                  icon={DollarSign}
+                  icon={<DollarSign className="w-4 h-4" />}
                   value={formData.revenue}
                   onChange={(e) => setFormData({...formData, revenue: e.target.value})}
                 />
@@ -273,14 +273,14 @@ export default function TripForm() {
                   <Input
                     label="Start Date/Time"
                     type="datetime-local"
-                    icon={Calendar}
+                    icon={<Calendar className="w-4 h-4" />}
                     value={formData.planned_start_time}
                     onChange={(e) => setFormData({...formData, planned_start_time: e.target.value})}
                   />
                   <Input
                     label="Expected Delivery"
                     type="datetime-local"
-                    icon={Calendar}
+                    icon={<Calendar className="w-4 h-4" />}
                     value={formData.planned_end_time}
                     onChange={(e) => setFormData({...formData, planned_end_time: e.target.value})}
                   />
