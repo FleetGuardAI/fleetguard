@@ -335,6 +335,12 @@ const api = {
   },
 
   // (duplicate fleet block removed — see fleet definition above)
+  
+  // ── Generic REST Methods ───────────────────────────────
+  get: (url) => request(url),
+  post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
+  patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (url) => request(url, { method: 'DELETE' }),
 };
 
 export default api;
