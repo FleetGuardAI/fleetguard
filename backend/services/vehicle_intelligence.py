@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, text
 from models.vehicle_domain import Vehicle
 from models.trip_domain import Trip, TripStatus
-from models.maintenance_domain import MaintenanceTask, TaskStatus
+from models.maintenance_domain import MaintenanceRecord, MaintenanceStatus
 from schemas.pre_trip_intelligence import SuitabilityAssessment, SuitabilityStatus, Assumption
 import logging
 from datetime import datetime
@@ -103,10 +103,10 @@ class VehicleIntelligence:
             reasons.append("Vehicle is currently assigned to an active trip.")
             
         # Check Maintenance
-        maint_stmt = select(MaintenanceTask).where(
+        maint_stmt = select(MaintenanceRecord).where(
             and_(
-                MaintenanceTask.vehicle_id == vehicle.id,
-                MaintenanceTask.status.in_([TaskStatus.SCHEDULED, TaskStatus.IN_PROGRESS])
+                MaintenanceRecord.vehicle_id == vehicle.id,
+                MaintenanceRecord.status.in_([MaintenanceStatus.SCHEDULED, MaintenanceStatus.STARTED])
             )
         )
         maint_res = await self.db.execute(maint_stmt)
@@ -115,7 +115,7 @@ class VehicleIntelligence:
         if maint_tasks:
             # Again, simple check
             for task in maint_tasks:
-                if task.status == TaskStatus.IN_PROGRESS:
+                if task.status == MaintenanceStatus.STARTED:
                     status = SuitabilityStatus.UNSUITABLE
                     reasons.append("Vehicle is currently under maintenance.")
                     break
