@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/trip_repository.dart';
 import '../../data/trip_intelligence_repository.dart';
 import '../../data/trip_intelligence_models.dart';
+import '../widgets/pre_trip_decision_card.dart';
 import '../widgets/live_trip_health_card.dart';
 import '../widgets/post_trip_performance_card.dart';
 import '../../../../core/widgets/glass_card.dart';
@@ -22,6 +23,7 @@ class TripDetailScreen extends StatefulWidget {
 
 class _TripDetailScreenState extends State<TripDetailScreen> {
   final _intelRepo = TripIntelligenceRepository();
+  PreTripIntelligenceResponse? _preIntel;
   LiveTripIntelligenceResponse? _liveIntel;
   PostTripIntelligenceResponse? _postIntel;
   bool _isLoadingIntel = false;
@@ -35,7 +37,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<void> _loadIntelligence() async {
     setState(() => _isLoadingIntel = true);
     try {
-      if (widget.trip.status == 'IN_PROGRESS' || widget.trip.status == 'PAUSED') {
+      if (widget.trip.status == 'CREATED') {
+        final data = await _intelRepo.getPreTripIntelligenceSnapshot(widget.trip.id);
+        setState(() => _preIntel = data);
+      } else if (widget.trip.status == 'IN_PROGRESS' || widget.trip.status == 'PAUSED') {
         final data = await _intelRepo.getLiveTripIntelligence(widget.trip.id);
         setState(() => _liveIntel = data);
       } else if (widget.trip.status == 'COMPLETED') {
@@ -132,6 +137,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             padding: const EdgeInsets.all(16.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (widget.trip.status == 'CREATED') ...[
+                  if (_isLoadingIntel)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_preIntel != null)
+                    PreTripDecisionCard(data: _preIntel!),
+                  const SizedBox(height: 16),
+                ],
                 if (widget.trip.status == 'IN_PROGRESS' || widget.trip.status == 'PAUSED') ...[
                   if (_isLoadingIntel)
                     const Center(child: CircularProgressIndicator())

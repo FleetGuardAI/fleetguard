@@ -77,7 +77,8 @@ class Vehicle(Base):
     company: Mapped["Company"] = relationship("Company", lazy="selectin")
 
     # --- Vehicle Documents ---
-    rc_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    rc_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    fuel_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     insurance_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     insurance_expiry: Mapped[Optional[datetime.date]] = mapped_column(Date, nullable=True)
     puc_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
