@@ -37,6 +37,7 @@ import { cn } from '@/utils/cn';
 import useLenis from '@/hooks/useLenis';
 import useScrollAnimations from '@/hooks/useScrollAnimations';
 import CinematicHeroBackground from '@/components/CinematicHeroBackground';
+import TripForm from '@/pages/trips/TripForm';
 
 
 /**
