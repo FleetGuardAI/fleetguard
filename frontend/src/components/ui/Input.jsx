@@ -78,7 +78,7 @@ export const TextArea = React.forwardRef(
 TextArea.displayName = 'TextArea';
 
 export const Select = React.forwardRef(
-  ({ className, label, error, options, placeholder, id, ...props }, ref) => {
+  ({ className, label, error, options, placeholder, id, children, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
     return (
       <div className="space-y-1.5">
@@ -101,9 +101,9 @@ export const Select = React.forwardRef(
             {...props}
           >
             {placeholder && <option value="">{placeholder}</option>}
-            {options.map(opt => (
+            {options ? options.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+            )) : children}
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-content-muted">
             <ChevronDown className="h-4 w-4" />
