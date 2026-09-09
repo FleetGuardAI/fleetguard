@@ -158,8 +158,7 @@ async def process_receipt_ocr(
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.SYSTEM_GENERATED,
             created_by=f"user_{current_user.id}",
-            payload={"url": url, "filename": file.filename},
-            company_id=current_user.company_id
+            payload={"url": url, "filename": file.filename}
         )
         db.add(event)
         await db.flush() # To get event.id
