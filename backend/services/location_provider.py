@@ -64,6 +64,9 @@ class LocationProvider:
                     secondary_text=struct.get("secondaryText", {}).get("text", "")
                 ))
             return predictions
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Error fetching autocomplete HTTP {e.response.status_code}: {e.response.text}")
+            return []
         except Exception as e:
             logger.error(f"Error fetching autocomplete: {e}")
             return []
@@ -104,6 +107,9 @@ class LocationProvider:
                 lat=location.get("latitude", 0.0),
                 lng=location.get("longitude", 0.0)
             )
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Error fetching place details HTTP {e.response.status_code}: {e.response.text}")
             return None
         except Exception as e:
             logger.error(f"Error fetching place details: {e}")
