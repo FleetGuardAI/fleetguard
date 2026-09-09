@@ -57,15 +57,18 @@ class RoutingProvider:
                     else:
                         flat_coords.append((pt[1], pt[0]))
                         
-                encoded_polyline = polyline.encode(flat_coords)
+                encoded = polyline.encode(flat_coords)
                 toll_estimate = (distance_meters / 1000.0) * self.default_toll_rate
+                
+                logger.info(f"[RoutingProvider] Geoapify: dist={distance_meters/1000:.1f}km, dur={duration_seconds/3600:.2f}h, polyline_len={len(encoded)}, points={len(flat_coords)}")
                 
                 return RouteCalculationResponse(
                     distance_km=distance_meters / 1000.0,
                     duration_hours=duration_seconds / 3600.0,
-                    encoded_polyline=encoded_polyline,
-                    estimated_toll_cost=toll_estimate,
-                    alternatives=[]
+                    polyline=encoded,
+                    toll_estimate=toll_estimate,
+                    alternatives=[],
+                    source="geoapify"
                 )
 
             # Using Google Routes API (New)
