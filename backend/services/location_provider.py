@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class LocationProvider:
     def __init__(self):
         self.provider = settings.LOCATION_PROVIDER
-        self.api_key = settings.GOOGLE_MAPS_API_KEY
+        self.api_key = settings.GOOGLE_MAPS_API_KEY if self.provider == "google" else settings.GEOAPIFY_API_KEY
         # httpx client for external calls
         self.client = httpx.AsyncClient(timeout=10.0)
 
@@ -22,7 +22,7 @@ class LocationProvider:
         if not query or len(query) < 2:
             return []
 
-        if self.provider != "google" or not self.api_key:
+        if self.provider not in ["google", "geoapify"] or not self.api_key:
             # Fallback mock or none
             return [
                 PlacePrediction(
@@ -34,6 +34,33 @@ class LocationProvider:
             ]
 
         try:
+            if self.provider == "geoapify":
+                url = f"https://api.geoapify.com/v1/geocode/autocomplete"
+                params = {
+                    "text": query,
+                    "apiKey": self.api_key,
+                    "filter": "countrycode:in"
+                }
+                response = await self.client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                predictions = []
+                for feature in data.get("features", []):
+                    props = feature.get("properties", {})
+                    place_id = props.get("place_id")
+                    formatted = props.get("formatted", "")
+                    city = props.get("city", "")
+                    if not place_id:
+                        continue
+                    predictions.append(PlacePrediction(
+                        place_id=place_id,
+                        description=formatted,
+                        main_text=formatted.split(",")[0],
+                        secondary_text=city
+                    ))
+                return predictions
+
             # Google Places API (New) Autocomplete
             url = "https://places.googleapis.com/v1/places:autocomplete"
             headers = {
@@ -75,17 +102,37 @@ class LocationProvider:
         if not place_id:
             return None
 
-        if self.provider != "google" or not self.api_key:
-            if place_id.startswith("mock-"):
-                return PlaceDetails(
-                    place_id=place_id,
-                    formatted_address=place_id.replace("mock-", "") + ", India",
-                    lat=28.6139, # Mock lat (New Delhi)
-                    lng=77.2090  # Mock lng
-                )
-            return None
+        if self.provider not in ["google", "geoapify"] or not self.api_key:
+            return PlaceDetails(
+                place_id=place_id,
+                formatted_address=f"Mock Location {place_id}",
+                lat=28.6139,
+                lng=77.2090
+            )
 
         try:
+            if self.provider == "geoapify":
+                url = "https://api.geoapify.com/v2/place-details"
+                params = {
+                    "id": place_id,
+                    "apiKey": self.api_key
+                }
+                response = await self.client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                features = data.get("features", [])
+                if not features:
+                    return None
+                    
+                props = features[0].get("properties", {})
+                return PlaceDetails(
+                    place_id=place_id,
+                    formatted_address=props.get("formatted", ""),
+                    lat=props.get("lat", 0.0),
+                    lng=props.get("lon", 0.0)
+                )
+
             # Google Places API (New) Details
             url = f"https://places.googleapis.com/v1/places/{place_id}"
             headers = {
