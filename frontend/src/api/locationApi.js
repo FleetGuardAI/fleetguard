@@ -13,7 +13,7 @@ export const locationApi = {
     if (sessionToken) params.append('session_token', sessionToken);
     
     const res = await api.get(`/v1/locations/autocomplete?${params.toString()}`);
-    return res.data;
+    return res;
   },
 
   /**
@@ -27,7 +27,7 @@ export const locationApi = {
     if (sessionToken) params.append('session_token', sessionToken);
     
     const res = await api.get(`/v1/locations/details?${params.toString()}`);
-    return res.data;
+    return res;
   },
 
   /**
@@ -37,7 +37,7 @@ export const locationApi = {
    */
   calculateRoute: async (payload) => {
     const res = await api.post('/v1/routes/calculate', payload);
-    return res.data;
+    return res;
   },
 
   /**
