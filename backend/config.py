@@ -37,8 +37,9 @@ class Settings(BaseSettings):
 
     # --- Maps & Routing ---
     GOOGLE_MAPS_API_KEY: Optional[str] = None
-    ROUTING_PROVIDER: str = "google"   # "google", "manual"
-    LOCATION_PROVIDER: str = "google"  # "google", "none"
+    GEOAPIFY_API_KEY: Optional[str] = None
+    ROUTING_PROVIDER: str = "google"   # "google", "geoapify", "manual"
+    LOCATION_PROVIDER: str = "google"  # "google", "geoapify", "none"
     ROUTE_CACHE_TTL_SECONDS: int = 3600
     DEFAULT_TOLL_RATE_PER_KM: float = 2.5  # Fallback if tolls not available
 

@@ -9,21 +9,65 @@ from config import settings
 from schemas.location import RouteCalculationRequest, RouteCalculationResponse, RouteAlternative
 import logging
 
+import polyline
+
 logger = logging.getLogger(__name__)
 
 class RoutingProvider:
     def __init__(self):
         self.provider = settings.ROUTING_PROVIDER
-        self.api_key = settings.GOOGLE_MAPS_API_KEY
+        self.api_key = settings.GOOGLE_MAPS_API_KEY if self.provider == "google" else settings.GEOAPIFY_API_KEY
         self.client = httpx.AsyncClient(timeout=15.0)
         self.default_toll_rate = settings.DEFAULT_TOLL_RATE_PER_KM
 
     async def calculate_route(self, request: RouteCalculationRequest) -> RouteCalculationResponse:
         # Distance calculation via haversine or mock if no API
-        if self.provider != "google" or not self.api_key:
+        if self.provider not in ["google", "geoapify"] or not self.api_key:
             return self._mock_route(request)
             
         try:
+            if self.provider == "geoapify":
+                url = f"https://api.geoapify.com/v1/routing"
+                params = {
+                    "waypoints": f"{request.origin_lat},{request.origin_lng}|{request.destination_lat},{request.destination_lng}",
+                    "mode": "truck",
+                    "apiKey": self.api_key
+                }
+                response = await self.client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                features = data.get("features", [])
+                if not features:
+                    return self._mock_route(request)
+                    
+                main_route = features[0]
+                props = main_route.get("properties", {})
+                distance_meters = props.get("distance", 0)
+                duration_seconds = props.get("time", 0)
+                
+                # Geoapify returns [lon, lat], polyline expects (lat, lon)
+                coords = main_route.get("geometry", {}).get("coordinates", [])
+                # Flatten the coordinates array if it's MultiLineString or just 2D LineString
+                flat_coords = []
+                for pt in coords:
+                    if isinstance(pt[0], list):
+                        for sub_pt in pt:
+                            flat_coords.append((sub_pt[1], sub_pt[0]))
+                    else:
+                        flat_coords.append((pt[1], pt[0]))
+                        
+                encoded_polyline = polyline.encode(flat_coords)
+                toll_estimate = (distance_meters / 1000.0) * self.default_toll_rate
+                
+                return RouteCalculationResponse(
+                    distance_km=distance_meters / 1000.0,
+                    duration_hours=duration_seconds / 3600.0,
+                    encoded_polyline=encoded_polyline,
+                    estimated_toll_cost=toll_estimate,
+                    alternatives=[]
+                )
+
             # Using Google Routes API (New)
             url = "https://routes.googleapis.com/directions/v2:computeRoutes"
             headers = {
