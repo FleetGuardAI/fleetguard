@@ -68,9 +68,9 @@ class VehicleIntelligence:
             logger.error(f"Error calculating vehicle historical mileage: {e}")
             
         # Fallback to system default
-        return self.config.default_fuel_efficiency_kml, Assumption(
+        return self.config.default_fuel_efficiency_kmpl, Assumption(
             metric="Fuel Efficiency",
-            value=self.config.default_fuel_efficiency_kml,
+            value=self.config.default_fuel_efficiency_kmpl,
             unit="km/L",
             source="system_default",
             confidence="LOW"

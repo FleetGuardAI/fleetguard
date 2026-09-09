@@ -119,6 +119,9 @@ class PreTripIntelligenceService:
         # 4. Economics Calculation
         expected_fuel_liters = 0.0
         expected_fuel_cost = 0.0
+        expected_toll = 0.0
+        driver_cost = 0.0
+        wear_cost = 0.0
         
         if distance_km > 0:
             if vehicle:
@@ -127,7 +130,7 @@ class PreTripIntelligenceService:
                 data_sources.add(assumption.source)
             else:
                 # No vehicle selected yet, use system default fleet average
-                mileage = intelligence_config.default_fuel_efficiency_kml
+                mileage = intelligence_config.default_fuel_efficiency_kmpl
                 assumptions.append(Assumption(
                     metric="Fuel Efficiency", value=mileage, unit="km/L",
                     source="system_default", confidence="LOW"
@@ -186,17 +189,17 @@ class PreTripIntelligenceService:
         min_freight = None
         
         if expected_total_cost > 0:
-            min_freight = expected_total_cost * (1 + (intelligence_config.margin_target_pct / 100.0))
+            min_freight = expected_total_cost * (1 + (intelligence_config.target_margin_pct / 100.0))
             
         if expected_revenue is not None and expected_total_cost > 0:
             expected_profit = expected_revenue - expected_total_cost
             expected_margin_pct = (expected_profit / expected_revenue) * 100 if expected_revenue > 0 else 0.0
             
-            if expected_margin_pct < intelligence_config.margin_warning_pct:
+            if expected_margin_pct < intelligence_config.review_margin_pct:
                 risk_factors.append(RiskFactor(
                     factor="Low Margin", 
-                    severity="HIGH" if expected_margin_pct < intelligence_config.margin_critical_pct else "MEDIUM",
-                    description=f"Expected margin is {expected_margin_pct:.1f}% (target: {intelligence_config.margin_target_pct}%)."
+                    severity="HIGH" if expected_margin_pct < 0 else "MEDIUM",
+                    description=f"Expected margin is {expected_margin_pct:.1f}% (target: {intelligence_config.target_margin_pct}%)."
                 ))
                 if expected_margin_pct < 0:
                      reasons.append(RecommendationReason(factor_type="negative", description="Trip results in a financial loss."))
