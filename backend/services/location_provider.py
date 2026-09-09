@@ -34,28 +34,34 @@ class LocationProvider:
             ]
 
         try:
-            # Google Places API Autocomplete
-            url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-            params = {
+            # Google Places API (New) Autocomplete
+            url = "https://places.googleapis.com/v1/places:autocomplete"
+            headers = {
+                "X-Goog-Api-Key": self.api_key,
+                "Content-Type": "application/json"
+            }
+            payload = {
                 "input": query,
-                "key": self.api_key,
-                # Optionally restrict to components="country:IN" for India
-                "components": "country:in" 
+                "includedRegionCodes": ["IN"]
             }
             if session_token:
-                params["sessiontoken"] = session_token
+                payload["sessionToken"] = session_token
 
-            response = await self.client.get(url, params=params)
+            response = await self.client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
             
             predictions = []
-            for item in data.get("predictions", []):
+            for item in data.get("suggestions", []):
+                pred = item.get("placePrediction")
+                if not pred:
+                    continue
+                struct = pred.get("structuredFormat", {})
                 predictions.append(PlacePrediction(
-                    place_id=item["place_id"],
-                    description=item["description"],
-                    main_text=item["structured_formatting"]["main_text"],
-                    secondary_text=item["structured_formatting"].get("secondary_text", "")
+                    place_id=pred.get("placeId", ""),
+                    description=pred.get("text", {}).get("text", ""),
+                    main_text=struct.get("mainText", {}).get("text", ""),
+                    secondary_text=struct.get("secondaryText", {}).get("text", "")
                 ))
             return predictions
         except Exception as e:
@@ -77,29 +83,27 @@ class LocationProvider:
             return None
 
         try:
-            # Google Places API Details
-            url = "https://maps.googleapis.com/maps/api/place/details/json"
-            params = {
-                "place_id": place_id,
-                "key": self.api_key,
-                "fields": "formatted_address,geometry"
+            # Google Places API (New) Details
+            url = f"https://places.googleapis.com/v1/places/{place_id}"
+            headers = {
+                "X-Goog-Api-Key": self.api_key,
+                "X-Goog-FieldMask": "id,formattedAddress,location"
             }
+            params = {}
             if session_token:
-                params["sessiontoken"] = session_token
+                params["sessionToken"] = session_token
 
-            response = await self.client.get(url, params=params)
+            response = await self.client.get(url, headers=headers, params=params)
             response.raise_for_status()
             data = response.json()
             
-            if data.get("status") == "OK" and "result" in data:
-                result = data["result"]
-                location = result.get("geometry", {}).get("location", {})
-                return PlaceDetails(
-                    place_id=place_id,
-                    formatted_address=result.get("formatted_address", ""),
-                    lat=location.get("lat", 0.0),
-                    lng=location.get("lng", 0.0)
-                )
+            location = data.get("location", {})
+            return PlaceDetails(
+                place_id=data.get("id", place_id),
+                formatted_address=data.get("formattedAddress", ""),
+                lat=location.get("latitude", 0.0),
+                lng=location.get("longitude", 0.0)
+            )
             return None
         except Exception as e:
             logger.error(f"Error fetching place details: {e}")
