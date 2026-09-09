@@ -41,6 +41,7 @@ export default function TripForm() {
   // Intelligence State
   const [intelligence, setIntelligence] = useState(null);
   const [evaluating, setEvaluating] = useState(false);
+  const [evalError, setEvalError] = useState(null);
 
   useEffect(() => {
     Promise.all([getVehicles(), getDrivers()])
@@ -63,8 +64,18 @@ export default function TripForm() {
             destination_lng: destination.lng
           });
           // Decode polyline for map
-          const polyline = locationApi.decodePolyline(res.polyline);
-          setRouteData({ ...res, polylineArray: polyline });
+          // res.polyline = encoded polyline string from RouteCalculationResponse
+          const encodedPoly = res.polyline;
+          console.log("[TripForm] Route result:", {
+            distance_km: res.distance_km,
+            duration_hours: res.duration_hours,
+            source: res.source,
+            encoded_polyline_exists: !!encodedPoly,
+            encoded_polyline_length: encodedPoly?.length ?? 0
+          });
+          const polylinePoints = locationApi.decodePolyline(encodedPoly);
+          console.log("[TripForm] Decoded polyline points:", polylinePoints.length, "first:", polylinePoints[0], "last:", polylinePoints[polylinePoints.length - 1]);
+          setRouteData({ ...res, polylineArray: polylinePoints });
         } catch (e) {
           console.error("Routing error:", e);
         }
@@ -85,6 +96,7 @@ export default function TripForm() {
       }
 
       setEvaluating(true);
+      setEvalError(null);
       try {
         const payload = {
           origin_location: origin?.address || origin?.description || origin?.main_text || null,
@@ -103,10 +115,16 @@ export default function TripForm() {
           planned_start_time: formData.planned_start_time || null,
           planned_end_time: formData.planned_end_time || null
         };
+        
+        console.log("[TripForm] Sending Intelligence Payload:", payload);
         const intel = await evaluateTripIntelligence(payload);
+        console.log("[TripForm] Intelligence Response:", intel);
         setIntelligence(intel);
       } catch (e) {
-        console.error("Intelligence Eval Error", e);
+        console.error("[TripForm] Intelligence Eval Error:", e);
+        setEvalError(e.message || "Failed to evaluate trip economics.");
+        // Explicitly clear intelligence if it fails so it doesn't get stuck in a weird state
+        // But we handle UI loading state explicitly below
       } finally {
         setEvaluating(false);
       }
@@ -245,9 +263,13 @@ export default function TripForm() {
                     onChange={(e) => setFormData({...formData, driver_id: e.target.value})}
                   >
                     <option value="">Select Driver</option>
-                    {drivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
-                    ))}
+                    {drivers.length === 0 ? (
+                      <option disabled value="">No eligible drivers available</option>
+                    ) : (
+                      drivers.map(d => (
+                        <option key={d.id} value={d.id}>{d.name || d.driver_name || d.id}</option>
+                      ))
+                    )}
                   </Select>
                 </div>
               </div>
@@ -299,10 +321,14 @@ export default function TripForm() {
           </form>
         </div>
 
-        {/* RIGHT COLUMN: Progressive Intelligence Panel */}
+        {/* RIGHT COLUMN: Intelligence */}
         <div className="lg:col-span-7">
-          <div className="sticky top-24">
-            <IntelligencePanel intelligence={intelligence} isLoading={evaluating} />
+          <div className="sticky top-6">
+            <IntelligencePanel 
+              intelligence={intelligence} 
+              isLoading={evaluating} 
+              error={evalError}
+            />
             
             <div className="mt-6 flex justify-end gap-4">
               <Button variant="outline" onClick={() => navigate('/trips')}>Cancel</Button>
