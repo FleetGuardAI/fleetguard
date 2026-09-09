@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
 import { CostBreakdownBar } from '@/pages/trips/IntelligenceCharts';
 
-export function IntelligencePanel({ intelligence, isLoading }) {
+export function IntelligencePanel({ intelligence, isLoading, error }) {
   if (isLoading) {
     return (
       <Card className="p-6 border-brand-200 bg-brand-50/50 animate-pulse">
@@ -19,6 +19,16 @@ export function IntelligencePanel({ intelligence, isLoading }) {
           <div className="h-4 w-5/6 bg-brand-100 rounded" />
           <div className="h-4 w-4/6 bg-brand-100 rounded" />
         </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-8 border-dashed border-2 border-red-200 bg-red-50 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
+        <AlertTriangle className="w-12 h-12 text-red-400 mb-4" />
+        <h3 className="text-lg font-semibold text-red-900 mb-2">Evaluation Failed</h3>
+        <p className="text-sm text-red-700 max-w-xs">{error}</p>
       </Card>
     );
   }

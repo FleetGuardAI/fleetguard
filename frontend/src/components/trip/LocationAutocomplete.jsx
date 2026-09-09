@@ -98,12 +98,12 @@ export function LocationAutocomplete({
   };
 
   return (
-    <div ref={wrapperRef} className={cn("relative w-full", className)}>
+    <div ref={wrapperRef} className={cn("relative w-full z-50", className)}>
       <div className="relative flex items-center">
         <Icon className="absolute left-3 w-4 h-4 text-content-muted" />
         <input
           type="text"
-          className="w-full h-11 pl-10 pr-10 bg-background-elevated border border-border rounded-xl text-content placeholder:text-content-muted focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all text-sm"
+          className="w-full h-11 pl-10 pr-10 bg-surface border border-border rounded-xl text-content placeholder:text-content-muted focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all text-sm"
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -125,13 +125,13 @@ export function LocationAutocomplete({
       </div>
 
       {isOpen && predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-background-elevated border border-border rounded-xl shadow-card overflow-hidden">
+        <div className="absolute z-[100] w-full mt-1 bg-surface border border-border rounded-xl shadow-lg overflow-hidden">
           <ul className="max-h-60 overflow-y-auto py-1">
             {predictions.map((p) => (
               <li 
                 key={p.place_id}
                 onClick={() => handleSelect(p)}
-                className="px-4 py-2 hover:bg-background cursor-pointer flex flex-col transition-colors"
+                className="px-4 py-2 hover:bg-background-elevated cursor-pointer flex flex-col transition-colors border-b border-border/50 last:border-0"
               >
                 <span className="text-sm font-medium text-content">{p.main_text}</span>
                 <span className="text-xs text-content-muted truncate">{p.secondary_text}</span>

@@ -1,0 +1,28 @@
+﻿d4e5f6g7h8i9 -> c2557519ddca (head), fix_ticket_enums
+c3d4e5f6g7h8 -> d4e5f6g7h8i9, add_missing_trip_columns
+b2c3d4e5f6g7 -> c3d4e5f6g7h8, add_missing_driver_columns
+a1b2c3d4e5f6 -> b2c3d4e5f6g7, add_missing_enum_values
+c4683c6b38c6 -> a1b2c3d4e5f6, add_missing_vehicle_columns
+5b6ce0e2b9a8 -> c4683c6b38c6, Add auth tables
+dcff6780ab29 -> 5b6ce0e2b9a8, Sync companies schema to ORM
+005a340d1e3d -> dcff6780ab29, Sync users schema to ORM
+123abc456def -> 005a340d1e3d, Add OwnerPairingToken
+9dae99ddd519 -> 123abc456def, add generic financial fields
+086c2d1e25f7 -> 9dae99ddd519, add_fuel_root_cause_tables
+2332f04ea585 -> 086c2d1e25f7, add_fuel_financial_impacts_table
+8a0da79d278c -> 2332f04ea585, add_fuel_anomalies_table
+d1c8e33c06eb -> 8a0da79d278c, add_entity_baselines_table
+8569eb5c85cd -> d1c8e33c06eb, Add derived fuel metrics table
+e5653c63763b -> 8569eb5c85cd, expense_domain_foundation
+d27912fc65ad -> e5653c63763b, processing_engine_foundation
+42a8922a1403 -> d27912fc65ad, asset_domain_foundation
+fc992deff131 -> 42a8922a1403, tyre_domain_foundation
+a34e738eba91 -> fc992deff131, maintenance_domain_foundation
+26b5d244efc9 -> a34e738eba91, trip_domain_foundation
+1a05c613820c -> 26b5d244efc9, driver_domain_foundation
+001_operational_event -> 1a05c613820c, rename_truck_to_vehicle
+000_legacy_base -> 001_operational_event, FleetGuard ù Alembic Migration
+Revision  : 001
+Created   : 2026-07-14
+Feature   : Operational Event Store ù Initial table creation
+<base> -> 000_legacy_base, legacy_base
