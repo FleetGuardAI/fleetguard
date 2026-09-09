@@ -29,6 +29,8 @@ class OpenAIProvider(LLMProvider):
             if model == "gpt-4o": # Only override if it wasn't explicitly changed from the default
                 model = "gemini-3.6-flash"
             
+        masked_key = f"{api_key[:8]}...{api_key[-4:]}" if api_key else "None"
+        logger.info(f"Initializing AsyncOpenAI: base_url={base_url}, model={model}, key={masked_key}")
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
         self.model = model
 
