@@ -53,7 +53,10 @@ class StorageService:
     """
 
     def __init__(self):
-        if not (settings.SUPABASE_URL and settings.SUPABASE_KEY and create_client):
+        self.supabase_url = settings.SUPABASE_URL
+        self.supabase_key = settings.SUPABASE_KEY
+        
+        if not (self.supabase_url and self.supabase_key and create_client):
             # Allow tests to run without valid Supabase credentials
             import sys
             if "pytest" in sys.modules:
@@ -61,11 +64,14 @@ class StorageService:
                 self.bucket = "test-bucket"
                 logger.info("StorageService initialized with MockSupabaseStorage for testing.")
                 return
-            raise RuntimeError("Supabase configuration is missing. SUPABASE_URL and SUPABASE_KEY are required.")
             
-        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        self.bucket = settings.SUPABASE_STORAGE_BUCKET or "fleetguard-uploads"
-        logger.info(f"StorageService initialized with Supabase (bucket: {self.bucket})")
+            logger.warning("Supabase configuration is missing. SUPABASE_URL and SUPABASE_KEY are required for file uploads.")
+            self.supabase = None
+            self.bucket = None
+        else:
+            self.supabase = create_client(self.supabase_url, self.supabase_key)
+            self.bucket = settings.SUPABASE_STORAGE_BUCKET or "fleetguard-uploads"
+            logger.info(f"StorageService initialized with Supabase (bucket: {self.bucket})")
 
     def _validate_file(self, content: bytes, content_type: str):
         if content_type not in ALLOWED_MIME_TYPES:
