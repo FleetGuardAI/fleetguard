@@ -14,14 +14,24 @@ export async function getNotifications(params = {}) {
     events = [];
   }
 
-  let notifications = events.map(e => ({
-    id: e.id,
-    title: e.event_type ? e.event_type.replace(/_/g, ' ').toUpperCase() : 'SYSTEM NOTICE',
-    message: e.payload?.description || e.payload?.notes || `Event ${e.event_type} registered for ${e.entity_type} ${e.entity_id}`,
-    type: e.verification_status === 'VERIFIED' ? 'info' : 'warning',
-    date: e.timestamp || e.created_at || new Date().toISOString(),
-    read: false,
-  }));
+  let notifications = events.map(e => {
+    let fallbackMsg = `Event ${e.event_type} registered for ${e.entity_type} ${e.entity_id}`;
+    if (e.event_type === 'DOCUMENT_UPLOADED') {
+      const docType = e.payload?.document_type ? e.payload.document_type.replace(/_/g, ' ') : 'Document';
+      fallbackMsg = `Document Uploaded: ${docType}`;
+      if (e.payload?.filename) fallbackMsg += ` (${e.payload.filename})`;
+    }
+
+    return {
+      id: e.id,
+      title: e.event_type ? e.event_type.replace(/_/g, ' ').toUpperCase() : 'SYSTEM NOTICE',
+      message: e.payload?.description || e.payload?.notes || fallbackMsg,
+      type: e.verification_status === 'VERIFIED' ? 'info' : 'warning',
+      date: e.occurred_at || e.timestamp || e.created_at || null,
+      read: false,
+      payload: e.payload,
+    };
+  });
 
   if (params.search) {
     const q = params.search.toLowerCase();

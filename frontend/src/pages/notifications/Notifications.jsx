@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw } from 'lucide-react';
+import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw, Eye } from 'lucide-react';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '@/api/notificationApi';
+import { getDocumentById } from '@/api/documentApi';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchBox } from '@/components/shared/SearchBox';
@@ -85,7 +86,20 @@ export default function Notifications() {
       setNotifications(prev => prev.filter(n => n.id !== id));
       info('Notification Deleted', 'Notification removed permanently.');
     } catch (e) {
-      error('Action Failed', 'Failed to delete notification.');
+      error('Delete Failed', 'Could not delete notification.');
+    }
+  };
+
+  const handleViewDocument = async (docId) => {
+    try {
+      const doc = await getDocumentById(docId);
+      if (doc && doc.storage_path) {
+        window.open(doc.storage_path, '_blank');
+      } else {
+        error("Document Unavailable", "Could not retrieve document URL.");
+      }
+    } catch (e) {
+      error("Access Denied", "You do not have permission to access this document or it does not exist.");
     }
   };
 
@@ -253,8 +267,21 @@ export default function Notifications() {
                         {item.message}
                       </p>
                       <span className="text-[10px] text-content-muted block pt-1">
-                        {new Date(item.time).toLocaleString()}
+                        {item.date ? new Date(item.date).toLocaleString() : "Date unavailable"}
                       </span>
+                      {item.payload?.document_id && (
+                        <div className="pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs bg-surface text-brand-600 border-brand-200 hover:bg-brand-50"
+                            onClick={() => handleViewDocument(item.payload.document_id)}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1.5" />
+                            View Document
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 

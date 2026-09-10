@@ -95,7 +95,7 @@ class UnifiedPipelineService:
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.SYSTEM_GENERATED,
             created_by=uploaded_by,
-            payload={"url": url, "filename": file.filename, "document_type": document_type},
+            payload={"url": url, "filename": file.filename, "document_type": document_type, "document_id": str(doc_id)},
             company_id=company_id
         )
         self.db.add(event)
