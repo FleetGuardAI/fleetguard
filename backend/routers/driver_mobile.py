@@ -465,7 +465,8 @@ async def upload_document(
             entity_type=EntityType.DRIVER,
             entity_id=str(driver.id),
             uploaded_by=f"driver_{driver.id}",
-            company_id=driver.company_id
+            company_id=driver.company_id,
+            category=document_type
         )
         logger.info("[UPLOAD DEBUG] storage upload completed")
 
