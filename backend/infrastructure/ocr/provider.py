@@ -221,7 +221,7 @@ class GoogleDocumentAIProvider(OCRProvider):
         """Select the appropriate processor ID and region based on document type hint."""
         if document_type == "receipt" and self.receipt_processor:
             return self.receipt_processor, self.receipt_location
-        elif document_type in ["idDocument", "driving_license", "aadhaar"] and self.id_processor:
+        elif document_type in ["idDocument", "driving_license", "aadhaar", "license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"] and self.id_processor:
             return self.id_processor, self.id_location
         elif self.generic_processor:
             return self.generic_processor, self.generic_location
