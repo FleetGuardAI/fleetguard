@@ -103,7 +103,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
           _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
         } else {
-          final detail = e.response?.data?['detail']?.toString() ?? '';
+          final data = e.response?.data;
+          String detail = '';
+          if (data is Map) {
+            detail = data['detail']?.toString() ?? data['message']?.toString() ?? '';
+          } else if (data is String) {
+            detail = data;
+          } else if (data is List) {
+            detail = data.join(', ');
+          }
           final lowerDetail = detail.toLowerCase();
           if (lowerDetail.contains('expired')) {
             _error = 'QR code expired. Generate a new QR code and scan again.';
@@ -171,7 +179,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
           _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
         } else {
-          _error = e.response?.data?['detail']?.toString() ?? 'Failed to send OTP.';
+          final data = e.response?.data;
+          if (data is Map) {
+            _error = data['detail']?.toString() ?? data['message']?.toString() ?? 'Failed to send OTP.';
+          } else if (data is String) {
+            _error = data.isNotEmpty ? data : 'Failed to send OTP.';
+          } else if (data is List) {
+            _error = data.join(', ');
+          } else {
+            _error = 'Failed to send OTP.';
+          }
         }
       });
     } catch (e) {
@@ -225,7 +242,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
           _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
         } else {
-          _error = e.response?.data?['detail']?.toString() ?? 'Failed to resend OTP.';
+          final data = e.response?.data;
+          if (data is Map) {
+            _error = data['detail']?.toString() ?? data['message']?.toString() ?? 'Failed to resend OTP.';
+          } else if (data is String) {
+            _error = data.isNotEmpty ? data : 'Failed to resend OTP.';
+          } else if (data is List) {
+            _error = data.join(', ');
+          } else {
+            _error = 'Failed to resend OTP.';
+          }
         }
       });
     } catch (e) {
@@ -276,7 +302,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
           _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
         } else {
-          _error = e.response?.data?['detail']?.toString() ?? 'Invalid or expired OTP.';
+          final data = e.response?.data;
+          if (data is Map) {
+            _error = data['detail']?.toString() ?? data['message']?.toString() ?? 'Invalid or expired OTP.';
+          } else if (data is String) {
+            _error = data.isNotEmpty ? data : 'Invalid or expired OTP.';
+          } else if (data is List) {
+            _error = data.join(', ');
+          } else {
+            _error = 'Invalid or expired OTP.';
+          }
         }
       });
     } catch (e) {
