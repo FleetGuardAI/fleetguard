@@ -388,7 +388,7 @@ async def upload_document(
         logger.info("[UPLOAD DEBUG] storage upload started")
         url, extracted_fields = await pipeline.process_document(
             file=file,
-            document_type="idDocument", # Default ID processor for these docs
+            document_type=document_type,
             entity_type=EntityType.DRIVER,
             entity_id=str(driver.id),
             uploaded_by=f"driver_{driver.id}",

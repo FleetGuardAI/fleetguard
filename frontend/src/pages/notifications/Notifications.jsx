@@ -91,15 +91,39 @@ export default function Notifications() {
   };
 
   const handleViewDocument = async (docId) => {
+    const popup = window.open('', '_blank');
     try {
-      const doc = await getDocumentById(docId);
-      if (doc && doc.storage_path) {
-        window.open(doc.storage_path, '_blank');
-      } else {
-        error("Document Unavailable", "Could not retrieve document URL.");
+      console.log(`[DocumentView] clicked`);
+      console.log(`[DocumentView] document_id=${docId}`);
+      console.log(`[DocumentView] request started`);
+      
+      const response = await getDocumentById(docId);
+      
+      console.log(`[DocumentView] response status=200`);
+      console.log(`[DocumentView] response keys=${Object.keys(response).join(', ')}`);
+      
+      const url = response.signed_url || response.storage_path || response.url;
+      console.log(`[DocumentView] signed URL available=${!!url}`);
+
+      if (!url) {
+        throw new Error("Document URL missing");
       }
+
+      popup.location.href = url;
     } catch (e) {
-      error("Access Denied", "You do not have permission to access this document or it does not exist.");
+      popup?.close();
+      const status = e.response?.status;
+      if (status === 404) {
+        error("Document not found", "The requested document could not be found.");
+      } else if (status === 403) {
+        error("Access Denied", "You do not have permission to access this document.");
+      } else if (status === 401) {
+        error("Session Expired", "Your session has expired.");
+      } else if (e.message === "Document URL missing") {
+        error("Document Unavailable", "Document URL was not returned by the server.");
+      } else {
+        error("Error", "Unable to retrieve document.");
+      }
     }
   };
 
