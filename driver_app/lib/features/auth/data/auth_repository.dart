@@ -56,18 +56,33 @@ class AuthRepository {
         'invite_token': inviteToken,
         if (msg91Token != null) 'msg91_token': msg91Token,
       });
-      return response.data; 
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      if (data is String) return {'message': data};
+      if (data is List) return {'data': data};
+      return {'data': data?.toString() ?? 'Success'};
     } on DioException catch (e) {
       final errorData = e.response?.data;
       debugPrint('[AUTH REPO] HTTP ${e.response?.statusCode}: ${e.response?.statusMessage}');
       debugPrint('[AUTH REPO] Endpoint: ${e.requestOptions.path}');
       debugPrint('[AUTH REPO] Request keys: ${e.requestOptions.data.keys.toList()}');
+      
+      String errorDetail = 'Unknown error';
       if (errorData is Map) {
         debugPrint('[AUTH REPO] Error body: $errorData');
-      } else {
+        errorDetail = errorData['detail']?.toString() ?? errorData['message']?.toString() ?? e.message ?? errorDetail;
+      } else if (errorData is String) {
         debugPrint('[AUTH REPO] Error data string: $errorData');
+        errorDetail = errorData.isNotEmpty ? errorData : (e.message ?? errorDetail);
+      } else if (errorData is List) {
+        debugPrint('[AUTH REPO] Error data list: $errorData');
+        errorDetail = errorData.join(', ');
+      } else {
+        debugPrint('[AUTH REPO] Error data unknown: $errorData');
+        errorDetail = e.message ?? errorDetail;
       }
-      throw Exception('Verification failed: ${errorData?['detail'] ?? e.message}');
+      throw Exception('Verification failed: $errorDetail');
     } catch (e) {
       throw Exception('Failed to verify OTP: $e');
     }

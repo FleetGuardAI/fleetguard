@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from schemas.document import DocumentResponse
 
 from database import get_db
@@ -216,54 +217,75 @@ async def verify_otp(
 
     company_id = invite.company_id
 
-    # Check if driver already exists
+    # Check if driver already exists globally (phone_number is globally unique)
     driver_result = await db.execute(
         select(Driver).where(Driver.phone_number == payload.phone_number)
     )
-    driver = driver_result.scalar_one_or_none()
+    driver = driver_result.scalars().first()
 
     is_new = driver is None
 
     if is_new:
-        # Check if user with this phone exists
-        user_result = await db.execute(
-            select(User).where(User.mobile_number == payload.phone_number)
-        )
-        user = user_result.scalar_one_or_none()
+        disambiguated_phone = f"{payload.phone_number}_d{company_id}"
 
-        if user is None:
-            # Create new user with DRIVER role
-            user = User(
-                company_id=company_id,
-                full_name=payload.phone_number,  # Will be updated during profile creation
-                mobile_number=payload.phone_number,
-                password_hash=hash_password(secrets.token_urlsafe(24)),  # Random password
-                role=UserRole.DRIVER,
-                is_active=True,
+        # Check if user with this phone (or disambiguated) exists
+        user_result = await db.execute(
+            select(User).where(
+                User.mobile_number.in_([payload.phone_number, disambiguated_phone])
             )
-            db.add(user)
-            await db.flush()
-        elif user.company_id == company_id and user.role == UserRole.DRIVER:
-            # Same company, same role — reuse the user as-is
-            pass
+        )
+        existing_users = user_result.scalars().all()
+        user_map = {u.mobile_number: u for u in existing_users}
+
+        user = None
+
+        if disambiguated_phone in user_map:
+            # We already have a disambiguated user for this company, reuse it
+            user = user_map[disambiguated_phone]
+        elif payload.phone_number in user_map:
+            primary_user = user_map[payload.phone_number]
+            if primary_user.company_id == company_id and primary_user.role == UserRole.DRIVER:
+                # Same company, same role — reuse the primary user
+                user = primary_user
+            else:
+                # Primary exists but is different company/role. Create disambiguated.
+                user = User(
+                    company_id=company_id,
+                    full_name=payload.phone_number,
+                    mobile_number=disambiguated_phone,
+                    password_hash=hash_password(secrets.token_urlsafe(24)),
+                    role=UserRole.DRIVER,
+                    is_active=True,
+                )
+                db.add(user)
+                try:
+                    async with db.begin_nested():
+                        await db.flush()
+                except IntegrityError:
+                    # It was created concurrently! Fetch it.
+                    user_result = await db.execute(
+                        select(User).where(User.mobile_number == disambiguated_phone)
+                    )
+                    user = user_result.scalar_one()
         else:
-            # User exists but belongs to a different company or has a non-DRIVER role
-            # (e.g., they are COMPANY_ADMIN for another tenant).
-            # We must NOT overwrite their company_id/role — create a fresh DRIVER user.
-            logger.info(
-                f"[DRIVER ONBOARD] Existing user {user.id} has role={user.role}, "
-                f"company_id={user.company_id}. Creating new DRIVER user for company {company_id}."
-            )
+            # No user exists. Create primary user.
             user = User(
                 company_id=company_id,
                 full_name=payload.phone_number,
-                mobile_number=f"{payload.phone_number}_d{company_id}",  # disambiguate
+                mobile_number=payload.phone_number,
                 password_hash=hash_password(secrets.token_urlsafe(24)),
                 role=UserRole.DRIVER,
                 is_active=True,
             )
             db.add(user)
-            await db.flush()
+            try:
+                async with db.begin_nested():
+                    await db.flush()
+            except IntegrityError:
+                user_result = await db.execute(
+                    select(User).where(User.mobile_number == payload.phone_number)
+                )
+                user = user_result.scalar_one()
 
         # Create new driver
         driver = Driver(
@@ -276,7 +298,58 @@ async def verify_otp(
             origin_type="driver_app",
         )
         db.add(driver)
-        await db.flush()
+        try:
+            async with db.begin_nested():
+                await db.flush()
+        except IntegrityError:
+            # Driver was created concurrently
+            driver_result = await db.execute(
+                select(Driver).where(Driver.phone_number == payload.phone_number)
+            )
+            driver = driver_result.scalar_one()
+    else:
+        # Driver already exists. 
+        # If they are joining a new company via invite, we should update their company_id
+        # to the new company so they can operate under it, as phone_number is globally unique.
+        if driver.company_id != company_id:
+            driver.company_id = company_id
+            
+            # We must also ensure they use the correct user for this company.
+            disambiguated_phone = f"{payload.phone_number}_d{company_id}"
+            user_result = await db.execute(
+                select(User).where(
+                    User.mobile_number.in_([payload.phone_number, disambiguated_phone])
+                )
+            )
+            existing_users = user_result.scalars().all()
+            user_map = {u.mobile_number: u for u in existing_users}
+            
+            if disambiguated_phone in user_map:
+                driver.user_id = user_map[disambiguated_phone].id
+            elif payload.phone_number in user_map:
+                primary = user_map[payload.phone_number]
+                if primary.company_id == company_id:
+                    driver.user_id = primary.id
+                else:
+                    # Create disambiguated user
+                    user = User(
+                        company_id=company_id,
+                        full_name=payload.phone_number,
+                        mobile_number=disambiguated_phone,
+                        password_hash=hash_password(secrets.token_urlsafe(24)),
+                        role=UserRole.DRIVER,
+                        is_active=True,
+                    )
+                    db.add(user)
+                    try:
+                        async with db.begin_nested():
+                            await db.flush()
+                    except IntegrityError:
+                        user_result = await db.execute(
+                            select(User).where(User.mobile_number == disambiguated_phone)
+                        )
+                        user = user_result.scalar_one()
+                    driver.user_id = user.id
 
         # Increment invite usage
         invite.use_count += 1
