@@ -40,6 +40,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           newDocs[d['category']] = d as Map<String, dynamic>;
         }
       }
+
+      if (!mounted) return;
+      
       setState(() {
         _documents = newDocs;
         _isLoading = false;
@@ -130,37 +133,59 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  void _captureAndUpload(String type) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-    
-    if (pickedFile == null) return;
+ Future<void> _captureAndUpload(String type) async {
+  final picker = ImagePicker();
+
+  final pickedFile = await picker.pickImage(
+    source: ImageSource.camera,
+    imageQuality: 70,
+  );
+
+  if (pickedFile == null || !mounted) return;
+
+  setState(() {
+    _documents[type] = {
+      'local_state': 'UPLOADING',
+      'verification_status': null,
+    };
+  });
+
+  try {
+    final repo = ref.read(authRepositoryProvider);
+
+    await repo.uploadDocument(
+      File(pickedFile.path),
+      type,
+    );
+
+    if (!mounted) return;
 
     setState(() {
-      _documents[type] = {'local_state': 'UPLOADING'};
+      _documents[type] = {
+        'local_state': null,
+        'verification_status': 'PENDING',
+      };
     });
 
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      await repo.uploadDocument(File(pickedFile.path), type);
-      await _loadDocuments(); // Refresh to get the PENDING status from backend
-        
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Uploaded successfully!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _documents.remove(type);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Uploaded successfully!'),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _documents.remove(type);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Upload failed: $e'),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -1,37 +1,51 @@
 import api from './client';
 
 /**
- * Fetch system notifications from real backend operational events.
+ * Notification field mapping:
  *
- * @param {object} params
+ * Backend returns:  is_read, category, description, created_at
+ * Frontend uses:    read,    type,     message,     date
+ *
+ * Normalization is done here so the UI can use its preferred field names
+ * without coupling to the backend schema.
+ */
+
+/**
+ * Map backend category values to frontend type keys used for icons/styles.
+ */
+const CATEGORY_TO_TYPE = {
+  ALERT: 'ALERT',
+  TRIP: 'TRIP',
+  VEHICLE: 'VEHICLE',
+  FINANCE: 'FINANCE',
+  SYSTEM: 'SYSTEM',
+};
+
+function normalizeNotification(n) {
+  return {
+    id: n.id,
+    title: n.title,
+    message: n.description,
+    type: CATEGORY_TO_TYPE[n.category] || n.category || 'SYSTEM',
+    date: n.created_at || null,
+    read: n.is_read ?? false,
+  };
+}
+
+/**
+ * Fetch notifications from the real backend notification endpoint.
+ *
+ * @param {object} params - Optional filters: search, type, read
  * @returns {Promise<Array>}
  */
 export async function getNotifications(params = {}) {
-  let events = [];
+  let notifications = [];
   try {
-    events = await api.events.list({ limit: 50 }) || [];
+    const raw = await api.get('/api/v1/notifications') || [];
+    notifications = raw.map(normalizeNotification);
   } catch {
-    events = [];
+    notifications = [];
   }
-
-  let notifications = events.map(e => {
-    let fallbackMsg = `Event ${e.event_type} registered for ${e.entity_type} ${e.entity_id}`;
-    if (e.event_type === 'DOCUMENT_UPLOADED') {
-      const docType = e.payload?.document_type ? e.payload.document_type.replace(/_/g, ' ') : 'Document';
-      fallbackMsg = `Document Uploaded: ${docType}`;
-      if (e.payload?.filename) fallbackMsg += ` (${e.payload.filename})`;
-    }
-
-    return {
-      id: e.id,
-      title: e.event_type ? e.event_type.replace(/_/g, ' ').toUpperCase() : 'SYSTEM NOTICE',
-      message: e.payload?.description || e.payload?.notes || fallbackMsg,
-      type: e.verification_status === 'VERIFIED' ? 'info' : 'warning',
-      date: e.occurred_at || e.timestamp || e.created_at || null,
-      read: false,
-      payload: e.payload,
-    };
-  });
 
   if (params.search) {
     const q = params.search.toLowerCase();
@@ -52,14 +66,25 @@ export async function getNotifications(params = {}) {
   return notifications;
 }
 
+/**
+ * Mark a single notification as read.
+ * @param {number} id
+ */
 export async function markNotificationRead(id) {
-  return { id, read: true };
+  return await api.put(`/api/v1/notifications/${id}/read`);
 }
 
+/**
+ * Mark all notifications as read.
+ */
 export async function markAllNotificationsRead() {
-  return { success: true };
+  return await api.put('/api/v1/notifications/read-all');
 }
 
+/**
+ * Delete a single notification.
+ * @param {number} id
+ */
 export async function deleteNotification(id) {
-  return { id, deleted: true };
+  return await api.delete(`/api/v1/notifications/${id}`);
 }

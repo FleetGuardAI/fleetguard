@@ -6,6 +6,7 @@ Provides REST APIs for Driver Business Domain CRUD operations.
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,7 +19,7 @@ from models.vehicle_domain import Vehicle
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
 from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
 from services.auth_service import get_current_user
-from models.user import User
+from models.user import User, UserRole
 
 router = APIRouter(prefix="/v1", tags=["Driver Domain"])
 
@@ -154,3 +155,142 @@ async def delete_driver(
     await db.delete(driver)
     await db.commit()
     return {"message": f"Driver {driver_id} deleted successfully"}
+
+
+class DriverApprovalRequest(BaseModel):
+    action: str = Field(..., description="APPROVED or REJECTED")
+    reason: Optional[str] = Field(None, description="Required if action is REJECTED")
+
+
+@router.post("/drivers/{driver_id}/approve", response_model=DriverResponse)
+async def approve_driver(
+    driver_id: int,
+    payload: DriverApprovalRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DriverResponse:
+    """
+    Approve or reject a driver's account after document verification.
+
+    Requires COMPANY_ADMIN or SUPER_ADMIN role. Enforces company ownership.
+
+    For APPROVED:
+    - All 5 required document categories must have latest doc with verification_status=APPROVED
+    - Sets driver.verification_status=APPROVED, driver.status=ACTIVE
+    - Activates linked User (is_active=True)
+    - Creates a SYSTEM notification for the driver
+
+    For REJECTED:
+    - Sets driver.verification_status=REJECTED
+    - Keeps driver and user inactive
+    - Creates a SYSTEM notification for the driver with rejection reason
+    """
+    from models.driver_domain import VerificationStatus
+    from models.document import Document, DocumentVerificationStatus
+    from models.notification import Notification, NotificationCategory
+    from pydantic import BaseModel as PydanticBaseModel
+
+    # Role check
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can approve or reject drivers")
+
+    if payload.action not in ("APPROVED", "REJECTED"):
+        raise HTTPException(status_code=400, detail="Action must be 'APPROVED' or 'REJECTED'")
+
+    if payload.action == "REJECTED" and not payload.reason:
+        raise HTTPException(status_code=400, detail="Rejection reason is required")
+
+    # Fetch driver with company check
+    driver = await db.get(Driver, driver_id)
+    if not driver or driver.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail=f"Driver {driver_id} not found")
+
+    if payload.action == "APPROVED":
+        # Verify all 5 required document categories are present and approved
+        all_docs_result = await db.execute(
+            select(Document)
+            .where(Document.target_id == str(driver_id))
+            .where(Document.target_type == "DRIVER")
+            .where(Document.company_id == current_user.company_id)
+            .order_by(Document.created_at.desc())
+        )
+        all_docs = all_docs_result.scalars().all()
+
+        latest_by_category = {}
+        for d in all_docs:
+            if d.category and d.category not in latest_by_category:
+                latest_by_category[d.category] = d
+
+        required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+        missing = []
+        not_approved = []
+        for cat in required_categories:
+            latest_doc = latest_by_category.get(cat)
+            if not latest_doc:
+                missing.append(cat)
+            elif latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
+                not_approved.append(cat)
+
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot approve: missing required documents: {', '.join(missing)}"
+            )
+        if not_approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot approve: documents not yet approved: {', '.join(not_approved)}"
+            )
+
+        # Approve driver
+        driver.verification_status = VerificationStatus.APPROVED
+        driver.status = DriverStatus.ACTIVE
+
+        # Activate linked user
+        if driver.user_id:
+            user = await db.get(User, driver.user_id)
+            if user:
+                user.is_active = True
+
+            # Create approval notification
+            notification = Notification(
+                category=NotificationCategory.SYSTEM,
+                title="Driver Account Approved",
+                description="Your driver account has been approved. You can now use the FleetGuard driver app.",
+                company_id=current_user.company_id,
+                user_id=driver.user_id,
+            )
+            db.add(notification)
+
+    else:
+        # Reject driver
+        driver.verification_status = VerificationStatus.REJECTED
+        # Keep driver inactive
+        driver.status = DriverStatus.INACTIVE
+
+        # Keep linked user inactive
+        if driver.user_id:
+            user = await db.get(User, driver.user_id)
+            if user:
+                user.is_active = False
+
+            # Create rejection notification
+            notification = Notification(
+                category=NotificationCategory.SYSTEM,
+                title="Driver Account Rejected",
+                description=f"Your driver account has been rejected. Reason: {payload.reason}",
+                company_id=current_user.company_id,
+                user_id=driver.user_id,
+            )
+            db.add(notification)
+
+    await db.commit()
+    await db.refresh(driver)
+
+    resp = DriverResponse.model_validate(driver)
+    # Enrich with assigned vehicle
+    v_result = await db.execute(
+        select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == driver.id).limit(1)
+    )
+    resp.assigned_vehicle = v_result.scalar_one_or_none()
+    return resp
