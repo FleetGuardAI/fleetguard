@@ -20,7 +20,7 @@ from config import settings
 # We must monkeypatch StorageService BEFORE anything else imports it,
 # or just monkeypatch the instance directly since it's a singleton.
 import services.file_upload_service as file_upload_service
-file_upload_service.storage_service.supabase = file_upload_service.MockSupabaseStorage()
+file_upload_service.storage_service._supabase = file_upload_service.MockSupabaseStorage()
 file_upload_service.storage_service.bucket = "test-bucket"
 
 import services.otp_service as otp_service

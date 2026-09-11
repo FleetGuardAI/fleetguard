@@ -37,7 +37,7 @@ from config import settings
 from services.otp_service import get_otp_provider
 from services.file_upload_service import storage_service
 from utils.security import hash_password, create_access_token
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user_allow_inactive, get_current_user
 
 logger = logging.getLogger("fleetguard.driver_mobile")
 
@@ -116,13 +116,13 @@ class FcmTokenRequest(BaseModel):
 # Dependencies
 # ==========================================================================
 
-async def get_current_driver(
-    current_user: User = Depends(get_current_user),
+async def get_onboarding_driver(
+    current_user: User = Depends(get_current_user_allow_inactive),
     db: AsyncSession = Depends(get_db)
 ) -> Driver:
     """
-    Get the authenticated driver profile.
-    Prevents IDOR by using the trusted JWT token to look up the driver.
+    Get the authenticated driver profile for onboarding ONLY.
+    Allows access even if user/driver is inactive.
     """
     result = await db.execute(
         select(Driver).where(Driver.user_id == current_user.id)
@@ -133,6 +133,26 @@ async def get_current_driver(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Authenticated user is not registered as a driver"
+        )
+    return driver
+
+async def get_current_driver(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Driver:
+    """
+    Get the authenticated driver profile for normal operations.
+    Enforces that User is active AND Driver is active.
+    """
+    result = await db.execute(
+        select(Driver).where(Driver.user_id == current_user.id)
+    )
+    driver = result.scalar_one_or_none()
+    
+    if not driver or driver.status != DriverStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authenticated user is not an active driver"
         )
     return driver
 
@@ -255,7 +275,7 @@ async def verify_otp(
                     mobile_number=disambiguated_phone,
                     password_hash=hash_password(secrets.token_urlsafe(24)),
                     role=UserRole.DRIVER,
-                    is_active=True,
+                    is_active=False,
                 )
                 db.add(user)
                 try:
@@ -275,7 +295,7 @@ async def verify_otp(
                 mobile_number=payload.phone_number,
                 password_hash=hash_password(secrets.token_urlsafe(24)),
                 role=UserRole.DRIVER,
-                is_active=True,
+                is_active=False,
             )
             db.add(user)
             try:
@@ -293,7 +313,7 @@ async def verify_otp(
             phone_number=payload.phone_number,
             company_id=company_id,
             user_id=user.id,
-            status=DriverStatus.ACTIVE,
+            status=DriverStatus.INACTIVE,
             verification_status=VerificationStatus.PENDING_DOCUMENTS,
             origin_type="driver_app",
         )
@@ -338,7 +358,7 @@ async def verify_otp(
                         mobile_number=disambiguated_phone,
                         password_hash=hash_password(secrets.token_urlsafe(24)),
                         role=UserRole.DRIVER,
-                        is_active=True,
+                        is_active=False,
                     )
                     db.add(user)
                     try:
@@ -395,7 +415,7 @@ async def verify_otp(
 @router.post("/register", response_model=DriverProfileResponse)
 async def register_driver_profile(
     payload: DriverProfileRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -432,7 +452,7 @@ async def register_driver_profile(
 async def upload_document(
     document_type: str = Form(..., description="license_front, license_back, aadhaar_front, aadhaar_back, selfie"),
     file: UploadFile = File(...),
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -508,7 +528,7 @@ async def upload_document(
                 any_latest_rejected = True
                 
         if has_all_required and all_required_approved:
-            driver.verification_status = VerificationStatus.APPROVED
+            driver.verification_status = VerificationStatus.PENDING_APPROVAL
         elif any_latest_rejected:
             driver.verification_status = VerificationStatus.REJECTED
         elif has_all_required:
@@ -537,7 +557,7 @@ async def upload_document(
 
 @router.get("/documents", response_model=list[DocumentResponse])
 async def get_my_documents(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -573,7 +593,7 @@ async def get_my_documents(
 
 @router.post("/face-verify", response_model=FaceVerifyResponse)
 async def face_verify(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -600,7 +620,7 @@ async def face_verify(
 
 @router.get("/profile", response_model=DriverProfileResponse)
 async def get_driver_profile(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Get driver profile with approval status."""
@@ -612,7 +632,7 @@ async def get_driver_profile(
 @router.patch("/profile", response_model=DriverProfileResponse)
 async def update_driver_profile(
     payload: DriverProfileRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver profile details."""
@@ -631,7 +651,7 @@ async def update_driver_profile(
 @router.put("/fcm-token")
 async def update_fcm_token(
     payload: FcmTokenRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver's FCM push notification token."""

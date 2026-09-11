@@ -507,6 +507,74 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_allow_inactive(
+    token: str = Depends(_oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    FastAPI dependency that decodes the Bearer JWT and returns the live User.
+
+    Unlike ``get_current_user``, this variant allows **DRIVER**-role users
+    whose ``is_active`` flag is False to pass through.  This is required so
+    that newly registered drivers (who start inactive until admin approval)
+    can still complete their onboarding (profile creation, document upload).
+
+    Non-DRIVER users that are inactive are still rejected with HTTP 403.
+    """
+    _CREDENTIALS_EXCEPTION = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = decode_access_token(token)
+        user_id_str: Optional[str] = payload.get("sub")
+        token_jti: Optional[str] = payload.get("jti")
+        token_company_id: Optional[int] = payload.get("company_id")
+        if user_id_str is None:
+            raise _CREDENTIALS_EXCEPTION
+        if token_jti is None:
+            raise _CREDENTIALS_EXCEPTION
+        if payload.get("type") == "refresh":
+            raise _CREDENTIALS_EXCEPTION
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise _CREDENTIALS_EXCEPTION
+
+    now = _utcnow()
+    session_result = await db.execute(
+        select(AuthSession).where(
+            AuthSession.session_jti == token_jti,
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
+        )
+    )
+    auth_session = session_result.scalar_one_or_none()
+    if auth_session is None:
+        raise _CREDENTIALS_EXCEPTION
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user: Optional[User] = result.scalar_one_or_none()
+
+    if user is None:
+        raise _CREDENTIALS_EXCEPTION
+    if token_company_id is not None and user.company_id != int(token_company_id):
+        raise _CREDENTIALS_EXCEPTION
+
+    # Allow inactive DRIVER-role users through for onboarding.
+    # All other inactive users are still blocked.
+    if not user.is_active and user.role != UserRole.DRIVER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated.",
+        )
+
+    auth_session.last_seen_at = now
+    return user
+
+
 async def create_token_for_user(
     user: User,
     db: AsyncSession,

@@ -15,11 +15,11 @@ function normalizeDriver(d) {
     employee_id: d.employee_id || null,
     license_number: d.license_number || null,
     license_valid_until: d.license_valid_until || null,
-    status: (d.status || d.employment_status || 'unknown').toLowerCase(),
+    status: d.status || null,
     employment_status: d.employment_status || null,
     avatar_url: d.avatar_url || null,
     age: d.age || null,
-    verification_status: d.verification_status || 'NOT_STARTED',
+    verification_status: d.verification_status || null,
     license_front_url: d.license_front_url || null,
     license_back_url: d.license_back_url || null,
     aadhaar_front_url: d.aadhaar_front_url || null,
@@ -117,4 +117,20 @@ export async function verifyDriverDocument(documentId, status, rejectionReason =
     payload.rejection_reason = rejectionReason;
   }
   return await api.post(`/api/v1/documents/${documentId}/verify`, payload);
+}
+
+/**
+ * Approve or reject a driver's account.
+ *
+ * @param {number} driverId
+ * @param {'APPROVED' | 'REJECTED'} action
+ * @param {string|null} reason - Required when action is 'REJECTED'
+ * @returns {Promise<object>} Updated driver object
+ */
+export async function approveDriver(driverId, action, reason = null) {
+  const payload = { action };
+  if (reason) {
+    payload.reason = reason;
+  }
+  return await api.post(`/api/v1/drivers/${driverId}/approve`, payload);
 }

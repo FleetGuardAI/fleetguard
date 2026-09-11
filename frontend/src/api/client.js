@@ -339,6 +339,7 @@ const api = {
   // ── Generic REST Methods ───────────────────────────────
   get: (url) => request(url),
   post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
+  put: (url, body) => request(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
   patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (url) => request(url, { method: 'DELETE' }),
 };
