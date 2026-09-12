@@ -41,7 +41,7 @@ function normalizeNotification(n) {
 export async function getNotifications(params = {}) {
   let notifications = [];
   try {
-    const raw = await api.get('/api/v1/notifications') || [];
+    const raw = await api.get('/v1/notifications') || [];
     notifications = raw.map(normalizeNotification);
   } catch {
     notifications = [];
@@ -71,14 +71,14 @@ export async function getNotifications(params = {}) {
  * @param {number} id
  */
 export async function markNotificationRead(id) {
-  return await api.put(`/api/v1/notifications/${id}/read`);
+  return await api.put(`/v1/notifications/${id}/read`);
 }
 
 /**
  * Mark all notifications as read.
  */
 export async function markAllNotificationsRead() {
-  return await api.put('/api/v1/notifications/read-all');
+  return await api.put('/v1/notifications/read-all');
 }
 
 /**
@@ -86,5 +86,5 @@ export async function markAllNotificationsRead() {
  * @param {number} id
  */
 export async function deleteNotification(id) {
-  return await api.delete(`/api/v1/notifications/${id}`);
+  return await api.delete(`/v1/notifications/${id}`);
 }
