@@ -107,6 +107,16 @@ export default function DriverProfile() {
     }
   };
 
+  const handleQuickVerify = async (docId, status) => {
+    try {
+      await verifyDriverDocument(docId, status);
+      success('Verification Updated', `Document marked as ${status.toLowerCase()}.`);
+      loadData();
+    } catch (e) {
+      error('Verification Error', e.message || 'Failed to verify document.');
+    }
+  };
+
   const handleVerifyDocument = async () => {
     if (verifyStatus === 'REJECTED' && !rejectionReason) {
       error('Rejection Reason Required', 'Please provide a reason for rejecting the document.');
@@ -397,55 +407,68 @@ export default function DriverProfile() {
               Credentials Documents Verification
             </CardTitle>
           </CardHeader>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* System-level documents */}
             {documents.length === 0 ? (
-              <div className="text-sm text-content-secondary py-4">No documents uploaded.</div>
+              <div className="col-span-full text-sm text-content-secondary py-4">No documents uploaded.</div>
             ) : documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-surface border border-border rounded-xl hover:border-brand-300 transition-colors gap-3"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-surface-secondary text-content-secondary mt-0.5">
-                    {doc.url ? (
-                      <img src={doc.url} alt={doc.name} className="h-10 w-10 object-cover rounded" onError={(e) => { e.target.style.display = 'none'; }} />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
+              <Card key={doc.id} className="overflow-hidden flex flex-col border border-border shadow-sm hover:shadow-md transition-shadow">
+                <div className="h-48 bg-surface-secondary relative flex items-center justify-center border-b border-border p-2">
+                  {doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noreferrer" className="h-full w-full flex items-center justify-center cursor-pointer">
+                      <img src={doc.url} alt={doc.name} className="max-h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </a>
+                  ) : (
+                    <FileText className="h-10 w-10 text-content-muted" />
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
+                      {doc.status.toUpperCase()}
+                    </Badge>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
-                    <span className="text-xs text-content-secondary mt-0.5 block flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-content-muted" />
-                      Uploaded: {doc.created_at}
+                </div>
+                <div className="p-4 flex flex-col flex-1">
+                  <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
+                  <span className="text-xs text-content-secondary mt-1 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Uploaded: {doc.created_at}
+                  </span>
+                  {doc.rejection_reason && (
+                    <span className="text-xs text-red-600 mt-2 block bg-red-50 p-2 rounded">
+                      Rejected: {doc.rejection_reason}
                     </span>
-                    {doc.rejection_reason && (
-                      <span className="text-xs text-red-600 mt-0.5 block">
-                        Rejected: {doc.rejection_reason}
-                      </span>
+                  )}
+                  
+                  <div className="mt-auto pt-4 flex gap-2">
+                    {doc.status !== 'approved' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                        icon={<CheckCircle className="h-3.5 w-3.5" />}
+                        onClick={() => handleQuickVerify(doc.id, 'APPROVED')}
+                      >
+                        Approve
+                      </Button>
+                    )}
+                    {doc.status !== 'rejected' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300"
+                        icon={<XCircle className="h-3.5 w-3.5" />}
+                        onClick={() => {
+                          setVerifyingDoc(doc);
+                          setVerifyStatus('REJECTED');
+                          setRejectionReason('');
+                        }}
+                      >
+                        Reject
+                      </Button>
                     )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
-                    {doc.status.toUpperCase()}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<CheckCircle className="h-3.5 w-3.5 text-brand-600" />}
-                    onClick={() => {
-                      setVerifyingDoc(doc);
-                      setVerifyStatus('');
-                      setRejectionReason('');
-                    }}
-                  >
-                    Verify
-                  </Button>
-                </div>
-              </div>
+              </Card>
             ))}
           </div>
         </Card>
@@ -484,25 +507,16 @@ export default function DriverProfile() {
               Verification Decision
             </label>
             <div className="flex gap-4">
-              <label className="flex items-center gap-2">
-                <input 
-                  type="radio" 
-                  name="status" 
-                  value="APPROVED" 
-                  checked={verifyStatus === 'APPROVED'} 
-                  onChange={(e) => setVerifyStatus(e.target.value)} 
-                />
-                <span className="text-sm font-medium text-green-700">Approve</span>
-              </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input 
                   type="radio" 
                   name="status" 
                   value="REJECTED" 
                   checked={verifyStatus === 'REJECTED'} 
-                  onChange={(e) => setVerifyStatus(e.target.value)} 
+                  onChange={(e) => setVerifyStatus(e.target.value)}
+                  className="text-red-600 focus:ring-red-500 cursor-pointer"
                 />
-                <span className="text-sm font-medium text-red-700">Reject</span>
+                <span className="text-sm font-medium text-red-700">Reject Document</span>
               </label>
             </div>
           </div>

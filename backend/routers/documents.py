@@ -264,7 +264,8 @@ async def list_driver_documents(
     results = []
     for doc in docs:
         resp = DocumentResponse.model_validate(doc)
-        resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+        signed_url = storage_service.create_signed_url(doc.storage_path)
+        resp.storage_path = signed_url if signed_url else doc.storage_path
         results.append(resp)
     return results
 
@@ -373,5 +374,6 @@ async def verify_document(
     
     from services.file_upload_service import storage_service
     resp = DocumentResponse.model_validate(doc)
-    resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+    signed_url = storage_service.create_signed_url(doc.storage_path)
+    resp.storage_path = signed_url if signed_url else doc.storage_path
     return resp
