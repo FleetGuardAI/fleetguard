@@ -1,5 +1,5 @@
 /**
- * FleetGuard — Opportunity Filter Constants
+ * the vahan — Opportunity Filter Constants
  * Configuration constants for the Opportunity Feed filters.
  * Extracted from opportunity mock data.
  */

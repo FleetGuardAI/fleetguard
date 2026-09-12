@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// The title of the application
   ///
   /// In en, this message translates to:
-  /// **'FleetGuard'**
+  /// **'the vahan'**
   String get appTitle;
 
   /// No description provided for @home.

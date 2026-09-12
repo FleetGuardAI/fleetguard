@@ -313,7 +313,7 @@ class _SplashScreenState extends State<_SplashScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'FleetGuard',
+              'the vahan',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),

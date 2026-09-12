@@ -95,7 +95,7 @@ class LocationService {
         distanceFilter: 10,
         intervalDuration: const Duration(seconds: AppConfig.gpsIntervalSeconds),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'FleetGuard Driver',
+          notificationTitle: 'the vahan Driver',
           notificationText: 'Tracking your location for fleet management',
           enableWakeLock: true,
         ),

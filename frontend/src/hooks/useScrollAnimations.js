@@ -25,7 +25,7 @@ const TRIGGER_DEFAULTS = {
 
 /**
  * Central hook that registers all GSAP ScrollTrigger animations
- * for the FleetGuard landing page.
+ * for the the vahan landing page.
  * 
  * Uses data-animate attributes to target elements:
  * - data-animate="fade-up"

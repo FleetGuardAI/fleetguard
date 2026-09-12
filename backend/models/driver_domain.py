@@ -95,7 +95,7 @@ class Driver(Base):
     )
     status: Mapped[DriverStatus] = mapped_column(
         Enum(DriverStatus, native_enum=False, length=50),
-        nullable=False, default=DriverStatus.ACTIVE, index=True
+        nullable=False, default=DriverStatus.INACTIVE, index=True
     )
 
     # --- Duty Status (added for driver app) ---

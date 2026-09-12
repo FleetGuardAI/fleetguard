@@ -108,7 +108,7 @@ class _WelcomeFleetScreenState extends ConsumerState<WelcomeFleetScreen>
                           Icon(Icons.local_shipping, size: 18, color: AppColors.primary),
                           SizedBox(width: 8),
                           Text(
-                            'FleetGuard Driver',
+                            'the vahan Driver',
                             style: TextStyle(
                               color: AppColors.primaryDark,
                               fontWeight: FontWeight.w600,
@@ -119,8 +119,7 @@ class _WelcomeFleetScreenState extends ConsumerState<WelcomeFleetScreen>
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Your onboarding is complete! You\'re now registered as an active driver in the fleet. '
-                      'Your fleet manager will review your documents and approve your account.',
+                      'Documents uploaded successfully. Pending admin approval.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.grey[600],

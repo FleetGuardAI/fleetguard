@@ -61,7 +61,7 @@ class _InviteDriverScreenState extends ConsumerState<InviteDriverScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Generate a unique QR code. The driver can scan this using the FleetGuard Driver app to join your fleet.',
+                'Generate a unique QR code. The driver can scan this using the the vahan Driver app to join your fleet.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,

@@ -1,4 +1,4 @@
-export const APP_NAME = 'FleetGuard';
+export const APP_NAME = 'the vahan';
 
 export const ROUTES = {
   HOME: '/',

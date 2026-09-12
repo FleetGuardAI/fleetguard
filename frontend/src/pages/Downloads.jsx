@@ -31,10 +31,10 @@ export default function Downloads() {
   }, []);
 
   useEffect(() => {
-    document.title = 'FleetGuard Apps — Download';
+    document.title = 'the vahan Apps — Download';
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
-      metaDesc.setAttribute('content', 'Download FleetGuard Owner and Driver apps for Android and iOS.');
+      metaDesc.setAttribute('content', 'Download the vahan Owner and Driver apps for Android and iOS.');
     }
   }, []);
 
@@ -73,20 +73,20 @@ export default function Downloads() {
         {/* Hero Section */}
         <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-[#00c853] text-xs font-bold uppercase tracking-wider mb-6">
-            <Zap className="h-3.5 w-3.5" /> FleetGuard Mobile
+            <Zap className="h-3.5 w-3.5" /> the vahan Mobile
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
-            FleetGuard Apps
+            the vahan Apps
           </h1>
           <p className="text-lg md:text-xl text-slate-500 font-medium">
-            Run your fleet from anywhere. Download the FleetGuard app built for your role.
+            Run your fleet from anywhere. Download the the vahan app built for your role.
           </p>
         </div>
 
         {/* Application Cards */}
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           <AppCard 
-            title="FleetGuard Driver"
+            title="the vahan Driver"
             role="For Drivers"
             description="Everything drivers need to manage trips, receive assignments, submit expenses, share PODs, and stay connected with fleet operations."
             theme="blue"
@@ -95,7 +95,7 @@ export default function Downloads() {
           />
           
           <AppCard 
-            title="FleetGuard Owner"
+            title="the vahan Owner"
             role="For Fleet Managers & Owners"
             description="Manage your fleet, drivers, trips, payments, vehicles, and operations from anywhere."
             theme="green"
@@ -108,7 +108,7 @@ export default function Downloads() {
 
       {/* Footer minimal */}
       <footer className="border-t border-slate-200 bg-white py-8 text-center text-sm text-slate-500">
-        <p>&copy; {new Date().getFullYear()} FleetGuard. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} the vahan. All rights reserved.</p>
       </footer>
     </div>
   );

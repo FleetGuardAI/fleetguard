@@ -4,7 +4,7 @@ class AppColors {
   AppColors._();
 
   // --- Brand Colors ---
-  static const Color primary = Color(0xFF0F9D58); // FleetGuard Green
+  static const Color primary = Color(0xFF0F9D58); // the vahan Green
   static const Color primaryLight = Color(0xFF34B26C);
   static const Color primaryDark = Color(0xFF087540);
   

@@ -1,0 +1,63 @@
+C:\Users\ratho\fleetguard\frontend\tailwind.config.js:38: // ── FleetGuard Green Identity ──
+C:\Users\ratho\fleetguard\frontend\tailwind.config.js:54: // FleetGuard accent shadows
+C:\Users\ratho\fleetguard\frontend\public\homepage.css:1: /* ===== FLEETGUARD — Light Green SaaS Stylesheet ===== */
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:28: const localToken = localStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:32: tokenType: localStorage.getItem('fleetguard_token_type') || 'bearer',
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:37: const sessionToken = sessionStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:41: tokenType: sessionStorage.getItem('fleetguard_token_type') || 'bearer',
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:51: storage.setItem('fleetguard_token', accessToken);
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:52: storage.setItem('fleetguard_token_type', tokenType);
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:57: storage.setItem('fleetguard_user', JSON.stringify(user));
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:61: const local = localStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:64: const session = sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:69: localStorage.removeItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:70: localStorage.removeItem('fleetguard_token_type');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:71: localStorage.removeItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:73: sessionStorage.removeItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:74: sessionStorage.removeItem('fleetguard_token_type');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:75: sessionStorage.removeItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\authApi.js:80: * Stashes `fleetguard_token` and the mapped `fleetguard_user` in localStorage on success.
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:18: const localToken = localStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:19: const sessionToken = sessionStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:23: ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:24: : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:41: localStorage.removeItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:42: localStorage.removeItem('fleetguard_token_type');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:43: localStorage.removeItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:45: sessionStorage.removeItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:46: sessionStorage.removeItem('fleetguard_token_type');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:47: sessionStorage.removeItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:269: const localToken = localStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:270: const sessionToken = sessionStorage.getItem('fleetguard_token');
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:273: ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+C:\Users\ratho\fleetguard\frontend\src\api\client.js:274: : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
+C:\Users\ratho\fleetguard\frontend\src\api\settingsApi.js:10: const localUser = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\api\settingsApi.js:60: email: d.email || `${d.name.toLowerCase().replace(/\s+/g, '.')}@fleetguard.com`,
+C:\Users\ratho\fleetguard\frontend\src\components\dashboard\QrOnboardingCard.jsx:156: link.download = 'fleetguard-invite-qr.png';
+C:\Users\ratho\fleetguard\frontend\src\components\dashboard\QrOnboardingCard.jsx:167: const user = JSON.parse(localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user') || '{}');
+C:\Users\ratho\fleetguard\frontend\src\components\home\DemoDashboard.jsx:170: link.setAttribute("download", "fleetguard_drivers_demo.csv");
+C:\Users\ratho\fleetguard\frontend\src\components\shared\Sidebar.jsx:79: const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\components\shared\TopNavbar.jsx:18: const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\i18n\LanguageContext.jsx:6: const STORAGE_KEY = 'fleetguard_lang';
+C:\Users\ratho\fleetguard\frontend\src\i18n\translations.js:455: 'demo.title1': 'FleetGuard-ஐ பாருங்கள்',
+C:\Users\ratho\fleetguard\frontend\src\pages\DashboardOverview.jsx:66: const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\pages\ForgotPassword.jsx:101: placeholder="owner@fleetguard.com or +919876543210"
+C:\Users\ratho\fleetguard\frontend\src\pages\HomePage.jsx:150: <a href="mailto:fleetguardinfo@gmail.com?subject=Enquiry&body=Hi%20FleetGuard%20Team%2C%0A%0AI%20would%20like%20to%20book%20a%20demo.%0A%0AName%3A%20%0AMobile%3A%20%0A%0AThank%20you." className="btn btn-primary btn-lg">
+C:\Users\ratho\fleetguard\frontend\src\pages\HomePage.jsx:383: <a href="mailto:fleetguardinfo@gmail.com?subject=Enquiry&body=Hi%20FleetGuard%20Team%2C%0A%0AI%20would%20like%20to%20book%20a%20demo.%0A%0AName%3A%20%0AMobile%3A%20%0A%0AThank%20you." className="btn btn-primary btn-lg reveal" style={{ marginTop: '8px' }}>
+C:\Users\ratho\fleetguard\frontend\src\pages\HomePage.jsx:416: <a href="mailto:fleetguardinfo@gmail.com">fleetguardinfo@gmail.com</a>
+C:\Users\ratho\fleetguard\frontend\src\pages\HomePage.jsx:423: <a href="mailto:fleetguardinfo@gmail.com" aria-label="Email">✉️</a>
+C:\Users\ratho\fleetguard\frontend\src\pages\LandingPage.jsx:588: <li><a href="mailto:contact@fleetguard.com" className="hover:text-white transition-colors">Contact</a></li>
+C:\Users\ratho\fleetguard\frontend\src\pages\Login.jsx:290: const executeFleetGuardVerification = async (token) => {
+C:\Users\ratho\fleetguard\frontend\src\pages\Login.jsx:313: //   await executeFleetGuardVerification(verifiedMsg91Token);
+C:\Users\ratho\fleetguard\frontend\src\pages\Login.jsx:373: await executeFleetGuardVerification(msg91Token);
+C:\Users\ratho\fleetguard\frontend\src\pages\Login.test.jsx:27: fireEvent.change(screen.getByLabelText(/Email or Mobile Number/i), { target: { value: 'admin@fleetguard.com' } });
+C:\Users\ratho\fleetguard\frontend\src\pages\Login.test.jsx:33: expect(authApi.login).toHaveBeenCalledWith('admin@fleetguard.com', 'password123', expect.any(Object));
+C:\Users\ratho\fleetguard\frontend\src\pages\admin\AuditLogs.jsx:96: a.download = `fleetguard_audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
+C:\Users\ratho\fleetguard\frontend\src\pages\admin\UserManagement.jsx:318: placeholder="e.g. suryansh@fleetguard.com"
+C:\Users\ratho\fleetguard\frontend\src\pages\chatbox\ChatBox.jsx:91: const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\pages\chatbox\ChatBox.jsx:201: FleetGuard.AI
+C:\Users\ratho\fleetguard\frontend\src\pages\dashboard-ai\AiCopilot.jsx:91: const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
+C:\Users\ratho\fleetguard\frontend\src\pages\dashboard-ai\AiCopilot.jsx:198: FleetGuard.AI
+C:\Users\ratho\fleetguard\frontend\src\pages\profile\Profile.jsx:94: localStorage.setItem('fleetguard_user', JSON.stringify(updatedUser));
+C:\Users\ratho\fleetguard\frontend\src\pages\settings\Settings.jsx:126: a.download = `fleetguard_backup_${new Date().toISOString().split('T')[0]}.json`;
+C:\Users\ratho\fleetguard\frontend\src\pages\support\Support.jsx:150: <p className="text-sm font-medium mt-0.5">support@fleetguard.ai</p>

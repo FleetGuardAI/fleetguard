@@ -10,7 +10,7 @@ import Downloads from './pages/Downloads';
 import DriverOtpBridge from './pages/DriverOtpBridge';
 
 /**
- * FleetGuard Application Root
+ * the vahan Application Root
  * Routes:
  *   /            → Marketing landing page
  *   /login       → Authentication page

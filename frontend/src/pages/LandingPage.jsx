@@ -43,11 +43,10 @@ export default function LandingPage() {
       {/* 1. NAVBAR (Floating Glass) */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-300 pt-4 px-4 md:px-8 pointer-events-none`}>
         <div className={`max-w-7xl mx-auto flex items-center justify-between rounded-2xl pointer-events-auto transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.06)] border border-white/60 px-4 py-3' : 'bg-white/50 backdrop-blur-md shadow-sm border border-white/30 px-4 py-4'}`}>
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00c853] to-[#00a040] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/20">
-              <ShieldCheck className="w-5 h-5 text-white drop-shadow-sm" />
+          <Link to="/" className="flex items-center group">
+            <div className="h-8 flex items-center justify-start">
+              <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" className="h-full w-auto object-contain" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">Fleet<span className="text-[#00c853]">Guard</span></span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
@@ -110,7 +109,7 @@ export default function LandingPage() {
             </h1>
             
             <p className="text-base md:text-lg text-slate-600 mb-8 leading-relaxed font-medium max-w-xl mx-auto lg:mx-0">
-              FleetGuard connects drivers, verification workflows, and fleet teams in one platform — from onboarding and document submission to verification and approval.
+              the vahan connects drivers, verification workflows, and fleet teams in one platform — from onboarding and document submission to verification and approval.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -132,16 +131,16 @@ export default function LandingPage() {
                <div className="bg-white/50 rounded-[1.5rem] p-6 border border-white/70 flex flex-col items-center gap-4 relative overflow-hidden shadow-inner">
                   
                   {/* Driver App Layer */}
-                  <div className="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl border border-white shadow-sm p-4 relative flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 border border-blue-100">
-                      <Smartphone className="w-5 h-5" />
+                  <div className="w-full max-w-md bg-white/90 backdrop-blur-xl rounded-2xl border border-white/60 shadow-md p-4 relative flex items-center gap-4 group transition-all hover:-translate-y-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                      <Smartphone className="w-6 h-6" />
                     </div>
                     <div>
                        <h3 className="font-bold text-slate-900 text-sm">Driver App</h3>
-                       <div className="flex gap-2 mt-1">
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">OTP</span>
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">Profile</span>
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">Documents</span>
+                       <div className="flex gap-2 mt-2">
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">OTP</span>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">Profile</span>
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">Documents</span>
                        </div>
                     </div>
                   </div>
@@ -152,15 +151,17 @@ export default function LandingPage() {
                   </div>
 
                   {/* Platform Layer */}
-                  <div className="w-full max-w-sm bg-[#00c853]/10 backdrop-blur-md rounded-2xl border border-[#00c853]/20 shadow-[0_4px_16px_rgba(0,200,83,0.05)] p-4 relative flex items-center gap-4 z-10 transform md:scale-105">
-                    <div className="w-10 h-10 bg-[#00c853]/10 text-[#00c853] rounded-lg flex items-center justify-center shrink-0 border border-[#00c853]/20">
-                      <Server className="w-5 h-5" />
+                  <div className="w-full max-w-sm bg-gradient-to-r from-[#00c853]/15 to-[#00a040]/15 backdrop-blur-xl rounded-2xl border border-[#00c853]/30 shadow-[0_8px_32px_rgba(0,200,83,0.15)] p-4 relative flex items-center gap-4 z-10 transform md:scale-105 transition-all hover:scale-110 group cursor-default">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#00c853] to-[#009030] text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg group-hover:rotate-6 transition-transform">
+                      <Server className="w-6 h-6" />
                     </div>
                     <div>
-                       <h3 className="font-bold text-slate-900 text-sm">FleetGuard Platform</h3>
-                       <div className="flex flex-wrap gap-2 mt-1">
-                          <span className="text-[10px] font-bold text-[#00a040] bg-white/60 px-2 py-0.5 rounded shadow-sm border border-white/80">Verification</span>
-                          <span className="text-[10px] font-bold text-[#00a040] bg-white/60 px-2 py-0.5 rounded shadow-sm border border-white/80">Processing</span>
+                       <div className="flex items-center gap-2">
+                         <img src="/assets/the_vahan_logo.png" alt="the vahan" className="h-6 w-auto object-contain" />
+                       </div>
+                       <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-[10px] font-bold text-white bg-[#00c853] px-2.5 py-1 rounded-md shadow-sm">Verification</span>
+                          <span className="text-[10px] font-bold text-[#00c853] bg-white px-2.5 py-1 rounded-md shadow-sm border border-[#00c853]/20">Processing</span>
                        </div>
                     </div>
                   </div>
@@ -171,16 +172,16 @@ export default function LandingPage() {
                   </div>
 
                   {/* Dashboard Layer */}
-                  <div className="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl border border-white shadow-sm p-4 relative flex items-center gap-4">
-                    <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center shrink-0 border border-purple-100">
-                      <LayoutDashboard className="w-5 h-5" />
+                  <div className="w-full max-w-md bg-white/90 backdrop-blur-xl rounded-2xl border border-white/60 shadow-md p-4 relative flex items-center gap-4 group transition-all hover:translate-y-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 text-white rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                      <LayoutDashboard className="w-6 h-6" />
                     </div>
                     <div>
                        <h3 className="font-bold text-slate-900 text-sm">Fleet Dashboard</h3>
-                       <div className="flex gap-2 mt-1">
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">Drivers</span>
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">Documents</span>
-                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/50 px-2 py-0.5 rounded border border-slate-200">Approvals</span>
+                       <div className="flex gap-2 mt-2">
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100">Drivers</span>
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100">Documents</span>
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100">Approvals</span>
                        </div>
                     </div>
                   </div>
@@ -510,7 +511,7 @@ export default function LandingPage() {
             <ShieldCheck className="w-10 h-10 text-[#00c853] mb-4 mx-auto md:mx-0" />
             <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4 tracking-tight">Controlled Workflows. Clear Visibility.</h2>
             <p className="text-slate-600 text-sm font-medium leading-relaxed">
-              FleetGuard uses authenticated workflows and controlled dashboard access to keep driver operations organized and easily accessible to authorized personnel.
+              the vahan uses authenticated workflows and controlled dashboard access to keep driver operations organized and easily accessible to authorized personnel.
             </p>
           </div>
           
@@ -543,7 +544,7 @@ export default function LandingPage() {
             Bring Your Drivers and Fleet Operations Into One Platform
           </h2>
           <p className="text-base text-slate-600 mb-8 max-w-xl mx-auto font-medium">
-            See how FleetGuard connects driver onboarding, document verification, and fleet management.
+            See how the vahan connects driver onboarding, document verification, and fleet management.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -600,7 +601,7 @@ export default function LandingPage() {
         </div>
         
         <div className="max-w-6xl mx-auto flex justify-between items-center text-[10px] font-semibold text-slate-600">
-          <p>© {new Date().getFullYear()} FleetGuard. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} the vahan. All rights reserved.</p>
         </div>
       </footer>
     </div>

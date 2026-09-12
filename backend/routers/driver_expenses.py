@@ -46,7 +46,7 @@ class ExpenseCreateRequest(BaseModel):
     receipt_url: Optional[str] = None
     vehicle_id: Optional[int] = None
     trip_id: Optional[int] = None
-    driver_id: int
+    driver_id: Optional[int] = None  # Ignored for security, identity derived from JWT
     
     # Fuel specific fields (Milestone 1C)
     fuel_quantity_liters: Optional[float] = None
@@ -209,8 +209,7 @@ async def create_expense(
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User is not associated with a company")
 
-    # Validate driver ownership
-    driver = await db.get(Driver, payload.driver_id)
+    # Use authenticated driver from JWT
     if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Unauthorized driver")
 
@@ -254,7 +253,7 @@ async def create_expense(
             entity_id=str(payload.vehicle_id),
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.MANUAL_ENTRY,
-            created_by=f"driver_{payload.driver_id}",
+            created_by=f"driver_{driver.id}",
             payload=event_payload
         )
         

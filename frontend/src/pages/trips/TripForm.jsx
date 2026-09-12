@@ -185,7 +185,7 @@ export default function TripForm() {
             Intelligent Dispatch
             <Badge variant="brand" className="ml-2">Trip Intel 2.0</Badge>
           </h1>
-          <p className="text-content-muted">Progressive evaluation powered by FleetGuard AI</p>
+          <p className="text-content-muted">Progressive evaluation powered by the vahan AI</p>
         </div>
       </div>
 

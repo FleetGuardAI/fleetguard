@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.vehicle_inspection import VehicleInspection, InspectionType, InspectionStatus
 from models.ticket import Ticket, TicketStatus, RiskLevel
+from models.driver_domain import Driver
+from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.inspection")
 
@@ -33,9 +35,9 @@ class InspectionItem(BaseModel):
 
 
 class InspectionCreateRequest(BaseModel):
-    driver_id: int
+    driver_id: Optional[int] = None
     vehicle_id: int
-    company_id: int
+    company_id: Optional[int] = None
     inspection_type: str  # PRE_TRIP or POST_TRIP
     items: List[InspectionItem]
     notes: Optional[str] = None
@@ -58,6 +60,7 @@ class InspectionResponse(BaseModel):
 @router.post("/inspections", response_model=InspectionResponse, status_code=status.HTTP_201_CREATED)
 async def submit_inspection(
     payload: InspectionCreateRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -78,9 +81,9 @@ async def submit_inspection(
     items_dict = [item.model_dump() for item in payload.items]
 
     inspection = VehicleInspection(
-        driver_id=payload.driver_id,
+        driver_id=driver.id,
         vehicle_id=payload.vehicle_id,
-        company_id=payload.company_id,
+        company_id=driver.company_id,
         inspection_type=insp_type,
         overall_status=overall_status,
         items=items_dict,
@@ -98,7 +101,7 @@ async def submit_inspection(
             status=TicketStatus.PENDING,
             risk_level=RiskLevel.HIGH,
             vehicle_id=payload.vehicle_id,
-            driver_id=payload.driver_id,
+            driver_id=driver.id,
         )
         db.add(ticket)
         logger.info(f"Auto-generated maintenance ticket for failed inspection {inspection.id}")
@@ -121,14 +124,15 @@ async def submit_inspection(
 
 @router.get("/inspections", response_model=List[InspectionResponse])
 async def list_inspections(
-    driver_id: int,
+    driver_id: Optional[int] = None,
     limit: int = 50,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """List inspection reports for a driver."""
     result = await db.execute(
         select(VehicleInspection)
-        .where(VehicleInspection.driver_id == driver_id)
+        .where(VehicleInspection.driver_id == driver.id)
         .order_by(desc(VehicleInspection.created_at))
         .limit(limit)
     )

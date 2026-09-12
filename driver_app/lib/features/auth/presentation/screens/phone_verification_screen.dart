@@ -108,7 +108,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('FleetGuard verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(content: Text('the vahan verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }
@@ -315,7 +315,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   Text(
                     _otpSent
                         ? 'Enter 6-digit OTP sent to ${_phoneController.text}'
-                        : 'Joining fleet: ${widget.companyName.isNotEmpty ? widget.companyName : "FleetGuard Partner"}',
+                        : 'Joining fleet: ${widget.companyName.isNotEmpty ? widget.companyName : "the vahan Partner"}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.outline,
                         ),

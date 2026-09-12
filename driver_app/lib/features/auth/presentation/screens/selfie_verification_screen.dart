@@ -79,7 +79,7 @@ class _SelfieVerificationScreenState extends ConsumerState<SelfieVerificationScr
             ),
             const SizedBox(height: 8),
             const Text(
-              'Take a clear selfie to match against your Driving License photo using FleetGuard AI.',
+              'Take a clear selfie to match against your Driving License photo using the vahan AI.',
               textAlign: TextAlign.center,
             ),
             const Spacer(),

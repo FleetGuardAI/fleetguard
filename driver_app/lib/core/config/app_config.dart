@@ -1,4 +1,4 @@
-/// FleetGuard Driver App Configuration
+/// the vahan Driver App Configuration
 ///
 /// Central configuration constants loaded from environment or compile-time flags.
 /// For demo mode, defaults point to localhost backend.

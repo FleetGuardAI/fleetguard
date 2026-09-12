@@ -32,7 +32,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-16 z-50 flex flex-col items-center py-4 bg-white border-r border-slate-200 shrink-0 shadow-sm">
       {/* Brand Logo */}
       <div className="w-9 h-9 flex items-center justify-center mb-8 shrink-0">
-        <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+        <img src="/assets/the_vahan_icon.png" alt="the vahan Icon" className="w-full h-full object-contain" />
       </div>
 
       {/* Nav Actions */}

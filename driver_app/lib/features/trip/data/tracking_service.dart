@@ -73,7 +73,6 @@ class TrackingService {
   Future<void> _uploadLocationBatch(Position position, int driverId) async {
     try {
       await _dio.post('/api/v1/driver-app/location/batch', data: {
-        'driver_id': driverId,
         'locations': [
           {
             'latitude': position.latitude,

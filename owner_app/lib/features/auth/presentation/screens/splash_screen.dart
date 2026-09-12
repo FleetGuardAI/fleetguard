@@ -18,7 +18,7 @@ class SplashScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // FleetGuard Logo / Branding
+            // the vahan Logo / Branding
             Icon(
               Icons.directions_car_rounded,
               size: 80,
@@ -26,7 +26,7 @@ class SplashScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'FleetGuard',
+              'the vahan',
               style: GoogleFonts.inter(
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
@@ -52,7 +52,7 @@ class SplashScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Connecting to FleetGuard...',
+                'Connecting to the vahan...',
                 style: GoogleFonts.inter(
                   color: AppColors.darkOnSurfaceVariant,
                   fontSize: 14,
@@ -66,7 +66,7 @@ class SplashScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Unable to connect to FleetGuard',
+                'Unable to connect to the vahan',
                 style: GoogleFonts.inter(
                   color: Colors.white,
                   fontSize: 16,
