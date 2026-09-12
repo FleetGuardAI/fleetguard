@@ -5,7 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
-import HomePage from './pages/HomePage';
+
 import Downloads from './pages/Downloads';
 import DriverOtpBridge from './pages/DriverOtpBridge';
 
@@ -17,7 +17,7 @@ import DriverOtpBridge from './pages/DriverOtpBridge';
  *   /register    → Company and admin registration page
  *   /forgot-password → Password reset request/reset page
  *   /downloads       → Downloads page for mobile apps
- *   /homepage    → Migrated RoutePay landing page (temporary)
+
  *   /dashboard   → Owner BI Dashboard
  *   /dashboard/* → Dashboard sub-routes (catch-all for sidebar nav)
  */
@@ -29,7 +29,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/downloads" element={<Downloads />} />
-      <Route path="/homepage" element={<HomePage />} />
+
       <Route path="/bridge/driver-otp" element={<DriverOtpBridge />} />
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
