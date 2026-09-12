@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, FileSignature, FileText, Download, Search, 
@@ -79,6 +80,17 @@ export default function DemoDashboard() {
   // Modals
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedDocument(null);
+        setSelectedDriver(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // Loading states for interactions
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -488,128 +500,136 @@ export default function DemoDashboard() {
       </div>
 
       {/* DRIVER DETAIL MODAL */}
-      <AnimatePresence>
-        {selectedDriver && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
-             <motion.div 
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-               onClick={() => !isActionLoading && setSelectedDriver(null)}
-             />
-             <motion.div 
-               initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-               className="bg-white/90 backdrop-blur-2xl border border-white rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto relative z-10 flex flex-col"
-             >
-                <div className="p-6 border-b border-slate-200/50 flex justify-between items-start sticky top-0 bg-white/80 backdrop-blur-xl z-20">
-                   <div>
-                     <h2 className="text-2xl font-extrabold text-slate-900">{selectedDriver.name}</h2>
-                     <p className="text-sm font-bold text-slate-500 mt-1">ID: {selectedDriver.id} • {selectedDriver.phone}</p>
-                   </div>
-                   <button onClick={() => !isActionLoading && setSelectedDriver(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors disabled:opacity-50" disabled={isActionLoading}>
-                     <X className="w-5 h-5 text-slate-600" />
-                   </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                         <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Status</div>
-                         <div>{getStatusBadge(selectedDriver.verification_status)}</div>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                         <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Onboarding Date</div>
-                         <div className="font-bold text-slate-800 text-sm">{selectedDriver.date}</div>
-                      </div>
-                   </div>
-
-                   <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wide">Submitted Documents</h4>
-                      <div className="space-y-3">
-                         {selectedDriver.documents.map(doc => (
-                           <div key={doc.id} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group" onClick={() => setSelectedDocument({ ...doc, driverName: selectedDriver.name })}>
-                              <div className="flex items-center gap-3">
-                                 <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-[#00c853]/10 transition-colors">
-                                    <FileText className="w-4 h-4 text-slate-600 group-hover:text-[#00c853]" />
-                                 </div>
-                                 <span className="font-bold text-sm text-slate-800">{doc.type}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                 {doc.status === 'VERIFIED' ? <span className="text-[#00c853] text-[10px] font-bold uppercase tracking-wider">Verified</span> : <span className="text-yellow-600 text-[10px] font-bold uppercase tracking-wider">Pending</span>}
-                                 <Eye className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-                              </div>
-                           </div>
-                         ))}
-                      </div>
-                   </div>
-                </div>
-
-                <div className="p-6 border-t border-slate-200/50 bg-slate-50/80 sticky bottom-0 flex justify-end gap-3 z-20 rounded-b-[2rem]">
-                   <button onClick={() => !isActionLoading && setSelectedDriver(null)} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50" disabled={isActionLoading}>
-                     Cancel
-                   </button>
-                   {selectedDriver.verification_status !== 'REJECTED' && (
-                     <button 
-                       onClick={() => handleReject(selectedDriver.id)}
-                       disabled={isActionLoading || selectedDriver.verification_status === 'APPROVED'}
-                       className="px-5 py-2.5 rounded-xl font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[100px] gap-2"
-                     >
-                       {isActionLoading ? <Clock className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} Reject
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedDriver && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 pointer-events-auto">
+               <motion.div 
+                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                 className="fixed inset-0 bg-[#0a141e]/30 backdrop-blur-[12px]"
+                 onClick={() => !isActionLoading && setSelectedDriver(null)}
+               />
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} transition={{ duration: 0.2 }}
+                 className="bg-white/80 backdrop-blur-3xl border border-white/60 shadow-[0_20px_60px_rgba(0,0,0,0.1),_0_0_40px_rgba(0,200,83,0.05)] w-full max-w-[720px] max-h-[calc(100vh-20px)] sm:max-h-[calc(100vh-40px)] overflow-y-auto relative z-10 flex flex-col rounded-[20px] sm:rounded-[24px]"
+               >
+                  <div className="p-5 sm:p-6 border-b border-white/60 flex justify-between items-start sticky top-0 bg-white/70 backdrop-blur-2xl z-30">
+                     <div>
+                       <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">{selectedDriver.name}</h2>
+                       <p className="text-sm font-bold text-slate-500 mt-1">ID: {selectedDriver.id} • {selectedDriver.phone}</p>
+                     </div>
+                     <button onClick={() => !isActionLoading && setSelectedDriver(null)} className="w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white rounded-full transition-colors disabled:opacity-50 border border-slate-200/50 hover:border-slate-300 shadow-sm" disabled={isActionLoading}>
+                       <X className="w-5 h-5 text-slate-600" />
                      </button>
-                   )}
-                   {selectedDriver.verification_status !== 'APPROVED' && (
-                     <button 
-                       onClick={() => handleApprove(selectedDriver.id)}
-                       disabled={isActionLoading || selectedDriver.verification_status === 'REJECTED'}
-                       className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#00c853] hover:bg-[#00b048] shadow-md hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center min-w-[160px] gap-2"
-                     >
-                       {isActionLoading ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Approve Driver
+                  </div>
+
+                  <div className="p-5 sm:p-6 space-y-6 flex-1">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white shadow-sm">
+                           <div className="text-[10px] uppercase font-bold text-slate-500 mb-2">Status</div>
+                           <div>{getStatusBadge(selectedDriver.verification_status)}</div>
+                        </div>
+                        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white shadow-sm">
+                           <div className="text-[10px] uppercase font-bold text-slate-500 mb-2">Onboarding Date</div>
+                           <div className="font-bold text-slate-800 text-sm">{selectedDriver.date}</div>
+                        </div>
+                     </div>
+
+                     <div>
+                        <h4 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Submitted Documents</h4>
+                        <div className="space-y-3">
+                           {selectedDriver.documents.map(doc => (
+                             <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/60 backdrop-blur-md border border-white/80 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md hover:border-[#00c853]/40 transition-all cursor-pointer group gap-3" onClick={() => setSelectedDocument({ ...doc, driverName: selectedDriver.name })}>
+                                <div className="flex items-center gap-3">
+                                   <div className="p-2.5 bg-white shadow-sm border border-slate-100 rounded-lg group-hover:bg-[#00c853]/10 group-hover:border-[#00c853]/20 transition-colors">
+                                      <FileText className="w-5 h-5 text-slate-500 group-hover:text-[#00c853]" />
+                                   </div>
+                                   <span className="font-bold text-sm text-slate-800">{doc.type}</span>
+                                </div>
+                                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                   {doc.status === 'VERIFIED' ? <span className="bg-[#00c853]/10 text-[#00c853] border border-[#00c853]/20 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase flex items-center gap-1.5"><CheckCircle className="w-3 h-3" /> Verified</span> : <span className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase flex items-center gap-1.5"><Clock className="w-3 h-3" /> Pending</span>}
+                                   <button className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition-colors group-hover:border-blue-200">
+                                      <Eye className="w-4 h-4" /> View
+                                   </button>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-5 sm:p-6 border-t border-white/60 bg-white/70 backdrop-blur-2xl sticky bottom-0 flex flex-col-reverse sm:flex-row justify-end gap-3 z-30">
+                     <button onClick={() => !isActionLoading && setSelectedDriver(null)} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold text-slate-600 bg-white/80 border border-white hover:bg-white shadow-sm transition-colors disabled:opacity-50" disabled={isActionLoading}>
+                       Cancel
                      </button>
-                   )}
-                </div>
-             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                     {selectedDriver.verification_status !== 'REJECTED' && (
+                       <button 
+                         onClick={() => handleReject(selectedDriver.id)}
+                         disabled={isActionLoading || selectedDriver.verification_status === 'APPROVED'}
+                         className="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-bold text-red-600 bg-red-50/80 border border-red-100 hover:bg-red-100 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                       >
+                         {isActionLoading ? <Clock className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} Reject
+                       </button>
+                     )}
+                     {selectedDriver.verification_status !== 'APPROVED' && (
+                       <button 
+                         onClick={() => handleApprove(selectedDriver.id)}
+                         disabled={isActionLoading || selectedDriver.verification_status === 'REJECTED'}
+                         className="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl font-bold text-white bg-gradient-to-b from-[#00c853] to-[#00b048] hover:to-[#00a040] border border-[#00e05d]/30 shadow-[0_4px_15px_rgba(0,200,83,0.3)] hover:shadow-[0_6px_20px_rgba(0,200,83,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                       >
+                         {isActionLoading ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Approve Driver
+                       </button>
+                     )}
+                  </div>
+               </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* DOCUMENT VIEWER MODAL */}
-      <AnimatePresence>
-        {selectedDocument && (
-          <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 sm:p-8 pointer-events-auto">
-             <motion.div 
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-               className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
-               onClick={() => setSelectedDocument(null)}
-             />
-             <motion.div 
-               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-               className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden relative z-10 flex flex-col"
-             >
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-                   <div className="flex items-center gap-3 text-white">
-                      <FileText className="w-5 h-5 text-slate-400" />
-                      <div>
-                        <h3 className="font-bold text-sm">{selectedDocument.type}</h3>
-                        <p className="text-[10px] text-slate-400">Demo Asset • {selectedDocument.driverName}</p>
-                      </div>
-                   </div>
-                   <button onClick={() => setSelectedDocument(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors">
-                     <X className="w-5 h-5 text-slate-400" />
-                   </button>
-                </div>
-                
-                {/* Safe Demo Asset Display */}
-                <div className="p-8 bg-slate-950 flex flex-col items-center justify-center min-h-[300px]">
-                   <div className="w-full max-w-sm aspect-[1.6/1] bg-slate-800 rounded-xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent" />
-                      <ShieldCheck className="w-12 h-12 text-slate-600 mb-3" />
-                      <span className="text-slate-400 font-bold text-sm">Safe Demo Asset View</span>
-                      <span className="text-slate-500 text-[10px] mt-1">Production documents are securely protected.</span>
-                   </div>
-                </div>
-             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedDocument && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-8 pointer-events-auto">
+               <motion.div 
+                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                 className="fixed inset-0 bg-[#0a141e]/80 backdrop-blur-md"
+                 onClick={() => setSelectedDocument(null)}
+               />
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
+                 className="bg-slate-900 border border-slate-700 shadow-2xl w-full max-w-2xl max-h-[calc(100vh-20px)] sm:max-h-[calc(100vh-40px)] overflow-hidden relative z-10 flex flex-col rounded-[20px] sm:rounded-[32px]"
+               >
+                  <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 sticky top-0 z-20">
+                     <div className="flex items-center gap-3 text-white">
+                        <FileText className="w-5 h-5 text-slate-400" />
+                        <div>
+                          <h3 className="font-bold text-sm">{selectedDocument.type}</h3>
+                          <p className="text-[10px] text-slate-400">Demo Asset • {selectedDocument.driverName}</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setSelectedDocument(null)} className="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-full transition-colors border border-slate-700">
+                       <X className="w-5 h-5 text-slate-400" />
+                     </button>
+                  </div>
+                  
+                  {/* Safe Demo Asset Display */}
+                  <div className="p-6 sm:p-8 bg-slate-950 flex flex-col items-center justify-center min-h-[300px] overflow-y-auto flex-1">
+                     <div className="w-full max-w-sm aspect-[1.6/1] bg-slate-800 rounded-2xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent" />
+                        <ShieldCheck className="w-12 h-12 text-slate-600 mb-3" />
+                        <span className="text-slate-400 font-bold text-sm">Safe Demo Asset View</span>
+                        <span className="text-slate-500 text-[10px] mt-1">Production documents are securely protected.</span>
+                     </div>
+                  </div>
+               </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );
