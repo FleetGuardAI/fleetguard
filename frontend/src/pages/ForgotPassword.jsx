@@ -81,7 +81,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-12 h-12 flex items-center justify-center">
-            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+            <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900">
             Forgot <span className="text-emerald-600">Password</span>
@@ -98,7 +98,7 @@ export default function ForgotPassword() {
             <Input
               label="Email or Mobile"
               type="text"
-              placeholder="owner@fleetguard.com or +919876543210"
+              placeholder="Email or Mobile Number"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               error={errors.identifier}

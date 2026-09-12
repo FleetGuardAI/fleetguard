@@ -1,5 +1,5 @@
 /**
- * FleetGuard API Client
+ * the vahan API Client
  * Fetch wrapper for communicating with the FastAPI backend.
  * @module api/client
  */
@@ -59,7 +59,7 @@ async function request(endpoint, options = {}) {
     const data = await response.json();
     return data;
   } catch (err) {
-    console.warn(`[FleetGuard API] ${endpoint} failed:`, err.message);
+    console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
     throw err;
   }
 }

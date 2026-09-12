@@ -70,9 +70,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/images/driver_logo.png',
-                width: 28,
-                height: 28,
+                'assets/images/the_vahan_logo.png',
+                width: 120,
+                height: 32,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) =>
                     const Icon(Icons.local_shipping, size: 28),
@@ -81,7 +81,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(width: 8),
             const Flexible(
               child: Text(
-                'FleetGuard Driver',
+                'the vahan Driver',
                 style: TextStyle(fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -144,7 +144,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         data: (profile) {
           final String name = profile['name'] ?? 'Driver Name';
           final String phone = profile['phone_number'] ?? '';
-          final String fleet = profile['company_name'] ?? 'FleetGuard';
+          final String fleet = profile['company_name'] ?? 'the vahan';
           final String? vehicleStr = profile['assigned_vehicle'];
           final String dutyStr = profile['duty_status'] ?? 'OFF_DUTY';
           final double score = (profile['driver_score'] ?? 85.0).toDouble();

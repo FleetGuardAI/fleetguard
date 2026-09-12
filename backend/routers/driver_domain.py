@@ -93,7 +93,7 @@ async def create_driver(
         avatar_url=payload.avatar_url,
         employee_id=payload.employee_id,
         license_number=payload.license_number,
-        status=DriverStatus.ACTIVE,
+        status=DriverStatus.INACTIVE,
         origin_type="rest_api",
         company_id=current_user.company_id
     )

@@ -289,18 +289,18 @@ export default function Login() {
       
       const executeFleetGuardVerification = async (token) => {
         try {
-          console.log('[AUTH DEBUG] calling FleetGuard verify-otp');
+          console.log('[AUTH DEBUG] calling the vahan verify-otp');
           // Optional: Add debug log for API URL, but VITE_API_URL might just be '/api' locally
-          console.log('[AUTH DEBUG] FleetGuard API URL:', import.meta.env.VITE_API_URL || 'default /api');
+          console.log('[AUTH DEBUG] the vahan API URL:', import.meta.env.VITE_API_URL || 'default /api');
           
           const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token: token });
           
-          console.log('[AUTH DEBUG] FleetGuard authentication successful');
+          console.log('[AUTH DEBUG] the vahan authentication successful');
           success('Login Successful', `Welcome back, ${res.user.name}!`);
           navigate('/dashboard');
         } catch (err) {
           setLoading(false);
-          console.log('[AUTH DEBUG] FleetGuard verify-otp failed');
+          console.log('[AUTH DEBUG] the vahan verify-otp failed');
           console.log('[AUTH DEBUG] error type:', err.name);
           console.log('[AUTH DEBUG] error message:', err.message);
           error('OTP Verification Failed', err.message || 'Server error verifying OTP.');
@@ -409,12 +409,9 @@ export default function Login() {
       <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden p-8 space-y-6">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 flex items-center justify-center">
-            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+          <div className="h-12 flex items-center justify-center mb-2">
+            <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" className="h-full w-auto object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">
-            Fleet<span className="text-emerald-600">Guard</span> ERP
-          </h2>
           <p className="text-sm text-slate-500">
             Sign in to manage your trucking fleet
           </p>
@@ -445,7 +442,7 @@ export default function Login() {
             <Input
               label="Email or Mobile Number"
               type="text"
-              placeholder="coo@fleetguard.com or +919876543210"
+              placeholder="Email or Mobile Number"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
@@ -502,7 +499,7 @@ export default function Login() {
             <Input
               label="Email or Mobile Number"
               type="text"
-              placeholder="coo@fleetguard.com or +919876543210"
+              placeholder="Email or Mobile Number"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}

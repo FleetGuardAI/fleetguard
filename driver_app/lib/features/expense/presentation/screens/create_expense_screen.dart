@@ -74,13 +74,11 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     
     try {
       final repo = ref.read(expenseRepositoryProvider);
-      final driverId = await SecureStorage.getDriverId() ?? 1;
       
       await repo.createExpense(
         category: _category,
         amount: double.tryParse(_amountController.text) ?? 0,
         description: '${_vendorController.text} (GST: ${_gstController.text})',
-        driverId: driverId,
       );
       
       setState(() => _isSubmitting = false);

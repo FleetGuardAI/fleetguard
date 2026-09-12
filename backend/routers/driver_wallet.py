@@ -81,42 +81,9 @@ async def get_driver_wallet(
         for t in txs[:20]
     ]
 
-    # Return realistic summary if no transactions exist in DB
+    # Empty state logic uses actual calculated zeros
     if not txs:
-        balance = 14500.0
-        total_salary = 22000.0
-        total_advances = 8000.0
-        total_incentives = 2500.0
-        pending_payments = 2000.0
-        recent = [
-            TransactionResponse(
-                id=101,
-                driver_id=driver_id,
-                transaction_type="SALARY",
-                amount=22000.0,
-                status="COMPLETED",
-                description="July Monthly Salary",
-                created_at=datetime.now(timezone.utc),
-            ),
-            TransactionResponse(
-                id=102,
-                driver_id=driver_id,
-                transaction_type="ADVANCE",
-                amount=5000.0,
-                status="APPROVED",
-                description="Trip Advance - Mumbai Route",
-                created_at=datetime.now(timezone.utc),
-            ),
-            TransactionResponse(
-                id=103,
-                driver_id=driver_id,
-                transaction_type="INCENTIVE",
-                amount=2500.0,
-                status="COMPLETED",
-                description="On-Time Delivery Incentive",
-                created_at=datetime.now(timezone.utc),
-            ),
-        ]
+        balance = 0.0
 
     return WalletSummaryResponse(
         balance=balance,

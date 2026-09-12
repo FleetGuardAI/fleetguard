@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== FleetGuard Design System — Fixed Light Theme ===== */
+/* ===== the vahan Design System — Fixed Light Theme ===== */
 :root {
   /* ── Core Surfaces ── */
   --surface:            #FFFFFF;
@@ -198,7 +198,7 @@ html.lenis, html.lenis body {
   backface-visibility: hidden;
 }
 
-/* ── FleetGuard glass cards ── */
+/* ── the vahan glass cards ── */
 .glass-dark {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
@@ -300,7 +300,7 @@ html.lenis, html.lenis body {
   }
 }
 
-/* ── FleetGuard card glass ── */
+/* ── the vahan card glass ── */
 .fg-card {
   background: #FFFFFF;
   border: 1px solid var(--border-color);

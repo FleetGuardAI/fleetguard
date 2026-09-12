@@ -72,7 +72,7 @@ class DriverService:
                 name=payload.get("name", "Unknown Driver"),
                 phone_number=phone_number,
                 employee_id=payload.get("employee_id"),
-                status=DriverStatus.ACTIVE,
+                status=DriverStatus.INACTIVE,
                 origin_type="verified_event",
                 origin_id=origin_id
             )

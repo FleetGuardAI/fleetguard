@@ -1,5 +1,5 @@
 /**
- * FleetGuard AI — Intelligence Data Configuration
+ * the vahan AI — Intelligence Data Configuration
  *
  * UI configuration constants for AI opportunity rendering.
  * CATEGORY_META and SEVERITY_CONFIG are used by card/panel components.

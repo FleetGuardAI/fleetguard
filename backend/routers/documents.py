@@ -253,13 +253,11 @@ async def list_driver_documents(
         raise HTTPException(status_code=403, detail="Only admins can view driver documents")
 
     # Fetch documents where target_id == str(driver_id) and target_type == "DRIVER"
-    result = await db.execute(
-        select(Document)
-        .where(Document.target_id == str(driver_id))
-        .where(Document.target_type == "DRIVER")
-        .where(Document.company_id == current_user.company_id)
-        .order_by(desc(Document.created_at))
-    )
+    stmt = select(Document).where(Document.target_id == str(driver_id)).where(Document.target_type == "DRIVER")
+    if current_user.role != UserRole.SUPER_ADMIN:
+        stmt = stmt.where(Document.company_id == current_user.company_id)
+    
+    result = await db.execute(stmt.order_by(desc(Document.created_at)))
     docs = result.scalars().all()
     
     from services.file_upload_service import storage_service

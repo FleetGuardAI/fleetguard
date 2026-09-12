@@ -376,7 +376,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.0),
                 child: Text(
-                  'Scan the QR code from the FleetGuard Dashboard to log in.',
+                  'Scan the QR code from the the vahan Dashboard to log in.',
                   textAlign: TextAlign.center,
                 ),
               ),

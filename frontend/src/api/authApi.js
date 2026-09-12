@@ -1,5 +1,5 @@
 /**
- * FleetGuard Authentication API Service
+ * the vahan Authentication API Service
  * Integrates with FastAPI backend security layer.
  */
 
@@ -292,7 +292,7 @@ export async function getCurrentUser(preferredRememberMe = true) {
     persistUser(user, rememberMe ?? preferredRememberMe);
     return user;
   } catch (err) {
-    console.warn('[FleetGuard Auth] Failed to restore session from server:', err.message);
+    console.warn('[the vahan Auth] Failed to restore session from server:', err.message);
     return getCachedUser();
   }
 }

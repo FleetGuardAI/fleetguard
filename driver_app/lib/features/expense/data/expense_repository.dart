@@ -33,14 +33,12 @@ class ExpenseRepository {
     required String category,
     required double amount,
     required String description,
-    required int driverId,
   }) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/expenses', data: {
         'category': category,
         'amount': amount,
         'description': description,
-        'driver_id': driverId,
       });
       return response.data as Map<String, dynamic>;
     } catch (e) {
@@ -50,12 +48,8 @@ class ExpenseRepository {
 
   Future<List<Map<String, dynamic>>> listDriverExpenses() async {
     try {
-      final driverId = await SecureStorage.getDriverId();
-      if (driverId == null) throw Exception('Driver not found in storage');
-
       final response = await _dio.get(
         '/api/v1/driver-app/expenses',
-        queryParameters: {'driver_id': driverId},
       );
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
