@@ -108,7 +108,7 @@ export async function assignVehicle(driverId, vehicleId) {
 }
 
 export async function getDriverDocuments(driverId) {
-  return await api.get(`/api/v1/documents/driver/${driverId}`);
+  return await api.get(`/v1/documents/driver/${driverId}`);
 }
 
 export async function verifyDriverDocument(documentId, status, rejectionReason = null) {
@@ -116,7 +116,7 @@ export async function verifyDriverDocument(documentId, status, rejectionReason =
   if (rejectionReason) {
     payload.rejection_reason = rejectionReason;
   }
-  return await api.post(`/api/v1/documents/${documentId}/verify`, payload);
+  return await api.post(`/v1/documents/${documentId}/verify`, payload);
 }
 
 /**
@@ -132,5 +132,5 @@ export async function approveDriver(driverId, action, reason = null) {
   if (reason) {
     payload.reason = reason;
   }
-  return await api.post(`/api/v1/drivers/${driverId}/approve`, payload);
+  return await api.post(`/v1/drivers/${driverId}/approve`, payload);
 }
