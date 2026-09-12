@@ -1,1930 +1,626 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield,
+  Menu,
+  X,
   ArrowRight,
-  CheckCircle,
-  MapPin,
-  FileWarning,
-  Fuel,
-  Phone,
-  Upload,
-  Bot,
-  BadgeCheck,
-  Truck,
-  Eye,
-  BarChart3,
-  MessageSquare,
-  Mail,
-  Instagram,
+  ShieldCheck,
+  FileText,
+  Users,
+  Smartphone,
+  Server,
   LayoutDashboard,
-  Sparkles,
-  Cpu,
-  Check,
-  Lock,
-  Coins,
-  AlertTriangle,
-  Zap,
-  Sun,
-  Moon,
-  Trash2,
-  X
+  CheckCircle,
+  FileSignature,
+  FileCheck2,
+  ListTodo,
+  Clock,
+  ShieldAlert,
+  ChevronDown,
+  UploadCloud
 } from 'lucide-react';
-import { LanguageSelector } from '@/components/shared/LanguageSelector';
-import { useLanguage } from '@/i18n/LanguageContext';
-import { cn } from '@/utils/cn';
-import useLenis from '@/hooks/useLenis';
-import useScrollAnimations from '@/hooks/useScrollAnimations';
-import CinematicHeroBackground from '@/components/CinematicHeroBackground';
-import TripForm from '@/pages/trips/TripForm';
-
-
-/**
- * 3D Mouse Tilt Card Wrapper
- */
-function TiltCard({ children, className = "", ...props }) {
-  const handleMouseMove = (e) => {
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = ((y - centerY) / centerY) * -8; // subtle tilt X
-    const rotateY = ((x - centerX) / centerX) * 8;  // subtle tilt Y
-    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.015, 1.015, 1.015)`;
-  };
-
-  const handleMouseLeave = (e) => {
-    const card = e.currentTarget;
-    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-  };
-
-  return (
-    <div
-      className={`transition-all duration-300 ease-out preserve-3d ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ transformStyle: 'preserve-3d', transition: 'transform 0.15s ease-out' }}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
-
-/**
- * Interactive Network Node Canvas Background
- */
-function InteractiveNetworkBackground() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    let animationFrameId;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const particles = [];
-    const particleCount = Math.min(65, Math.floor((width * height) / 28000));
-    
-    class Particle {
-      constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.25;
-        this.vy = (Math.random() - 0.5) * 0.25;
-        this.radius = Math.random() * 2 + 1;
-      }
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if (this.x < 0 || this.x > width) this.vx = -this.vx;
-        if (this.y < 0 || this.y > height) this.vy = -this.vy;
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 200, 83, 0.4)';
-        ctx.fill();
-      }
-    }
-
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
-    }
-
-    const mouse = { x: null, y: null, radius: 150 };
-
-    const handleMouseMove = (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    };
-
-    const handleMouseLeave = () => {
-      mouse.x = null;
-      mouse.y = null;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseleave', handleMouseLeave);
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Draw subtle background grid lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.012)';
-      ctx.lineWidth = 1;
-      const gridSize = 45;
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-
-      // Draw & update particles
-      particles.forEach((p) => {
-        p.update();
-        p.draw();
-      });
-
-      // Connect particles within proximity
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < 110) {
-            const alpha = (1 - dist / 110) * 0.12;
-            ctx.strokeStyle = `rgba(0, 200, 83, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
-        }
-
-        // Connect particles to mouse cursor (gravitational node styling)
-        if (mouse.x !== null && mouse.y !== null) {
-          const dx = particles[i].x - mouse.x;
-          const dy = particles[i].y - mouse.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < mouse.radius) {
-            const alpha = (1 - dist / mouse.radius) * 0.2;
-            ctx.strokeStyle = `rgba(0, 200, 83, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseleave', handleMouseLeave);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />;
-}
-
-/**
- * Interactive AI Scan / Tracker widget
- */
-function InteractiveScanner() {
-  const [trackingCode, setTrackingCode] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [telemetryLogs, setTelemetryLogs] = useState([]);
-  const [scanResult, setScanResult] = useState(null);
-  
-  const fileInputRef = useRef(null);
-
-  // Setup preview URL for selected file
-  useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    if (selectedFile.type.startsWith('image/')) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [selectedFile]);
-
-  // Global Ctrl + V paste listener for receipt image
-  useEffect(() => {
-    const handlePaste = (e) => {
-      // Don't intercept text pastes in inputs unless they contain files
-      if (document.activeElement?.tagName === 'INPUT' && document.activeElement?.type === 'text') {
-        const items = e.clipboardData?.items;
-        let hasImage = false;
-        if (items) {
-          for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-              hasImage = true;
-              break;
-            }
-          }
-        }
-        if (!hasImage) return; // Proceed with text paste
-      }
-
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          const file = items[i].getAsFile();
-          if (file) {
-            if (file.size > 20 * 1024 * 1024) {
-              alert('File size exceeds the 20MB limit.');
-              return;
-            }
-            setSelectedFile(file);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, []);
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.size > 20 * 1024 * 1024) {
-        alert("File size exceeds the 20MB limit.");
-        return;
-      }
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
-      if (!validTypes.includes(file.type)) {
-        alert("Invalid file format. Please upload JPG, PNG, WEBP, or PDF.");
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 20 * 1024 * 1024) {
-        alert("File size exceeds the 20MB limit.");
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const formatSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const startScan = async (e) => {
-    e.preventDefault();
-    if (isScanning || !selectedFile || !trackingCode) return;
-
-    setIsScanning(true);
-    setScanResult(null);
-    setTelemetryLogs([]);
-
-    const formData = new FormData();
-    formData.append('receipt_image', selectedFile);
-    formData.append('claim_id', trackingCode);
-    formData.append('driver_id', 'DRIVER-9921');
-    formData.append('truck_id', 'RJ14-XX-1234');
-
-    const API_BASE = import.meta.env.VITE_API_URL || '/api';
-    try {
-      const response = await fetch(`${API_BASE}/v1/receipts/analyze`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP ${response.status}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
-
-        for (const part of parts) {
-          const lines = part.split('\n');
-          for (const line of lines) {
-            const cleanLine = line.trim();
-            if (cleanLine.startsWith('data: ')) {
-              const rawJson = cleanLine.substring(6).trim();
-              try {
-                const data = JSON.parse(rawJson);
-                if (data.type === 'telemetry') {
-                  setTelemetryLogs((prev) => [...prev, data.step]);
-                } else if (data.type === 'result') {
-                  setScanResult(data);
-                } else if (data.type === 'error') {
-                  setTelemetryLogs((prev) => [...prev, `❌ Error: ${data.detail}`]);
-                }
-              } catch (err) {
-                console.warn('Error parsing JSON from SSE chunk:', err, rawJson);
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      setTelemetryLogs((prev) => [...prev, `❌ Analysis failed: ${error.message}`]);
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-white rounded-2xl p-6 relative overflow-hidden border border-slate-200 shadow-2xl shadow-[#00c853]/5 transition-colors duration-300">
-        
-        {/* Glow background filters */}
-        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#00c853]/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-[#00c853]/5 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-[#00c853]/10 flex items-center justify-center border border-[#00c853]/20">
-            <Cpu className="w-4 h-4 text-[#00c853]" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-900 tracking-wide transition-colors duration-300">
-            Interactive AI Claim Scanner
-          </h3>
-        </div>
-        <p className="text-[11px] text-slate-500 mb-5 leading-relaxed transition-colors duration-300">
-          Test live verification capability. Watch FleetGuard parse receipts, query telematics, and audit risk instantly.
-        </p>
-
-        {/* Input Bar & Upload */}
-        <form onSubmit={startScan} className="space-y-4 mb-5 text-left">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Claim ID</label>
-            <input
-              type="text"
-              value={trackingCode}
-              onChange={(e) => setTrackingCode(e.target.value)}
-              placeholder="Enter receipt code e.g. CLAIM-8831..."
-              className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#00c853] transition-all duration-300"
-              disabled={isScanning}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Receipt Upload</label>
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={handleUploadClick}
-              className={`w-full border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 text-center relative overflow-hidden ${
-                selectedFile 
-                  ? "border-[#00c853]/50 bg-[#00c853]/5#00c853]/3" 
-                  : isDragActive
-                    ? "border-[#00c853] bg-[#00c853]/10#00c853]/5 shadow-lg shadow-[#00c853]/5"
-                    : "border-slate-200 hover:border-[#00c853]/40 bg-slate-50"
-              }`}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                className="hidden"
-                disabled={isScanning}
-              />
-              
-              {!selectedFile ? (
-                <div className="flex flex-col items-center gap-1.5 text-slate-500">
-                  <Upload className="w-5 h-5 text-[#00c853]" />
-                  <span className="text-[11px] font-bold">Drag & drop, paste, or click to upload</span>
-                  <span className="text-[9px] opacity-60">JPG, PNG, WEBP, PDF (Max 20MB)</span>
-                </div>
-              ) : (
-                <div className="w-full flex items-center justify-between gap-3 text-left" onClick={(e) => e.stopPropagation()}>
-                  {/* Thumbnail Preview */}
-                  <div className="flex items-center gap-3">
-                    {previewUrl ? (
-                      <img src={previewUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200" alt="receipt preview" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-[#00c853]/10 border border-[#00c853]/20 flex items-center justify-center">
-                        <span className="text-[9px] font-black text-[#00c853]">PDF</span>
-                      </div>
-                    )}
-                    <div className="overflow-hidden max-w-[120px] sm:max-w-[160px]">
-                      <p className="text-[10px] font-bold text-slate-850 truncate">{selectedFile.name}</p>
-                      <p className="text-[9px] text-slate-500 font-semibold">{formatSize(selectedFile.size)}</p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleUploadClick}
-                      className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200:bg-slate-800 border border-slate-200 text-slate-800 text-[10px] font-bold transition-colors active:scale-95"
-                      disabled={isScanning}
-                    >
-                      Replace
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRemoveFile}
-                      className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 text-[10px] font-bold transition-colors active:scale-95"
-                      disabled={isScanning}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isScanning || !trackingCode || !selectedFile}
-            className="w-full bg-[#00c853] hover:bg-[#00b848] text-white text-xs font-bold py-3 rounded-xl transition-all duration-200 shadow-md shadow-green-500/20 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:shadow-none flex items-center justify-center gap-1.5"
-          >
-            {isScanning ? (
-              <>
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Auditing Receipt...
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5" />
-                Audit
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Simulated Document Scanning Window */}
-        <div className="bg-slate-100 rounded-xl border border-slate-200 aspect-[16/10] relative overflow-hidden flex flex-col justify-between p-4 font-mono text-[9px] text-slate-650 transition-colors duration-300">
-          
-          {/* Laser Scan line overlay */}
-          {isScanning && <div className="scanner-line" />}
-
-          {/* Top Panel */}
-          <div className="flex justify-between items-center text-slate-500 border-b border-slate-200 pb-2 transition-colors duration-300">
-            <span>SECURE_PAY_TELEMETRY</span>
-            <span className={isScanning ? 'text-green-650 animate-pulse font-bold' : 'text-slate-450'}>
-              ● {isScanning ? 'PROCESSING_PROOF' : 'STANDBY'}
-            </span>
-          </div>
-
-          {/* Middle Section */}
-          <div className="flex-1 py-3 flex flex-col gap-1.5 overflow-y-auto custom-scrollbar text-left scroll-smooth">
-            {telemetryLogs.length === 0 && !scanResult && (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center gap-2 transition-colors duration-300">
-                <Truck className="w-7 h-7 opacity-30 text-slate-600" />
-                <span className="max-w-[200px] leading-relaxed">Enter a mock ID above, upload a receipt, or click Audit to trigger the telemetry audit simulator.</span>
-              </div>
-            )}
-
-            {telemetryLogs.map((log, index) => {
-              const isSuccess = log.includes('✓') || log.includes('passed') || log.includes('success') || log.includes('validated') || log.includes('verified') || log.includes('complete') || log.includes('matches') || log.includes('identified');
-              const isPending = log.includes('...') || log.includes('Running') || log.includes('Calculating') || log.includes('Generating') || log.includes('Initializing') || log.includes('Loading');
-              const isError = log.includes('❌') || log.includes('Error') || log.includes('failed');
-
-              return (
-                <div key={index} className="flex items-center gap-1.5 animate-fade-in text-slate-800 transition-colors duration-300">
-                  <span className={isSuccess ? "text-[#00c853]" : isPending ? "text-yellow-500" : isError ? "text-red-500" : "text-[#00c853]"}>
-                    {isSuccess ? '✓' : isPending ? '⚡' : isError ? '❌' : '❯'}
-                  </span>
-                  <span>{log}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bottom Panel */}
-          <div className="flex justify-between text-[7px] text-slate-500 border-t border-slate-200 pt-1.5 transition-colors duration-300">
-            <span>PIPELINE: ACTIVE_RUNNER_v2.0</span>
-            <span>SHIELD: READY</span>
-          </div>
-        </div>
-
-        {/* Final Analysis Result Card */}
-        {scanResult && (
-          <div className="mt-6 border border-slate-200 bg-slate-50 rounded-2xl p-5 shadow-xl animate-fade-in text-left transition-colors duration-300">
-            <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-3">
-              <Shield className="w-5 h-5 text-[#00c853]" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">AI Fraud Audit Result</h4>
-            </div>
-
-            {/* Fraud Risk Indicator */}
-            <div className="grid grid-cols-12 gap-4 items-center mb-6 bg-white p-4 rounded-xl border border-slate-200 transition-colors duration-300">
-              
-              <div className="col-span-4 flex flex-col items-center justify-center border-r border-slate-200 pr-4">
-                <div className="relative w-16 h-16 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      className="text-slate-200"
-                      strokeWidth="3.5"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className={
-                        scanResult.fraud_assessment.risk_score <= 30
-                          ? "text-green-500"
-                          : scanResult.fraud_assessment.risk_score <= 50
-                            ? "text-yellow-500"
-                            : scanResult.fraud_assessment.risk_score <= 80
-                              ? "text-orange-500"
-                              : "text-red-500"
-                      }
-                      strokeDasharray={`${scanResult.fraud_assessment.risk_score}, 100`}
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-xs font-black text-slate-900">{scanResult.fraud_assessment.risk_score}%</span>
-                    <span className="text-[6px] text-slate-500 uppercase tracking-wider font-bold">Risk</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-8 flex flex-col justify-center">
-                <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wide text-slate-500">Risk Level:</span>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
-                    scanResult.fraud_assessment.risk_level === 'Low'
-                      ? "bg-green-500/10 text-green-500 border-green-500/20"
-                      : scanResult.fraud_assessment.risk_level === 'Medium'
-                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                        : scanResult.fraud_assessment.risk_level === 'High'
-                          ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
-                          : "bg-red-500/10 text-red-500 border-red-500/20"
-                  }`}>
-                    {scanResult.fraud_assessment.risk_level}
-                  </span>
-                </div>
-                <div className="text-[9px] text-slate-600 space-y-0.5 font-semibold">
-                  <p>Confidence: <strong className="text-slate-800">{scanResult.fraud_assessment.confidence}%</strong></p>
-                  <p>Recommendation: <strong className={
-                    scanResult.fraud_assessment.recommendation === 'Approve' ? 'text-[#00c853]' : 'text-red-500'
-                  }>{scanResult.fraud_assessment.recommendation}</strong></p>
-                </div>
-              </div>
-            </div>
-
-            {/* Grid of details */}
-            <div className="space-y-4 text-[10px]">
-              
-              {/* Receipt Summary */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">Receipt Summary</h5>
-                <div className="grid grid-cols-3 gap-y-1 text-slate-600 font-semibold">
-                  <span>Merchant:</span><span className="col-span-2 text-slate-800 font-bold">{scanResult.receipt.merchant}</span>
-                  <span>Category:</span><span className="col-span-2 text-slate-800">{scanResult.receipt.category}</span>
-                  <span>Purpose:</span><span className="col-span-2 text-slate-800">{scanResult.receipt.purpose}</span>
-                  <span>Amount:</span><span className="col-span-2 text-[#00c853] font-bold">₹{scanResult.receipt.amount}</span>
-                  <span>GSTIN:</span><span className="col-span-2 font-mono text-slate-800">{scanResult.receipt.gst}</span>
-                  <span>Invoice No:</span><span className="col-span-2 font-mono text-slate-800">{scanResult.receipt.invoice_number}</span>
-                </div>
-              </div>
-
-              {/* Image & Business Analysis */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">AI Analysis Checks</h5>
-                <div className="space-y-1.5 text-slate-655 font-semibold">
-                  <div className="flex justify-between items-center">
-                    <span>Tampering / Manipulation:</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
-                      scanResult.image_analysis.edited
-                        ? "bg-red-500/10 text-red-500 border-red-500/20"
-                        : "bg-green-500/10 text-green-500 border-green-500/20"
-                    }`}>
-                      {scanResult.image_analysis.edited ? "Possible manipulation detected" : "No manipulation detected"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Merchant Verification:</span>
-                    <span className={scanResult.business_validation.merchant_verified ? "text-[#00c853]" : "text-red-500"}>
-                      {scanResult.business_validation.merchant_verified ? "Verified ✓" : "Unverified ✗"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>GST Format & Status:</span>
-                    <span className={scanResult.business_validation.gst_valid ? "text-[#00c853]" : "text-red-500"}>
-                      {scanResult.business_validation.gst_valid ? "Valid ✓" : "Invalid ✗"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Price Deviation:</span>
-                    <span className={`px-1 rounded text-[8px] font-bold ${
-                      scanResult.price_analysis.status === 'Normal' ? 'text-[#00c853] bg-green-500/10' : 'text-red-500 bg-red-500/10'
-                    }`}>
-                      {scanResult.price_analysis.status} ({scanResult.price_analysis.deviation_percent}% deviation)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* History Intelligence */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">History & Duplicate Checks</h5>
-                <div className="grid grid-cols-2 gap-y-1 text-slate-600 font-semibold">
-                  <span>Truck Previous Repairs:</span><span className="text-slate-800 font-bold">{scanResult.truck_history.previous_repairs} repairs</span>
-                  <span>Days Since Last Repair:</span><span className="text-slate-800">{scanResult.truck_history.last_repair_days} days ago</span>
-                  <span>Driver Claims This Month:</span><span className="text-slate-800">{scanResult.driver_history.claims_this_month} claims</span>
-                  <span>Duplicate Claims:</span><span className={scanResult.business_validation.duplicate ? "text-red-500 font-bold" : "text-[#00c853]"}>
-                    {scanResult.business_validation.duplicate ? "Duplicate Found" : "No duplicates"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Reasoning */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white transition-colors duration-300">
-                <h5 className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">AI Reasonings</h5>
-                <ul className="list-disc list-inside space-y-1 text-slate-650 text-[9px] font-semibold leading-relaxed">
-                  {scanResult.reasoning.map((reason, i) => (
-                    <li key={i}>{reason}</li>
-                  ))}
-                </ul>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-      </div>
-    </div>
-  );
-}
-
-const ecosystemStages = [
-  {
-    key: 'driver',
-    num: '01',
-    nav: 'Driver',
-    title: 'Driver captures proof',
-    desc: 'Photos, videos, location and request details enter FleetGuard.',
-    tooltip: 'A request begins in the field.',
-    duration: 2800,
-    packet: { left: '22%', top: '53%' },
-  },
-  {
-    key: 'core',
-    num: '02',
-    nav: 'Core',
-    title: 'FleetGuard Core verifies',
-    desc: 'OCR, GPS, risk rules and fraud detection scan the request one by one.',
-    tooltip: 'The core checks every signal.',
-    duration: 3400,
-    packet: { left: '49%', top: '40%' },
-  },
-  {
-    key: 'owner',
-    num: '03',
-    nav: 'Owner',
-    title: 'Owner reviews the packet',
-    desc: 'The approved request arrives with amount, risk and verification status.',
-    tooltip: 'A calm approval surface for the owner.',
-    duration: 3000,
-    packet: { left: '74%', top: '53%' },
-  },
-  {
-    key: 'audit',
-    num: '04',
-    nav: 'Audit',
-    title: 'Audit trail records everything',
-    desc: 'Every event is time-stamped for compliance, reporting and traceability.',
-    tooltip: 'The full chain stays searchable.',
-    duration: 2800,
-    packet: { left: '58%', top: '76%' },
-  },
-  {
-    key: 'complete',
-    num: '05',
-    nav: 'Complete',
-    title: 'Complete visibility',
-    desc: 'One connected system. Every action verified. Every decision traceable.',
-    tooltip: 'The full ecosystem is visible end-to-end.',
-    duration: 2200,
-    packet: { left: '49%', top: '52%' },
-  },
-];
-
-function EcosystemFlowAnimation({ onStageChange }) {
-  const reduceMotion = useReducedMotion();
-  const [stageIndex, setStageIndex] = useState(0);
-  const [hoveredStage, setHoveredStage] = useState(null);
-
-  const activeIndex = hoveredStage !== null ? hoveredStage : stageIndex;
-  const activeStage = ecosystemStages[activeIndex];
-  const stageCount = ecosystemStages.length;
-
-  useEffect(() => {
-    if (onStageChange) {
-      onStageChange(activeIndex);
-    }
-  }, [activeIndex, onStageChange]);
-
-  useEffect(() => {
-    if (reduceMotion || hoveredStage !== null) return;
-
-    const timer = window.setTimeout(() => {
-      setStageIndex((current) => (current + 1) % stageCount);
-    }, activeStage.duration);
-
-    return () => window.clearTimeout(timer);
-  }, [activeStage.duration, hoveredStage, reduceMotion, stageCount]);
-
-  const replayStage = (index) => {
-    setHoveredStage(null);
-    setStageIndex(index);
-  };
-
-  const nodeScale = (key) => {
-    if (activeStage.key === key) return 1.04;
-    if (reduceMotion) return 1;
-    return 0.98;
-  };
-
-  const nodeOpacity = (key) => {
-    if (activeStage.key === key) return 1;
-    return reduceMotion ? 1 : 0.72;
-  };
-
-  return (
-    <div className="w-full">
-      <div className="relative overflow-hidden rounded-[36px] border border-slate-200 bg-white shadow-[0_24px_90px_rgba(15,23,42,0.08)]">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,250,244,0.96))]" />
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_20%,rgba(0,200,83,0.08),transparent_28%),radial-gradient(circle_at_80%_24%,rgba(0,200,83,0.06),transparent_24%),radial-gradient(circle_at_50%_85%,rgba(0,200,83,0.05),transparent_22%)]" />
-
-        <div className="relative p-4 sm:p-6 lg:p-8">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-700">
-              <Sparkles className="h-3.5 w-3.5" />
-              FleetGuard ecosystem in motion
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Loop</p>
-              <p className="text-sm font-black text-slate-900">{String(activeIndex + 1).padStart(2, '0')}/{stageCount}</p>
-            </div>
-          </div>
-
-          {reduceMotion ? (
-            <StaticEcosystemDiagram />
-          ) : (
-            <>
-              <div className="hidden lg:block">
-                <DesktopEcosystemScene activeStage={activeStage} nodeScale={nodeScale} nodeOpacity={nodeOpacity} />
-              </div>
-              <div className="lg:hidden">
-                <MobileEcosystemScene activeStage={activeStage} nodeScale={nodeScale} nodeOpacity={nodeOpacity} />
-              </div>
-            </>
-          )}
-
-          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {ecosystemStages.map((stage, index) => {
-              const active = index === activeIndex;
-              return (
-                <button
-                  key={stage.key}
-                  type="button"
-                  onMouseEnter={() => setHoveredStage(index)}
-                  onMouseLeave={() => setHoveredStage(null)}
-                  onFocus={() => setHoveredStage(index)}
-                  onBlur={() => setHoveredStage(null)}
-                  onClick={() => replayStage(index)}
-                  className={`rounded-2xl border px-3 py-2 text-left transition-all duration-200 ${
-                    active
-                      ? 'border-emerald-500/30 bg-emerald-50 text-slate-900 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/60'
-                  }`}
-                >
-                  <span className="block text-[9px] font-black uppercase tracking-[0.22em] text-emerald-600">{stage.num}</span>
-                  <span className="mt-1 block text-[11px] font-bold leading-tight">{stage.nav}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <AnimatePresence>
-            {hoveredStage !== null && (
-              <motion.div
-                key={`tooltip-${ecosystemStages[hoveredStage].key}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm"
-              >
-                <span className="font-bold text-slate-900">{ecosystemStages[hoveredStage].nav}:</span> {ecosystemStages[hoveredStage].tooltip}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StaticEcosystemDiagram() {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <DriverCaptureCard active reducedMotion />
-      </div>
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <CoreVerificationCard active reducedMotion />
-      </div>
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <OwnerDashboardCard active reducedMotion />
-      </div>
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <AuditTrailCard active reducedMotion />
-      </div>
-      <div className="rounded-3xl border border-emerald-500/15 bg-emerald-50 p-4 shadow-sm lg:col-span-2">
-        <CompleteVisibilityCard active reducedMotion />
-      </div>
-    </div>
-  );
-}
-
-function DesktopEcosystemScene({ activeStage, nodeScale, nodeOpacity }) {
-  const activeKey = activeStage.key;
-
-  return (
-    <div className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(243,250,245,0.98))] p-5 sm:p-6 lg:p-8">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(0,200,83,0.05),transparent_24%),radial-gradient(circle_at_80%_20%,rgba(0,200,83,0.04),transparent_24%),radial-gradient(circle_at_50%_75%,rgba(0,200,83,0.04),transparent_22%)]" />
-
-      <div className="relative z-10 mb-5">
-        <div className="flex items-center justify-between gap-4 rounded-[28px] border border-emerald-500/10 bg-white px-4 py-3 shadow-sm">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Connected flow</p>
-            <p className="mt-1 text-sm font-semibold text-slate-700">One request moving cleanly through the ecosystem</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Active</p>
-            <p className="text-sm font-black text-slate-900">{activeStage.num} / 05</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10 grid gap-4 xl:grid-cols-12">
-        <motion.div
-          className="xl:col-span-4"
-          animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }}
-          transition={{ duration: 0.28 }}
-        >
-          <DriverCaptureCard active={activeKey === 'driver'} />
-        </motion.div>
-
-        <motion.div
-          className="xl:col-span-4"
-          animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }}
-          transition={{ duration: 0.28 }}
-        >
-          <CoreVerificationCard active={activeKey === 'core'} />
-        </motion.div>
-
-        <motion.div
-          className="xl:col-span-4"
-          animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }}
-          transition={{ duration: 0.28 }}
-        >
-          <OwnerDashboardCard active={activeKey === 'owner'} />
-        </motion.div>
-
-        <div className="xl:col-span-12">
-          <div className="flex justify-center py-1">
-            <div className="h-10 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
-          </div>
-        </div>
-
-        <motion.div
-          className="xl:col-span-8 xl:col-start-3"
-          animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }}
-          transition={{ duration: 0.28 }}
-        >
-          <AuditTrailCard active={activeKey === 'audit'} />
-        </motion.div>
-
-        <motion.div
-          className="xl:col-span-8 xl:col-start-3"
-          animate={{ scale: nodeScale('complete'), opacity: nodeOpacity('complete') }}
-          transition={{ duration: 0.28 }}
-        >
-          <CompleteVisibilityCard active={activeKey === 'complete'} />
-        </motion.div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {activeKey === 'complete' && (
-          <motion.div
-            key="complete-banner"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="relative z-10 mt-4 rounded-2xl border border-emerald-500/15 bg-emerald-50 px-5 py-4 text-center shadow-sm"
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-600">Complete visibility ✓</p>
-            <p className="mt-1 text-sm text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function MobileEcosystemScene({ activeStage, nodeScale, nodeOpacity }) {
-  const activeKey = activeStage.key;
-  const packet = activeStage.packet;
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
-        <motion.div animate={{ scale: nodeScale('driver'), opacity: nodeOpacity('driver') }} transition={{ duration: 0.3 }}>
-          <DriverCaptureCard active={activeKey === 'driver'} mobile />
-        </motion.div>
-      </div>
-      <div className="flex justify-center">
-        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
-      </div>
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
-        <motion.div animate={{ scale: nodeScale('core'), opacity: nodeOpacity('core') }} transition={{ duration: 0.3 }}>
-          <CoreVerificationCard active={activeKey === 'core'} mobile />
-        </motion.div>
-      </div>
-      <div className="flex justify-center">
-        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
-      </div>
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
-        <motion.div animate={{ scale: nodeScale('owner'), opacity: nodeOpacity('owner') }} transition={{ duration: 0.3 }}>
-          <OwnerDashboardCard active={activeKey === 'owner'} mobile />
-        </motion.div>
-      </div>
-      <div className="flex justify-center">
-        <div className="h-8 w-px bg-gradient-to-b from-emerald-500/0 via-emerald-500/35 to-emerald-500/0" />
-      </div>
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
-        <motion.div animate={{ scale: nodeScale('audit'), opacity: nodeOpacity('audit') }} transition={{ duration: 0.3 }}>
-          <AuditTrailCard active={activeKey === 'audit'} mobile />
-        </motion.div>
-      </div>
-      <div className="rounded-[28px] border border-emerald-500/15 bg-emerald-50 p-4 shadow-sm">
-        <CompleteVisibilityCard active={activeKey === 'complete'} packet={packet} mobile />
-      </div>
-    </div>
-  );
-}
-
-function DriverCaptureCard({ active, mobile }) {
-  return (
-    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Driver App</p>
-          <p className="mt-1 text-sm font-black text-slate-900">Driver captures proof</p>
-        </div>
-        <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Live</div>
-      </div>
-      <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-            <Phone className="h-4.5 w-4.5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-900">Rahul • Delhi ↔ Jaipur</p>
-            <p className="text-xs text-slate-500">Request #FG-2481</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {[
-            { icon: Truck, label: 'Trip', value: 'Delhi → Jaipur' },
-            { icon: MapPin, label: 'Location', value: 'NH-48 • Verified' },
-            { icon: Upload, label: 'Photos', value: '2 repair images' },
-            { icon: FileWarning, label: 'Video', value: '1 incident clip' },
-          ].map((row) => (
-            <div key={row.label} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <row.icon className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{row.label}</p>
-                  <p className="text-xs font-semibold text-slate-700">{row.value}</p>
-                </div>
-              </div>
-              <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-              {active ? 'Submitting request…' : 'Submit request'}
-            </span>
-            {active ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Zap className="h-4 w-4 text-emerald-600" /></motion.span> : <CheckCircle className="h-4 w-4 text-emerald-600" />}
-          </div>
-          <div className="mt-2 h-2 rounded-full bg-emerald-100">
-            <motion.div
-              className="h-2 rounded-full bg-emerald-500"
-              initial={false}
-              animate={{ width: active ? '100%' : '74%' }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CoreVerificationCard({ active, mobile }) {
-  const modules = ['OCR', 'GPS', 'Risk Rules', 'Fraud Detection'];
-
-  return (
-    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
-      <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">FleetGuard Core</p>
-        <p className="mt-1 text-sm font-black text-slate-900">Secure • Intelligent • Trusted</p>
-      </div>
-      <div className="relative mx-auto mt-5 flex h-[260px] max-w-[320px] items-center justify-center">
-        <div className="absolute inset-0 rounded-full border border-emerald-100" />
-        <div className="absolute inset-6 rounded-full border border-emerald-200/70" />
-        <motion.div
-          className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-center shadow-sm"
-          animate={active ? { boxShadow: ['0 0 0 0 rgba(0,200,83,0.14)', '0 0 0 18px rgba(0,200,83,0)', '0 0 0 0 rgba(0,200,83,0.14)'] } : {}}
-          transition={{ duration: 2.4, repeat: active ? Infinity : 0 }}
-        >
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">FleetGuard</p>
-            <p className="text-lg font-black text-slate-900">CORE</p>
-          </div>
-        </motion.div>
-        {modules.map((module, index) => (
-          <motion.div
-            key={module}
-            className="absolute rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center shadow-sm"
-            style={{
-              left: index === 0 ? '12%' : index === 1 ? '62%' : index === 2 ? '12%' : '62%',
-              top: index === 0 ? '12%' : index === 1 ? '12%' : index === 2 ? '64%' : '64%',
-            }}
-            initial={false}
-            animate={active ? { opacity: 1, scale: 1 } : { opacity: 0.9, scale: 0.98 }}
-            transition={{ duration: 0.35, delay: active ? index * 0.14 : 0 }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <Check className="h-3.5 w-3.5" />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{module}</p>
-                <p className="text-xs font-semibold text-slate-700">Passed</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-        {active && (
-          <motion.div
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-black text-emerald-700 shadow-sm"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            VERIFIED ✓
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function OwnerDashboardCard({ active, mobile }) {
-  return (
-    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Owner Dashboard</p>
-          <p className="mt-1 text-sm font-black text-slate-900">Verified request arrives</p>
-        </div>
-        <BadgeCheck className="h-5 w-5 text-emerald-500" />
-      </div>
-      <div className="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Verified request</p>
-        <div className="mt-3 space-y-2 text-sm text-slate-700">
-          <div className="flex justify-between gap-3"><span className="text-slate-500">Driver</span><span className="font-semibold text-slate-900">Rahul</span></div>
-          <div className="flex justify-between gap-3"><span className="text-slate-500">Trip</span><span className="font-semibold text-slate-900">Delhi → Jaipur</span></div>
-          <div className="flex justify-between gap-3"><span className="text-slate-500">Amount</span><span className="font-semibold text-slate-900">₹12,450</span></div>
-          <div className="flex justify-between gap-3"><span className="text-slate-500">Risk</span><span className="font-semibold text-emerald-600">Low</span></div>
-          <div className="flex justify-between gap-3"><span className="text-slate-500">AI Verification</span><span className="font-semibold text-emerald-600">Passed</span></div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Approve</button>
-          <button className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700">Review</button>
-        </div>
-        <AnimatePresence>
-          {active && (
-            <motion.div
-              key="approved"
-              initial={{ opacity: 0, scale: 0.95, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-emerald-700"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em]">APPROVED ✓</p>
-              <p className="mt-1 text-xs font-semibold">Green confirmation sent to operations.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-function AuditTrailCard({ active, mobile }) {
-  const events = [
-    'Driver submitted',
-    'AI verified',
-    'Owner approved',
-    'Transaction recorded',
-    'Compliance ready',
-  ];
-
-  return (
-    <div className={`rounded-[28px] border border-slate-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Audit Trail</p>
-          <p className="mt-1 text-sm font-black text-slate-900">Every action is traceable</p>
-        </div>
-        <BarChart3 className="h-5 w-5 text-emerald-500" />
-      </div>
-      <div className="mt-4 space-y-3">
-        {events.map((event, index) => (
-          <motion.div
-            key={event}
-            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
-            initial={false}
-            animate={active ? { opacity: 1, x: 0 } : { opacity: index === 0 ? 1 : 0.86, x: 0 }}
-            transition={{ duration: 0.28, delay: active ? index * 0.12 : 0 }}
-          >
-            <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <Check className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-900">{event}</p>
-              <p className="text-[10px] text-slate-500">10:4{index} AM</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CompleteVisibilityCard({ active, mobile }) {
-  return (
-    <div className={`rounded-[28px] border border-emerald-200 bg-white ${mobile ? 'p-4' : 'p-5'} shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Complete ecosystem</p>
-          <p className="mt-1 text-sm font-black text-slate-900">One connected request journey</p>
-        </div>
-        <Shield className="h-5 w-5 text-emerald-500" />
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        {['Driver App', 'FleetGuard Core', 'Owner Dashboard', 'Audit Trail'].map((item) => (
-          <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{item}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
-        <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-700">COMPLETE VISIBILITY ✓</p>
-        <p className="mt-1 text-xs text-slate-600">One connected system. Every action verified. Every decision traceable.</p>
-      </div>
-      {active && (
-        <motion.div
-          className="mt-4 flex justify-center"
-          animate={{ scale: [1, 1.02, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="h-2 w-36 rounded-full bg-emerald-500/20">
-            <div className="h-2 w-full rounded-full bg-emerald-500" />
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Legacy chat simulator
- */
-function WhatsAppSimulator({ t }) {
-  const [messages, setMessages] = useState([]);
-  const [typingState, setTypingState] = useState(null); // 'driver' | 'bot' | 'owner'
-  const chatContainerRef = useRef(null);
-
-  const conversation = [
-    { sender: 'driver', type: 'text', text: t('chat.driverMsg'), time: '10:14 AM' },
-    { sender: 'bot', type: 'text', text: t('chat.botMsg'), time: '10:14 AM', bullets: [t('chat.repairVideo'), t('chat.billPhoto'), t('chat.liveLocation'), t('chat.requestedAmount')] },
-    { sender: 'driver', type: 'media', text: '📹 video_repair.mp4', time: '10:16 AM' },
-    { sender: 'driver', type: 'receipt', text: `🧾 bill_photo.jpg\n📍 NH-48, Udaipur\n💰 ₹450`, time: '10:17 AM' },
-    { sender: 'bot', type: 'verify', text: t('chat.verificationComplete'), time: '10:19 AM', details: { truck: 'RJ14 XX 1234', issue: 'Tyre Puncture', amount: '₹450', loc: 'Verified ✓', bill: 'Authentic ✓', fraud: 'Low' } },
-    { sender: 'owner', type: 'alert', text: t('chat.ownerAlert'), time: '10:19 AM', details: { desc: t('chat.verifiedExpense'), detail: 'Truck RJ14 XX 1234\nIssue: Puncture — ₹450', checks: t('chat.allChecksPassed'), action: t('chat.viewProof') } }
-  ];
-
-  useEffect(() => {
-    let index = 0;
-    let isActive = true;
-    setMessages([]);
-    
-    const playNext = () => {
-      if (!isActive) return;
-      if (index >= conversation.length) {
-        // Wait and reset
-        setTimeout(() => {
-          if (!isActive) return;
-          setMessages([]);
-          index = 0;
-          playNext();
-        }, 5500);
-        return;
-      }
-
-      const nextMsg = conversation[index];
-      
-      if (nextMsg.sender === 'driver') {
-        setTypingState('driver');
-      } else if (nextMsg.sender === 'bot') {
-        setTypingState('bot');
-      } else {
-        setTypingState('owner');
-      }
-
-      setTimeout(() => {
-        if (!isActive) return;
-        setMessages((prev) => [...prev, nextMsg]);
-        setTypingState(null);
-        index++;
-        
-        setTimeout(playNext, 2200);
-      }, 1500);
-    };
-
-    // Delay start slightly
-    setTimeout(playNext, 800);
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  }, [messages, typingState]);
-
-  return (
-    <div className="w-full max-w-xs mx-auto">
-      <div className="rounded-[40px] border-4 border-slate-800 bg-[#efeae2] relative shadow-2xl overflow-hidden aspect-[9/18] flex flex-col justify-between shadow-black/80">
-        
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-800 h-5 w-28 rounded-b-xl z-20 flex items-center justify-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-          <div className="w-8 h-1 rounded-full bg-slate-700" />
-        </div>
-
-        {/* WhatsApp Header */}
-        <div className="bg-[#005c4b] text-white pt-8 pb-3 px-4 flex items-center gap-3 shadow-md z-10">
-          <div className="w-9 h-9 rounded-full bg-[#00c853] text-white flex items-center justify-center font-bold text-xs shadow-inner shadow-black/20 font-sans">
-            FG
-          </div>
-          <div>
-            <h4 className="font-bold text-[11px] tracking-wide font-sans">FleetGuard Bot</h4>
-            <p className="text-[9px] text-emerald-300 font-medium font-sans">online</p>
-          </div>
-        </div>
-
-        {/* Chat Area */}
-        <div ref={chatContainerRef} className="flex-1 p-3.5 space-y-3 overflow-y-auto custom-scrollbar flex flex-col bg-[#efeae2] relative z-0">
-          {messages.map((msg, i) => {
-            if (msg.sender === 'driver') {
-              return (
-                <div key={i} className="flex justify-end animate-slide-up">
-                  <div className="bg-[#d9fdd3] text-slate-800 p-2.5 rounded-xl rounded-tr-none max-w-[85%] shadow-sm border border-emerald-100/40">
-                    <p className="text-[10px] leading-relaxed whitespace-pre-line font-medium font-sans">{msg.text}</p>
-                    <span className="text-[7.5px] text-slate-400 block text-right mt-1 font-semibold font-sans">{msg.time}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            if (msg.sender === 'bot') {
-              return (
-                <div key={i} className="flex justify-start animate-slide-up">
-                  <div className="bg-white text-slate-800 p-2.5 rounded-xl rounded-tl-none max-w-[85%] shadow-sm border border-slate-100">
-                    <p className="text-[10px] leading-relaxed whitespace-pre-line font-medium font-sans">{msg.text}</p>
-                    {msg.bullets && (
-                      <ul className="mt-1 space-y-0.5 pl-1 text-slate-600 font-medium text-[9px] font-sans">
-                        {msg.bullets.map((b, idx) => (
-                          <li key={idx} className="flex items-center gap-1">
-                            <span className="text-[#00c853]">●</span> {b}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {msg.details && (
-                      <div className="mt-2 pt-1 border-t border-slate-100 text-[9px] text-slate-600 space-y-0.5 font-medium font-sans">
-                        <p>🚛 Truck: <strong className="text-slate-800">{msg.details.truck}</strong></p>
-                        <p>🔧 Issue: <strong className="text-slate-800">{msg.details.issue}</strong></p>
-                        <p>💰 Amount: <strong className="text-slate-800">{msg.details.amount}</strong></p>
-                        <p>📍 Location: <strong className="text-[#00c853]">{msg.details.loc}</strong></p>
-                        <p>🧾 Bill: <strong className="text-[#00c853]">{msg.details.bill}</strong></p>
-                        <p>⚠️ Risk: <strong className="text-[#00c853] font-bold">{msg.details.fraud}</strong></p>
-                      </div>
-                    )}
-                    <span className="text-[7.5px] text-slate-400 block text-right mt-1 font-semibold font-sans">{msg.time}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            if (msg.sender === 'owner') {
-              return (
-                <div key={i} className="flex justify-start animate-slide-up">
-                  <div className="bg-[#e1f5fe] border border-blue-200 text-slate-800 p-2.5 rounded-xl rounded-tl-none max-w-[85%] shadow-sm">
-                    <div className="flex items-center gap-1 border-b border-blue-100 pb-1 mb-1 font-sans">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                      <span className="font-bold text-[9px] text-blue-800 uppercase tracking-wider">{msg.text}</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-700 font-sans">{msg.details.desc}</p>
-                    <p className="text-[9px] text-slate-600 mt-1 font-mono bg-white/50 p-1.5 rounded border border-blue-100/50 whitespace-pre-line">{msg.details.detail}</p>
-                    <div className="mt-1.5 flex items-center gap-1 text-[8.5px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full w-fit font-sans">
-                      <Check className="w-2.5 h-2.5" />
-                      {msg.details.checks}
-                    </div>
-                    <button className="mt-2 w-full py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[8.5px] transition-colors shadow-sm font-sans">
-                      {msg.details.action}
-                    </button>
-                    <span className="text-[7.5px] text-slate-400 block text-right mt-1 font-semibold font-sans">{msg.time}</span>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })}
-
-          {/* Typing Indicator */}
-          {typingState && (
-            <div className={`flex ${typingState === 'driver' ? 'justify-end' : 'justify-start'} animate-pulse`}>
-              <div className={`p-2 px-2.5 rounded-full text-[9px] ${typingState === 'driver' ? 'bg-[#d9fdd3] rounded-tr-none text-emerald-800' : 'bg-white rounded-tl-none text-slate-500'} flex items-center gap-1`}>
-                <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1 h-1 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Home Button Indicator */}
-        <div className="bg-slate-900 py-2.5 w-full flex justify-center items-center z-10">
-          <div className="w-24 h-1 rounded-full bg-white/30" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function LandingPage() {
-  const { t } = useLanguage();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [ecosystemStageIndex, setEcosystemStageIndex] = useState(0);
-
-  // ——— Smooth Scrolling & Scroll Animations ———
-  const pageRef = useRef(null);
-  // useLenis(); removed due to scroll lag
-  useScrollAnimations(pageRef);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = [
-    { label: t('nav.problem'), href: '#problem' },
-    { label: t('nav.howItWorks'), href: '#how-it-works' },
-    { label: t('nav.features'), href: '#features' },
-    { label: t('nav.ecosystem'), href: '#ecosystem' },
-    { label: t('nav.about'), href: '#about' },
-  ];
+  const sectionVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+  };
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-slate-50#070a13] font-sans text-slate-700 overflow-x-hidden relative selection:bg-[#00c853]/30 selection:text-white transition-colors duration-300">
-      
-      {/* Interactive nodes and lines backdrop */}
-      <InteractiveNetworkBackground />
-
-      {/* Radiant glow vectors behind page */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#00c853]/5 rounded-full blur-[140px] pointer-events-none z-0" />
-      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-[#00c853]/3 rounded-full blur-[140px] pointer-events-none z-0" />
-      <div className="absolute bottom-1/4 left-10 w-[450px] h-[450px] bg-[#00c853]/4 rounded-full blur-[140px] pointer-events-none z-0" />
-
-      {/* ===== NAVBAR ===== */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
-        isScrolled 
-          ? "bg-white/70#070a13]/70 backdrop-blur-lg border-b border-slate-200/50 shadow-sm" 
-          : "bg-transparent border-b border-transparent"
-      }`} id="navbar">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-[#00c853]/20">
+      {/* 1. NAVBAR */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-[#00c853] flex items-center justify-center shadow-lg shadow-[#00c853]/20 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">
-              <span className="text-slate-900 transition-colors duration-300">Fleet </span>
-              <span className="text-[#00c853]">Guard</span>
-            </span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Fleet<span className="text-[#00c853]">Guard</span></span>
           </Link>
 
-          {/* Nav Items */}
-          <div className={cn(
-            "hidden md:flex items-center gap-1.5 border rounded-full px-2 py-1 transition-all duration-300 shadow-sm",
-            isScrolled
-              ? "bg-slate-100/85 border-slate-200/80 shadow-black/5"
-              : "bg-white/10 border-white/15 shadow-black/10"
-          )}>
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "text-[11px] font-bold px-3 py-1.5 rounded-full transition-all duration-200 relative group",
-                  isScrolled
-                    ? "text-slate-700 hover:text-[#00c853]:text-[#00c853] hover:bg-slate-200/60:bg-slate-800/60"
-                    : "text-white/90 hover:text-white hover:bg-white/10"
-                )}
-              >
-                {item.label}
-              </a>
-            ))}
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+            <a href="#product" className="hover:text-slate-900 transition-colors">Product</a>
+            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
+            <a href="#driver-app" className="hover:text-slate-900 transition-colors">Driver App</a>
+            <a href="#dashboard" className="hover:text-slate-900 transition-colors">Fleet Dashboard</a>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-4">
-            <LanguageSelector variant={isScrolled ? "glass-scrolled" : "glass-transparent"} />
-            <Link
-              to="/downloads"
-              className={cn(
-                "px-4 py-2 rounded-full border transition-all duration-300 hidden lg:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
-                isScrolled
-                  ? "bg-slate-100/80 border-slate-200/80 text-slate-700 hover:bg-slate-200/50"
-                  : "bg-white/10 border-white/15 text-white hover:bg-white/15"
-              )}
-            >
-              Get Apps
+          <div className="hidden md:flex items-center gap-4">
+            <Link to="/login" className="text-sm font-bold text-slate-700 hover:text-slate-900 px-4 py-2 transition-colors">
+              Dashboard
             </Link>
-            <Link
-              to="/login"
-              className={cn(
-                "px-4 py-2 rounded-full border transition-all duration-300 hidden sm:inline-flex items-center gap-2 backdrop-blur-md shadow-sm text-xs font-bold",
-                isScrolled
-                  ? "bg-slate-100/80 border-slate-200/80 text-slate-700 hover:bg-slate-200/50:bg-slate-800/50"
-                  : "bg-white/10 border-white/15 text-white hover:bg-white/15:bg-white/10"
-              )}
-              id="dashboard-login-btn"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-[#00c853]" />
-              {t('nav.dashboard')}
+            <Link to="/login" className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-all shadow-md">
+              Book a Demo
             </Link>
-            <a
-              href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
-              className="px-4 py-2 rounded-full bg-[#00c853]/85 hover:bg-[#00b848]/95 border border-[#00c853]/20 hover:border-[#00c853]/40 text-white text-xs font-bold transition-all duration-200 hover:shadow-lg hover:shadow-green-500/20 backdrop-blur-md inline-flex items-center gap-1.5 active:scale-95"
-              id="book-demo-btn"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {t('nav.bookDemo')}
-            </a>
           </div>
+
+          <button className="md:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
         </div>
+
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-white border-b border-slate-200 px-6 py-4 overflow-hidden"
+            >
+              <div className="flex flex-col gap-4 text-sm font-medium text-slate-600">
+                <a href="#product" onClick={() => setIsMobileMenuOpen(false)}>Product</a>
+                <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)}>How It Works</a>
+                <a href="#driver-app" onClick={() => setIsMobileMenuOpen(false)}>Driver App</a>
+                <a href="#dashboard" onClick={() => setIsMobileMenuOpen(false)}>Fleet Dashboard</a>
+                <div className="h-px bg-slate-100 my-2" />
+                <Link to="/login" className="text-slate-900 font-bold" onClick={() => setIsMobileMenuOpen(false)}>Dashboard Login</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden z-10 pt-32 pb-24" id="hero">
+      {/* 2. HERO */}
+      <section className="pt-40 pb-20 px-6 overflow-hidden relative">
+        {/* Subtle background element */}
+        <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-[#00c853]/5 to-transparent -z-10 pointer-events-none" />
         
-        {/* Full-Screen Background Image with Ken Burns */}
-        <div data-hero-bg className="absolute inset-0 z-0 opacity-100 pointer-events-none">
-          <picture>
-            <source
-              type="image/webp"
-              srcSet="/assets/hero_bg_640.webp 640w,
-                      /assets/hero_bg_1200.webp 1200w,
-                      /assets/hero_bg_1920.webp 1920w,
-                      /assets/hero_bg_3840.webp 3840w"
-              sizes="100vw"
-            />
-            <source
-              type="image/jpeg"
-              srcSet="/assets/hero_bg_640.jpg 640w,
-                      /assets/hero_bg_1200.jpg 1200w,
-                      /assets/hero_bg_1920.jpg 1920w,
-                      /assets/hero_bg_3840.jpg 3840w"
-              sizes="100vw"
-            />
-            <img
-              src="/assets/hero_bg_1920.jpg"
-              alt="Hero background"
-              className="w-full h-full object-cover object-center"
-              loading="eager"
-              fetchpriority="high"
-            />
-          </picture>
-          {/* Subtle overlay to guarantee high-contrast text readability */}
-          <div className="absolute inset-0 bg-black/30 transition-colors duration-300" style={{ zIndex: 3 }} />
-          {/* Top scrim overlay to make navbar options pop against sky */}
-          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/15 to-transparent pointer-events-none" style={{ zIndex: 4 }} />
-        </div>
+        <div className="max-w-7xl mx-auto text-center">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6"
+          >
+            Manage Your Fleet.<br />
+            <span className="text-[#00c853]">Verify Every Driver.</span>
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed"
+          >
+            FleetGuard connects drivers, verification workflows, and fleet teams in one platform — from onboarding and document submission to verification and approval.
+          </motion.p>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Link to="/login" className="w-full sm:w-auto bg-[#00c853] hover:bg-[#00b848] text-white text-base font-bold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-[#00c853]/20 flex items-center justify-center gap-2">
+              Book a Demo <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link to="/login" className="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 text-base font-bold px-8 py-3.5 rounded-xl transition-all shadow-sm border border-slate-200">
+              Open Dashboard
+            </Link>
+          </motion.div>
 
-        <div data-hero-content className="max-w-7xl mx-auto relative z-10 w-full px-6">
-          {/* Left - Typography & Buttons */}
-          <div className="max-w-2xl flex flex-col items-start text-left">
-            {/* Main Header */}
-            <h1 className="text-4xl lg:text-[54px] font-extrabold leading-[1.1] tracking-tight text-white mb-6">
-              {t('hero.title1')}{' '}
-              <span className="block text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text mt-1">
-                {t('hero.title2')} {t('hero.title3')}
-              </span>
-              <span className="inline-block text-[#00c853] mt-2 relative italic font-black">
-                {t('hero.title4')} {t('hero.title5')}
-                <span className="absolute left-0 bottom-0.5 w-full h-[3px] bg-[#00c853]/40 blur-[1px] rounded" />
-              </span>
-            </h1>
+          {/* HERO VISUAL - Ecosystem */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.4 }}
+            className="mt-20 relative max-w-5xl mx-auto"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 p-8 bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+              
+              <div className="w-full md:w-1/3 flex flex-col items-center p-6 bg-slate-50 rounded-2xl border border-slate-100 relative group">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-slate-900 mb-2">Driver App</h3>
+                <ul className="text-xs text-slate-500 font-medium space-y-1.5 text-center">
+                  <li>Driver Onboarding</li>
+                  <li>Document Upload</li>
+                  <li>Profile Status</li>
+                </ul>
+                <div className="absolute -bottom-6 md:-right-6 md:top-1/2 md:-translate-y-1/2 md:bottom-auto text-slate-300 group-hover:text-[#00c853] transition-colors rotate-90 md:rotate-0 z-10 bg-white p-1 rounded-full">
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              </div>
 
-            {/* Description */}
-            <p className="text-sm md:text-base text-slate-200 leading-relaxed mb-8 max-w-xl">
-              {t('hero.desc')}
-            </p>
+              <div className="w-full md:w-1/3 flex flex-col items-center p-6 bg-[#00c853]/5 rounded-2xl border border-[#00c853]/20 relative group">
+                <div className="w-12 h-12 bg-[#00c853]/10 text-[#00c853] rounded-xl flex items-center justify-center mb-4">
+                  <Server className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-slate-900 mb-2">FleetGuard Core</h3>
+                <ul className="text-xs text-slate-600 font-medium space-y-1.5 text-center">
+                  <li>API Integration</li>
+                  <li>Document Processing</li>
+                  <li>Verification Engine</li>
+                </ul>
+                <div className="absolute -bottom-6 md:-right-6 md:top-1/2 md:-translate-y-1/2 md:bottom-auto text-slate-300 group-hover:text-[#00c853] transition-colors rotate-90 md:rotate-0 z-10 bg-white p-1 rounded-full">
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              </div>
 
-            {/* CTA Controls */}
-            <div className="flex flex-wrap items-center gap-4 mb-12">
-              <a
-                href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                  bg-[#00c853] hover:bg-[#00b848] text-white font-bold text-sm
-                  transition-all duration-200 hover:shadow-lg hover:shadow-green-500/25 active:scale-95"
-                id="hero-cta"
-              >
-                <Sparkles className="w-4 h-4" />
-                {t('nav.bookDemo')}
-              </a>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                  bg-white/10 hover:bg-white/20 border border-white/20
-                  text-white font-bold text-sm transition-all duration-200 active:scale-95 backdrop-blur-sm"
-              >
-                <LayoutDashboard className="w-4 h-4 text-[#00c853]" />
-                {t('nav.dashboardLogin')}
-              </Link>
+              <div className="w-full md:w-1/3 flex flex-col items-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
+                  <LayoutDashboard className="w-6 h-6" />
+                </div>
+                <h3 className="font-bold text-slate-900 mb-2">Fleet Dashboard</h3>
+                <ul className="text-xs text-slate-500 font-medium space-y-1.5 text-center">
+                  <li>Driver Management</li>
+                  <li>Document Review</li>
+                  <li>Approvals</li>
+                </ul>
+              </div>
+
             </div>
-
-            {/* Stats list with glowing text */}
-            <div data-animate="hero-stats" className="grid grid-cols-3 gap-6 md:gap-10 border-t border-white/20 pt-8 w-full max-w-md">
-              <div>
-                <p className="text-2xl md:text-3xl font-black text-[#00c853] drop-shadow-[0_0_8px_rgba(0,200,83,0.3)]">40%</p>
-                <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-1">{t('hero.stat1Label')}</p>
-              </div>
-              <div>
-                <p className="text-2xl md:text-3xl font-black text-[#00c853] drop-shadow-[0_0_8px_rgba(0,200,83,0.3)]">500+</p>
-                <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-1">{t('hero.stat2Label')}</p>
-              </div>
-              <div>
-                <p className="text-2xl md:text-3xl font-black text-white">0</p>
-                <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-1">{t('hero.stat3Label')}</p>
-              </div>
-            </div>
-          </div>
+          </motion.div>
         </div>
-
       </section>
 
-      {/* Integration Bar Removed per user request */}
-
-      {/* ===== THE PROBLEM (Glassmorphism & Glow Accents) ===== */}
-      <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="problem">
-        <div className="max-w-7xl mx-auto">
-          
-          <div data-animate="fade-up" className="mb-16 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-              <div className="w-8 h-0.5 bg-[#00c853]" />
-              <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('problem.label')}</span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight transition-colors duration-300">
-              {t('problem.title1')}{' '}
-              <span className="text-[#00c853] italic font-black">{t('problem.title2')}</span>
-            </h2>
-            <p className="text-sm md:text-base text-slate-650 mt-4 max-w-xl leading-relaxed transition-colors duration-300">
-              {t('problem.desc')}
-            </p>
+      {/* 3. THE PROBLEM */}
+      <section className="py-24 bg-white px-6" id="problem">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-7xl mx-auto"
+        >
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Fleet Operations Are Fragmented.</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">Driver information, documents, verification, and approvals often live across disconnected workflows.</p>
           </div>
 
-          <div data-animate="stagger-children" className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: FileWarning, title: t('problem.fake.title'), desc: t('problem.fake.desc'), color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-              { icon: Fuel, title: t('problem.fuel.title'), desc: t('problem.fuel.desc'), color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-              { icon: Eye, title: t('problem.proof.title'), desc: t('problem.proof.desc'), color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-              { icon: Phone, title: t('problem.pressure.title'), desc: t('problem.pressure.desc'), color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+              { title: "Manual Onboarding", desc: "Collecting and managing driver information manually creates unnecessary operational work.", icon: Users },
+              { title: "Scattered Documents", desc: "Driver documents are difficult to track when submissions and records are spread across different workflows.", icon: FileText },
+              { title: "Slow Verification", desc: "Fleet teams need a clear way to review driver information and document status before approval.", icon: Clock },
+              { title: "Disconnected Ops", desc: "Drivers and fleet managers need one connected workflow instead of separate processes.", icon: ShieldAlert },
             ].map((item, i) => (
-              <TiltCard key={i} className="h-full">
-                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-lg h-full flex flex-col justify-between group transition-colors duration-300">
-                  <div>
-                    <div className={`p-3 rounded-xl ${item.bg} border ${item.border} w-fit mb-5 group-hover:scale-110 transition-transform duration-200`}>
-                      <item.icon className={`w-5 h-5 ${item.color}`} />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-3 tracking-wide transition-colors duration-300">{item.title}</h3>
-                    <p className="text-xs text-slate-600 leading-relaxed transition-colors duration-300">{item.desc}</p>
-                  </div>
-                </div>
-              </TiltCard>
+              <div key={i} className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
+                <item.icon className="w-8 h-8 text-slate-400 mb-4" />
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+              </div>
             ))}
           </div>
-
-        </div>
+        </motion.div>
       </section>
 
-      {/* ===== HOW IT WORKS (Interactive Pipeline) ===== */}
-      <section className="py-24 px-6 bg-slate-100/40 border-y border-slate-200 relative z-10 transition-colors duration-300" id="how-it-works">
-        <div className="max-w-5xl mx-auto text-center">
-          
-          <div data-animate="fade-up" className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-8 h-0.5 bg-[#00c853]" />
-            <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('how.label')}</span>
-            <div className="w-8 h-0.5 bg-[#00c853]" />
+      {/* 4. HOW IT WORKS */}
+      <section className="py-24 bg-slate-50 px-6" id="how-it-works">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-7xl mx-auto"
+        >
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">From Driver Onboarding to Fleet Approval</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">A seamless workflow connecting drivers to fleet management.</p>
           </div>
-          
-          <h2 data-animate="fade-up" data-animate-delay="0.1" className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 transition-colors duration-300">
-            {t('how.title1')} <span className="text-[#00c853] italic font-black">{t('how.title2')}</span>
-          </h2>
-          <p data-animate="fade-up" data-animate-delay="0.2" className="text-sm md:text-base text-slate-650 mb-16 max-w-xl mx-auto leading-relaxed transition-colors duration-300">
-            {t('how.desc')}
-          </p>
 
-          {/* Pipeline milestones */}
-          <div data-animate="pin-section" className="relative">
-            
-            {/* Glowing Connecting Pipeline Laser Line */}
-            <div data-animate-laser className="absolute top-10 left-[12%] right-[12%] h-[2px] bg-gradient-to-r from-green-500/20 via-[#00c853] to-green-500/20 hidden md:block laser-connection" />
+          <div className="relative max-w-4xl mx-auto">
+            {/* Connecting Line (Desktop) */}
+            <div className="hidden md:block absolute top-[45px] left-[15%] right-[15%] h-0.5 bg-slate-200 -z-10" />
 
-            <div className="grid md:grid-cols-3 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
               {[
-                { num: 1, title: t('how.step1.title'), desc: t('how.step1.desc'), glow: 'shadow-green-500/20', color: 'from-[#00e676] to-[#00c853]' },
-                { num: 2, title: t('how.step2.title'), desc: t('how.step2.desc'), glow: 'shadow-green-500/30', color: 'from-[#00c853] to-[#00a844]' },
-                { num: 3, title: t('how.step3.title'), desc: t('how.step3.desc'), glow: 'shadow-green-500/40', color: 'from-[#00a844] to-[#008837]' },
-              ].map((step) => (
-                <div key={step.num} data-pin-step className="flex flex-col items-center group font-sans">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.color}
-                    flex items-center justify-center text-white text-base font-black mb-6
-                    shadow-lg ${step.glow} relative z-10 group-hover:scale-110 transition-transform duration-200`}
-                  >
-                    0{step.num}
+                { num: "01", title: "Driver Onboards", desc: "Drivers authenticate, provide their information, and complete the onboarding process." },
+                { num: "02", title: "Documents Processed", desc: "Drivers submit required documents through the App and FleetGuard processes the information." },
+                { num: "03", title: "Manager Approves", desc: "Fleet teams review driver information, documents, and verification status via the dashboard." }
+              ].map((step, i) => (
+                <div key={i} className="relative flex flex-col items-center text-center">
+                  <div className="w-24 h-24 rounded-full bg-white border-4 border-slate-50 shadow-md flex items-center justify-center text-2xl font-black text-[#00c853] mb-6">
+                    {step.num}
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-2 tracking-wide group-hover:text-[#00c853] transition-colors duration-300">{step.title}</h3>
-                  <p className="text-xs text-slate-650 leading-relaxed max-w-xs transition-colors duration-300">{step.desc}</p>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{step.title}</h3>
+                  <p className="text-slate-600 text-sm leading-relaxed max-w-xs">{step.desc}</p>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Inline Live Scanner Simulator Widget inside pipeline context */}
-          <div data-animate="scale-in" className="mt-20">
-            <InteractiveScanner />
-          </div>
-
-        </div>
+        </motion.div>
       </section>
 
-      {/* ===== FEATURES GRID (Obsidian Glassmorphism SaaS Grid) ===== */}
-      <section className="py-24 px-6 bg-slate-100/30 border-t border-slate-200 relative z-10 transition-colors duration-300" id="features">
-        <div className="max-w-7xl mx-auto">
-          
-          <div data-animate="fade-up" className="text-center mb-16">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-8 h-0.5 bg-[#00c853]" />
-              <span className="text-xs font-bold text-[#00c853] uppercase tracking-widest">{t('features.label')}</span>
-              <div className="w-8 h-0.5 bg-[#00c853]" />
-            </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 transition-colors duration-300">
-              {t('features.title1')} <span className="text-[#00c853] italic font-black">{t('features.title2')}</span>
-            </h2>
+      {/* 5. PRODUCT ECOSYSTEM */}
+      <section className="py-24 bg-slate-900 text-white px-6 overflow-hidden" id="product">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-7xl mx-auto"
+        >
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">One Connected Fleet Ecosystem</h2>
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">FleetGuard connects the driver side and fleet-management side through our backend platform.</p>
           </div>
 
-          <div data-animate="stagger-children" data-stagger-delay="0.1" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { icon: MessageSquare, title: t('features.whatsapp.title'), desc: t('features.whatsapp.desc') },
-              { icon: Eye, title: t('features.ocr.title'), desc: t('features.ocr.desc') },
-              { icon: MapPin, title: t('features.location.title'), desc: t('features.location.desc') },
-              { icon: BarChart3, title: t('features.dashboard.title'), desc: t('features.dashboard.desc') },
-              { icon: Fuel, title: t('features.fuel.title'), desc: t('features.fuel.desc') },
-              { icon: Shield, title: t('features.risk.title'), desc: t('features.risk.desc') },
-            ].map((feat, i) => (
-              <TiltCard key={i} className="h-full">
-                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-lg h-full flex flex-col justify-between group transition-colors duration-300">
+          <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 md:gap-0 mt-12 relative max-w-6xl mx-auto">
+            {/* Component 1 */}
+            <div className="w-full md:w-1/3 bg-slate-800 rounded-2xl md:rounded-r-none border border-slate-700 p-8 z-10 shadow-2xl relative">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Smartphone className="text-blue-400" /> DRIVER APP</h3>
+              <ul className="space-y-4">
+                {['OTP Authentication', 'Driver Profile', 'Onboarding', 'Document Upload', 'Document Status'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                    <CheckCircle className="w-4 h-4 text-blue-500" /> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            {/* Connecting Arrows - Vertical on Mobile, Horizontal on Desktop */}
+            <div className="flex md:hidden justify-center py-2 text-slate-600">
+               <ArrowRight className="w-6 h-6 rotate-90" />
+            </div>
+
+            {/* Component 2 */}
+            <div className="w-full md:w-1/3 bg-[#00c853]/10 backdrop-blur-md rounded-2xl border border-[#00c853]/30 p-8 z-20 shadow-2xl md:-mx-4 md:scale-105 relative">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><Server className="text-[#00c853]" /> PLATFORM API</h3>
+              <ul className="space-y-4">
+                {['API Layer', 'Driver Records', 'Document Processing', 'Verification Workflow', 'Status Management'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-200 text-sm font-medium">
+                    <ShieldCheck className="w-4 h-4 text-[#00c853]" /> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Connecting Arrows */}
+            <div className="flex md:hidden justify-center py-2 text-slate-600">
+               <ArrowRight className="w-6 h-6 rotate-90" />
+            </div>
+
+            {/* Component 3 */}
+            <div className="w-full md:w-1/3 bg-slate-800 rounded-2xl md:rounded-l-none border border-slate-700 p-8 z-10 shadow-2xl relative">
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><LayoutDashboard className="text-purple-400" /> DASHBOARD</h3>
+              <ul className="space-y-4">
+                {['Driver Management', 'Driver Details', 'Documents', 'Verification Status', 'Approval Workflow'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300 text-sm font-medium">
+                    <ListTodo className="w-4 h-4 text-purple-500" /> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 6. DRIVER APP */}
+      <section className="py-24 bg-white px-6 overflow-hidden" id="driver-app">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+          <motion.div 
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+            className="lg:w-1/2"
+          >
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Built for Drivers.</h2>
+            <p className="text-lg text-slate-600 mb-8">Give drivers a straightforward way to onboard, manage their information, and submit required documents.</p>
+            
+            <ul className="space-y-6">
+              {[
+                { title: 'Secure OTP Login', desc: 'Fast, secure access using mobile number and one-time password.' },
+                { title: 'Profile & Onboarding', desc: 'Easy capture of essential driver details during registration.' },
+                { title: 'Document Upload', desc: 'Direct camera integration for clear document submission.' },
+                { title: 'Status Tracking', desc: 'Real-time visibility into document verification status.' }
+              ].map((f, i) => (
+                <li key={i} className="flex gap-4">
+                  <div className="mt-1 w-6 h-6 rounded-full bg-[#00c853]/10 flex items-center justify-center shrink-0">
+                    <CheckCircle className="w-3.5 h-3.5 text-[#00c853]" />
+                  </div>
                   <div>
-                    <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 w-fit mb-5 group-hover:bg-[#00c853]/25 transition-colors">
-                      <feat.icon className="w-5 h-5 text-[#00c853]" />
+                    <h4 className="font-bold text-slate-900">{f.title}</h4>
+                    <p className="text-sm text-slate-600">{f.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }}
+            className="lg:w-1/2 relative flex justify-center"
+          >
+            {/* Mockup - Mobile Phone */}
+            <div className="relative w-[280px] h-[580px] bg-white rounded-[40px] border-[8px] border-slate-900 shadow-2xl overflow-hidden flex flex-col">
+              {/* Status Bar */}
+              <div className="h-6 w-full bg-white flex justify-between items-center px-4 pt-1">
+                <span className="text-[10px] font-medium">9:41</span>
+                <div className="flex gap-1">
+                   <div className="w-3 h-2.5 bg-slate-800 rounded-[2px]" />
+                   <div className="w-3 h-2.5 bg-slate-800 rounded-[2px]" />
+                </div>
+              </div>
+              
+              {/* App Content Fake UI */}
+              <div className="flex-1 bg-slate-50 flex flex-col">
+                <div className="bg-[#00c853] text-white p-5 pb-6 rounded-b-3xl">
+                   <h3 className="font-bold text-lg mb-1">Hello, Driver</h3>
+                   <p className="text-xs opacity-90">Your profile is 80% complete</p>
+                </div>
+                
+                <div className="p-4 flex-1">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
+                     <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+                       Required Documents
+                       <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">Action Needed</span>
+                     </h4>
+                     
+                     <div className="space-y-3">
+                       <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                           <FileCheck2 className="w-4 h-4 text-[#00c853]" />
+                           <span className="text-xs font-medium text-slate-700">Driving License</span>
+                         </div>
+                         <span className="text-[10px] text-[#00c853] font-bold">Verified</span>
+                       </div>
+                       
+                       <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                           <UploadCloud className="w-4 h-4 text-slate-400" />
+                           <span className="text-xs font-medium text-slate-700">Aadhar Card</span>
+                         </div>
+                         <button className="text-[10px] bg-slate-900 text-white px-2 py-1 rounded font-medium">Upload</button>
+                       </div>
+                     </div>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h4 className="text-sm font-bold text-slate-900 mb-2">Verification Status</h4>
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                      <span className="text-xs text-slate-600">Pending Fleet Approval</span>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-3 tracking-wide group-hover:text-[#00c853] transition-colors font-sans duration-300">{feat.title}</h3>
-                    <p className="text-xs text-slate-650 leading-relaxed font-sans transition-colors duration-300">{feat.desc}</p>
                   </div>
                 </div>
-              </TiltCard>
+              </div>
+              {/* Home indicator */}
+              <div className="h-1 w-1/3 bg-slate-300 mx-auto rounded-full mb-2" />
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 7. FLEET DASHBOARD */}
+      <section className="py-24 bg-slate-50 px-6 border-y border-slate-200" id="dashboard">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Designed for Fleet Teams.</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">Manage drivers, review submitted information, and make approval decisions from one centralized dashboard.</p>
+          </motion.div>
+
+          {/* Desktop Dashboard Mockup */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }}
+            className="w-full rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="h-14 border-b border-slate-100 flex items-center px-6 justify-between bg-white">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-[#00c853] flex items-center justify-center"><ShieldCheck className="w-3 h-3 text-white" /></div>
+                <span className="font-bold text-sm">Dashboard</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-64 h-8 bg-slate-100 rounded-md" />
+                <div className="w-8 h-8 rounded-full bg-slate-200" />
+              </div>
+            </div>
+            
+            <div className="flex h-[500px]">
+              {/* Sidebar */}
+              <div className="w-64 border-r border-slate-100 p-4 space-y-2 hidden md:block">
+                <div className="p-2 text-sm font-bold text-[#00c853] bg-[#00c853]/10 rounded-lg flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Drivers
+                </div>
+                <div className="p-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg flex items-center gap-2">
+                  <FileSignature className="w-4 h-4" /> Approvals
+                </div>
+                <div className="p-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Documents
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 p-6 bg-slate-50/50 overflow-hidden">
+                <h3 className="text-xl font-bold text-slate-900 mb-6">Driver Management</h3>
+                
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-100 text-slate-500">
+                      <tr>
+                        <th className="p-4 font-semibold">Driver Name</th>
+                        <th className="p-4 font-semibold">Status</th>
+                        <th className="p-4 font-semibold">Documents</th>
+                        <th className="p-4 font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[
+                        { name: 'Raj Kumar', status: 'Pending Review', docs: '2/2 Uploaded', color: 'bg-yellow-100 text-yellow-700' },
+                        { name: 'Amit Singh', status: 'Approved', docs: 'Verified', color: 'bg-green-100 text-green-700' },
+                        { name: 'Vikram Sharma', status: 'Missing Docs', docs: '1/2 Uploaded', color: 'bg-red-100 text-red-700' },
+                        { name: 'Sanjay Verma', status: 'Approved', docs: 'Verified', color: 'bg-green-100 text-green-700' },
+                      ].map((row, i) => (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="p-4 font-medium text-slate-900">{row.name}</td>
+                          <td className="p-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${row.color}`}>
+                              {row.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-slate-600 text-xs">{row.docs}</td>
+                          <td className="p-4">
+                            <button className="text-xs font-bold text-blue-600 hover:text-blue-800">View Details</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 8. VERIFICATION WORKFLOW */}
+      <section className="py-20 bg-white px-6">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-7xl mx-auto text-center"
+        >
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-12">From Document Submission to Verified Driver</h2>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 max-w-5xl mx-auto">
+            {['Driver Upload', 'Platform Processing', 'Verification Status', 'Fleet Review'].map((step, i) => (
+              <React.Fragment key={i}>
+                <div className="bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-bold text-slate-700 text-sm w-48 shadow-sm">
+                  {step}
+                </div>
+                {i < 3 && <ArrowRight className="w-5 h-5 text-slate-300 hidden md:block" />}
+                {i < 3 && <ArrowRight className="w-5 h-5 text-slate-300 rotate-90 md:hidden my-2" />}
+              </React.Fragment>
             ))}
           </div>
-
-        </div>
+        </motion.div>
       </section>
 
-      {/* ===== CALL TO ACTION (CTA Banner with Pulsing Backdrops) ===== */}
-      <section className="py-24 px-6 relative z-10 transition-colors duration-300" id="cta">
-        <div data-animate="cta-reveal" className="max-w-4xl mx-auto rounded-3xl border border-[#00c853]/20 bg-white p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-green-500/5 transition-colors duration-300">
-          
-          {/* Radial green glow */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#00c853]/10 rounded-full blur-[60px]" />
+      {/* 9. FEATURES */}
+      <section className="py-24 bg-slate-50 px-6">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-7xl mx-auto"
+        >
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Everything You Need to Manage Driver Verification</h2>
+          </div>
 
-          <h2 data-cta-child className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-5 italic font-sans transition-colors duration-300">
-            {t('cta.title1')} <span className="not-italic text-[#00c853] font-sans">{t('cta.title2')}</span>
-          </h2>
-          <p data-cta-child className="text-sm md:text-base text-slate-600 mb-8 max-w-xl mx-auto leading-relaxed font-sans transition-colors duration-300">
-            {t('cta.desc')}
-          </p>
-          
-          <a
-            data-cta-child
-            href="mailto:fleetgaurdinfo@gmail.com?subject=Book%20Demo"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl
-              bg-[#00c853] hover:bg-[#00b848] text-white font-bold text-sm
-              transition-all duration-200 hover:shadow-xl hover:shadow-green-500/30
-              active:scale-95 font-sans"
-            id="cta-btn"
-          >
-            <Sparkles className="w-5 h-5" />
-            {t('nav.bookDemo')}
-          </a>
-        </div>
-      </section>
-
-      {/* ===== FOOTER (Clean Slate Dark) ===== */}
-      <footer className="bg-slate-100 text-slate-500 py-16 px-6 border-t border-slate-200 relative z-10 transition-colors duration-300" id="about">
-        <div data-animate="footer-stagger" className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
-          
-          <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 flex items-center justify-center">
-                <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { title: 'Driver Onboarding', desc: 'Bring new drivers into a structured onboarding workflow effortlessly.' },
+              { title: 'Secure Authentication', desc: 'Authenticate drivers through the existing secure login and OTP flow.' },
+              { title: 'Document Upload', desc: 'Allow drivers to submit required documents through the dedicated Driver App.' },
+              { title: 'Document Processing', desc: 'Process submitted driver documents through FleetGuard\'s robust backend pipeline.' },
+              { title: 'Driver Verification', desc: 'Track document and driver verification status in real-time.' },
+              { title: 'Approval Management', desc: 'Review driver information and take approval or rejection actions swiftly.' },
+              { title: 'Fleet Dashboard', desc: 'Manage driver operations from a centralized, clear management interface.' },
+              { title: 'Driver Management', desc: 'View and manage comprehensive driver records and their current status.' }
+            ].map((feature, i) => (
+              <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <CheckCircle className="w-6 h-6 text-[#00c853] mb-4" />
+                <h3 className="font-bold text-slate-900 text-lg mb-2">{feature.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">{feature.desc}</p>
               </div>
-              <span className="text-lg font-bold tracking-tight">
-                <span className="text-slate-900 font-sans transition-colors duration-300">Fleet </span>
-                <span className="text-[#00e676] font-sans">Guard</span>
-              </span>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 10. TRUST / SECURITY */}
+      <section className="py-20 bg-white px-6 border-t border-slate-100">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-3xl mx-auto text-center"
+        >
+          <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-6" />
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">Controlled Workflows. Clear Visibility.</h2>
+          <p className="text-slate-600 text-lg">
+            FleetGuard uses authenticated workflows and controlled dashboard access to keep driver and fleet operations organized and easily accessible to authorized personnel.
+          </p>
+        </motion.div>
+      </section>
+
+      {/* 11. FINAL CTA */}
+      <section className="py-24 bg-[#00c853] px-6 text-white text-center">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={sectionVariants}
+          className="max-w-4xl mx-auto"
+        >
+          <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Bring Your Drivers and Fleet Operations Into One Platform</h2>
+          <p className="text-lg md:text-xl font-medium text-white/90 mb-10 max-w-2xl mx-auto">
+            See how FleetGuard connects driver onboarding, document verification, and fleet management.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/login" className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white text-base font-bold px-8 py-4 rounded-xl transition-all shadow-lg">
+              Book a Demo
+            </Link>
+            <Link to="/login" className="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-900 text-base font-bold px-8 py-4 rounded-xl transition-all shadow-lg">
+              Open Dashboard
+            </Link>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 12. FOOTER */}
+      <footer className="bg-slate-950 text-slate-400 py-16 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 border-b border-slate-800 pb-12 mb-8">
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded bg-[#00c853] flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-lg font-bold tracking-tight text-white">Fleet<span className="text-[#00c853]">Guard</span></span>
             </div>
-            <p className="text-xs leading-relaxed text-slate-650 max-w-xs font-sans transition-colors duration-300">
-              {t('footer.tagline')}
+            <p className="text-sm">
+              The connected fleet management and driver verification ecosystem.
             </p>
           </div>
-
+          
           <div>
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.product')}</h4>
-            <ul className="space-y-2.5 text-xs font-semibold font-sans">
-              <li><a href="#features" className="hover:text-slate-900:text-white transition-colors">{t('nav.features')}</a></li>
-              <li><a href="#how-it-works" className="hover:text-slate-900:text-white transition-colors">{t('nav.howItWorks')}</a></li>
-              <li><Link to="/dashboard" className="hover:text-slate-900:text-white transition-colors">{t('footer.liveDemo')}</Link></li>
-              <li><Link to="/downloads" className="hover:text-slate-900:text-white transition-colors">Get Apps</Link></li>
-              <li><a href="#ecosystem" className="hover:text-slate-900:text-white transition-colors">{t('nav.bookDemo')}</a></li>
+            <h4 className="text-white font-bold mb-4">PRODUCT</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
+              <li><a href="#driver-app" className="hover:text-white transition-colors">Driver App</a></li>
+              <li><a href="#dashboard" className="hover:text-white transition-colors">Fleet Dashboard</a></li>
             </ul>
           </div>
-
+          
           <div>
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.company')}</h4>
-            <ul className="space-y-2.5 text-xs font-semibold font-sans">
-              <li><a href="#about" className="hover:text-slate-900:text-white transition-colors">{t('nav.about')}</a></li>
-              <li><a href="#" className="hover:text-slate-900:text-white transition-colors">{t('footer.testimonials')}</a></li>
+            <h4 className="text-white font-bold mb-4">COMPANY</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="hover:text-white transition-colors">About</a></li>
+              <li><a href="mailto:contact@fleetguard.com" className="hover:text-white transition-colors">Contact</a></li>
             </ul>
           </div>
-
+          
           <div>
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4 font-sans transition-colors duration-300">{t('footer.contact')}</h4>
-            <ul className="space-y-2.5 text-xs font-semibold font-sans">
-              <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#00c853]" />
-                <a href="mailto:fleetguardinfo@gmail.com" className="hover:text-slate-900:text-white transition-colors">
-                  fleetguardinfo@gmail.com
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <Instagram className="w-4 h-4 text-[#00c853]" />
-                <a href="#" className="hover:text-slate-900:text-white transition-colors">Instagram</a>
-              </li>
+            <h4 className="text-white font-bold mb-4">ACCESS</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/login" className="hover:text-white transition-colors">Dashboard Login</Link></li>
+              <li><Link to="/downloads" className="hover:text-white transition-colors">Get Driver App</Link></li>
             </ul>
           </div>
-
         </div>
-
-        <div data-animate="fade-in" className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 flex items-center justify-between transition-colors duration-300">
-          <p className="text-[10px] font-semibold text-slate-500 font-sans transition-colors duration-300">{t('footer.copyright')}</p>
-          <div className="flex items-center gap-4 text-slate-450 transition-colors duration-300">
-            <Truck className="w-4 h-4" />
-            <BarChart3 className="w-4 h-4" />
-          </div>
+        
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
+          <p>© {new Date().getFullYear()} FleetGuard. All rights reserved.</p>
         </div>
       </footer>
-
     </div>
   );
 }
