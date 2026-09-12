@@ -111,6 +111,15 @@ class AuthRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getAssignedVehicle() async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/vehicle');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to get assigned vehicle: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> uploadDocument(File file, String documentType) async {
     try {
       final formData = FormData.fromMap({

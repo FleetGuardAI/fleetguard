@@ -62,6 +62,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(driverProfileProvider);
     final tripsAsync = ref.watch(todayTripsProvider);
+    final vehicleAsync = ref.watch(assignedVehicleProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -94,6 +95,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () {
               ref.invalidate(driverProfileProvider);
               ref.invalidate(todayTripsProvider);
+              ref.invalidate(assignedVehicleProvider);
             },
           ),
           PopupMenuButton<String>(
@@ -145,7 +147,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final String name = profile['name'] ?? 'Driver Name';
           final String phone = profile['phone_number'] ?? '';
           final String fleet = profile['company_name'] ?? 'the vahan';
-          final String? vehicleStr = profile['assigned_vehicle'];
           final String dutyStr = profile['duty_status'] ?? 'OFF_DUTY';
           final double score = (profile['driver_score'] ?? 85.0).toDouble();
 
@@ -302,25 +303,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(height: 16),
 
                 // --- Assigned Vehicle Section ---
-                if (vehicleStr != null)
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.directions_bus, size: 36, color: AppColors.primary),
-                      title: Text('Assigned Vehicle: $vehicleStr', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                      subtitle: const Text('Ready for dispatch', overflow: TextOverflow.ellipsis),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/vehicle'),
-                    ),
-                  )
-                else
-                  Card(
+                vehicleAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Card(
                     child: ListTile(
                       leading: const Icon(Icons.warning, size: 36, color: Colors.orange),
                       title: const Text('No Vehicle Assigned', style: TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: const Text('Please contact your fleet manager.'),
                     ),
                   ),
-                const SizedBox(height: 16),
+                  data: (vehicleData) {
+                    final String vehicleStr = vehicleData['registration_number'] ?? 'Unknown Vehicle';
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.directions_bus, size: 36, color: AppColors.primary),
+                        title: Text('Assigned Vehicle: $vehicleStr', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                        subtitle: const Text('Ready for dispatch', overflow: TextOverflow.ellipsis),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/vehicle'),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
 
                 // --- Today's Trips ---
                 Text("Today's Trips", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
