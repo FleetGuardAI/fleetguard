@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ArrowDown
 } from 'lucide-react';
+import DemoDashboard from '@/components/home/DemoDashboard';
 
 export default function LandingPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -460,81 +461,9 @@ export default function LandingPage() {
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.6 }}
-            className="w-full rounded-2xl border border-slate-200 shadow-xl bg-white overflow-hidden relative"
+            className="w-full relative"
           >
-            {/* Header */}
-            <div className="h-12 border-b border-slate-200 flex items-center px-4 justify-between bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5 mr-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                </div>
-                <ShieldCheck className="w-4 h-4 text-[#00c853]" />
-                <span className="text-sm font-bold text-slate-700">Dashboard</span>
-              </div>
-            </div>
-            
-            <div className="flex h-[400px] md:h-[500px]">
-              {/* Sidebar */}
-              <div className="w-48 border-r border-slate-200 p-3 space-y-1 hidden md:block bg-slate-50/50">
-                <div className="p-2 text-xs font-bold text-[#00c853] bg-white border border-slate-200 shadow-sm rounded-lg flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Drivers
-                </div>
-                <div className="p-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg flex items-center gap-2">
-                  <FileSignature className="w-4 h-4" /> Approvals
-                </div>
-                <div className="p-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Documents
-                </div>
-              </div>
-              
-              {/* Main Panel */}
-              <div className="flex-1 p-6 bg-white overflow-hidden">
-                <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-lg font-extrabold text-slate-900">Driver Management</h3>
-                   <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">Export</div>
-                </div>
-                
-                {/* Generic Stat Cards */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  {['Total Enrolled', 'Pending Review', 'Recent Activity'].map((stat, i) => (
-                    <div key={i} className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">{stat}</div>
-                      <div className="w-12 h-4 bg-slate-200 rounded animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Generic Table */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase">
-                      <tr>
-                        <th className="p-3 font-bold">Driver ID</th>
-                        <th className="p-3 font-bold">Status</th>
-                        <th className="p-3 font-bold">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[1,2,3,4].map((_, i) => (
-                        <tr key={i}>
-                          <td className="p-3">
-                            <div className="w-20 h-3 bg-slate-100 rounded" />
-                          </td>
-                          <td className="p-3">
-                            <div className="w-16 h-4 bg-slate-100 rounded-full" />
-                          </td>
-                          <td className="p-3">
-                            <div className="w-12 h-6 bg-slate-100 rounded" />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+             <DemoDashboard />
           </motion.div>
         </div>
       </section>
