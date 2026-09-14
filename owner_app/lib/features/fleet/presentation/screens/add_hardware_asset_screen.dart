@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 import '../../../../core/network/api_client.dart';
 import '../providers/fleet_provider.dart';
 import '../../data/fleet_repository.dart';
@@ -74,7 +76,7 @@ class _AddHardwareAssetScreenState extends ConsumerState<AddHardwareAssetScreen>
         title: const Text('Add Hardware Device'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.only(left: 24.0, right: 24.0, top: 24.0, bottom: context.scrollContentClearance),
         child: Form(
           key: _formKey,
           child: Column(
@@ -87,7 +89,7 @@ class _AddHardwareAssetScreenState extends ConsumerState<AddHardwareAssetScreen>
               const SizedBox(height: 8),
               const Text(
                 'Connect a new GPS tracker, dashcam, or telematics device to a vehicle in your fleet.',
-                style: TextStyle(color: AppColors.coolGray),
+                style: TextStyle(color: AppColors.lightOnSurfaceVariant),
               ),
               const SizedBox(height: 32),
 

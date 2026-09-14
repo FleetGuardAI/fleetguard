@@ -35,6 +35,14 @@ class OperationsScreen extends StatelessWidget {
             onTap: () => context.push('/copilot'),
             isDark: isDark,
           ),
+          _buildOpCard(
+            context,
+            icon: Icons.document_scanner,
+            title: 'Documents',
+            subtitle: 'Upload and manage fleet documents',
+            onTap: () => context.push('/documents/upload'),
+            isDark: isDark,
+          ),
         ],
       ),
     );

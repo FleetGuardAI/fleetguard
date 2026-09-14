@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,9 +25,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _selectedCategory;
   int? _selectedVehicleId;
   int? _selectedTripId;
-  String? _receiptUrl;
-  bool _isProcessingOCR = false;
   bool _isSubmitting = false;
+  bool _isProcessingOCR = false;
 
   final List<String> _categories = [
     'FUEL', 'TOLL', 'MAINTENANCE', 'PARKING', 'FOOD', 'REPAIR', 'MISCELLANEOUS'
@@ -70,7 +68,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             if (ocrResult['category'] != null && _categories.contains(ocrResult['category'].toString().toUpperCase())) {
               _selectedCategory = ocrResult['category'].toString().toUpperCase();
             }
-            _receiptUrl = pickedFile.path;
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('OCR extraction successful')),

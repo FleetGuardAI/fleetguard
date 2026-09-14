@@ -25,11 +25,13 @@ dependencies:
 
   # Maps
   flutter_map: ^6.1.0
-  latlong2: ^0.9.0
+  latlong2: 0.9.0
   url_launcher: ^6.2.2
 
   # Camera & Media
   image_picker: ^1.0.7
+  sendotp_flutter_sdk:
+    path: ../sendotp_pkg
 
   # Storage
   flutter_secure_storage: ^9.0.0
@@ -51,6 +53,7 @@ dependencies:
   google_maps_flutter: ^2.18.0
   qr_flutter: ^4.1.0
   flutter_markdown: ^0.7.7+1
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

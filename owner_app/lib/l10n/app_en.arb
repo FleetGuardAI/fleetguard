@@ -21,5 +21,18 @@
   "notifications": "Notifications",
   "noNotifications": "No notifications yet",
   "activeVehicles": "Active Vehicles",
-  "noActiveVehicles": "No active vehicles"
+  "noActiveVehicles": "No active vehicles",
+  "noMapConfig": "Map configuration missing",
+  "routeMapUnavailable": "Route Map Unavailable",
+  "pleaseConfigGeoapify": "Please configure Geoapify API key.",
+  "noLocationData": "Location data is not available for this trip.",
+  "noExpensesFound": "No Expenses Found",
+  "noExpensesRecorded": "No expenses recorded in this period.",
+  "noPayments": "No Payments",
+  "noDriverPayments": "No driver payments or advances found for this period.",
+  "truckAddedSuccess": "Truck added successfully",
+  "regNumberRequired": "Registration number is required",
+  "manufacturerRequired": "Manufacturer is required",
+  "failedLoadKPIs": "Failed to load KPIs.",
+  "failedLoadExpenses": "Failed to load expenses."
 }

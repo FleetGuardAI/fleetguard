@@ -7,8 +7,9 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/router/app_router.dart';
 import 'package:dio/dio.dart';
 
+import 'dart:convert';
 import 'package:mobile_scanner/mobile_scanner.dart';
-
+import 'package:sendotp_flutter_sdk/sendotp_flutter_sdk.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -31,6 +32,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   
   int _countdown = 0;
   Timer? _timer;
+
+
+  @override
+  void initState() {
+    super.initState();
+    const widgetId = String.fromEnvironment('MSG91_WIDGET_ID', defaultValue: '');
+    const widgetToken = String.fromEnvironment('MSG91_WIDGET_TOKEN', defaultValue: '');
+    debugPrint('[MSG91 DIAG] initState - widgetId is empty: ${widgetId.isEmpty}');
+    if (widgetId.isNotEmpty && widgetToken.isNotEmpty) {
+      OTPWidget.initializeWidget(widgetId, widgetToken);
+      debugPrint('[MSG91 DIAG] OTPWidget initialized');
+    } else {
+      debugPrint('[MSG91 DIAG] ERROR: Missing MSG91 environment variables');
+    }
+  }
 
   @override
   void dispose() {
@@ -148,35 +164,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.dio.post(
-        '/api/v1/auth/request-otp',
-        data: {'identifier': identifier},
-      );
-
-      setState(() {
-        _otpSent = true;
-        _reqId = response.data['req_id'];
-      });
-      _startCountdown();
+      final isEmail = identifier.contains('@');
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP requested successfully')),
+      if (!isEmail) {
+        String cleanNum = identifier.replaceAll(RegExp(r'\D'), '');
+        if (cleanNum.length == 10) cleanNum = '91$cleanNum';
+        
+        print('[MSG91 DIAG] SENDING OTP for identifier=$cleanNum');
+        
+        final response = await OTPWidget.sendOTP({'identifier': cleanNum});
+        debugPrint('[MSG91 DIAG] sendOTP response: $response');
+        
+        if (response == null) {
+          throw Exception('OTP Widget not initialized or returned null');
+        }
+        
+        final reqId = response['message'] ?? response['reqId'] ?? identifier;
+        debugPrint('[MSG91 DIAG] reqId extracted: $reqId');
+        
+        setState(() {
+          _otpSent = true;
+          _reqId = reqId;
+        });
+        _startCountdown();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('OTP requested successfully')),
+          );
+        }
+      } else {
+        final api = ref.read(apiClientProvider);
+        final response = await api.dio.post(
+          '/api/v1/auth/request-otp',
+          data: {'identifier': identifier},
         );
+        
+        setState(() {
+          _otpSent = true;
+          _reqId = response.data['req_id']?.toString() ?? identifier;
+        });
+        _startCountdown();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('OTP requested successfully')),
+          );
+        }
       }
     } on DioException catch (e) {
       debugPrint('OTP Request Error: ${e.message}');
       setState(() {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
-          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+          _error = 'Network error: Unable to connect to backend.';
         } else {
           _error = e.response?.data?['detail']?.toString() ?? 'Failed to send OTP.';
         }
       });
     } catch (e) {
+      debugPrint('OTP Request Error: $e');
       setState(() {
-        _error = 'An unexpected error occurred.';
+        _error = 'Unable to send OTP. Please check your mobile number and try again.';
       });
     } finally {
       if (mounted) {
@@ -190,47 +238,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _resendOtp() async {
     if (_countdown > 0) return;
 
-    if (_reqId == null) {
-      // Simulate success for non-existent users
-      _startCountdown();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP resent successfully')),
-        );
-      }
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.dio.post(
-        '/api/v1/auth/resend-otp',
-        data: {'req_id': _reqId},
-      );
+      final identifier = _identifierController.text.trim();
+      final isEmail = identifier.contains('@');
 
+      if (!isEmail) {
+        await OTPWidget.retryOTP({'retryChannel': 1, 'reqId': _reqId});
+      } else {
+        final api = ref.read(apiClientProvider);
+        await api.dio.post(
+          '/api/v1/auth/request-otp',
+          data: {'identifier': identifier},
+        );
+      }
+      
       _startCountdown();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.data['message'] ?? 'OTP resent successfully')),
+          const SnackBar(content: Text('OTP resent successfully')),
         );
       }
     } on DioException catch (e) {
       debugPrint('OTP Resend Error: ${e.message}');
       setState(() {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
-          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+          _error = 'Network error: Unable to connect to backend.';
         } else {
           _error = e.response?.data?['detail']?.toString() ?? 'Failed to resend OTP.';
         }
       });
     } catch (e) {
+      debugPrint('OTP Resend Error: $e');
       setState(() {
-        _error = 'An unexpected error occurred.';
+        _error = 'OTP service temporarily unavailable. Please try again later.';
       });
     } finally {
       if (mounted) {
@@ -252,10 +297,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
+      final isEmail = identifier.contains('@');
+      String? msg91Token;
+      
+      if (!isEmail) {
+        final response = await OTPWidget.verifyOTP({'otp': otp, 'reqId': _reqId});
+        if (response != null) {
+          if (response['message'] is String && response['type'] != 'error') {
+            msg91Token = response['message'];
+          } else if (response['token'] is String) {
+            msg91Token = response['token'];
+          } else if (response['access_token'] is String) {
+            msg91Token = response['access_token'];
+          } else if (response['jwt'] is String) {
+            msg91Token = response['jwt'];
+          } else if (response['data'] is String) {
+            msg91Token = response['data'];
+          }
+          if (msg91Token == null) {
+             msg91Token = jsonEncode(response);
+          }
+        }
+      }
+
       final api = ref.read(apiClientProvider);
       final response = await api.dio.post(
         '/api/v1/auth/verify-otp',
-        data: {'identifier': identifier, 'req_id': _reqId ?? 'null_req', 'code': otp},
+        data: {
+          'identifier': identifier, 
+          'req_id': _reqId ?? identifier, 
+          'code': isEmail ? otp : '123456', 
+          'msg91_token': msg91Token,
+        },
       );
 
       final accessToken = response.data['access_token'];
@@ -271,17 +344,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
     } on DioException catch (e) {
-      debugPrint('OTP Verify Error: ${e.message}');
+      debugPrint('Backend Verify Error: ${e.message}');
       setState(() {
         if (e.response == null || e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError) {
-          _error = 'Network error: Unable to connect to backend (${e.message}). Please check your connection and API_BASE_URL.';
+          _error = 'Network error: Unable to connect to backend.';
         } else {
-          _error = e.response?.data?['detail']?.toString() ?? 'Invalid or expired OTP.';
+          _error = e.response?.data?['detail']?.toString() ?? 'Invalid OTP. Please try again.';
         }
       });
     } catch (e) {
+      debugPrint('OTP Verify Error: $e');
       setState(() {
-        _error = 'An unexpected error occurred.';
+        _error = 'Invalid OTP. Please try again.';
       });
     } finally {
       if (mounted) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 import '../../data/fleet_repository.dart';
 import '../providers/fleet_provider.dart';
 
@@ -180,7 +181,7 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
 
   Widget _buildVerificationForm(bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.only(left: 24.0, right: 24.0, top: 24.0, bottom: context.scrollContentClearance),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

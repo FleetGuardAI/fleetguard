@@ -12,6 +12,7 @@ import '../../../../core/widgets/glass_text_field.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/error_state_widget.dart';
 import '../../../../core/widgets/status_chip.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 
 class TripsScreen extends ConsumerStatefulWidget {
   const TripsScreen({super.key});
@@ -35,39 +36,42 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Filter by Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
-                children: ['ALL', 'CREATED', 'IN_PROGRESS', 'COMPLETED', 'DELAYED', 'CANCELLED'].map((status) {
-                  final currentStatus = ref.watch(tripStatusProvider);
-                  final isSelected = currentStatus == status;
-                  return ChoiceChip(
-                    label: Text(status.replaceAll('_', ' ')),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) {
-                        ref.read(tripStatusProvider.notifier).state = status;
-                        Navigator.pop(context);
-                      }
-                    },
-                    selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                    labelStyle: TextStyle(color: isSelected ? AppColors.primary : (isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-            ],
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Filter by Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: ['ALL', 'CREATED', 'IN_PROGRESS', 'COMPLETED', 'DELAYED', 'CANCELLED'].map((status) {
+                    final currentStatus = ref.watch(tripStatusProvider);
+                    final isSelected = currentStatus == status;
+                    return ChoiceChip(
+                      label: Text(status.replaceAll('_', ' ')),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) {
+                          ref.read(tripStatusProvider.notifier).state = status;
+                          Navigator.pop(context);
+                        }
+                      },
+                      selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                      labelStyle: TextStyle(color: isSelected ? AppColors.primary : (isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         );
       },
@@ -109,7 +113,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               ref.invalidate(fleetTripsProvider);
             },
             child: ListView.separated(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
               itemCount: trips.length + 1,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
@@ -180,7 +184,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           itemBuilder: (_, __) => const SkeletonLoader(height: 120, borderRadius: 16),
         ),
         error: (err, stack) => ErrorStateWidget(
-          message: 'Failed to load trips.',
+          message: err.toString(),
           onRetry: () => ref.refresh(fleetTripsProvider),
         ),
       ),
@@ -224,6 +228,33 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 Expanded(child: Text(route, style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.w600))),
               ],
             ),
+            if (trip.status == 'IN_PROGRESS') ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.statusGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.statusGreen.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 16, color: AppColors.statusGreen),
+                    const SizedBox(width: 8),
+                    const Text('Live AI Intelligence', style: TextStyle(color: AppColors.statusGreen, fontSize: 12, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.statusGreen,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('Healthy', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

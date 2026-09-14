@@ -30,7 +30,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _themeKey = 'theme_mode';
   static const _localeKey = 'locale';
 
-  SettingsNotifier() : super(SettingsState(themeMode: ThemeMode.system, locale: const Locale('en'))) {
+  SettingsNotifier() : super(SettingsState(themeMode: ThemeMode.light, locale: const Locale('en'))) {
     _loadSettings();
   }
 
@@ -39,7 +39,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     
     // Load theme
     final themeStr = prefs.getString(_themeKey);
-    ThemeMode mode = ThemeMode.system;
+    ThemeMode mode = ThemeMode.light;
+    if (themeStr == 'system') mode = ThemeMode.system;
     if (themeStr == 'light') mode = ThemeMode.light;
     if (themeStr == 'dark') mode = ThemeMode.dark;
 

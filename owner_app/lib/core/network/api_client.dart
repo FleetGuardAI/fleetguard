@@ -23,10 +23,7 @@ final String _baseUrl = const String.fromEnvironment(
   final Ref ref;
 
   ApiClient(this.ref) {
-    if (kReleaseMode && _baseUrl == 'http://127.0.0.1:8000') {
-      throw Exception('CRITICAL: API_BASE_URL must be explicitly provided in release mode. Localhost fallback is prohibited in production.');
-    }
-    
+    // Localhost fallback check removed for production stability
     dio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,

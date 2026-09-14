@@ -42,34 +42,36 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final amount = currencyFormatter.format(widget.expense['amount'] ?? 0);
     final status = widget.expense['status'] ?? 'PENDING';
     final isPending = status == 'PENDING';
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text('Expense Details', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.darkBackground,
+        title: Text('Expense Details', style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+        backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+        iconTheme: IconThemeData(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface),
         elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           _buildInfoCard('Details', [
-            _buildRow('Amount', amount),
-            _buildRow('Category', widget.expense['category'] ?? 'N/A'),
-            _buildRow('Description', widget.expense['description'] ?? 'N/A'),
-            _buildRow('Status', status),
-          ]),
+            _buildRow('Amount', amount, isDark),
+            _buildRow('Category', widget.expense['category'] ?? 'N/A', isDark),
+            _buildRow('Description', widget.expense['description'] ?? 'N/A', isDark),
+            _buildRow('Status', status, isDark),
+          ], isDark),
           const SizedBox(height: 16),
           _buildInfoCard('Context', [
-            _buildRow('Trip ID', widget.expense['trip_id']?.toString() ?? 'N/A'),
+            _buildRow('Trip ID', widget.expense['trip_id']?.toString() ?? 'N/A', isDark),
             _buildRow('Date', widget.expense['expense_date'] != null 
               ? DateFormat('MMM dd, yyyy').format(DateTime.parse(widget.expense['expense_date'])) 
-              : 'N/A'),
-          ]),
+              : 'N/A', isDark),
+          ], isDark),
           const SizedBox(height: 32),
           if (isPending) ...[
             if (_isLoading)
@@ -108,17 +110,21 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
     );
   }
 
-  Widget _buildInfoCard(String title, List<Widget> children) {
+  Widget _buildInfoCard(String title, List<Widget> children, bool isDark) {
     return Card(
-      color: AppColors.darkSurface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+      ),
+      elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 14)),
-            const Divider(color: Colors.white10, height: 24),
+            Text(title, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, fontWeight: FontWeight.bold, fontSize: 14)),
+            Divider(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, height: 24),
             ...children,
           ],
         ),
@@ -126,14 +132,14 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
     );
   }
 
-  Widget _buildRow(String label, String value) {
+  Widget _buildRow(String label, String value, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant)),
+          Text(value, style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface, fontWeight: FontWeight.w600)),
         ],
       ),
     );

@@ -7,8 +7,11 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/settings_provider.dart';
 
-void main() {
+import 'core/config/app_config.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.initialize();
   runApp(
     const ProviderScope(
       child: FleetGuardOwnerApp(),

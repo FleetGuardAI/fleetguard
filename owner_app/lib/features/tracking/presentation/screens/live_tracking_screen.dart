@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/config/app_config.dart';
 import '../providers/tracking_provider.dart';
 import 'dart:async';
 
@@ -13,13 +15,14 @@ class LiveTrackingScreen extends ConsumerStatefulWidget {
 }
 
 class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen> {
-  final Completer<GoogleMapController> _controller = Completer<GoogleMapController>();
+  final MapController _mapController = MapController();
   bool _isMapReady = false;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final locationsAsync = ref.watch(fleetLocationsProvider);
+    final geoapifyKey = AppConfig.geoapifyApiKey;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
@@ -31,39 +34,56 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen> {
       ),
       body: locationsAsync.when(
         data: (locations) {
+          if (geoapifyKey.isEmpty) {
+            return Center(
+              child: Text(
+                'Map unavailable - API key is missing.',
+                style: TextStyle(color: AppColors.statusRed, fontSize: 16),
+              ),
+            );
+          }
+
           final markers = locations.map((loc) {
             return Marker(
-              markerId: MarkerId(loc.driverId.toString()),
-              position: LatLng(loc.latitude, loc.longitude),
-              infoWindow: InfoWindow(
-                title: loc.driverName, 
-                snippet: 'Status: ${loc.dutyStatus ?? 'Unknown'}',
+              point: LatLng(loc.latitude, loc.longitude),
+              width: 40,
+              height: 40,
+              child: const Icon(
+                Icons.local_shipping,
+                color: AppColors.statusGreen,
+                size: 30,
               ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
             );
-          }).toSet();
+          }).toList();
 
-          // Calculate center and bounds if map is ready
           LatLng center = locations.isNotEmpty ? LatLng(locations.first.latitude, locations.first.longitude) : const LatLng(28.6139, 77.2090);
 
           return Stack(
             children: [
-              GoogleMap(
-                initialCameraPosition: CameraPosition(target: center, zoom: locations.isNotEmpty ? 6 : 10),
-                markers: markers,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-                mapToolbarEnabled: false,
-                zoomControlsEnabled: false,
-                onMapCreated: (GoogleMapController controller) {
-                  _controller.complete(controller);
-                  setState(() {
-                    _isMapReady = true;
-                  });
-                  if (locations.isNotEmpty) {
-                    _fitAllMarkers(locations);
-                  }
-                },
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: locations.isNotEmpty ? 6.0 : 10.0,
+                  onMapReady: () {
+                    setState(() {
+                      _isMapReady = true;
+                    });
+                    if (locations.isNotEmpty) {
+                      _fitAllMarkers(locations);
+                    }
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}.png?apiKey={apiKey}',
+                    additionalOptions: {
+                      'apiKey': geoapifyKey,
+                    },
+                    userAgentPackageName: 'com.example.fleetguard_owner',
+                  ),
+                  MarkerLayer(markers: markers),
+                ],
               ),
               if (_isMapReady)
                 Positioned(
@@ -132,9 +152,7 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen> {
   }
 
   Future<void> _fitAllMarkers(List locations) async {
-    if (locations.isEmpty) return;
-    
-    final controller = await _controller.future;
+    if (locations.isEmpty || !_isMapReady) return;
     
     double minLat = locations.first.latitude;
     double minLong = locations.first.longitude;
@@ -148,12 +166,14 @@ class _LiveTrackingScreenState extends ConsumerState<LiveTrackingScreen> {
       if (loc.longitude > maxLong) maxLong = loc.longitude;
     }
 
-    controller.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(
-        southwest: LatLng(minLat, minLong),
-        northeast: LatLng(maxLat, maxLong),
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(
+          LatLng(minLat, minLong),
+          LatLng(maxLat, maxLong),
+        ),
+        padding: const EdgeInsets.all(50.0),
       ),
-      50.0, // padding
-    ));
+    );
   }
 }

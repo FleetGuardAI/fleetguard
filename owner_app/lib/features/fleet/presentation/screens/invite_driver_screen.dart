@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 import '../../data/fleet_repository.dart';
 
 class InviteDriverScreen extends ConsumerStatefulWidget {
@@ -46,7 +47,7 @@ class _InviteDriverScreenState extends ConsumerState<InviteDriverScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.only(left: 24.0, right: 24.0, top: 24.0, bottom: context.scrollContentClearance),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

@@ -13,6 +13,7 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+val geoapifyApiKey = localProperties.getProperty("GEOAPIFY_API_KEY") ?: ""
 
 
 android {
@@ -35,6 +36,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        manifestPlaceholders["GEOAPIFY_API_KEY"] = geoapifyApiKey
     }
 
     buildTypes {
