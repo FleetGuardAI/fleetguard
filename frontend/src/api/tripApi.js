@@ -78,6 +78,7 @@ export async function getTripById(id) {
 
 export async function createTrip(data) {
   const payload = {
+    ...data,
     origin_location: data.origin_location || data.start_point || data.origin,
     destination_location: data.destination_location || data.end_point || data.destination,
     planned_distance: data.planned_distance ? Number(data.planned_distance) : null,

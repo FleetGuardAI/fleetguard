@@ -46,7 +46,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             const SizedBox(height: 12),
             Text(
               _sosTriggered
-                  ? 'Your live location, truck info (MH-12-FG-2026), and active trip details are being transmitted to the fleet control center.'
+                  ? 'Your live location, truck info, and active trip details are being transmitted to the fleet control center.'
                   : 'Press and hold the SOS button in case of accident, breakdown, or security emergency.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.grey),

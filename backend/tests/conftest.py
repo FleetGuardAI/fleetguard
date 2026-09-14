@@ -4,10 +4,15 @@ import pytest_asyncio
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
 
 os.environ["OCR_PROVIDER"] = "mock"
 os.environ["GOOGLE_DOCUMENT_AI_PROJECT_ID"] = "test"
-os.environ["GOOGLE_DOCUMENT_AI_PROCESSOR_ID"] = "test"
 os.environ["GOOGLE_DOCUMENT_AI_LOCATION"] = "us"
 os.environ["GOOGLE_MAPS_API_KEY"] = "test"
 os.environ["TEST_DATABASE_URL"] = "sqlite+aiosqlite:///./test_db.sqlite"

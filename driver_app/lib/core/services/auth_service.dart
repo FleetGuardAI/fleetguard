@@ -1,18 +1,40 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../storage/secure_storage.dart';
 import '../storage/local_database.dart';
 import '../network/api_client.dart';
 import '../routing/app_router.dart';
 import '../../features/trip/data/tracking_service.dart';
+import '../../features/auth/data/auth_repository.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref);
 });
 
-class AuthService {
-
+class AuthService extends ChangeNotifier {
   AuthService(this._ref);
   final Ref _ref;
+
+  Future<void> syncProfile() async {
+    try {
+      final authRepo = _ref.read(authRepositoryProvider);
+      final profile = await authRepo.getProfile();
+      final status = profile['verification_status'];
+      if (status != null) {
+        final current = await SecureStorage.getVerificationStatus();
+        if (current != status) {
+          await SecureStorage.setVerificationStatus(status);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync profile failed: $e');
+    }
+  }
+
+  void triggerStateUpdate() {
+    notifyListeners();
+  }
 
   Future<void> logout() async {
     // 1. Notify Backend
@@ -43,5 +65,8 @@ class AuthService {
 
     // 6. Force navigation to login
     _ref.read(appRouterProvider).go('/auth/qr-scan');
+    
+    // 7. Notify router listeners
+    notifyListeners();
   }
 }

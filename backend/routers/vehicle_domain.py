@@ -228,6 +228,18 @@ async def assign_driver_to_vehicle(
         raise HTTPException(400, "Invalid driver or driver belongs to another fleet")
 
     vehicle.assigned_driver_id = driver_id
+    
+    from models.notification import Notification, NotificationCategory
+    if driver.user_id:
+        notification = Notification(
+            category=NotificationCategory.VEHICLE,
+            title="Vehicle Assigned",
+            description=f"You have been assigned to vehicle {vehicle.registration_number}.",
+            company_id=current_user.company_id,
+            user_id=driver.user_id,
+        )
+        db.add(notification)
+
     await db.commit()
     await db.refresh(vehicle)
     return VehicleResponse.model_validate(vehicle)
@@ -244,7 +256,23 @@ async def unassign_driver_from_vehicle(
     if not vehicle or vehicle.company_id != current_user.company_id:
         raise HTTPException(404, f"Vehicle {vehicle_id} not found")
 
+    old_driver_id = vehicle.assigned_driver_id
     vehicle.assigned_driver_id = None
+    
+    if old_driver_id:
+        from models.driver_domain import Driver
+        from models.notification import Notification, NotificationCategory
+        driver = await db.get(Driver, old_driver_id)
+        if driver and driver.user_id:
+            notification = Notification(
+                category=NotificationCategory.VEHICLE,
+                title="Vehicle Unassigned",
+                description=f"You have been unassigned from vehicle {vehicle.registration_number}.",
+                company_id=current_user.company_id,
+                user_id=driver.user_id,
+            )
+            db.add(notification)
+
     await db.commit()
     await db.refresh(vehicle)
     return VehicleResponse.model_validate(vehicle)

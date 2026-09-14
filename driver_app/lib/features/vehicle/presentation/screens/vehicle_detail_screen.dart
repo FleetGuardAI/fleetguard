@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../dashboard/presentation/providers/dashboard_providers.dart';
 
-class VehicleDetailScreen extends StatelessWidget {
+class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicleAsync = ref.watch(assignedVehicleProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Assigned Vehicle Details')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: vehicleAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error loading vehicle: $err')),
+        data: (vehicleData) {
+          final registration = vehicleData['registration_number'] ?? 'Unknown Registration';
+          final brand = vehicleData['brand'] ?? 'Unknown Brand';
+          final model = vehicleData['model'] ?? 'Unknown Model';
+          final vin = vehicleData['vin'] ?? 'Unknown VIN';
+          final year = vehicleData['year'] ?? 'Unknown Year';
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Card(
               child: Column(
                 children: [
@@ -22,23 +36,23 @@ class VehicleDetailScreen extends StatelessWidget {
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.local_shipping, size: 70, color: Colors.white),
-                        SizedBox(height: 8),
-                        Text('MH-12-FG-2026', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+                        const Icon(Icons.local_shipping, size: 70, color: Colors.white),
+                        const SizedBox(height: 8),
+                        Text(registration, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
                       ],
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Tata Prima 3530.K Heavy Commercial Truck', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        SizedBox(height: 4),
-                        Text('VIN: MAT1234567890FG01 • Year: 2024'),
+                        Text('$brand $model', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text('VIN: $vin • Year: $year'),
                       ],
                     ),
                   ),
@@ -48,22 +62,22 @@ class VehicleDetailScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Text('Compliance & Documents', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _buildComplianceRow('Insurance Policy', 'VALID until Oct 2026', Colors.green),
-            _buildComplianceRow('Fitness Certificate', 'VALID until Dec 2026', Colors.green),
-            _buildComplianceRow('PUC Certificate', 'VALID until Sep 2026', Colors.green),
+            _buildComplianceRow('Insurance Policy', 'VALID', Colors.green),
+            _buildComplianceRow('Fitness Certificate', 'VALID', Colors.green),
+            _buildComplianceRow('PUC Certificate', 'VALID', Colors.green),
             _buildComplianceRow('National Permit', 'PERMIT ACTIVE', Colors.green),
-            _buildComplianceRow('Fuel Capacity', '400.0 Liters (Diesel)', Colors.blue),
             const SizedBox(height: 20),
             const Card(
               child: ListTile(
                 leading: CircleAvatar(child: Icon(Icons.person)),
                 title: Text('Assigned Dispatcher', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('Rajesh Sharma • Fleet Ops HQ\nPhone: +91 98111 22233'),
+                subtitle: Text('Fleet Manager\nContact via Support'),
               ),
             ),
           ],
         ),
-      ),
+      );
+    }),
     );
   }
 
