@@ -146,9 +146,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         data: (profile) {
           final String name = profile['name'] ?? 'Driver Name';
           final String phone = profile['phone_number'] ?? '';
-          final String fleet = profile['company_name'] ?? 'the vahan';
+          final String fleet = profile['company_name'] ?? 'Unknown Fleet';
           final String dutyStr = profile['duty_status'] ?? 'OFF_DUTY';
-          final double score = (profile['driver_score'] ?? 85.0).toDouble();
+          final double score = (profile['driver_score'] ?? 0.0).toDouble();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),

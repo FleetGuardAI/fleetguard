@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../storage/secure_storage.dart';
+import '../services/auth_service.dart';
+import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/screens/qr_scan_screen.dart';
 import '../../features/auth/presentation/screens/phone_verification_screen.dart';
 import '../../features/auth/presentation/screens/profile_creation_screen.dart';
@@ -27,9 +29,12 @@ import '../../features/vehicle/presentation/screens/vehicle_detail_screen.dart';
 
 /// GoRouter configuration with auth-aware routing
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final authService = ref.watch(authServiceProvider);
+
   return GoRouter(
     initialLocation: '/splash',
     debugLogDiagnostics: true,
+    refreshListenable: authService,
     redirect: (context, state) async {
       // Splash handles redirect logic
       if (state.matchedLocation == '/splash') return null;
@@ -262,14 +267,14 @@ class _MainShell extends StatelessWidget {
 }
 
 /// Splash screen — determines initial route based on auth state
-class _SplashScreen extends StatefulWidget {
+class _SplashScreen extends ConsumerStatefulWidget {
   const _SplashScreen();
 
   @override
-  State<_SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<_SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen> {
+class _SplashScreenState extends ConsumerState<_SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -284,6 +289,17 @@ class _SplashScreenState extends State<_SplashScreen> {
     if (!isLoggedIn) {
       context.go('/auth/qr-scan');
       return;
+    }
+
+    // Sync profile and update verification status
+    try {
+      final profile = await ref.read(authRepositoryProvider).getProfile();
+      final vStatus = profile['verification_status'];
+      if (vStatus != null) {
+        await SecureStorage.setVerificationStatus(vStatus);
+      }
+    } catch (e) {
+      debugPrint('Splash sync error: $e');
     }
 
     final status = await SecureStorage.getVerificationStatus();

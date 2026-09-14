@@ -66,7 +66,7 @@ class LocationService {
         'accuracy': position.accuracy,
         'timestamp': position.timestamp.toIso8601String(),
         'battery_percent': batteryPercent,
-        'activity_state': 'DRIVING', // Simplified for demo
+        'activity_state': 'ACTIVE',
       });
     } catch (e) {
       AppLogger.error('Failed to store location: $e');

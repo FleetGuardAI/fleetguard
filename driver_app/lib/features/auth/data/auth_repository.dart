@@ -30,7 +30,7 @@ class AuthRepository {
       final response = await _dio.post('/api/v1/driver-app/send-otp', data: {
         'phone_number': phoneNumber
       });
-      return response.data; // { "message": "OTP sent successfully", "demo_otp": "123456" }
+      return response.data;
     } catch (e) {
       throw Exception('Failed to send OTP: $e');
     }

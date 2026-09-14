@@ -34,7 +34,7 @@ class TrackingService {
     }
 
     final driverId = await SecureStorage.getDriverId() ?? 1;
-    final token = await SecureStorage.getAccessToken() ?? 'demo_token';
+    final token = await SecureStorage.getAccessToken() ?? '';
 
     // 2. Connect to WebSocket
     final wsUrl = '${AppConfig.wsBaseUrl}/api/v1/ws/driver/$driverId?token=$token';
