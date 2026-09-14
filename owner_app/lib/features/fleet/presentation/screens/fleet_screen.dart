@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,11 +9,11 @@ import '../../data/fleet_repository.dart';
 import 'vehicle_detail_screen.dart';
 import 'driver_detail_screen.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
-import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/glass_text_field.dart';
 import '../../../../core/widgets/status_chip.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/error_state_widget.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 
 class FleetScreen extends ConsumerStatefulWidget {
   const FleetScreen({super.key});
@@ -52,7 +51,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
     super.dispose();
   }
 
-  String _selectedTruckStatus = 'ALL';
+  final String _selectedTruckStatus = 'ALL';
   String _selectedDriverStatus = 'ALL';
   String _selectedHardwareStatus = 'ALL';
 
@@ -76,6 +75,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
@@ -150,7 +150,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
         bottom: TabBar(
           controller: _tabController,
           labelColor: isDark ? AppColors.darkOnSurface : AppColors.primary,
-          unselectedLabelColor: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray,
+          unselectedLabelColor: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
           indicatorColor: AppColors.primary,
           tabs: const [
             Tab(text: 'TRUCKS'),
@@ -191,7 +191,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
           );
         }
         return ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
           children: [
             _buildSearchBar(
               hint: 'Search hardware...',
@@ -212,7 +212,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
         );
       },
       loading: () => ListView.separated(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
         itemCount: 4,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
@@ -229,41 +229,46 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
     final isInstalled = asset.installationStatus.toLowerCase() == 'installed';
     return InkWell(
       onTap: () {},
-      child: GlassCard(
-        
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-                shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(20),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkMint.withValues(alpha: 0.1) : AppColors.lightMint,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.memory, color: AppColors.primary, size: 24),
               ),
-              child: const Icon(Icons.memory, color: AppColors.primary),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(asset.model, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                    Text(asset.businessId, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, fontSize: 14)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(asset.model, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-                  Text(asset.businessId, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
+                  Text(asset.operationalStatus, style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                  const SizedBox(height: 8),
+                  StatusChip(
+                    label: asset.installationStatus,
+                    color: isInstalled ? AppColors.statusGreen : AppColors.statusAmber,
+                  ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(asset.operationalStatus, style: TextStyle(fontWeight: FontWeight.w500, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-                const SizedBox(height: 4),
-                StatusChip(
-                  label: asset.installationStatus,
-                  color: isInstalled ? AppColors.statusGreen : AppColors.statusAmber,
-                ),
-              ],
-            )
-          ],
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 20, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );
@@ -284,7 +289,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
           );
         }
         return ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
           children: [
             _buildSearchBar(
               hint: 'Search truck...',
@@ -307,7 +312,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
         );
       },
       loading: () => ListView.separated(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
         itemCount: 4,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
@@ -342,7 +347,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
           );
         }
         return ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
           children: [
             _buildSearchBar(
               hint: 'Search driver...',
@@ -365,7 +370,7 @@ class _FleetScreenState extends ConsumerState<FleetScreen> with SingleTickerProv
         );
       },
       loading: () => ListView.separated(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
         itemCount: 4,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, __) => const SkeletonLoader(height: 80, borderRadius: 12),
@@ -401,40 +406,52 @@ Widget _buildSearchBar({
 
     return InkWell(
       onTap: onTap,
-      child: GlassCard(
-        
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Text('🚛', style: TextStyle(fontSize: 32)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(plate, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-                  Text(driver, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                StatusChip(
-                  label: status,
-                  color: statusColor,
+      borderRadius: BorderRadius.circular(20),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkMint.withValues(alpha: 0.1) : AppColors.lightMint,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Row(
+                child: const Icon(Icons.local_shipping, color: AppColors.primary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.circle, size: 8, color: healthColor),
-                    const SizedBox(width: 4),
-                    Text(health, style: TextStyle(color: healthColor, fontSize: 12)),
+                    Text(driver, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                    Text(plate, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, fontSize: 14)),
                   ],
                 ),
-              ],
-            )
-          ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusChip(
+                    label: '+ $status',
+                    color: statusColor,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.circle, size: 8, color: healthColor),
+                      const SizedBox(width: 4),
+                      Text(health, style: TextStyle(color: healthColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 20, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );
@@ -446,43 +463,52 @@ Widget _buildSearchBar({
 
     return InkWell(
       onTap: onTap,
-      child: GlassCard(
-        
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-              child: Icon(Icons.person, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
-                  Text(plate, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.coolGray, fontSize: 14)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                StatusChip(
-                  label: status,
-                  color: statusColor,
+      borderRadius: BorderRadius.circular(20),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkMint.withValues(alpha: 0.1) : AppColors.lightMint,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Row(
+                child: const Icon(Icons.person, color: AppColors.primary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.circle, size: 8, color: healthColor),
-                    const SizedBox(width: 4),
-                    Text(health, style: TextStyle(color: healthColor, fontSize: 12)),
+                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface)),
+                    Text(plate, style: TextStyle(color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, fontSize: 14)),
                   ],
                 ),
-              ],
-            )
-          ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusChip(
+                    label: '+ $status',
+                    color: statusColor,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.circle, size: 8, color: healthColor),
+                      const SizedBox(width: 4),
+                      Text(health, style: TextStyle(color: healthColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 20, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );

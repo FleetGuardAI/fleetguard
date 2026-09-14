@@ -11,6 +11,7 @@ import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/error_state_widget.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/status_chip.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   final Vehicle vehicle;
@@ -26,7 +27,7 @@ class VehicleDetailScreen extends ConsumerWidget {
       case 'ACTIVE': statusColor = AppColors.statusGreen; break;
       case 'IN_SHOP': statusColor = AppColors.statusAmber; break;
       case 'OUT_OF_SERVICE': statusColor = AppColors.statusRed; break;
-      default: statusColor = AppColors.coolGray; break;
+      default: statusColor = AppColors.lightOnSurfaceVariant; break;
     }
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
@@ -37,7 +38,7 @@ class VehicleDetailScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: context.scrollContentClearance),
         children: [
           GlassCard(
             
@@ -47,8 +48,8 @@ class VehicleDetailScreen extends ConsumerWidget {
               children: [
                 const SectionHeader(title: 'Identity'),
                 const SizedBox(height: 12),
-                InfoRow(label: 'Registration', value: vehicle.licensePlate),
-                InfoRow(label: 'Model', value: '${vehicle.make} ${vehicle.model}'),
+                InfoRow(label: 'Registration', value: (vehicle.licensePlate.isEmpty) ? 'Not available' : vehicle.licensePlate),
+                InfoRow(label: 'Model', value: (vehicle.make.isEmpty && vehicle.model.isEmpty) ? 'Not available' : '${vehicle.make} ${vehicle.model}'.trim()),
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 12),
@@ -99,8 +100,8 @@ class VehicleDetailScreen extends ConsumerWidget {
                       children: [
                         const SectionHeader(title: 'Maintenance & Financials'),
                         const SizedBox(height: 12),
-                        InfoRow(label: 'Service History', value: maintenance ?? 'Unavailable'),
-                        InfoRow(label: 'Total Expenses', value: totalExpenses != null ? '₹$totalExpenses' : 'Unavailable'),
+                        InfoRow(label: 'Service History', value: (maintenance == null || maintenance.toString().isEmpty) ? 'No service records available' : maintenance),
+                        InfoRow(label: 'Total Expenses', value: totalExpenses != null ? '₹$totalExpenses' : 'Not available'),
                       ],
                     ),
                   ),
@@ -115,6 +116,7 @@ class VehicleDetailScreen extends ConsumerWidget {
                         border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const Icon(Icons.location_off, color: AppColors.warning, size: 20),
                           const SizedBox(width: 8),

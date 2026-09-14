@@ -21,40 +21,44 @@ class ScaffoldWithNavBar extends StatelessWidget {
     return Scaffold(
       body: child,
       extendBody: true, // Allow body to flow behind the bottom nav bar
+      resizeToAvoidBottomInset: false, // Navigation bar hides behind keyboard
       bottomNavigationBar: SafeArea(
-        bottom: true,
-        child: Container(
-          margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCardBackground.withValues(alpha: 0.8) : AppColors.lightCardBackground.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCardBackground.withValues(alpha: 0.85) : AppColors.lightCardBackground.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 1,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(context, Icons.home, loc.home, 0, currentIndex, isDark),
-                    _buildNavItem(context, Icons.local_shipping, loc.fleet, 1, currentIndex, isDark),
-                    _buildNavItem(context, Icons.route, loc.trips, 2, currentIndex, isDark),
-                    _buildNavItem(context, Icons.account_balance_wallet, loc.finance, 3, currentIndex, isDark),
-                    _buildNavItem(context, Icons.auto_awesome, 'Copilot', 4, currentIndex, isDark),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildNavItem(context, Icons.home_rounded, loc.home, 0, currentIndex, isDark),
+                      _buildNavItem(context, Icons.local_shipping_rounded, loc.fleet, 1, currentIndex, isDark),
+                      _buildNavItem(context, Icons.route_rounded, loc.trips, 2, currentIndex, isDark),
+                      _buildNavItem(context, Icons.account_balance_wallet_rounded, loc.finance, 3, currentIndex, isDark),
+                      _buildNavItem(context, Icons.auto_awesome_rounded, loc.copilot, 4, currentIndex, isDark),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -74,12 +78,12 @@ class ScaffoldWithNavBar extends StatelessWidget {
         onTap: () => _onItemTapped(index, context),
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
-          padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 12, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 8, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected 
-                ? (isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.15))
+                ? (isDark ? AppColors.darkMint.withValues(alpha: 0.2) : AppColors.lightMint)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
@@ -90,7 +94,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
                 icon,
                 size: 24,
                 color: isSelected 
-                    ? AppColors.primary 
+                    ? (isDark ? AppColors.darkMint : AppColors.primary)
                     : (isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
               ),
               if (isSelected) ...[
@@ -98,8 +102,8 @@ class ScaffoldWithNavBar extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: isDark ? AppColors.darkOnSurface : AppColors.primary,
-                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkMint : AppColors.primary,
+                    fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),

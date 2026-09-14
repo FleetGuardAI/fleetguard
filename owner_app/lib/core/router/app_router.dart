@@ -19,6 +19,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/more/presentation/screens/profile_screen.dart';
 import '../../features/more/presentation/screens/settings_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/operations/presentation/screens/document_upload_screen.dart';
 import '../storage/secure_storage.dart';
 
 final authStateProvider = StateProvider<bool>((ref) => false);
@@ -190,6 +191,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/finance',
             builder: (context, state) => const FinanceScreen(),
+          ),
+          GoRoute(
+            path: '/documents/upload',
+            builder: (context, state) => const DocumentUploadScreen(),
           ),
           GoRoute(
             path: '/copilot',

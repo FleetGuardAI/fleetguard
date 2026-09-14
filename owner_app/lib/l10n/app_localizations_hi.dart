@@ -64,4 +64,45 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get noActiveVehicles => 'कोई सक्रिय वाहन नहीं';
+
+  @override
+  String get noMapConfig => 'मैप कॉन्फ़िगरेशन गायब है';
+
+  @override
+  String get routeMapUnavailable => 'रूट मैप उपलब्ध नहीं है';
+
+  @override
+  String get pleaseConfigGeoapify =>
+      'कृपया जियोएपीफाई एपीआई कुंजी कॉन्फ़िगर करें।';
+
+  @override
+  String get noLocationData => 'इस यात्रा के लिए स्थान डेटा उपलब्ध नहीं है।';
+
+  @override
+  String get noExpensesFound => 'कोई खर्च नहीं मिला';
+
+  @override
+  String get noExpensesRecorded => 'इस अवधि में कोई खर्च दर्ज नहीं किया गया।';
+
+  @override
+  String get noPayments => 'कोई भुगतान नहीं';
+
+  @override
+  String get noDriverPayments =>
+      'इस अवधि के लिए कोई ड्राइवर भुगतान या अग्रिम नहीं मिला।';
+
+  @override
+  String get truckAddedSuccess => 'ट्रक सफलतापूर्वक जोड़ा गया';
+
+  @override
+  String get regNumberRequired => 'पंजीकरण संख्या आवश्यक है';
+
+  @override
+  String get manufacturerRequired => 'निर्माता आवश्यक है';
+
+  @override
+  String get failedLoadKPIs => 'केपीआई लोड करने में विफल';
+
+  @override
+  String get failedLoadExpenses => 'खर्च लोड करने में विफल।';
 }

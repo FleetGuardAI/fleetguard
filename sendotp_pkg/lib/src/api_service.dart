@@ -18,6 +18,7 @@ class ApiService {
 
     http.Response response;
     if (isPost) {
+      print('[MSG91 DIAG] SEND_START - POST $url');
       response = await http.post(
         Uri.parse(url),
         headers: {
@@ -26,6 +27,7 @@ class ApiService {
         body: jsonEncode(body),
       ).timeout(TIMEOUT_DURATION);
     } else {
+      print('[MSG91 DIAG] SEND_START - GET $url');
       response = await http.get(
         Uri.parse(url),
         headers: {
@@ -35,6 +37,7 @@ class ApiService {
     }
 
     final responseCode = response.statusCode;
+    print('[MSG91 DIAG] SEND_HTTP_STATUS=$responseCode');
     final redirectUrl = response.headers['location'];
 
     if (responseCode >= 300 && responseCode < 400 && redirectUrl != null) {
@@ -47,8 +50,12 @@ class ApiService {
     } else {
       final responseBody = response.body;
       if (responseCode >= 200 && responseCode < 400) {
-        return jsonDecode(responseBody);
+        final parsed = jsonDecode(responseBody);
+        print('[MSG91 DIAG] SEND_RESPONSE_TYPE=${parsed['type']}');
+        print('[MSG91 DIAG] REQ_ID_PRESENT=${parsed['reqId'] != null || parsed['message'] != null}');
+        return parsed;
       } else {
+        print('[MSG91 DIAG] SEND_ERROR_BODY_PREFIX=${responseBody.length > 50 ? responseBody.substring(0, 50) : responseBody}');
         throw Exception('Failed to ${isPost ? 'post' : 'get'} data: $responseCode, $responseBody');
       }
     }

@@ -391,10 +391,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_map
-      sha256: "87cc8349b8fa5dccda5af50018c7374b6645334a0d680931c1fe11bce88fa5bb"
+      sha256: cda8d72135b697f519287258b5294a57ce2f2a5ebf234f0e406aad4dc14c9399
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.1"
+    version: "6.1.0"
   flutter_markdown:
     dependency: "direct main"
     description:
@@ -606,7 +606,7 @@ packages:
     source: hosted
     version: "0.15.6"
   http:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http
       sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
@@ -769,10 +769,10 @@ packages:
     dependency: "direct main"
     description:
       name: latlong2
-      sha256: "98227922caf49e6056f91b6c56945ea1c7b166f28ffcd5fb8e72fc0b453cc8fe"
+      sha256: "18712164760cee655bc790122b0fd8f3d5b3c36da2cb7bf94b68a197fbb0811b"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.1"
+    version: "0.9.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -1117,6 +1117,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  sendotp_flutter_sdk:
+    dependency: "direct main"
+    description:
+      path: "../sendotp_pkg"
+      relative: true
+    source: path
+    version: "0.0.2"
   shared_preferences:
     dependency: "direct main"
     description:

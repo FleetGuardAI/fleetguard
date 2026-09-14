@@ -64,4 +64,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noActiveVehicles => 'No active vehicles';
+
+  @override
+  String get noMapConfig => 'Map configuration missing';
+
+  @override
+  String get routeMapUnavailable => 'Route Map Unavailable';
+
+  @override
+  String get pleaseConfigGeoapify => 'Please configure Geoapify API key.';
+
+  @override
+  String get noLocationData => 'Location data is not available for this trip.';
+
+  @override
+  String get noExpensesFound => 'No Expenses Found';
+
+  @override
+  String get noExpensesRecorded => 'No expenses recorded in this period.';
+
+  @override
+  String get noPayments => 'No Payments';
+
+  @override
+  String get noDriverPayments =>
+      'No driver payments or advances found for this period.';
+
+  @override
+  String get truckAddedSuccess => 'Truck added successfully';
+
+  @override
+  String get regNumberRequired => 'Registration number is required';
+
+  @override
+  String get manufacturerRequired => 'Manufacturer is required';
+
+  @override
+  String get failedLoadKPIs => 'Failed to load KPIs.';
+
+  @override
+  String get failedLoadExpenses => 'Failed to load expenses.';
 }

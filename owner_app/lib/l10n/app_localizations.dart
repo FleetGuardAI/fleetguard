@@ -211,6 +211,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No active vehicles'**
   String get noActiveVehicles;
+
+  /// No description provided for @noMapConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Map configuration missing'**
+  String get noMapConfig;
+
+  /// No description provided for @routeMapUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Route Map Unavailable'**
+  String get routeMapUnavailable;
+
+  /// No description provided for @pleaseConfigGeoapify.
+  ///
+  /// In en, this message translates to:
+  /// **'Please configure Geoapify API key.'**
+  String get pleaseConfigGeoapify;
+
+  /// No description provided for @noLocationData.
+  ///
+  /// In en, this message translates to:
+  /// **'Location data is not available for this trip.'**
+  String get noLocationData;
+
+  /// No description provided for @noExpensesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No Expenses Found'**
+  String get noExpensesFound;
+
+  /// No description provided for @noExpensesRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses recorded in this period.'**
+  String get noExpensesRecorded;
+
+  /// No description provided for @noPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'No Payments'**
+  String get noPayments;
+
+  /// No description provided for @noDriverPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'No driver payments or advances found for this period.'**
+  String get noDriverPayments;
+
+  /// No description provided for @truckAddedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck added successfully'**
+  String get truckAddedSuccess;
+
+  /// No description provided for @regNumberRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration number is required'**
+  String get regNumberRequired;
+
+  /// No description provided for @manufacturerRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Manufacturer is required'**
+  String get manufacturerRequired;
+
+  /// No description provided for @failedLoadKPIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load KPIs.'**
+  String get failedLoadKPIs;
+
+  /// No description provided for @failedLoadExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load expenses.'**
+  String get failedLoadExpenses;
 }
 
 class _AppLocalizationsDelegate

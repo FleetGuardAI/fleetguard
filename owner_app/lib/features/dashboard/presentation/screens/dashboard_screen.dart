@@ -4,14 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/metric_card.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/error_state_widget.dart';
 import '../providers/dashboard_provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../tracking/presentation/providers/tracking_provider.dart';
 import '../../../../core/services/auth_service.dart';
+import '../widgets/trip_intelligence_dashboard_card.dart';
+import '../../../../core/utils/navigation_safe_area.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -66,12 +69,14 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     _buildAttentionRequired(ref, isDark),
                     const SizedBox(height: 24),
-                    _buildPerformanceOverview(ref, isDark),
+                    _buildPerformanceOverview(context, ref, isDark),
+                    const SizedBox(height: 24),
+                    const TripIntelligenceDashboardCard(),
                     const SizedBox(height: 24),
                     _buildLiveTrackingCard(context, ref, isDark),
                     const SizedBox(height: 24),
                     _buildRecentActivity(ref, isDark),
-                    const SizedBox(height: 100), // Bottom padding for glass nav
+                    SizedBox(height: context.scrollContentClearance), // Dynamic bottom padding for glass nav
                   ],
                 ),
               ),
@@ -86,24 +91,70 @@ class DashboardScreen extends ConsumerWidget {
     final kpisAsync = ref.watch(dashboardKPIsProvider);
     return kpisAsync.when(
       data: (kpis) {
-        if (kpis.attentionRequired == 0) return const SizedBox.shrink();
+        if (kpis.attentionRequired > 0) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Attention Required',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'You have ${kpis.attentionRequired} pending issue${kpis.attentionRequired > 1 ? 's' : ''} to review.',
+                        style: TextStyle(
+                          color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.error),
+              ],
+            ),
+          );
+        }
         
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
-            color: AppColors.statusRed.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.statusRed.withValues(alpha: 0.3)),
+            color: isDark ? AppColors.darkMint.withValues(alpha: 0.15) : AppColors.lightMint,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDark ? AppColors.darkMint.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.1)),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.statusRed.withValues(alpha: 0.2),
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.warning_amber_rounded, color: AppColors.statusRed),
+                child: const Icon(Icons.check, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -111,30 +162,30 @@ class DashboardScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Attention Required',
+                      'All systems operational',
                       style: TextStyle(
-                        color: AppColors.statusRed,
-                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+                        fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      'You have ${kpis.attentionRequired} pending issue${kpis.attentionRequired > 1 ? 's' : ''} to review.',
+                      'Your fleet is running smoothly.',
                       style: TextStyle(
                         color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.statusRed),
+              Icon(Icons.chevron_right, size: 20, color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant),
             ],
           ),
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading: () => const SkeletonLoader(height: 80, borderRadius: 20),
       error: (_, __) => const SizedBox.shrink(),
     );
   }
@@ -317,7 +368,7 @@ class DashboardScreen extends ConsumerWidget {
                 border: Border.all(color: AppColors.primary, width: 2),
               ),
               child: InkWell(
-                onTap: () => _showProfileSheet(context, ref, isDark),
+                onTap: () => context.push('/profile'),
                 borderRadius: BorderRadius.circular(20),
                 child: const CircleAvatar(
                   radius: 18,
@@ -329,100 +380,6 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ],
-    );
-  }
-
-  void _showProfileSheet(BuildContext context, WidgetRef ref, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final userProfileAsync = ref.watch(userProfileProvider);
-        
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 32,
-                    backgroundColor: AppColors.primary,
-                    child: Icon(Icons.person, size: 36, color: Colors.white),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: userProfileAsync.when(
-                      data: (user) {
-                        if (user == null) {
-                          return const Text('Profile not available');
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.fullName,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Role: ${user.role.toUpperCase()}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      loading: () => const SkeletonLoader(height: 48, width: 150),
-                      error: (_, __) => const Text('Error loading profile'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ref.read(authServiceProvider).logout();
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.statusRed,
-                  side: const BorderSide(color: AppColors.statusRed),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -442,21 +399,58 @@ class DashboardScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$timeGreeting, $userName',
+          '$timeGreeting,\n$userName 👋',
           style: TextStyle(
             fontSize: 28, 
             fontWeight: FontWeight.bold,
             letterSpacing: -0.5,
+            height: 1.2,
             color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
-          "Fleet operations are running smoothly today.",
+          "Your fleet is on the move. Here's today's overview.",
           style: TextStyle(
             color: isDark ? AppColors.darkOnSurfaceVariant : AppColors.lightOnSurfaceVariant, 
             fontSize: 15,
             fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Hero landscape placeholder
+        Container(
+          width: double.infinity,
+          height: 140,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [AppColors.emerald, AppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                bottom: 16,
+                left: 20,
+                child: Text(
+                  '"Safer Journeys\nStronger Businesses"',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              Positioned(
+                right: -20,
+                bottom: 0,
+                child: Icon(Icons.local_shipping, size: 120, color: Colors.white.withValues(alpha: 0.15)),
+              ),
+            ],
           ),
         ),
       ],
@@ -466,6 +460,45 @@ class DashboardScreen extends ConsumerWidget {
 
 
   Widget _buildLiveTrackingCard(BuildContext context, WidgetRef ref, bool isDark) {
+    final mapsApiKey = AppConfig.geoapifyApiKey;
+    if (mapsApiKey.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Live Tracking', 
+                style: TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              color: isDark ? AppColors.darkCardBackground : AppColors.lightCardBackground,
+            ),
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Map unavailable — map configuration is missing.', style: TextStyle(color: AppColors.error), textAlign: TextAlign.center),
+              ),
+            ),
+          )
+        ],
+      );
+    }
+
     final locationsAsync = ref.watch(fleetLocationsProvider);
 
     return Column(
@@ -512,26 +545,42 @@ class DashboardScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(24),
             child: locationsAsync.when(
               data: (locations) {
-                // Determine bounds
-                final markers = locations.map((loc) {
-                  return Marker(
-                    markerId: MarkerId(loc.driverId.toString()),
-                    position: LatLng(loc.latitude, loc.longitude),
-                    infoWindow: InfoWindow(title: loc.driverName, snippet: loc.dutyStatus),
-                  );
-                }).toSet();
-                
+                final geoapifyKey = AppConfig.geoapifyApiKey;
+                if (geoapifyKey.isEmpty) {
+                  return const Center(child: Text('Map unavailable - API key is missing.', style: TextStyle(color: AppColors.statusRed)));
+                }
+
                 LatLng center = locations.isNotEmpty ? LatLng(locations.first.latitude, locations.first.longitude) : const LatLng(28.6139, 77.2090);
 
-                return GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: center,
-                    zoom: locations.isNotEmpty ? 10 : 4,
+                return FlutterMap(
+                  options: MapOptions(
+                    initialCenter: center,
+                    initialZoom: locations.isNotEmpty ? 10.0 : 4.0,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
                   ),
-                  markers: markers,
-                  myLocationEnabled: false,
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}.png?apiKey={apiKey}',
+                      additionalOptions: {
+                        'apiKey': geoapifyKey,
+                      },
+                      userAgentPackageName: 'com.example.fleetguard_owner',
+                    ),
+                    MarkerLayer(markers: locations.map((loc) {
+                      return Marker(
+                        point: LatLng(loc.latitude, loc.longitude),
+                        width: 40,
+                        height: 40,
+                        child: const Icon(
+                          Icons.local_shipping,
+                          color: AppColors.statusGreen,
+                          size: 30,
+                        ),
+                      );
+                    }).toList()),
+                  ],
                 );
               },
               loading: () => const SkeletonLoader(height: 180, borderRadius: 24),
@@ -543,7 +592,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPerformanceOverview(WidgetRef ref, bool isDark) {
+  Widget _buildPerformanceOverview(BuildContext context, WidgetRef ref, bool isDark) {
     final kpisAsync = ref.watch(dashboardKPIsProvider);
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
@@ -569,10 +618,46 @@ class DashboardScreen extends ConsumerWidget {
             childAspectRatio: 1.4,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              MetricCard(title: 'Active Trucks', value: kpis.totalActiveTrucks.toString(), icon: Icons.local_shipping_outlined),
-              MetricCard(title: 'Active Drivers', value: kpis.totalActiveDrivers.toString(), icon: Icons.person_outline),
-              MetricCard(title: 'Ongoing Trips', value: kpis.activeTrips.toString(), icon: Icons.route_outlined),
-              MetricCard(title: 'Monthly Spend', value: currencyFormatter.format(kpis.monthlyExpenses), icon: Icons.account_balance_wallet_outlined),
+              MetricCard(
+                title: 'Active Trucks', 
+                value: kpis.totalActiveTrucks.toString(), 
+                icon: Icons.local_shipping, 
+                trend: '↑ +2', 
+                isTrendPositive: true,
+                iconBackgroundColor: isDark ? AppColors.darkMint.withValues(alpha: 0.15) : AppColors.lightMint,
+                iconColor: isDark ? AppColors.darkMint : AppColors.primary,
+                onTap: () => context.push('/fleet'),
+              ),
+              MetricCard(
+                title: 'Active Drivers', 
+                value: kpis.totalActiveDrivers.toString(), 
+                icon: Icons.person, 
+                trend: '↑ +1', 
+                isTrendPositive: true,
+                iconBackgroundColor: isDark ? AppColors.info.withValues(alpha: 0.15) : AppColors.info.withValues(alpha: 0.1),
+                iconColor: AppColors.info,
+                onTap: () => context.push('/fleet'),
+              ),
+              MetricCard(
+                title: 'Ongoing Trips', 
+                value: kpis.activeTrips.toString(), 
+                icon: Icons.route, 
+                trend: '↑ +3', 
+                isTrendPositive: true,
+                iconBackgroundColor: isDark ? AppColors.purpleAccent.withValues(alpha: 0.15) : AppColors.purpleAccent.withValues(alpha: 0.1),
+                iconColor: AppColors.purpleAccent,
+                onTap: () => context.push('/trips'),
+              ),
+              MetricCard(
+                title: 'Approved Expenses', 
+                value: currencyFormatter.format(kpis.monthlyExpenses), 
+                icon: Icons.account_balance_wallet, 
+                trend: '↓ 12%', 
+                isTrendPositive: true, // Lower spend is positive
+                iconBackgroundColor: isDark ? AppColors.warning.withValues(alpha: 0.15) : AppColors.warning.withValues(alpha: 0.1),
+                iconColor: AppColors.warning,
+                onTap: () => context.push('/finance'),
+              ),
             ],
           ),
           loading: () => GridView.count(
