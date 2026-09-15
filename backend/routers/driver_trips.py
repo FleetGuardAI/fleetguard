@@ -61,6 +61,12 @@ class DriverTripResponse(BaseModel):
     status: str
     origin_location: Optional[str] = None
     destination_location: Optional[str] = None
+    origin_lat: Optional[float] = None
+    origin_lng: Optional[float] = None
+    origin_address: Optional[str] = None
+    destination_lat: Optional[float] = None
+    destination_lng: Optional[float] = None
+    destination_address: Optional[str] = None
     planned_distance: Optional[float] = None
     actual_distance: Optional[float] = None
     planned_start_time: Optional[datetime] = None
@@ -69,11 +75,12 @@ class DriverTripResponse(BaseModel):
     actual_end_time: Optional[datetime] = None
     vehicle_id: Optional[int] = None
     driver_id: Optional[int] = None
-    customer_name: Optional[str] = "Acme Logistics Ltd"
-    customer_phone: Optional[str] = "+919876543210"
-    instructions: Optional[str] = "Handle fragile cargo with care. Call on arrival."
-    eta_minutes: Optional[int] = 45
-    distance_remaining_km: Optional[float] = 28.5
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_contact_person: Optional[str] = None
+    instructions: Optional[str] = None
+    eta_minutes: Optional[int] = None
+    distance_remaining_km: Optional[float] = None
     stops: List[StopPoint] = []
     start_selfie_url: Optional[str] = None
 
@@ -97,9 +104,8 @@ async def get_today_trips(
     response_trips = []
     for trip in trips:
         stops = [
-            StopPoint(location=trip.origin_location or "Warehouse A", stop_order=1, status="COMPLETED" if trip.status == TripStatus.IN_PROGRESS else "PENDING"),
-            StopPoint(location="Midpoint Fuel Station", stop_order=2, status="PENDING"),
-            StopPoint(location=trip.destination_location or "Distribution Hub B", stop_order=3, status="PENDING"),
+            StopPoint(location=trip.origin_location or "Pickup", stop_order=1, status="COMPLETED" if trip.status == TripStatus.IN_PROGRESS else "PENDING"),
+            StopPoint(location=trip.destination_location or "Delivery", stop_order=2, status="PENDING"),
         ]
         response_trips.append(
             DriverTripResponse(
@@ -108,7 +114,13 @@ async def get_today_trips(
                 status=trip.status.value if trip.status else "CREATED",
                 origin_location=trip.origin_location,
                 destination_location=trip.destination_location,
-                planned_distance=trip.planned_distance or 120.0,
+                origin_lat=trip.origin_lat,
+                origin_lng=trip.origin_lng,
+                origin_address=trip.origin_address,
+                destination_lat=trip.destination_lat,
+                destination_lng=trip.destination_lng,
+                destination_address=trip.destination_address,
+                planned_distance=trip.planned_distance,
                 actual_distance=trip.actual_distance,
                 planned_start_time=trip.planned_start_time,
                 actual_start_time=trip.actual_start_time,
@@ -116,6 +128,10 @@ async def get_today_trips(
                 actual_end_time=trip.actual_end_time,
                 vehicle_id=trip.vehicle_id,
                 driver_id=trip.driver_id,
+                customer_name=trip.customer_name,
+                customer_phone=trip.customer_phone,
+                customer_contact_person=trip.customer_contact_person,
+                instructions=trip.instructions,
                 stops=stops,
                 start_selfie_url=trip.start_selfie_url,
             )

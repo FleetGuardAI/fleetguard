@@ -132,3 +132,45 @@ export async function getVehicleHistory(id, hours = 24) {
     return [];
   }
 }
+
+/**
+ * Upload a vehicle document (RC, Insurance, PUC, Fitness Certificate, Permit).
+ * Uses the backend unified document pipeline for upload, OCR, and storage.
+ * 
+ * @param {number|string} vehicleId - The vehicle ID
+ * @param {string} documentType - One of: rc, insurance, puc, fitness_certificate, permit
+ * @param {File} file - The document file to upload
+ * @returns {Promise<object>} - Upload result with URL and extracted fields
+ */
+export async function uploadVehicleDocument(vehicleId, documentType, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('document_type', documentType);
+
+  const API_BASE = import.meta.env.VITE_API_URL || '/api';
+  const localToken = localStorage.getItem('fleetguard_token');
+  const sessionToken = sessionStorage.getItem('fleetguard_token');
+  const token = localToken || sessionToken;
+  const tokenType = localToken
+    ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+    : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
+
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `${tokenType} ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}/v1/vehicles/${vehicleId}/upload-document`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || `Upload failed: HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+

@@ -25,11 +25,11 @@ class AppConfig {
   static const String driverApiPrefix = '/api/v1/driver-app';
 
   static const String msg91MobileWidgetId = String.fromEnvironment(
-    'MSG91_MOBILE_WIDGET_ID',
+    'MSG91_WIDGET_ID',
   );
 
   static const String msg91MobileWidgetToken = String.fromEnvironment(
-    'MSG91_MOBILE_WIDGET_TOKEN',
+    'MSG91_AUTH_TOKEN',
   );
 
   /// GPS tracking interval in seconds

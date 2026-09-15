@@ -8,6 +8,7 @@ import uuid
 import os
 import logging
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional
 
 from infrastructure.ocr.models import OCRResult
@@ -44,25 +45,46 @@ class OCRProvider(ABC):
 class MockOCRProvider(OCRProvider):
     """
     A dummy OCR provider for local testing and development.
-    It simulates a network delay and returns generic extracted text.
+    It simulates a network delay and returns realistic sample extracted text.
     """
     async def extract_text(self, file_data: bytes, mime_type: str, document_type: str = "receipt") -> OCRResult:
         start_time = time.monotonic()
         
         # Simulate network latency (e.g., calling an external API)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
         
         end_time = time.monotonic()
         processing_time_ms = int((end_time - start_time) * 1000)
         
-        # Dummy text for testing
-        mock_text = f"Extracted mock text for document. Total amount: $150.00."
+        # Return realistic sample fields based on document type
+        if document_type == "receipt":
+            extracted_fields = {
+                "MerchantName": "Sample Fuel Station",
+                "TransactionDate": datetime.now().strftime("%Y-%m-%d"),
+                "Total": "1250.00",
+                "MerchantTaxId": "29AABCT1234F1ZH",
+            }
+            mock_text = "Sample Fuel Station\nDate: {}\nTotal: ₹1,250.00\nGST: 29AABCT1234F1ZH".format(
+                datetime.now().strftime("%Y-%m-%d")
+            )
+        elif document_type in ["idDocument", "driving_license", "license_front", "license_back"]:
+            extracted_fields = {
+                "FirstName": "Sample",
+                "LastName": "Driver",
+                "DocumentNumber": "DL-0420110012345",
+                "DateOfBirth": "1990-01-15",
+                "DateOfExpiration": "2030-12-31",
+            }
+            mock_text = "Driving License\nName: Sample Driver\nDL No: DL-0420110012345"
+        else:
+            extracted_fields = {}
+            mock_text = "Extracted mock text for document."
         
         return OCRResult(
             text=mock_text,
-            confidence=0.95,
+            confidence=0.85,
             provider_name="MockOCRProvider",
-            extracted_fields={},
+            extracted_fields=extracted_fields,
             processing_time_ms=processing_time_ms,
             provider_request_id=str(uuid.uuid4()),
             metadata={"simulated": True, "mime_type": mime_type, "document_type": document_type}

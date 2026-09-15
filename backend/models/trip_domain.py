@@ -152,6 +152,24 @@ class Trip(Base):
         comment="Immutable pre-trip intelligence calculation preserved at dispatch"
     )
 
+    # --- Customer / Booking Information ---
+    customer_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True,
+        comment="Customer/company name for this trip"
+    )
+    customer_phone: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True,
+        comment="Customer contact phone number"
+    )
+    customer_contact_person: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True,
+        comment="Contact person at customer site"
+    )
+    instructions: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Delivery/handling instructions for the driver"
+    )
+
     # --- Traceability ---
     origin_type: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True,

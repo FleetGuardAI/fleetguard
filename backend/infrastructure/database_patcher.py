@@ -31,6 +31,10 @@ async def apply_schema_patches(session: AsyncSession):
             ("planned_cost", "FLOAT"),
             ("planned_fuel_liters", "FLOAT"),
             ("cargo_weight", "FLOAT"),
+            ("customer_name", "VARCHAR(255)"),
+            ("customer_phone", "VARCHAR(50)"),
+            ("customer_contact_person", "VARCHAR(255)"),
+            ("instructions", "TEXT"),
         ],
         "drivers": [
             ("company_id", "INTEGER"),
@@ -48,7 +52,12 @@ async def apply_schema_patches(session: AsyncSession):
             ("last_known_lng", "FLOAT"),
             ("last_location_at", "TIMESTAMP WITH TIME ZONE"),
             ("fcm_token", "VARCHAR(500)"),
-        ]
+        ],
+        "expenses": [
+            ("reviewed_by", "VARCHAR(255)"),
+            ("reviewed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("rejection_reason", "TEXT"),
+        ],
     }
     
     from sqlalchemy.exc import ProgrammingError
