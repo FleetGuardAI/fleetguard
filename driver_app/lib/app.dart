@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/theme/app_theme.dart';
 import 'core/routing/app_router.dart';
 
-import 'features/auth/presentation/providers/auth_providers.dart';
+import 'core/services/auth_service.dart';
 import 'features/dashboard/presentation/providers/dashboard_providers.dart';
 import 'features/trip/presentation/providers/trip_providers.dart';
 import 'features/wallet/presentation/providers/wallet_provider.dart';

@@ -60,8 +60,22 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     } catch (e) {
       setState(() => _isOcrProcessing = false);
       if (mounted) {
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('OCR Failed: $e')),
+          SnackBar(
+            content: Text('OCR Failed: $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _simulateCameraAndOcr,
+            ),
+          ),
         );
       }
     }

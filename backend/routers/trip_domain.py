@@ -94,6 +94,10 @@ async def create_trip(
         planned_cost=payload.planned_cost,
         planned_fuel_liters=payload.planned_fuel_liters,
         cargo_weight=payload.cargo_weight,
+        customer_name=payload.customer_name,
+        customer_phone=payload.customer_phone,
+        customer_contact_person=payload.customer_contact_person,
+        instructions=payload.instructions,
         origin_type="rest_api"
     )
     

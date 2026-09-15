@@ -116,12 +116,22 @@ async def process_receipt_ocr(
         )
     except RuntimeError as re:
         logger.error(f"OCR AI service unavailable: {re}")
-        raise HTTPException(status_code=503, detail=str(re))
+        raise HTTPException(
+            status_code=503, 
+            detail="Receipt processing service is temporarily unavailable. Please try again later."
+        )
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"OCR input validation failed: {ve}")
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid receipt image. Please upload a clear photo of the receipt."
+        )
     except Exception as e:
-        logger.error(f"OCR failed: {e}")
-        raise HTTPException(status_code=500, detail="OCR processing failed")
+        logger.error(f"OCR failed unexpectedly: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Receipt processing failed. Please try again."
+        )
         
     fields = ocr_result.extracted_fields
     

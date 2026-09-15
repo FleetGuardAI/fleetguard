@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../dashboard/presentation/providers/dashboard_providers.dart';
+import 'package:fleetguard_driver/features/dashboard/presentation/providers/dashboard_providers.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({super.key});

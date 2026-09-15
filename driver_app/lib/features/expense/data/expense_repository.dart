@@ -24,6 +24,9 @@ class ExpenseRepository {
         data: formData,
       );
       return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final detail = e.response?.data?['detail'] ?? 'Failed to process receipt (HTTP ${e.response?.statusCode})';
+      throw Exception(detail);
     } catch (e) {
       throw Exception('Failed to process receipt: $e');
     }
