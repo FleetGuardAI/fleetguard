@@ -35,16 +35,18 @@ export default {
         border: {
           DEFAULT: 'var(--border-color)',
         },
-        // ── FleetGuard Green Identity ──
+        // ── FleetGuard v6 Semantic Identity ──
         fg: {
-          green:         '#22C55E',
-          'green-bright':'#86EFAC',
-          'green-deep':  '#DCFCE7',
-          'green-muted': '#BBF7D0',
-          'green-surface':'#F0FDF4',
-          text:          '#17201A',
-          'text-sec':    '#647067',
-          border:        '#E5EDE7',
+          base:          'var(--fg-base)',
+          surface:       'var(--fg-surface)',
+          text:          'var(--fg-text)',
+          'text-muted':  'var(--fg-text-muted)',
+          green:         'var(--fg-green)',
+          amber:         'var(--fg-amber)',
+          red:           'var(--fg-red)',
+          dark:          'var(--fg-dark)',
+          'dark-surface':'var(--fg-dark-surface)',
+          border:        'var(--fg-border)',
         },
       },
       boxShadow: {
