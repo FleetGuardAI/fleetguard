@@ -1,0 +1,581 @@
+import React, { useRef, useMemo, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Html, Environment, useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
+
+export function HeroSection() {
+  return (
+    <section className="relative w-full h-screen min-h-[800px] flex flex-col justify-center bg-[#050b14] overflow-hidden">
+      
+      {/* 3D Cinematic Fleet Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Canvas shadows dpr={[1, 2]} camera={{ fov: 25, near: 0.1, far: 5000 }}>
+          
+          <CinematicLighting />
+          <SkyGradient />
+          <fog attach="fog" args={['#050b14', 100, 2000]} />
+          <Environment preset="city" blur={1} />
+
+          <group>
+            <CinematicWorld />
+          </group>
+
+        </Canvas>
+        
+        {/* UI Shielding Gradients */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050b14]/95 via-[#050b14]/50 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050b14]/90"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050b14] via-transparent to-transparent h-40 bottom-0"></div>
+      </div>
+
+      {/* Hero Content (Existing UI) */}
+      <div className="container mx-auto px-6 max-w-7xl relative z-10 pt-24 h-full flex flex-col justify-between pointer-events-none">
+        
+        <div className="flex-1 flex flex-col justify-center pointer-events-auto">
+          <div className="max-w-2xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+            >
+              <div className="text-[10px] font-bold tracking-widest uppercase text-white/50 mb-6">
+                FLEET INTELLIGENCE FOR A MORE EFFICIENT TOMORROW
+              </div>
+              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[80px] font-medium tracking-tight text-white mb-6 leading-[1.05]">
+                Every mile <br/>has a story.<br/>
+                <span className="text-[#15803d] font-normal">We help you understand it.</span>
+              </h1>
+              <p className="text-lg sm:text-xl text-white/60 font-light leading-relaxed max-w-xl mb-10">
+                The vaahan connects your vehicles, drivers, trips, expenses and more— turning fleet activity into operational and financial intelligence.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link to="/dashboard" className="inline-flex items-center justify-center bg-[#15803d] hover:bg-[#166534] text-white font-medium px-8 py-3.5 rounded text-sm transition-colors">
+                  Explore the Platform <ArrowRight className="ml-2 w-4 h-4" />
+                </Link>
+                <Link to="#contact" className="inline-flex items-center justify-center bg-transparent border border-white/20 hover:bg-white/5 text-white font-medium px-8 py-3.5 rounded text-sm transition-colors">
+                  Book a Demo
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Bottom Stats Row */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className="pb-12 flex items-center gap-12 pointer-events-auto"
+        >
+          <div>
+            <div className="text-2xl font-semibold text-white">248</div>
+            <div className="text-xs text-white/50">Vehicles Active</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-white">98%</div>
+            <div className="text-xs text-white/50">Trips On Time</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-white">12</div>
+            <div className="text-xs text-white/50">Attention Required</div>
+          </div>
+          <div>
+            <div className="text-2xl font-semibold text-red-500">3</div>
+            <div className="text-xs text-white/50">Critical Alerts</div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Floating Live Fleet Overlay */}
+      <div className="absolute top-32 right-12 z-20 hidden lg:block pointer-events-auto">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="bg-[#0b120f]/60 backdrop-blur-md border border-white/5 rounded-xl p-4 w-56 shadow-2xl"
+        >
+          <div className="text-[10px] font-bold text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Live Fleet</div>
+          <div className="space-y-3 text-xs">
+            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#15803d]"></div>On Time</span><span className="text-white">229</span></div>
+            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div>Attention</span><span className="text-white">12</span></div>
+            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div>Delayed</span><span className="text-white">3</span></div>
+            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white/20"></div>Inactive</span><span className="text-white">4</span></div>
+          </div>
+        </motion.div>
+      </div>
+
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------
+// ENVIRONMENT & LIGHTING
+// ------------------------------------------------------------------
+
+function CinematicLighting() {
+  const keyLightRef = useRef();
+  
+  useFrame(({ camera }) => {
+    if (keyLightRef.current) {
+      // Keep light relative to camera to maximize shadow map resolution on the truck
+      keyLightRef.current.position.set(camera.position.x - 50, camera.position.y + 80, camera.position.z + 50);
+      keyLightRef.current.target.position.set(camera.position.x, 0, camera.position.z - 40);
+      keyLightRef.current.target.updateMatrixWorld();
+    }
+  });
+
+  return (
+    <group>
+      {/* Soft cool ambient fill */}
+      <ambientLight intensity={0.7} color="#cbd5e1" />
+      
+      {/* Warm Key Light hitting the front-left of the truck */}
+      <directionalLight 
+        ref={keyLightRef}
+        castShadow
+        intensity={3.0} 
+        color="#fef08a"
+        shadow-mapSize={[2048, 2048]} 
+        shadow-camera-near={10} 
+        shadow-camera-far={300} 
+        shadow-camera-left={-80} 
+        shadow-camera-right={80} 
+        shadow-camera-top={80} 
+        shadow-camera-bottom={-80} 
+        shadow-bias={-0.0001}
+      />
+      
+      {/* Subtle cool rim light hitting the rear-right */}
+      <directionalLight 
+        position={[100, 40, -100]} 
+        intensity={1.8} 
+        color="#7dd3fc"
+      />
+    </group>
+  );
+}
+
+function SkyGradient() {
+  return (
+    <mesh scale={5000}>
+      <sphereGeometry args={[1, 32, 32]} />
+      <shaderMaterial
+        side={THREE.BackSide}
+        uniforms={{
+          topColor: { value: new THREE.Color('#020617') },
+          bottomColor: { value: new THREE.Color('#27272a') },
+          offset: { value: 100 },
+          exponent: { value: 0.6 }
+        }}
+        vertexShader={`
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 topColor;
+          uniform vec3 bottomColor;
+          uniform float offset;
+          uniform float exponent;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition + vec3(0.0, offset, 0.0)).y;
+            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
+// ------------------------------------------------------------------
+// PHYSICAL WORLD & VEHICLE PHYSICS
+// ------------------------------------------------------------------
+
+function CinematicWorld() {
+  const { camera } = useThree();
+  
+  // STEP 6: Straight highway spline, angled slightly towards the camera (+Z)
+  // so the truck appears to be driving diagonally towards the viewer.
+  const curve = useMemo(() => {
+    return new THREE.CatmullRomCurve3([
+      new THREE.Vector3(1200, 0, -250),
+      new THREE.Vector3(-1200, 0, 250),
+    ], false, 'catmullrom', 0);
+  }, []);
+
+  // Tractor kinematic state
+  const tractorRef = useRef();
+  const trailerRef = useRef();
+  
+  // Track route progress
+  const [progress] = useState({ value: 0 });
+  const trailerRearPos = useRef(new THREE.Vector3());
+  const initializedTrailer = useRef(false);
+
+  // Speed configuration
+  const speedUnitsPerSec = 50; // Approx highway speed
+  const curveLength = curve.getLength();
+
+  useFrame(({ clock }, delta) => {
+    // 1. Move Tractor
+    progress.value = (progress.value + (speedUnitsPerSec * delta) / curveLength) % 1;
+    const t = progress.value;
+    
+    // Look slightly ahead to smooth steering
+    const tNext = (t + 0.001) % 1;
+    const tractorPos = curve.getPointAt(t);
+    const tractorTarget = curve.getPointAt(tNext);
+    const tangent = curve.getTangentAt(t);
+    
+    if (tractorRef.current) {
+      tractorRef.current.position.copy(tractorPos);
+      tractorRef.current.lookAt(tractorTarget); 
+    }
+
+    // 2. Trailer Physics (Tractrix / Follow logic)
+    if (tractorRef.current && trailerRef.current) {
+      // Hitch is at local z=-1.3. Because +Z is front, z=-1.3 is physically behind the cab.
+      const hitchOffset = new THREE.Vector3(0, 1.165, -1.3);
+      const hitchWorldPos = tractorPos.clone().add(
+        hitchOffset.applyQuaternion(tractorRef.current.quaternion)
+      );
+
+      // Actual physical distance from kingpin (z=5.6) to rear wheels (z=-5.65) is 11.25
+      const trailerWheelbase = 11.25; 
+
+      if (!initializedTrailer.current) {
+        // Init trailer straight behind
+        const backward = tractorPos.clone().sub(tractorTarget).normalize();
+        trailerRearPos.current.copy(hitchWorldPos).add(backward.multiplyScalar(trailerWheelbase));
+        initializedTrailer.current = true;
+      }
+
+      // dir points from rear axles to hitch (FORWARD)
+      const dir = new THREE.Vector3().subVectors(hitchWorldPos, trailerRearPos.current).normalize();
+      trailerRearPos.current.copy(hitchWorldPos).sub(dir.clone().multiplyScalar(trailerWheelbase));
+
+      trailerRef.current.position.copy(hitchWorldPos);
+      
+      // The trailer geometry is modeled relative to the ground (y=0).
+      // The hitchWorldPos is at y=1.165. If we place the trailer at y=1.165, it floats!
+      // We must lock the trailer's Y to 0 so its wheels touch the ground, 
+      // and its kingpin will naturally sit at y=1.16, perfectly matching the hitch!
+      trailerRef.current.position.y = 0; 
+      
+      // Trailer body extends into +Z. We want +Z to point BACKWARDS.
+      // So -Z must point FORWARD. lookAt points -Z towards target.
+      // To look at the target without tilting up/down, lock the target's Y to the trailer's Y.
+      const lookTarget = hitchWorldPos.clone().add(dir.multiplyScalar(10));
+      lookTarget.y = 0;
+      trailerRef.current.lookAt(lookTarget);
+    }
+
+    // 3. Cinematic Camera Tracking
+    if (tractorRef.current) {
+      const up = new THREE.Vector3(0, 1, 0);
+      const right = new THREE.Vector3().crossVectors(up, tangent).normalize();
+
+      // STEP 2, 4 & 5: Absolute framing logic.
+      // Truck travels from X=1200 to X=-1200 (Right to Left).
+      // Cab faces -X. Left side of truck is +Z.
+      
+      // Place camera on left side (+Z), slightly ahead of cab (-X), slightly elevated (+Y).
+      // This gives a perfect 3/4 front-left view.
+      const camOffset = new THREE.Vector3(-25, 7, 45); 
+      const targetCamPos = tractorPos.clone().add(camOffset);
+      
+      // Look slightly ahead of the truck, moving it firmly into the RIGHT half.
+      const targetLookAt = tractorPos.clone().add(new THREE.Vector3(-18, 2, 0));
+
+      // Snap to position on first frame
+      if (!camera.userData.initialized) {
+        progress.value = 0.45; // Start closer to center for static screenshot
+        camera.position.copy(targetCamPos);
+        camera.userData.currentLookAt = targetLookAt.clone();
+        camera.lookAt(camera.userData.currentLookAt);
+        camera.userData.initialized = true;
+      } else {
+        camera.position.lerp(targetCamPos, delta * 3.5);
+        camera.userData.currentLookAt.lerp(targetLookAt, delta * 4);
+        camera.lookAt(camera.userData.currentLookAt);
+      }
+    }
+  });
+
+  return (
+    <>
+      <ProceduralHighway curve={curve} />
+      
+      <group ref={tractorRef}>
+        <VaahanTractor speed={speedUnitsPerSec} />
+        {/* Spatial Label attached slightly rearward and above cab */}
+        <Html position={[0, 4.0, -1]} center className="pointer-events-none z-0 opacity-90 scale-90 origin-bottom-left">
+          <div className="flex flex-col items-start min-w-[120px] drop-shadow-2xl bg-[#020617]/70 backdrop-blur-md border border-white/5 p-2.5 rounded-lg pl-3">
+            <div className="flex items-center gap-2 mb-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-[#15803d] shadow-[0_0_8px_rgba(21,128,61,0.8)]"></div>
+               <div className="text-[10px] font-bold text-white tracking-widest uppercase">MH-04-1234</div>
+            </div>
+            <div className="text-[9px] text-white/60 tracking-widest">DELHI → JAIPUR</div>
+            <div className="text-[9px] text-[#15803d] font-semibold tracking-wide mt-1">Trip #0402 • In Transit</div>
+          </div>
+        </Html>
+      </group>
+      
+      <group ref={trailerRef}>
+        <VaahanTrailer speed={speedUnitsPerSec} />
+      </group>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------
+// PROCEDURAL HIGHWAY & ENVIRONMENT
+// ------------------------------------------------------------------
+
+function ProceduralHighway({ curve }) {
+  const { meshGeo, markGeo, shoulderGeo, guardrailGeo, edgeGeo } = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-6, 0); shape.lineTo(6, 0); // Asphalt width
+    // Minimum steps for a straight line
+    const meshGeo = new THREE.ExtrudeGeometry(shape, { extrudePath: curve, steps: 10, bevelEnabled: false, closed: false });
+    
+    const markShape = new THREE.Shape();
+    markShape.moveTo(-0.1, 0); markShape.lineTo(0.1, 0);
+    const markGeo = new THREE.ExtrudeGeometry(markShape, { extrudePath: curve, steps: 10, bevelEnabled: false, closed: false });
+
+    const edgeShape = new THREE.Shape();
+    edgeShape.moveTo(-5.8, 0); edgeShape.lineTo(-5.6, 0);
+    edgeShape.moveTo(5.6, 0); edgeShape.lineTo(5.8, 0);
+    const edgeGeo = new THREE.ExtrudeGeometry(edgeShape, { extrudePath: curve, steps: 10, bevelEnabled: false, closed: false });
+
+    const shoulderShape = new THREE.Shape();
+    shoulderShape.moveTo(-8, 0); shoulderShape.lineTo(-6, 0);
+    shoulderShape.moveTo(6, 0); shoulderShape.lineTo(8, 0);
+    const shoulderGeo = new THREE.ExtrudeGeometry(shoulderShape, { extrudePath: curve, steps: 10, bevelEnabled: false, closed: false });
+
+    const guardrailShape = new THREE.Shape();
+    guardrailShape.moveTo(-7.1, 0.5); guardrailShape.lineTo(-7, 0.5);
+    guardrailShape.lineTo(-7, 0.8); guardrailShape.lineTo(-7.1, 0.8);
+    guardrailShape.lineTo(-7.1, 0.5);
+    const guardrailGeo = new THREE.ExtrudeGeometry(guardrailShape, { extrudePath: curve, steps: 10, bevelEnabled: false, closed: false });
+
+    return { meshGeo, markGeo, shoulderGeo, guardrailGeo, edgeGeo };
+  }, [curve]);
+
+  // STEP 7: Environment - Foreground, midground, background
+  const terrainGeo = useMemo(() => {
+    const geo = new THREE.PlaneGeometry(4000, 2000, 1, 1);
+    geo.rotateX(-Math.PI / 2);
+    return geo;
+  }, []);
+
+  return (
+    <group>
+      {/* Terrain - No shadows to prevent acne, desaturated mountains */}
+      <mesh geometry={terrainGeo} position={[0, -0.5, 0]}>
+        <meshStandardMaterial color="#1e293b" roughness={1} metalness={0} />
+      </mesh>
+
+      {/* Asphalt */}
+      <mesh receiveShadow geometry={meshGeo} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#1a1d20" roughness={0.9} />
+      </mesh>
+
+      {/* Shoulders */}
+      <mesh receiveShadow geometry={shoulderGeo} position={[0, -0.01, 0]}>
+        <meshStandardMaterial color="#111516" roughness={1} />
+      </mesh>
+      
+      {/* Guardrail */}
+      <mesh receiveShadow castShadow geometry={guardrailGeo} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#475569" roughness={0.6} metalness={0.4} />
+      </mesh>
+
+      {/* Edge Lines */}
+      <mesh receiveShadow geometry={edgeGeo} position={[0, 0.02, 0]}>
+        <meshStandardMaterial color="#94a3b8" roughness={0.9} />
+      </mesh>
+      
+      {/* Route Intelligence Line */}
+      <mesh geometry={markGeo} position={[0, 0.05, 0]}>
+        <meshBasicMaterial color="#15803d" transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+// LocalTerrain removed, replaced by static terrainGeo in ProceduralHighway
+
+// ------------------------------------------------------------------
+// THE VAAHAN VEHICLE LIVERY (GLB ASSET)
+// ------------------------------------------------------------------
+
+function AnimatedWheel({ geometry, material, position, scale, speed }) {
+  const meshRef = useRef();
+  useFrame(({ clock }) => {
+    const time = clock.getElapsedTime();
+    // distance = speed * time
+    // tractor rolls forward (+Z), so wheels roll positively
+    const wheelRot = (speed * time) / 0.53;
+    if (meshRef.current) {
+      meshRef.current.rotation.x = wheelRot;
+    }
+  });
+  return (
+    <mesh ref={meshRef} geometry={geometry} material={material} position={position} scale={scale} castShadow receiveShadow />
+  );
+}
+
+function VaahanTractor({ speed }) {
+  const { nodes, materials } = useGLTF('/model.glb');
+  
+  useMemo(() => {
+    if (!materials) return;
+    
+    if (materials.paint) {
+      materials.paint.color.set('#f8f9fa'); // Warm off-white
+      materials.paint.roughness = 0.25;
+    }
+    if (materials.glass) {
+      materials.glass.color.set('#020617'); // Deep smoked glass
+      materials.glass.roughness = 0.1;
+      materials.glass.metalness = 0.9;
+    }
+    if (materials.rubber) {
+      materials.rubber.color.set('#1e293b'); // Charcoal rubber
+      materials.rubber.roughness = 0.95;
+    }
+    if (materials.steel) {
+      materials.steel.color.set('#334155'); // Dark charcoal structural trim
+      materials.steel.roughness = 0.6;
+      materials.steel.metalness = 0.4;
+    }
+    if (materials.alloy) {
+      materials.alloy.color.set('#94a3b8'); // Subtle metallic wheels
+      materials.alloy.roughness = 0.4;
+      materials.alloy.metalness = 0.6;
+    }
+    if (materials.accent) {
+      materials.accent.color.set('#166534'); // Forest green grille/stripe accents
+      materials.accent.roughness = 0.3;
+    }
+    if (materials.trim) {
+      materials.trim.color.set('#15803d'); // Forest green front shield/mark
+    }
+    
+    Object.values(materials).forEach(mat => mat.needsUpdate = true);
+    
+    Object.values(nodes).forEach(node => {
+      if (node.isMesh) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+      }
+    });
+  }, [nodes, materials]);
+
+  return (
+    <group>
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1rubber'].geometry} material={materials.rubber} position={[-1.025, 0.5, 0.95]} scale={0.5} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1rubber'].geometry} material={materials.rubber} position={[1.025, 0.5, 0.95]} scale={0.5} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, -1.1]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, -2.2]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, 0.95]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, -1.1]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, -1.1]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, -2.2]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, -2.2]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, 0.95]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, 0.95]} scale={0.201} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, -1.1]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, -2.2]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, 0.95]} scale={0.31} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1rubber'].geometry} material={materials.rubber} position={[-0.895, 0.5, -1.1]} scale={0.5} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1rubber'].geometry} material={materials.rubber} position={[-0.895, 0.5, -2.2]} scale={0.5} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1rubber'].geometry} material={materials.rubber} position={[0.895, 0.5, -1.1]} scale={0.5} />
+      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1rubber'].geometry} material={materials.rubber} position={[0.895, 0.5, -2.2]} scale={0.5} />
+      
+      <mesh geometry={nodes['004-cabover-sleeper22'].geometry} material={materials.glass} position={[0, 2.825, 0.879]} scale={1.5} />
+      <mesh geometry={nodes['004-cabover-sleepercab-door--1'].geometry} material={materials.paint} position={[-1.113, 1.64, 0.7]} scale={0.55} />
+      <mesh geometry={nodes['004-cabover-sleepercab-door-1'].geometry} material={materials.paint} position={[1.113, 1.64, 0.7]} scale={0.55} />
+      <mesh geometry={nodes['004-cabover-sleeper24'].geometry} material={materials.paint} position={[0, 0.935, 1.54]} scale={0.955} />
+      <mesh geometry={nodes['004-cabover-sleeper26'].geometry} material={materials.accent} position={[0, 3.285, 1.2]} scale={0.805} />
+      <mesh geometry={nodes['004-cabover-sleeperfifth-wheel'].geometry} material={materials.steel} position={[0, 1.165, -1.3]} scale={0.45} />
+      <mesh geometry={nodes['004-cabover-sleeper18'].geometry} material={materials.steel} position={[0, 1.809, -0.695]} scale={2.405} />
+      <mesh geometry={nodes['004-cabover-sleeper19'].geometry} material={materials.paint} position={[0, 2.125, 0.15]} scale={1.35} />
+      <mesh geometry={nodes['004-cabover-sleeper20'].geometry} material={materials.trim} position={[0, 1.005, -0.438]} scale={1.987} />
+      <mesh geometry={nodes['004-cabover-sleeper21'].geometry} material={materials.alloy} position={[0, 2.1, 0.008]} scale={1.563} />
+
+      {/* Vaahan V Shield on Left Cab Door (visible side) */}
+      <Html position={[1.13, 1.7, 0.6]} center transform rotation={[0, Math.PI/2, 0]} className="pointer-events-none opacity-90">
+        <div className="w-4 h-4 flex items-center justify-center rounded-[2px] bg-[#166534] text-white font-bold text-[8px] shadow-sm">
+          V
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function VaahanTrailer({ speed }) {
+  const { nodes, materials } = useGLTF('/model.glb');
+  
+  useMemo(() => {
+    if (!materials) return;
+    if (materials.white) {
+      materials.white.color.set('#f1f5f9'); // Warm off-white trailer
+      materials.white.roughness = 0.6;
+      materials.white.metalness = 0.1;
+    }
+    // Nodes shadow casting handled in Tractor useMemo (shared nodes)
+  }, [materials]);
+
+  return (
+    <group position={[0, 0, -5.6]}>
+      {/* Notice we shift Z by -5.6 so the group origin matches the kingpin exactly */}
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0--1rubber'].geometry} material={materials.rubber} position={[-1.04, 0.48, -5.65]} scale={0.48} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0-1rubber'].geometry} material={materials.rubber} position={[1.04, 0.48, -5.65]} scale={0.48} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -5.65]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -4.55]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -3.45]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -5.65]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -5.65]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -4.55]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -4.55]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -3.45]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -3.45]} scale={0.194} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-0-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -5.65]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -4.55]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -3.45]} scale={0.298} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1--1rubber'].geometry} material={materials.rubber} position={[-0.91, 0.48, -4.55]} scale={0.48} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2--1rubber'].geometry} material={materials.rubber} position={[-0.91, 0.48, -3.45]} scale={0.48} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-1-1rubber'].geometry} material={materials.rubber} position={[0.91, 0.48, -4.55]} scale={0.48} />
+      <AnimatedWheel speed={-speed} geometry={nodes['009-dry-van-trailerwheel-2-1rubber'].geometry} material={materials.rubber} position={[0.91, 0.48, -3.45]} scale={0.48} />
+      
+      <mesh geometry={nodes['009-dry-van-trailerkingpin'].geometry} material={materials.steel} position={[0, 1.16, 5.6]} scale={0.14} />
+      <mesh geometry={nodes['009-dry-van-trailer20'].geometry} material={materials.white} position={[0, 2.55, 0]} scale={6.8} />
+      <mesh geometry={nodes['009-dry-van-trailerrear-door--1'].geometry} material={materials.white} position={[-0.61, 2.48, -6.8]} scale={1.25} />
+      <mesh geometry={nodes['009-dry-van-trailerrear-door-1'].geometry} material={materials.white} position={[0.61, 2.48, -6.8]} scale={1.25} />
+      <mesh geometry={nodes['009-dry-van-trailer23'].geometry} material={materials.accent} position={[0, 0.795, -6.87]} scale={1.15} />
+      <mesh geometry={nodes['009-dry-van-trailer18'].geometry} material={materials.steel} position={[0, 1.875, -0.074]} scale={6.876} />
+
+      {/* Vaahan Livery Accents (Thin Green Stripe + Wordmark) on visible left side */}
+      <mesh position={[1.265, 1.4, -2]} castShadow receiveShadow>
+        <boxGeometry args={[0.01, 0.05, 11]} />
+        <meshStandardMaterial color="#166534" roughness={0.4} />
+      </mesh>
+
+      <Html occlude position={[1.27, 2.6, -6]} center transform rotation={[0, Math.PI/2, 0]} className="pointer-events-none opacity-80">
+        <div className="text-lg font-bold tracking-[0.3em] text-[#334155] uppercase">the vaahan</div>
+      </Html>
+    </group>
+  );
+}
+
+useGLTF.preload('/model.glb');

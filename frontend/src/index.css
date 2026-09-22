@@ -24,12 +24,19 @@
   --sidebar-text:       #647067;
   --sidebar-active:     #22C55E;
 
-  /* ── Brand Green Palette ── */
-  --fg-green:           #22C55E;
-  --fg-green-bright:    #86EFAC;
-  --fg-green-deep:      #DCFCE7;
-  --fg-green-muted:     #BBF7D0;
-  --fg-green-surface:   #F0FDF4;
+  /* ── FleetGuard v6 Semantic Palette ── */
+  --fg-base:            #FBFDFB;
+  --fg-surface:         #EEF4EF;
+  --fg-text:            #171A18;
+  --fg-text-muted:      #5E6B62;
+  --fg-green:           #1F5C42;
+  --fg-amber:           #E8A33D;
+  --fg-red:             #C4483A;
+  --fg-border:          #D1E0D5;
+  
+  /* ── Dark / Physical World ── */
+  --fg-dark:            #0A0D0B;
+  --fg-dark-surface:    #111713;
 }
 
 /* === Reset / Global Styles === */
@@ -46,6 +53,32 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@layer utilities {
+  .font-display {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+
+/* === Landing Page Animations === */
+@keyframes landingMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.landing-signal-marquee {
+  width: max-content;
+  animation: landingMarquee 35s linear infinite;
+}
+
+.landing-signal-marquee:hover {
+  animation-play-state: paused;
+}
+
 
 /* === Scrollbars === */
 ::-webkit-scrollbar {
@@ -447,3 +480,87 @@ html.lenis, html.lenis body {
 .bg-surface-base {
   background-color: var(--surface-base);
 }
+
+/* === FleetGuard v3 Journey Styles === */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.signal-glow {
+  filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.6));
+}
+
+.signal-glow-intense {
+  filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.8));
+}
+
+.path-glow {
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.4));
+}
+
+/* ── Green Range Slider (Vahan brand) ── */
+.green-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E5EDE7;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.green-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg-green, #1F5C42);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(31, 92, 66, 0.25);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.green-range::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(31, 92, 66, 0.12), 0 1px 4px rgba(31, 92, 66, 0.3);
+  transform: scale(1.08);
+}
+
+.green-range:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(31, 92, 66, 0.15), 0 1px 6px rgba(31, 92, 66, 0.35);
+}
+
+.green-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg-green, #1F5C42);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(31, 92, 66, 0.25);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.green-range::-moz-range-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(31, 92, 66, 0.12), 0 1px 4px rgba(31, 92, 66, 0.3);
+}
+
+.green-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #E5EDE7;
+}
+
+.green-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fg-green, #1F5C42);
+}
+
