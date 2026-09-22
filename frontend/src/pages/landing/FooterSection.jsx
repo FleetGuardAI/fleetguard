@@ -88,13 +88,8 @@ export default function FooterSection() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10">
             {/* Brand */}
             <div className="lg:col-span-2">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-6 h-6 flex items-center justify-center bg-fg-green rounded-md">
-                   <span className="text-white font-bold text-xs">V</span>
-                </div>
-                <span className="text-xl font-bold tracking-tight text-white">
-                  the vaahan
-                </span>
+              <div className="flex items-center mb-6">
+                <img src="/assets/the_vahan_logo.png" alt="the vaahan" className="h-8 object-contain brightness-0 invert opacity-90 hover:opacity-100 transition-opacity" />
               </div>
               <p className="text-sm text-content-muted leading-relaxed max-w-xs">
                 Intelligence for Every Mile. Connect your vehicles, drivers, trips, and expenses to run a smarter, more profitable fleet.
@@ -103,11 +98,11 @@ export default function FooterSection() {
 
             {/* Links */}
             <div>
-              <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Platform</h4>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Product</h4>
               <ul className="space-y-2.5 text-sm">
-                <li><a href="#how" className="text-content-muted hover:text-white transition-colors">How it works</a></li>
-                <li><a href="#engines" className="text-content-muted hover:text-white transition-colors">Intelligence Engines</a></li>
-                <li><a href="#product" className="text-content-muted hover:text-white transition-colors">Dashboard</a></li>
+                <li><a href="#product" className="text-content-muted hover:text-white transition-colors">Features</a></li>
+                <li><a href="#how-it-works" className="text-content-muted hover:text-white transition-colors">How it works</a></li>
+                <li><a href="#dashboard" className="text-content-muted hover:text-white transition-colors">Dashboard</a></li>
               </ul>
             </div>
 
@@ -115,7 +110,7 @@ export default function FooterSection() {
               <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Apps</h4>
               <ul className="space-y-2.5 text-sm">
                 <li><a href="#apps" className="text-content-muted hover:text-white transition-colors">Driver App</a></li>
-                <li><a href="#apps" className="text-content-muted hover:text-white transition-colors">Owner App</a></li>
+                <li><a href="#apps" className="text-content-muted hover:text-white transition-colors">Fleet Dashboard</a></li>
               </ul>
             </div>
 
