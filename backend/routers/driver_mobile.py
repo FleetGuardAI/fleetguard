@@ -319,6 +319,8 @@ async def verify_otp(
 # Profile Endpoints
 # ==========================================================================
 
+from sqlalchemy.exc import IntegrityError
+
 @router.post("/register", response_model=DriverProfileResponse)
 async def register_driver_profile(
     payload: DriverProfileRequest,
@@ -347,7 +349,15 @@ async def register_driver_profile(
 
     driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The provided License Number or Aadhaar Number is already registered."
+        )
+
     await db.refresh(driver)
 
     response = _driver_to_response(driver)
@@ -547,7 +557,15 @@ async def update_driver_profile(
     if payload.license_number:
         driver.license_number = payload.license_number
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The provided License Number is already registered."
+        )
+        
     await db.refresh(driver)
     response = _driver_to_response(driver)
     response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
