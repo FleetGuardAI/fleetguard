@@ -12,14 +12,14 @@ import {
 
 // Desktop exact coordinates mapped to a 1000x750 viewBox logic
 const SPATIAL_SOURCES = [
-  { id: 'trips', label: 'TRIPS', sub: 'TMS / Dispatch', icon: Map, color: 'text-blue-500', pos: { x: 22, y: 12 }, scale: 1.05, delay: 0.1 },
-  { id: 'fuel', label: 'FUEL', sub: 'Fuel cards', icon: Droplets, color: 'text-amber-500', pos: { x: 10, y: 26 }, scale: 0.95, delay: 0.2 },
-  { id: 'drivers', label: 'DRIVERS', sub: 'Field updates', icon: Users, color: 'text-slate-500', pos: { x: 34, y: 36 }, scale: 0.98, delay: 0.3 },
-  { id: 'expenses', label: 'EXPENSES', sub: 'Spreadsheets', icon: Receipt, color: 'text-blue-500', pos: { x: 16, y: 48 }, scale: 1.0, delay: 0.4 },
-  { id: 'documents', label: 'DOCUMENTS', sub: 'WhatsApp / Email', icon: FileText, color: 'text-purple-500', pos: { x: 36, y: 62 }, scale: 0.9, delay: 0.5 },
-  { id: 'vehicles', label: 'VEHICLES', sub: 'Telematics', icon: Truck, color: 'text-cyan-500', pos: { x: 9, y: 72 }, scale: 1.1, delay: 0.6 },
-  { id: 'maintenance', label: 'MAINTENANCE', sub: 'Service logs', icon: Wrench, color: 'text-red-500', pos: { x: 30, y: 84 }, scale: 0.95, delay: 0.7 },
-  { id: 'payments', label: 'PAYMENTS', sub: 'Bank / UPI / ERP', icon: CreditCard, color: 'text-fg-green', pos: { x: 16, y: 92 }, scale: 0.9, delay: 0.8 }
+  { id: 'trips', label: 'TRIPS', sub: 'TMS / Dispatch', icon: Map, color: 'text-blue-500', pos: { x: 25, y: 15 }, scale: 1.05, delay: 0.1 },
+  { id: 'vehicles', label: 'VEHICLES', sub: 'Telematics', icon: Truck, color: 'text-cyan-500', pos: { x: 15, y: 25 }, scale: 1.1, delay: 0.6 },
+  { id: 'fuel', label: 'FUEL', sub: 'Fuel cards', icon: Droplets, color: 'text-amber-500', pos: { x: 10, y: 40 }, scale: 0.95, delay: 0.2 },
+  { id: 'drivers', label: 'DRIVERS', sub: 'Field updates', icon: Users, color: 'text-slate-500', pos: { x: 8, y: 55 }, scale: 0.98, delay: 0.3 },
+  { id: 'expenses', label: 'EXPENSES', sub: 'Spreadsheets', icon: Receipt, color: 'text-blue-500', pos: { x: 12, y: 70 }, scale: 1.0, delay: 0.4 },
+  { id: 'maintenance', label: 'MAINTENANCE', sub: 'Service logs', icon: Wrench, color: 'text-red-500', pos: { x: 20, y: 85 }, scale: 0.95, delay: 0.7 },
+  { id: 'documents', label: 'DOCUMENTS', sub: 'WhatsApp / Email', icon: FileText, color: 'text-purple-500', pos: { x: 32, y: 90 }, scale: 0.9, delay: 0.5 },
+  { id: 'payments', label: 'PAYMENTS', sub: 'Bank / ERP', icon: CreditCard, color: 'text-fg-green', pos: { x: 28, y: 50 }, scale: 0.9, delay: 0.8 }
 ];
 
 const NODE_POS = { x: 50, y: 50 };
@@ -125,20 +125,16 @@ function SignalModule({ data }) {
   );
 }
 
-function FleetContextGraph() {
+function FleetContextGraph({ className, style }) {
   const reducedMotion = useReducedMotion();
-
+  
   return (
     <motion.div 
-      className="absolute flex items-center justify-center z-20"
-      style={{ 
-        top: `${NODE_POS.y}%`, 
-        left: `${NODE_POS.x}%`,
-        transform: 'translate(-50%, -50%)'
-      }}
-      initial={reducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.9 }}
-      whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-      transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
+      className={`z-20 flex flex-col items-center justify-center ${className || ''}`}
+      style={style}
+      initial={reducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+      whileInView={reducedMotion ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
       viewport={{ once: true, margin: "-50px" }}
     >
       <div className="relative w-[260px] h-[260px] flex items-center justify-center">
@@ -190,17 +186,13 @@ function FleetContextGraph() {
   );
 }
 
-function OperationalDashboard() {
+function OperationalDashboard({ className, style }) {
   const reducedMotion = useReducedMotion();
   
   return (
     <motion.div 
-      className="absolute z-30 flex flex-col bg-[#0b1120] border border-[#1e293b] rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.4)] overflow-hidden w-[290px]"
-      style={{ 
-        top: '50%', 
-        right: '0%', 
-        transform: 'translateY(-50%)'
-      }}
+      className={`z-30 flex flex-col bg-[#0b1120] border border-[#1e293b] rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.4)] overflow-hidden w-[280px] lg:w-[300px] ${className || ''}`}
+      style={style}
       initial={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
       whileInView={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 1, x: 0 }}
       transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
@@ -373,8 +365,14 @@ function VisualEcosystemCanvas() {
         <SignalModule key={source.id} data={source} index={idx} />
       ))}
       
-      <FleetContextGraph />
-      <OperationalDashboard />
+      <FleetContextGraph 
+         className="absolute"
+         style={{ left: '40%', top: '50%', transform: 'translate(-50%, -50%)' }}
+      />
+      <OperationalDashboard 
+         className="absolute"
+         style={{ top: '50%', right: '4%', transform: 'translateY(-50%)' }}
+      />
     </div>
   );
 }
@@ -410,7 +408,7 @@ function MobileVisualFallback() {
          <ArrowDown className="w-5 h-5" strokeWidth={1.5} />
       </div>
       
-      <div className="relative transform scale-90 -my-8">
+      <div className="relative transform scale-90 -my-8 mx-auto w-fit">
         <FleetContextGraph />
       </div>
 
@@ -418,7 +416,7 @@ function MobileVisualFallback() {
          <ArrowDown className="w-5 h-5" strokeWidth={1.5} />
       </div>
 
-      <div className="w-full relative transform scale-95 origin-top">
+      <div className="w-full relative transform scale-95 origin-top flex justify-center">
         <OperationalDashboard />
       </div>
     </div>

@@ -62,10 +62,10 @@ export function EnginesSection() {
   return (
     <section className="py-24 bg-surface-secondary text-content border-t border-border">
       <div className="container mx-auto px-6 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="flex flex-col lg:flex-row gap-12 xl:gap-20 items-start relative">
           
-          {/* Text Content */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* Text Content - Sticky Left */}
+          <div className="w-full lg:w-[35%] space-y-6 lg:sticky lg:top-32 shrink-0">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-[2px] bg-fg-green"></div>
               <span className="text-xs font-bold tracking-widest uppercase text-content-muted">Intelligence Engines</span>
@@ -86,26 +86,29 @@ export function EnginesSection() {
             </div>
           </div>
 
-          {/* Engines Grid */}
-          <div className="lg:col-span-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          {/* Engines Grid - Scrolling Right */}
+          <div className="w-full lg:w-[65%]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
               {engines.map((engine, index) => (
                 <motion.div
                   key={engine.id}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ delay: index * 0.1, duration: 0.5 }}
-                  className="bg-white border border-border p-6 rounded-xl hover:shadow-md transition-shadow group flex flex-col"
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ delay: (index % 2) * 0.1, duration: 0.5 }}
+                  className="bg-white border border-border p-8 rounded-2xl hover:shadow-lg hover:border-fg-green/20 transition-all duration-300 group flex flex-col h-full"
                 >
-                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4 bg-surface-secondary border border-border/50 transition-colors", engine.color.replace('text-', 'bg-').replace('500', '50'))}>
-                    <engine.icon className={cn("w-5 h-5", engine.color)} strokeWidth={1.5} />
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-6 border transition-colors duration-300", 
+                    engine.color.replace('text-', 'bg-').replace('500', '50'),
+                    engine.color.replace('text-', 'border-').replace('500', '100'),
+                    "group-hover:bg-white"
+                  )}>
+                    <engine.icon className={cn("w-6 h-6 transition-colors duration-300", engine.color)} strokeWidth={1.5} />
                   </div>
-                  <h3 className="font-semibold text-content mb-2 tracking-tight group-hover:text-fg-green transition-colors">{engine.name}</h3>
-                  <p className="text-sm text-content-muted font-light leading-relaxed">{engine.desc}</p>
+                  <h3 className="text-lg font-semibold text-content mb-3 tracking-tight group-hover:text-fg-green transition-colors">{engine.name}</h3>
+                  <p className="text-[15px] text-content-muted font-light leading-relaxed flex-1">{engine.desc}</p>
                 </motion.div>
               ))}
-              
             </div>
           </div>
 

@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/utils/cn';
 
-export function LandingNav({ isScrolled = false }) {
+export function LandingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { t } = useLanguage();
+  const [navTheme, setNavTheme] = useState('dark');
+  const [isAtTop, setIsAtTop] = useState(true);
+  
+  const navThemeRef = useRef('dark');
+  const isAtTopRef = useRef(true);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -18,97 +22,153 @@ export function LandingNav({ isScrolled = false }) {
     return () => { document.body.style.overflow = 'auto'; };
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      // Check if at the very top
+      const currentlyAtTop = window.scrollY < 20;
+      if (currentlyAtTop !== isAtTopRef.current) {
+        isAtTopRef.current = currentlyAtTop;
+        setIsAtTop(currentlyAtTop);
+      }
+
+      // Detect background section via robust midpoint sampling
+      // Y=80 is safely inside the navbar height
+      const elements = document.elementsFromPoint(window.innerWidth / 2, 80);
+      for (const el of elements) {
+        const wrapper = el.closest('[data-nav-theme]');
+        if (wrapper) {
+          const theme = wrapper.getAttribute('data-nav-theme');
+          if (theme !== navThemeRef.current) {
+            navThemeRef.current = theme;
+            setNavTheme(theme);
+          }
+          break; // Stop after finding the first valid theme wrapper
+        }
+      }
+    };
+
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Initialize immediately
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const navLinks = [
-    { label: t('Platform'), href: '#' }, 
-    { label: t('Intelligence'), href: '#' },
-    { label: t('Apps'), href: '#' },
-    { label: t('Company'), href: '#' },
+    { label: 'Product', href: '#product' }, 
+    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'Driver App', href: '#apps' },
+    { label: 'Fleet Dashboard', href: '#apps' },
   ];
 
   const handleNavClick = (e, href) => {
     e.preventDefault();
     setMobileMenuOpen(false);
-    // Add real smooth scroll to sections if needed later
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
-  const themeClass = isScrolled
-    ? 'text-content hover:text-fg-green'
-    : 'text-white hover:text-fg-green';
+  const isDark = navTheme === 'dark';
+
+  // Compute transitioning styles
+  const navClasses = cn(
+    "max-w-6xl mx-auto rounded-full py-3 px-6 pointer-events-auto flex items-center justify-between transition-all duration-400 ease-in-out",
+    isAtTop && isDark
+      ? "bg-transparent border border-transparent shadow-none" 
+      : isDark 
+        ? "bg-[#05080c]/70 backdrop-blur-lg shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-white/10"
+        : "bg-white/85 backdrop-blur-lg shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-[#14281e]/10"
+  );
+
+  const textClasses = cn(
+    "text-[13px] font-semibold transition-colors duration-400 ease-in-out",
+    isDark ? "text-white/90 hover:text-fg-green" : "text-slate-900 hover:text-fg-green"
+  );
+
+  const dashClasses = cn(
+    "text-[13px] font-bold transition-colors duration-400 ease-in-out",
+    isDark ? "text-white/90 hover:text-fg-green" : "text-slate-900 hover:text-fg-green"
+  );
+
+  const btnClasses = cn(
+    "px-5 py-2.5 text-[13px] font-bold rounded-full transition-all duration-400 ease-in-out shadow-sm",
+    isDark 
+      ? "bg-fg-green hover:bg-fg-green-deep text-white shadow-fg-green/20" 
+      : "bg-[#0f172a] hover:bg-[#1e293b] text-white shadow-slate-900/10"
+  );
 
   return (
     <>
-      <nav
-        className={cn(
-          'fixed top-0 inset-x-0 z-[100] transition-all duration-300',
-          isScrolled
-            ? 'bg-white/90 backdrop-blur-md border-b border-border shadow-sm py-3'
-            : 'bg-transparent py-5'
-        )}
-      >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <div className="fixed top-0 inset-x-0 z-[100] pt-4 px-4 pointer-events-none">
+        <nav className={navClasses}>
           
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 z-50 relative group">
-            <div className="w-8 h-8 rounded bg-fg-green flex items-center justify-center relative overflow-hidden transition-all group-hover:scale-105">
-              <span className="text-white font-bold text-sm">V</span>
-            </div>
-            <span className={cn(
-              "font-sans font-bold text-xl tracking-tight transition-colors duration-300",
-              isScrolled ? "text-content" : "text-white"
-            )}>
-              the vaahan
-            </span>
+          {/* Logo with optical color adjustment for light mode */}
+          <a href="/" className="flex items-center z-50 pointer-events-auto">
+            <img 
+              src="/assets/the_vahan_logo.png" 
+              alt="the vaahan" 
+              className="h-8 object-contain transition-all duration-400 ease-in-out" 
+              style={{ filter: !isDark ? 'invert(1) hue-rotate(180deg) brightness(0.6) contrast(1.2)' : 'none' }}
+            />
           </a>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-8 pointer-events-auto">
+            <div className="flex items-center gap-8">
               {navLinks.map((link, i) => (
                 <a
                   key={i}
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
-                  className={cn("text-sm font-medium transition-colors", themeClass)}
+                  className={textClasses}
                 >
                   {link.label}
                 </a>
               ))}
             </div>
+          </div>
 
-            <div className={cn("flex items-center gap-4 pl-6 border-l", isScrolled ? "border-border" : "border-white/20")}>
-              <LanguageSelector variant={isScrolled ? 'dark' : 'light'} />
-              <a 
-                href="/login"
-                className={cn("text-sm font-medium transition-colors", themeClass)}
-              >
-                {t('Login')}
-              </a>
-              <a
-                href="/dashboard"
-                className="group relative px-5 py-2.5 bg-fg-green text-white text-sm font-semibold rounded-full overflow-hidden transition-transform hover:-translate-y-0.5"
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                <span className="relative z-10 flex items-center gap-1.5">
-                  {t('Open Dashboard')}
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </a>
-            </div>
+          <div className="hidden md:flex items-center gap-6 pointer-events-auto">
+            <a 
+              href="#dashboard"
+              className={dashClasses}
+            >
+              Dashboard
+            </a>
+            <a
+              href="#demo"
+              className={btnClasses}
+            >
+              Book a Demo
+            </a>
           </div>
 
           {/* Mobile Menu Toggle */}
           <button 
-            className="md:hidden p-2 z-50 relative"
+            className="md:hidden p-2 z-50 relative pointer-events-auto"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
-              <X className={cn("w-6 h-6", isScrolled ? "text-content" : "text-white")} />
+              <X className={cn("w-6 h-6 transition-colors duration-400", isDark ? "text-white" : "text-slate-900")} />
             ) : (
-              <Menu className={cn("w-6 h-6", isScrolled ? "text-content" : "text-white")} />
+              <Menu className={cn("w-6 h-6 transition-colors duration-400", isDark ? "text-white" : "text-slate-900")} />
             )}
           </button>
-        </div>
-      </nav>
+        </nav>
+      </div>
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
@@ -118,9 +178,9 @@ export function LandingNav({ isScrolled = false }) {
             animate={{ opacity: 1, backdropFilter: 'blur(16px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-surface-inverted/95 md:hidden"
+            className="fixed inset-0 z-40 bg-[#020617]/95 md:hidden pointer-events-auto"
           >
-            <div className="flex flex-col h-full pt-24 pb-8 px-6">
+            <div className="flex flex-col h-full pt-28 pb-8 px-6">
               <div className="flex flex-col gap-6 text-xl font-medium text-white mb-auto">
                 {navLinks.map((link, i) => (
                   <motion.a
@@ -130,7 +190,7 @@ export function LandingNav({ isScrolled = false }) {
                     key={i}
                     href={link.href}
                     onClick={(e) => handleNavClick(e, link.href)}
-                    className="hover:text-fg-green transition-colors"
+                    className="hover:text-fg-green transition-colors font-semibold"
                   >
                     {link.label}
                   </motion.a>
@@ -141,26 +201,20 @@ export function LandingNav({ isScrolled = false }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="space-y-6 pt-6 border-t border-white/10"
+                className="space-y-4 pt-6 border-t border-white/10"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">{t('Language')}</span>
-                  <LanguageSelector variant="light" />
-                </div>
-                
                 <a
-                  href="/login"
-                  className="block w-full text-center py-3 text-white font-medium hover:text-fg-green transition-colors"
+                  href="#dashboard"
+                  className="block w-full text-center py-3 text-white font-bold hover:text-fg-green transition-colors"
                 >
-                  {t('Login')}
+                  Dashboard
                 </a>
                 
                 <a
-                  href="/dashboard"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 bg-fg-green text-white font-semibold rounded-full"
+                  href="#demo"
+                  className="flex items-center justify-center w-full py-3.5 bg-fg-green text-white font-bold rounded-full hover:bg-fg-green-deep transition-colors"
                 >
-                  {t('Open Dashboard')}
-                  <ChevronRight className="w-4 h-4" />
+                  Book a Demo
                 </a>
               </motion.div>
             </div>

@@ -11,8 +11,8 @@ export function HeroSection() {
     <section className="relative w-full h-screen min-h-[800px] flex flex-col justify-center bg-[#050b14] overflow-hidden">
       
       {/* 3D Cinematic Fleet Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Canvas shadows dpr={[1, 2]} camera={{ fov: 25, near: 5, far: 5000 }}>
+      <div className="absolute inset-0 z-0 pointer-events-none hidden md:block">
+        <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 32, near: 5, far: 5000 }}>
           
           <Suspense fallback={null}>
             <CinematicLighting />
@@ -25,12 +25,11 @@ export function HeroSection() {
           </Suspense>
 
         </Canvas>
-        
+      </div>
         {/* UI Shielding Gradients */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#050b14]/95 via-[#050b14]/50 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050b14]/90"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#050b14] via-transparent to-transparent h-40 bottom-0"></div>
-      </div>
 
       {/* Hero Content (Existing UI) */}
       <div className="container mx-auto px-6 max-w-7xl relative z-10 pt-24 h-full flex flex-col justify-between pointer-events-none">
@@ -207,9 +206,10 @@ function CinematicWorld() {
   // so the truck appears to be driving diagonally towards the viewer.
   const curve = useMemo(() => {
     return new THREE.CatmullRomCurve3([
-      new THREE.Vector3(1200, 0, -250),
+      // Reverse the curve to start from Left and go to Right
+      new THREE.Vector3(-1200, 0, -250),
       new THREE.Vector3(0, 0, 20),
-      new THREE.Vector3(-1200, 0, 250),
+      new THREE.Vector3(1200, 0, 250),
     ], false, 'catmullrom', 0.1);
   }, []);
 
@@ -226,18 +226,22 @@ function CinematicWorld() {
   const speedUnitsPerSec = 50; // Approx highway speed
   const curveLength = curve.getLength();
 
-  useFrame(({ clock }, delta) => {
+  function assertFiniteVector(name, v) {
+    if (!Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)) {
+      console.error(`${name} contains invalid values`, v);
+    }
+  }
+
+  useFrame((state, delta) => {
     // 1. Move Tractor
-    progress.value = (progress.value + (speedUnitsPerSec * delta) / curveLength) % 1;
-    const t = progress.value;
-    
-    // Look slightly ahead to smooth steering
-    const tNext = (t + 0.001) % 1;
+    const t = 0.5; // STATIC SNAPSHOT
     const tractorPos = curve.getPointAt(t);
-    const tractorTarget = curve.getPointAt(tNext);
     const tangent = curve.getTangentAt(t);
     
     if (tractorRef.current) {
+      // Truck native front is +Z. lookAt aligns -Z with target.
+      // To make the truck face the tangent (travel direction), we must look opposite to the tangent.
+      const tractorTarget = tractorPos.clone().sub(tangent);
       tractorRef.current.position.copy(tractorPos);
       tractorRef.current.lookAt(tractorTarget); 
     }
@@ -265,51 +269,40 @@ function CinematicWorld() {
       trailerRearPos.current.copy(hitchWorldPos).sub(dir.clone().multiplyScalar(trailerWheelbase));
 
       trailerRef.current.position.copy(hitchWorldPos);
-      
-      // The trailer geometry is modeled relative to the ground (y=0).
-      // The hitchWorldPos is at y=1.165. If we place the trailer at y=1.165, it floats!
-      // We must lock the trailer's Y to 0 so its wheels touch the ground, 
-      // and its kingpin will naturally sit at y=1.16, perfectly matching the hitch!
       trailerRef.current.position.y = 0; 
       
-      // Trailer body extends into +Z. We want +Z to point BACKWARDS.
-      // So -Z must point FORWARD. lookAt points -Z towards target.
-      // To look at the target without tilting up/down, lock the target's Y to the trailer's Y.
-      // trailerRearPos drags behind hitchWorldPos.
-      // So 'dir' (hitchWorldPos - trailerRearPos) points FORWARD (towards the cab).
-      const lookTarget = hitchWorldPos.clone().add(dir.multiplyScalar(10));
+      const lookTarget = hitchWorldPos.clone().sub(dir.multiplyScalar(10));
       lookTarget.y = 0;
       trailerRef.current.lookAt(lookTarget);
     }
 
-    // 3. Cinematic Camera Tracking
     if (tractorRef.current) {
-      const up = new THREE.Vector3(0, 1, 0);
-      const right = new THREE.Vector3().crossVectors(up, tangent).normalize();
-
-      // STEP 2, 4 & 5: Absolute framing logic.
-      // Truck travels from X=1200 to X=-1200 (Right to Left).
-      // Cab faces -X. Left side of truck is +Z.
-      
-      // Place camera on left side (+Z), slightly ahead of cab (-X), slightly elevated (+Y).
-      // This gives a perfect 3/4 front-left view.
-      const camOffset = new THREE.Vector3(-25, 7, 45); 
+      const camOffset = new THREE.Vector3(25, 6, 45); 
       const targetCamPos = tractorPos.clone().add(camOffset);
-      
-      // Look slightly ahead of the truck, moving it firmly into the RIGHT half.
-      const targetLookAt = tractorPos.clone().add(new THREE.Vector3(-18, 2, 0));
+      const targetLookAt = tractorPos.clone().add(new THREE.Vector3(-12, 3.5, 0));
 
-      // Snap to position on first frame
-      if (!camera.userData.initialized) {
-        progress.value = 0.45; // Start closer to center for static screenshot
-        camera.position.copy(targetCamPos);
-        camera.userData.currentLookAt = targetLookAt.clone();
-        camera.lookAt(camera.userData.currentLookAt);
-        camera.userData.initialized = true;
-      } else {
-        camera.position.lerp(targetCamPos, delta * 3.5);
-        camera.userData.currentLookAt.lerp(targetLookAt, delta * 4);
-        camera.lookAt(camera.userData.currentLookAt);
+      camera.position.copy(targetCamPos);
+      camera.lookAt(targetLookAt);
+      
+      if (!tractorRef.current.userData.loggedBounds) {
+        const box = new THREE.Box3().setFromObject(tractorRef.current);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        console.log('====== VEHICLE DEBUG ======');
+        console.log('Position:', tractorRef.current.position.toArray());
+        console.log('Rotation:', tractorRef.current.rotation.toArray());
+        console.log('Scale:', tractorRef.current.scale.toArray());
+        console.log('Bounds Size:', size.toArray());
+        console.log('Bounds Center:', center.toArray());
+        console.log('Camera Pos:', camera.position.toArray());
+        console.log('Camera LookAt:', targetLookAt.toArray());
+        
+        assertFiniteVector('tractorPos', tractorPos);
+        assertFiniteVector('targetCamPos', targetCamPos);
+        
+        tractorRef.current.userData.loggedBounds = true;
       }
     }
   });
@@ -319,9 +312,7 @@ function CinematicWorld() {
       <ProceduralHighway curve={curve} />
       
       <group ref={tractorRef}>
-        <group rotation={[0, Math.PI, 0]}>
-          <VaahanTractor speed={speedUnitsPerSec} />
-        </group>
+        <VaahanTractor speed={speedUnitsPerSec} />
         {/* Spatial Label attached slightly rearward and above cab */}
         <Html position={[0, 4.0, -1]} center className="pointer-events-none z-0 opacity-90 scale-90 origin-bottom-left">
           <div className="flex flex-col items-start min-w-[120px] drop-shadow-2xl bg-[#020617]/70 backdrop-blur-md border border-white/5 p-2.5 rounded-lg pl-3">
@@ -336,9 +327,7 @@ function CinematicWorld() {
       </group>
       
       <group ref={trailerRef}>
-        <group rotation={[0, Math.PI, 0]}>
-          <VaahanTrailer speed={speedUnitsPerSec} />
-        </group>
+        <VaahanTrailer speed={speedUnitsPerSec} />
       </group>
     </>
   );
@@ -505,12 +494,17 @@ function VaahanTractor({ speed }) {
       materials.trim.color.set('#15803d'); // Forest green front shield/mark
     }
     
-    Object.values(materials).forEach(mat => mat.needsUpdate = true);
+    Object.values(materials).forEach(mat => {
+      mat.side = THREE.DoubleSide;
+      mat.needsUpdate = true;
+    });
     
     Object.values(nodes).forEach(node => {
       if (node.isMesh) {
         node.castShadow = true;
         node.receiveShadow = true;
+        // ensure frustum culling doesn't break
+        node.frustumCulled = false;
       }
     });
   }, [nodes, materials]);

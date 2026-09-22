@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Smartphone, CheckCircle2, ArrowRight, Camera, AlertTriangle, Droplets, Receipt, ShieldAlert, Sparkles, Navigation } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -36,9 +36,9 @@ const signalVariants = {
 // SUB-COMPONENTS
 // ============================================================================
 
-function DriverApp() {
+function DriverApp({ onSync, isSynced }) {
   return (
-    <motion.div variants={itemVariants} className="w-full max-w-[300px] mx-auto relative group">
+    <motion.div variants={itemVariants} className="w-full lg:w-auto max-w-[300px] shrink-0 mx-auto relative group">
       {/* Editorial Label */}
       <div className="absolute -top-10 left-0 right-0 flex justify-center">
         <span className="text-[10px] font-bold tracking-widest uppercase text-content-muted">Field</span>
@@ -108,9 +108,21 @@ function DriverApp() {
                 <span className="text-[13px] font-bold text-content">₹8,200</span>
               </div>
               
-              <button className="relative z-10 w-full py-2.5 bg-emerald-600 text-white rounded-lg text-[12px] font-semibold flex items-center justify-center gap-1.5 shadow-sm">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Submitted
+              <button 
+                onClick={onSync}
+                disabled={isSynced}
+                className={`relative z-10 w-full py-2.5 text-white rounded-lg text-[12px] font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all duration-300 ${
+                  isSynced ? 'bg-emerald-600' : 'bg-content hover:bg-fg-dark'
+                }`}
+              >
+                {isSynced ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Submitted
+                  </>
+                ) : (
+                  <>Submit Log</>
+                )}
               </button>
             </div>
 
@@ -148,7 +160,7 @@ function DriverApp() {
   );
 }
 
-function SharedContextConnector() {
+function SharedContextConnector({ isSynced }) {
   const reducedMotion = useReducedMotion();
   
   return (
@@ -168,16 +180,14 @@ function SharedContextConnector() {
             variants={signalVariants}
           />
           {/* Signal dot */}
-          {!reducedMotion && (
+          {!reducedMotion && isSynced && (
             <motion.circle 
               r="3" 
               fill="#10b981" 
               initial={{ cx: 0, cy: 50, opacity: 0 }}
-              whileInView={{ opacity: [0, 1, 1, 0] }}
-              animate={{ cx: 100 }}
+              animate={{ cx: 100, opacity: [0, 1, 1, 0] }}
               transition={{ 
-                cx: { duration: 2, ease: "easeInOut", repeat: Infinity, delay: 2 },
-                opacity: { duration: 2, repeat: Infinity, delay: 2 }
+                duration: 1.5, ease: "easeInOut", times: [0, 0.2, 0.8, 1] 
               }}
             />
           )}
@@ -203,9 +213,9 @@ function SharedContextConnector() {
   );
 }
 
-function OwnerApp() {
+function OwnerApp({ isSynced }) {
   return (
-    <motion.div variants={itemVariants} className="w-full lg:max-w-[550px] relative group mx-auto lg:ml-0">
+    <motion.div variants={itemVariants} className="w-full lg:w-auto lg:max-w-[550px] shrink-0 relative group mx-auto lg:ml-0">
       {/* Editorial Label */}
       <div className="absolute -top-10 left-0 right-0 flex justify-center lg:justify-start lg:pl-10">
         <span className="text-[10px] font-bold tracking-widest uppercase text-content-muted">Command Center</span>
@@ -286,15 +296,15 @@ function OwnerApp() {
                 
                 <div className="p-2 flex flex-col gap-1.5">
                   {/* The Synced Event */}
-                  <motion.div 
-                    className="p-3 rounded-md bg-emerald-50/80 border border-emerald-100 flex items-start gap-3 relative overflow-hidden"
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 2.2 }} // Wait for signal to travel
-                  >
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
-                     <div className="w-6 h-6 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
+                  {isSynced && (
+                    <motion.div 
+                      className="p-3 rounded-md bg-emerald-50/80 border border-emerald-100 flex items-start gap-3 relative overflow-hidden"
+                      initial={{ opacity: 0, height: 0, y: -10 }}
+                      animate={{ opacity: 1, height: 'auto', y: 0 }}
+                      transition={{ duration: 0.5, delay: 1.2 }} // Wait for signal to travel
+                    >
+                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
+                       <div className="w-6 h-6 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0">
                        <Droplets className="w-3 h-3 text-emerald-600" />
                      </div>
                      <div className="flex flex-col flex-1">
@@ -303,9 +313,10 @@ function OwnerApp() {
                          <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100 px-1.5 rounded">Just now</span>
                        </div>
                        <span className="text-[11px] text-content-secondary mt-0.5">Trip #0402 • Delhi → Jaipur</span>
-                       <span className="text-[13px] font-bold text-content mt-1.5">₹8,200 <span className="font-normal text-[11px] text-content-muted ml-1">Verified via Driver App</span></span>
-                     </div>
-                  </motion.div>
+                         <span className="text-[13px] font-bold text-content mt-1.5">₹8,200 <span className="font-normal text-[11px] text-content-muted ml-1">Verified via Driver App</span></span>
+                       </div>
+                    </motion.div>
+                  )}
 
                   {/* Other History */}
                   <div className="p-3 rounded-md hover:bg-[#fafaf9] border border-transparent flex items-start gap-3 transition-colors">
@@ -340,9 +351,11 @@ function OwnerApp() {
 // ============================================================================
 
 export function AppsSection() {
+  const [isSynced, setIsSynced] = useState(false);
+
   return (
     <section className="py-32 bg-[#fdfcfb] overflow-hidden relative">
-      <div className="container mx-auto px-6 max-w-7xl">
+      <div className="container mx-auto px-6 max-w-6xl">
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-24 relative z-10">
@@ -367,11 +380,11 @@ export function AppsSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className="flex flex-col lg:flex-row items-center lg:items-start justify-between relative"
+          className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 relative"
         >
-          <DriverApp />
-          <SharedContextConnector />
-          <OwnerApp />
+          <DriverApp onSync={() => setIsSynced(true)} isSynced={isSynced} />
+          <SharedContextConnector isSynced={isSynced} />
+          <OwnerApp isSynced={isSynced} />
         </motion.div>
 
       </div>
