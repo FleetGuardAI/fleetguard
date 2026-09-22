@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -30,6 +30,18 @@ const createCustomIcon = (truck) => {
   });
 };
 
+// Auto-adjust map bounds to fit markers
+function MapBounds({ trucks }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (trucks && trucks.length > 0) {
+      const bounds = trucks.map(t => [t.lat, t.lng]);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [map, trucks]);
+  return null;
+}
+
 export function FleetMap({ trucks = [] }) {
   // Default center (Bangalore, India as example)
   const defaultCenter = useMemo(() => [12.9716, 77.5946], []);
@@ -43,9 +55,10 @@ export function FleetMap({ trucks = [] }) {
         zoomControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
+        <MapBounds trucks={trucks} />
         {trucks.map(truck => (
           <Marker 
             key={truck.id} 
@@ -54,8 +67,8 @@ export function FleetMap({ trucks = [] }) {
           >
             <Tooltip direction="top" offset={[0, -15]} opacity={1} className="custom-leaflet-tooltip" permanent={false}>
               <div className="text-center px-1">
-                <p className="text-xs font-semibold text-content m-0">{truck.id}</p>
-                {truck.speed && <p className="text-[10px] text-content-muted m-0">{truck.speed}</p>}
+                <p className="text-xs font-semibold text-content m-0">{truck.driver_name || truck.id}</p>
+                {truck.speed > 0 && <p className="text-[10px] text-content-muted m-0">{truck.speed} km/h</p>}
               </div>
             </Tooltip>
           </Marker>
