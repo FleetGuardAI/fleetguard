@@ -257,10 +257,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
 
-    # --- Schema Patcher ---
-    from infrastructure.database_patcher import apply_schema_patches
-    async with async_session_factory() as session:
-        await apply_schema_patches(session)
+    # Database Migrations (Alembic) are now handled exclusively by the CI/CD pipeline
+    # (see .github/workflows/backend-migrations.yml) to ensure safe, controlled schema updates.
 
     # --- MSG91 OTP Configuration Validation ---
     if not settings.OTP_MOCK_MODE and getattr(settings, 'OTP_PROVIDER', 'MSG91').upper() == 'MSG91':

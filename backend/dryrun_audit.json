@@ -1,0 +1,253 @@
+{
+  "Dataset_Inventory": {
+    "Total_VehicleLocation_rows": 240,
+    "Total_VehicleCurrentLocation_rows": 0,
+    "Total_vehicles": 1,
+    "Total_drivers": 1,
+    "Total_trips": 1,
+    "Total_PHONE_GPS_events": 120,
+    "Total_HARDWARE_GPS_events": 120,
+    "Oldest_location_timestamp": "2026-09-21 11:31:49.711940+00:00",
+    "Newest_location_timestamp": "2026-09-21 12:01:34.711940+00:00",
+    "Oldest_received_timestamp": "2026-09-21 12:31:49+00:00",
+    "Newest_received_timestamp": "2026-09-21 12:31:49+00:00"
+  },
+  "Dual_Source_Coverage": {
+    "Vehicles_with_PHONE_GPS": 1,
+    "Vehicles_with_HARDWARE_GPS": 1,
+    "Vehicles_with_both": 1,
+    "Vehicles_with_only_PHONE_GPS": 0,
+    "Vehicles_with_only_HARDWARE_GPS": 0,
+    "Percentage_both": 100.0
+  },
+  "PHONE_GPS_Update_Frequency": {
+    "min": 15.0,
+    "median": 15.0,
+    "mean": 15.0,
+    "P75": 15.0,
+    "P90": 15.0,
+    "P95": 15.0,
+    "P99": 15.0,
+    "max": 15.0,
+    "Gap_Distribution": {
+      "< 10 sec": 0,
+      "10-30 sec": 119,
+      "30-60 sec": 0,
+      "1-2 min": 0,
+      "2-5 min": 0,
+      "5-10 min": 0,
+      "10-30 min": 0,
+      "> 30 min": 0
+    }
+  },
+  "HARDWARE_GPS_Update_Frequency": {
+    "min": 15.0,
+    "median": 15.0,
+    "mean": 15.0,
+    "P75": 15.0,
+    "P90": 15.0,
+    "P95": 15.0,
+    "P99": 15.0,
+    "max": 15.0,
+    "Gap_Distribution": {
+      "< 10 sec": 0,
+      "10-30 sec": 119,
+      "30-60 sec": 0,
+      "1-2 min": 0,
+      "2-5 min": 0,
+      "5-10 min": 0,
+      "10-30 min": 0,
+      "> 30 min": 0
+    }
+  },
+  "PHONE_GPS_Accuracy_Distribution": {
+    "min": 15.0,
+    "median": 15.0,
+    "mean": 15.0,
+    "P75": 15.0,
+    "P90": 15.0,
+    "P95": 15.0,
+    "P99": 15.0,
+    "max": 15.0,
+    "Bands": {
+      "<= 5m": 0,
+      "5-10m": 0,
+      "10-25m": 120,
+      "25-50m": 0,
+      "50-100m": 0,
+      "> 100m": 0,
+      "missing": 0
+    }
+  },
+  "HARDWARE_GPS_Accuracy_Distribution": {
+    "min": 5.0,
+    "median": 5.0,
+    "mean": 5.0,
+    "P75": 5.0,
+    "P90": 5.0,
+    "P95": 5.0,
+    "P99": 5.0,
+    "max": 5.0,
+    "Bands": {
+      "<= 5m": 120,
+      "5-10m": 0,
+      "10-25m": 0,
+      "25-50m": 0,
+      "50-100m": 0,
+      "> 100m": 0,
+      "missing": 0
+    }
+  },
+  "PHONE_GPS_Timestamp_Quality": {
+    "future_timestamps": 0,
+    "zero_invalid": 0,
+    "ingestion_delay_percentiles": {
+      "min": 1814.28806,
+      "median": 2706.78806,
+      "mean": 2706.7880599999994,
+      "P75": 3153.03806,
+      "P90": 3420.78806,
+      "P95": 3510.03806,
+      "P99": 3581.43806,
+      "max": 3599.28806
+    }
+  },
+  "HARDWARE_GPS_Timestamp_Quality": {
+    "future_timestamps": 0,
+    "zero_invalid": 0,
+    "ingestion_delay_percentiles": {
+      "min": 1814.28806,
+      "median": 2706.78806,
+      "mean": 2706.7880599999994,
+      "P75": 3153.03806,
+      "P90": 3420.78806,
+      "P95": 3510.03806,
+      "P99": 3581.43806,
+      "max": 3599.28806
+    }
+  },
+  "Timestamp_Compatibility": {
+    "min": 0.0,
+    "median": 0.0,
+    "mean": 0.0,
+    "P75": 0.0,
+    "P90": 0.0,
+    "P95": 0.0,
+    "P99": 0.0,
+    "max": 0.0,
+    "Bands": {
+      "<= 10 sec": 120,
+      "<= 30 sec": 120,
+      "<= 60 sec": 120,
+      "<= 120 sec": 120,
+      "> 120 sec": 0
+    }
+  },
+  "Distance_Distribution": {
+    "min": 0.5950511799628383,
+    "median": 5.525978888271812,
+    "mean": 49.625537137317,
+    "P75": 146.97404472566382,
+    "P90": 150.53783384300834,
+    "P95": 152.31106921212037,
+    "P99": 154.07415742799813,
+    "max": 154.46905905765558,
+    "sample_size": 120,
+    "Bands": {
+      "0-10m": 80,
+      "10-25m": 0,
+      "25-50m": 2,
+      "50-100m": 2,
+      "100-200m": 36,
+      "200-500m": 0,
+      "500-1000m": 0,
+      "1-2km": 0,
+      "> 2km": 0
+    }
+  },
+  "Segment_Distance": {
+    "filter_criteria": "Both fresh + compat timestamp (<=120s). Stationary: vehicle+driver speed <= 2km/h. Moving: vehicle or driver speed > 10km/h.",
+    "Stationary": {
+      "min": 0.5950511799628383,
+      "median": 7.117147187085515,
+      "mean": 70.16663430292087,
+      "P75": 149.06747866217844,
+      "P90": 151.7090903742514,
+      "P95": 152.56556150151528,
+      "P99": 154.26620840648016,
+      "max": 154.46905905765558,
+      "sample_size": 73
+    },
+    "Moving": {
+      "min": 0.6733401055252282,
+      "median": 4.677536624522565,
+      "mean": 4.255344081773119,
+      "P75": 5.460990059053415,
+      "P90": 5.714350569032129,
+      "P95": 6.14555911830809,
+      "P99": 6.918942064276062,
+      "max": 7.3202273304939345,
+      "sample_size": 40
+    }
+  },
+  "PHONE_GPS_Speed_Distribution": {
+    "min": 0.0,
+    "median": 0.0,
+    "mean": 18.314999999999998,
+    "P75": 54.0,
+    "P90": 54.0,
+    "P95": 54.0,
+    "P99": 54.0,
+    "max": 54.0,
+    "Bands": {
+      "0": 73,
+      "0-2": 0,
+      "2-5": 0,
+      "5-10": 7,
+      "10-20": 0,
+      "20-40": 0,
+      "40-60": 40,
+      "60-80": 0,
+      "> 80": 0
+    }
+  },
+  "HARDWARE_GPS_Speed_Distribution": {
+    "min": 0.0,
+    "median": 0.0,
+    "mean": 18.314999999999998,
+    "P75": 54.0,
+    "P90": 54.0,
+    "P95": 54.0,
+    "P99": 54.0,
+    "max": 54.0,
+    "Bands": {
+      "0": 73,
+      "0-2": 0,
+      "2-5": 0,
+      "5-10": 7,
+      "10-20": 0,
+      "20-40": 0,
+      "40-60": 40,
+      "60-80": 0,
+      "> 80": 0
+    }
+  },
+  "PHONE_GPS_Heading_Quality": {
+    "with_heading": 0,
+    "missing_heading": 120,
+    "invalid_heading": 0
+  },
+  "HARDWARE_GPS_Heading_Quality": {
+    "with_heading": 0,
+    "missing_heading": 120,
+    "invalid_heading": 0
+  },
+  "PHONE_GPS_Duplicates_And_Ordering": {
+    "duplicate_fingerprints": 119,
+    "out_of_order_events": 0
+  },
+  "HARDWARE_GPS_Duplicates_And_Ordering": {
+    "duplicate_fingerprints": 119,
+    "out_of_order_events": 0
+  }
+}
