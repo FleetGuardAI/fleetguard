@@ -575,6 +575,24 @@ async def get_current_user_allow_inactive(
     return user
 
 
+def requires_role(*allowed_roles: UserRole):
+    """
+    FastAPI dependency that enforces RBAC.
+    Usage:
+        @router.get("/sensitive-data")
+        async def get_data(user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.MANAGER))):
+            ...
+    """
+    async def role_checker(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed_roles and user.role != UserRole.SUPER_ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action.",
+            )
+        return user
+    return role_checker
+
+
 async def create_token_for_user(
     user: User,
     db: AsyncSession,
