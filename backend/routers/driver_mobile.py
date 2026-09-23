@@ -63,7 +63,7 @@ class VerifyOtpRequest(BaseModel):
     phone_number: str
     req_id: str
     otp_code: str
-    invite_token: str
+    invite_token: Optional[str] = None
     msg91_token: Optional[str] = None
 
 class VerifyOtpResponse(BaseModel):
@@ -227,15 +227,16 @@ async def verify_otp(
             detail=result.message
         )
 
-    # Validate invite token
-    invite_result = await db.execute(
-        select(FleetInvite).where(FleetInvite.invite_token == payload.invite_token)
-    )
-    invite = invite_result.scalar_one_or_none()
-    if invite is None or not invite.is_valid:
-        raise HTTPException(400, "Invalid or expired invite")
-
-    company_id = invite.company_id
+    # Validate invite token if provided
+    company_id = None
+    if payload.invite_token:
+        invite_result = await db.execute(
+            select(FleetInvite).where(FleetInvite.invite_token == payload.invite_token)
+        )
+        invite = invite_result.scalar_one_or_none()
+        if invite is None or not invite.is_valid:
+            raise HTTPException(400, "Invalid or expired invite")
+        company_id = invite.company_id
 
     # Check if driver already exists globally (phone_number is globally unique)
     driver_result = await db.execute(
@@ -244,6 +245,12 @@ async def verify_otp(
     driver = driver_result.scalars().first()
 
     is_new = driver is None
+
+    if is_new and not company_id:
+        raise HTTPException(
+            status_code=404,
+            detail="No driver profile found. Please scan a fleet QR code to join."
+        )
 
     if is_new:
         disambiguated_phone = f"{payload.phone_number}_d{company_id}"

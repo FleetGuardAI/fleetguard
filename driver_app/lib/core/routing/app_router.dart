@@ -43,7 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
 
       if (!isLoggedIn && !isAuthRoute) {
-        return '/auth/qr-scan';
+        return '/auth/phone-verify';
       }
 
       if (isLoggedIn && isAuthRoute) {
