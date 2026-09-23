@@ -1,15 +1,10 @@
-name: Build Driver App APK
+name: Push OTA Update (Shorebird)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'driver_app/**'
   workflow_dispatch:
 
 jobs:
-  build:
+  patch:
     runs-on: ubuntu-latest
 
     defaults:
@@ -36,13 +31,7 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    - name: Build Shorebird Release
+    - name: Push Shorebird Patch
       env:
         SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-      run: shorebird release android --force
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: fleetguard-driver-app
-        path: driver_app/build/app/outputs/apk/release/app-release.apk
+      run: shorebird patch android --force
