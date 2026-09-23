@@ -13,11 +13,11 @@ class PhoneVerificationScreen extends ConsumerStatefulWidget {
 
   const PhoneVerificationScreen({
     super.key,
-    required this.companyName,
-    required this.inviteToken,
+    this.companyName,
+    this.inviteToken,
   });
-  final String companyName;
-  final String inviteToken;
+  final String? companyName;
+  final String? inviteToken;
 
   @override
   ConsumerState<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
@@ -58,11 +58,13 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         await SecureStorage.setVerificationStatus(response['verification_status']);
       }
       // Store company name for welcome screen
-      if (widget.companyName.isNotEmpty) {
-        await SecureStorage.setCompanyName(widget.companyName);
+      if (widget.companyName != null && widget.companyName!.isNotEmpty) {
+        await SecureStorage.setCompanyName(widget.companyName!);
       }
       // Store invite token for session persistence
-      await SecureStorage.setInviteToken(widget.inviteToken);
+      if (widget.inviteToken != null && widget.inviteToken!.isNotEmpty) {
+        await SecureStorage.setInviteToken(widget.inviteToken!);
+      }
 
       setState(() => _isLoading = false);
 
@@ -209,7 +211,9 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   Text(
                     _otpSent
                         ? 'Enter 6-digit OTP sent to ${_phoneController.text}'
-                        : 'Joining fleet: ${widget.companyName.isNotEmpty ? widget.companyName : "the vahan Partner"}',
+                        : (widget.companyName != null && widget.companyName!.isNotEmpty)
+                            ? 'Joining fleet: ${widget.companyName}'
+                            : 'Welcome back to FleetGuard',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.outline,
                         ),
@@ -284,6 +288,18 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                             child: const Text('Change Phone Number'),
                           ),
                         ],
+                      ),
+                    ),
+                  ],
+                  if (!_otpSent && widget.inviteToken == null) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => context.push('/auth/qr-scan'),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('New Driver? Scan QR Code to Join'),
                       ),
                     ),
                   ],
