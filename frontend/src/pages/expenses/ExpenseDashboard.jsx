@@ -503,21 +503,25 @@ export default function ExpenseDashboard() {
               {selectedExpense.ai_risk && (
                 <div className={cn(
                   "p-4 rounded-xl border space-y-2",
-                  selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical'
-                    ? "bg-red-50/50 border-red-100 text-red-950"
-                    : "bg-emerald-50/50 border-emerald-100 text-emerald-950"
+                  selectedExpense.ai_risk === 'Critical' && (selectedExpense.ai_details || '').toUpperCase().includes('GEOGRAPHIC FRAUD')
+                    ? "bg-red-600 border-red-700 text-white shadow-lg animate-pulse"
+                    : selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical'
+                      ? "bg-red-50/50 border-red-100 text-red-950"
+                      : "bg-emerald-50/50 border-emerald-100 text-emerald-950"
                 )}>
                   <div className="flex items-center gap-2">
                     {selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical' ? (
-                      <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                      <AlertTriangle className={cn("h-5 w-5 flex-shrink-0", selectedExpense.ai_risk === 'Critical' && (selectedExpense.ai_details || '').toUpperCase().includes('GEOGRAPHIC FRAUD') ? "text-white" : "text-red-600")} />
                     ) : (
                       <Award className="h-5 w-5 text-emerald-600 flex-shrink-0" />
                     )}
                     <span className="text-sm font-bold">
-                      AI OCR Risk: {selectedExpense.ai_risk}
+                      {selectedExpense.ai_risk === 'Critical' && (selectedExpense.ai_details || '').toUpperCase().includes('GEOGRAPHIC FRAUD') 
+                        ? 'CRITICAL ALERT: GEOGRAPHIC FRAUD DETECTED' 
+                        : `AI OCR Risk: ${selectedExpense.ai_risk}`}
                     </span>
                   </div>
-                  <p className="text-xs leading-relaxed opacity-90">
+                  <p className={cn("text-xs leading-relaxed opacity-90", selectedExpense.ai_risk === 'Critical' && (selectedExpense.ai_details || '').toUpperCase().includes('GEOGRAPHIC FRAUD') ? "font-medium" : "")}>
                     {selectedExpense.ai_details}
                   </p>
                 </div>
