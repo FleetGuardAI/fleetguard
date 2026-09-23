@@ -44,7 +44,7 @@ class MSG91OTPProvider(OTPProvider):
         if len(cleaned_id) == 10:
             cleaned_id = f"91{cleaned_id}"
             
-        url = f"https://control.msg91.com/api/v5/otp?template_id={self.template_id}&mobile={cleaned_id}"
+        url = f"https://control.msg91.com/api/v5/otp?authkey={self.auth_key}&template_id={self.template_id}&mobile={cleaned_id}"
         
         try:
             async with httpx.AsyncClient() as client:
@@ -90,7 +90,7 @@ class MSG91OTPProvider(OTPProvider):
             logger.error("OTP Verify Failed: MSG91 is not fully configured.")
             return OTPVerificationResult(False, "Configuration Error: MSG91 is not fully configured")
             
-        url = f"https://control.msg91.com/api/v5/otp/verify?otp={code}&mobile={req_id}"
+        url = f"https://control.msg91.com/api/v5/otp/verify?authkey={self.auth_key}&otp={code}&mobile={req_id}"
         
         try:
             async with httpx.AsyncClient() as client:
