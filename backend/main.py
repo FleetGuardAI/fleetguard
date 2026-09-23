@@ -39,6 +39,7 @@ event_bus = KafkaEventBus(
 from infrastructure.validation.registry import ValidationRuleRegistry
 from infrastructure.validation.rules.example_fuel_structural_rule import ExampleFuelStructuralRule
 from infrastructure.validation.rules.tank_capacity_rule import TankCapacityRule
+from infrastructure.validation.rules.expense_location_rule import ExpenseLocationFraudRule
 from infrastructure.validation.engine import ValidationEngine
 from infrastructure.validation.service import ValidationService
 from infrastructure.validation.consumer import ValidationConsumer
@@ -47,6 +48,7 @@ from infrastructure.validation.consumer import ValidationConsumer
 validation_registry = ValidationRuleRegistry()
 validation_registry.register(ExampleFuelStructuralRule())
 validation_registry.register(TankCapacityRule())
+validation_registry.register(ExpenseLocationFraudRule())
 
 validation_engine = ValidationEngine(validation_registry)
 
