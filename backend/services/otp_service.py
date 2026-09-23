@@ -44,11 +44,15 @@ class MSG91OTPProvider(OTPProvider):
         if len(cleaned_id) == 10:
             cleaned_id = f"91{cleaned_id}"
             
-        url = f"https://control.msg91.com/api/v5/otp?authkey={self.auth_key}&template_id={self.template_id}&mobile={cleaned_id}"
+        url = "https://control.msg91.com/api/v5/otp"
+        payload = {
+            "template_id": self.template_id,
+            "mobile": cleaned_id
+        }
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=self._get_headers())
+                response = await client.post(url, headers=self._get_headers(), json=payload)
                 data = response.json()
                 
                 if data.get("type") == "success":
