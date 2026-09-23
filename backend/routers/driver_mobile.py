@@ -338,7 +338,7 @@ async def verify_otp(
         # Driver already exists. 
         # If they are joining a new company via invite, we should update their company_id
         # to the new company so they can operate under it, as phone_number is globally unique.
-        if driver.company_id != company_id:
+        if company_id is not None and driver.company_id != company_id:
             driver.company_id = company_id
             
             # We must also ensure they use the correct user for this company.
@@ -378,8 +378,11 @@ async def verify_otp(
                         user = user_result.scalar_one()
                     driver.user_id = user.id
 
-        # Increment invite usage
+    if 'invite' in locals() and invite is not None:
         invite.use_count += 1
+
+    # For token generation, ensure company_id correctly points to the driver's current company
+    final_company_id = company_id if company_id is not None else driver.company_id
 
     # Generate JWT token
     from models.auth_session import AuthSession
@@ -387,7 +390,7 @@ async def verify_otp(
     jti = secrets.token_urlsafe(24)
     session = AuthSession(
         user_id=driver.user_id or 0,
-        company_id=company_id,
+        company_id=final_company_id,
         session_jti=jti,
         remember_me=True,
         expires_at=datetime.now(tz=timezone.utc) + __import__('datetime').timedelta(days=30),
@@ -397,7 +400,7 @@ async def verify_otp(
     token = create_access_token(
         data={
             "sub": str(driver.user_id),
-            "company_id": company_id,
+            "company_id": final_company_id,
             "role": UserRole.DRIVER.value,
             "driver_id": driver.id,
             "jti": jti,
