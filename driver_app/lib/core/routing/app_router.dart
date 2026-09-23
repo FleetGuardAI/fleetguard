@@ -287,7 +287,7 @@ class _SplashScreenState extends ConsumerState<_SplashScreen> {
 
     final isLoggedIn = await SecureStorage.isLoggedIn();
     if (!isLoggedIn) {
-      context.go('/auth/qr-scan');
+      context.go('/auth/phone-verify');
       return;
     }
 
