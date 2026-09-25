@@ -11,7 +11,7 @@ import '../config/app_config.dart';
 import '../storage/local_database.dart';
 import '../utils/logger.dart';
 
-import 'package:activity_recognition_flutter/activity_recognition_flutter.dart';
+import 'package:activity_recognition_flutter/activity_recognition_flutter.dart' as ar;
 import 'package:dio/dio.dart';
 import '../storage/secure_storage.dart';
 
@@ -114,15 +114,15 @@ void onStart(ServiceInstance service) async {
   startLocationStream();
 
   // Smart Polling based on Activity
-  final activityRecognition = ActivityRecognition.activityStream(runForegroundService: true);
-  activityRecognition.listen((Activity activity) {
-    if (activity.type == ActivityType.STILL) {
+  final activityRecognition = ar.ActivityRecognition.activityStream(runForegroundService: true);
+  activityRecognition.listen((ar.Activity activity) {
+    if (activity.type == ar.ActivityType.STILL) {
       stopLocationStream();
-    } else if (activity.type == ActivityType.IN_VEHICLE || 
-               activity.type == ActivityType.ON_BICYCLE || 
-               activity.type == ActivityType.ON_FOOT || 
-               activity.type == ActivityType.WALKING || 
-               activity.type == ActivityType.RUNNING) {
+    } else if (activity.type == ar.ActivityType.IN_VEHICLE || 
+               activity.type == ar.ActivityType.ON_BICYCLE || 
+               activity.type == ar.ActivityType.ON_FOOT || 
+               activity.type == ar.ActivityType.WALKING || 
+               activity.type == ar.ActivityType.RUNNING) {
       startLocationStream();
     }
   });
