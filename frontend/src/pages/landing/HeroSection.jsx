@@ -1,609 +1,217 @@
-import React, { useRef, useMemo, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, Environment, useGLTF } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-export function HeroSection() {
+export function HeroSection({ onDemo }) {
   return (
-    <section className="relative w-full h-screen min-h-[800px] flex flex-col justify-center bg-[#050b14] overflow-hidden">
-      
-      {/* 3D Cinematic Fleet Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none hidden md:block">
-        <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 32, near: 5, far: 5000 }}>
-          
-          <Suspense fallback={null}>
-            <CinematicLighting />
-            <Environment preset="city" />
-            <SkyGradient />
-            <fog attach="fog" args={['#050b14', 100, 2000]} />
-            <group>
-              <CinematicWorld />
-            </group>
-          </Suspense>
-
+    <section className="relative flex h-screen min-h-[800px] w-full flex-col justify-center overflow-hidden bg-[#050b14]">
+      <div className="absolute right-0 top-24 z-[1] hidden h-[500px] w-[52%] max-w-[760px] pointer-events-auto md:block">
+        <Canvas shadows dpr={[1, 1.25]} camera={{ position: [0, 5.8, 8.5], fov: 38, near: 0.1, far: 40 }}>
+          <CompactFleetScene />
         </Canvas>
       </div>
-        {/* UI Shielding Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050b14]/95 via-[#050b14]/50 to-transparent"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050b14]/90"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050b14] via-transparent to-transparent h-40 bottom-0"></div>
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#050b14]/95 via-[#050b14]/50 to-transparent" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent via-transparent to-[#050b14]/90" />
+      <div className="absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-t from-[#050b14] via-transparent to-transparent" />
 
-      {/* Hero Content (Existing UI) */}
-      <div className="container mx-auto px-6 max-w-7xl relative z-10 pt-24 h-full flex flex-col justify-between pointer-events-none">
-        
-        <div className="flex-1 flex flex-col justify-center pointer-events-auto">
+      <div className="container relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-between px-6 pt-24 pointer-events-none">
+        <div className="flex flex-1 flex-col justify-center pointer-events-auto">
           <div className="max-w-2xl">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-            >
-              <div className="text-[10px] font-bold tracking-widest uppercase text-white/50 mb-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+              <div className="mb-6 text-[10px] font-bold uppercase tracking-widest text-white/50">
                 FLEET INTELLIGENCE FOR A MORE EFFICIENT TOMORROW
               </div>
-              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[80px] font-medium tracking-tight text-white mb-6 leading-[1.05]">
-                Every mile <br/>has a story.<br/>
-                <span className="text-[#15803d] font-normal">We help you understand it.</span>
+              <h1 className="mb-6 text-5xl font-medium leading-[1.05] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-[80px]">
+                Every mile <br />has a story.<br />
+                <span className="font-normal text-[#15803d]">We help you understand it.</span>
               </h1>
-              <p className="text-lg sm:text-xl text-white/60 font-light leading-relaxed max-w-xl mb-10">
+              <p className="mb-10 max-w-xl text-lg font-light leading-relaxed text-white/60 sm:text-xl">
                 The vaahan connects your vehicles, drivers, trips, expenses and more— turning fleet activity into operational and financial intelligence.
               </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/dashboard" className="inline-flex items-center justify-center bg-[#15803d] hover:bg-[#166534] text-white font-medium px-8 py-3.5 rounded text-sm transition-colors">
-                  Explore the Platform <ArrowRight className="ml-2 w-4 h-4" />
-                </Link>
-                <Link to="#contact" className="inline-flex items-center justify-center bg-transparent border border-white/20 hover:bg-white/5 text-white font-medium px-8 py-3.5 rounded text-sm transition-colors">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <a href="#platform" className="inline-flex items-center justify-center rounded bg-[#15803d] px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#166534]">
+                  Explore the Platform <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <button type="button" onClick={onDemo} className="inline-flex items-center justify-center rounded border border-white/20 bg-transparent px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-white/5">
                   Book a Demo
-                </Link>
+                </button>
               </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Bottom Stats Row */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="pb-12 flex items-center gap-12 pointer-events-auto"
-        >
-          <div>
-            <div className="text-2xl font-semibold text-white">248</div>
-            <div className="text-xs text-white/50">Vehicles Active</div>
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-white">98%</div>
-            <div className="text-xs text-white/50">Trips On Time</div>
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-white">12</div>
-            <div className="text-xs text-white/50">Attention Required</div>
-          </div>
-          <div>
-            <div className="text-2xl font-semibold text-red-500">3</div>
-            <div className="text-xs text-white/50">Critical Alerts</div>
-          </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }} className="flex items-center gap-12 pb-12 pointer-events-auto">
+          {['DATA', 'CONTEXT', 'INTELLIGENCE', 'ACTION'].map((label) => (
+            <div key={label}>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">{label}</div>
+              <div className="mt-1 text-[10px] text-white/40">Connected fleet signal</div>
+            </div>
+          ))}
         </motion.div>
       </div>
 
-      {/* Floating Live Fleet Overlay */}
-      <div className="absolute top-32 right-12 z-20 hidden lg:block pointer-events-auto">
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, delay: 0.5 }}
-          className="bg-[#0b120f]/60 backdrop-blur-md border border-white/5 rounded-xl p-4 w-56 shadow-2xl"
-        >
-          <div className="text-[10px] font-bold text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Live Fleet</div>
-          <div className="space-y-3 text-xs">
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#15803d]"></div>On Time</span><span className="text-white">229</span></div>
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div>Attention</span><span className="text-white">12</span></div>
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div>Delayed</span><span className="text-white">3</span></div>
-            <div className="flex justify-between items-center"><span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white/20"></div>Inactive</span><span className="text-white">4</span></div>
+      <div className="absolute right-8 top-32 z-20 hidden pointer-events-auto lg:block">
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.5 }} className="w-48 rounded-xl border border-white/5 bg-[#0b120f]/55 p-3 shadow-2xl backdrop-blur-md">
+          <div className="mb-3 border-b border-white/10 pb-2 text-[10px] font-bold uppercase tracking-wider text-white/80">Live Fleet</div>
+          <div className="space-y-2 text-[10px] text-white/60">
+            <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#67d89a]" />Signal detected</div>
+            <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#e8a33d]" />Context added</div>
+            <div className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#9ed7b3]" />Next action clarified</div>
           </div>
         </motion.div>
       </div>
-
     </section>
   );
 }
 
-// ------------------------------------------------------------------
-// ENVIRONMENT & LIGHTING
-// ------------------------------------------------------------------
+function CompactFleetScene() {
+  const world = useRef();
+  const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [activeEvent, setActiveEvent] = useState('FUEL');
+  const [activeRoute, setActiveRoute] = useState(null);
 
-function CinematicLighting() {
-  const keyLightRef = useRef();
-  
-  useFrame(({ camera }) => {
-    if (keyLightRef.current) {
-      // Keep light relative to camera to maximize shadow map resolution on the truck
-      keyLightRef.current.position.set(camera.position.x - 50, camera.position.y + 80, camera.position.z + 50);
-      keyLightRef.current.target.position.set(camera.position.x, 0, camera.position.z - 40);
-      keyLightRef.current.target.updateMatrixWorld();
-    }
+  const routes = useMemo(() => [
+    { id: 'foreground', points: [[-3.55, 0.22, 1.45], [-2.2, 0.25, 1.1], [-0.65, 0.35, 0.65], [0.8, 0.32, 0.15], [3.55, 0.25, -0.25]], scale: 1.24, speed: 0.105, delay: 0.12, color: '#d9eee0' },
+    { id: 'middle-a', points: [[-3.2, 0.02, -0.2], [-1.65, 0.08, -0.35], [-0.35, 0.2, 0.05], [1.2, 0.18, 0.75], [3.25, 0.12, 1.1]], scale: 0.92, speed: 0.14, delay: 0.43, color: '#9ed7b3' },
+    { id: 'middle-b', points: [[-2.7, -0.08, -1.25], [-1.35, -0.04, -1.05], [0.1, 0.08, -0.45], [1.55, 0.04, -0.85], [2.8, 0.02, -1.35]], scale: 0.9, speed: 0.12, delay: 0.68, color: '#79bd94' },
+    { id: 'background', points: [[-2.45, -0.18, -1.9], [-1.2, -0.15, -1.75], [0.2, -0.08, -1.45], [1.55, -0.12, -1.65], [2.7, -0.15, -1.9]], scale: 0.68, speed: 0.09, delay: 0.28, color: '#5d9c78' },
+  ], []);
+
+  const events = useMemo(() => [
+    { id: 'FUEL', label: 'FUEL SIGNAL', route: 'foreground', position: [-0.55, 0.72, 0.68], color: '#e8a33d', detail: 'Context added' },
+    { id: 'TRIP', label: 'TRIP CONTEXT', route: 'middle-a', position: [1.18, 0.55, 0.73], color: '#67d89a', detail: 'Action clarified' },
+    { id: 'RISK', label: 'RISK SIGNAL', route: 'middle-b', position: [0.42, 0.42, -0.47], color: '#e99486', detail: 'Review suggested' },
+  ], []);
+
+  useEffect(() => {
+    if (reducedMotion) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveEvent((current) => events[(events.findIndex((event) => event.id === current) + 1) % events.length].id);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [events, reducedMotion]);
+
+  useFrame((state) => {
+    if (!world.current) return;
+    world.current.rotation.y += (((state.pointer.x || 0) * 0.045) - world.current.rotation.y) * 0.04;
+    world.current.rotation.x += (((state.pointer.y || 0) * -0.02) - world.current.rotation.x) * 0.04;
   });
 
-  return (
-    <group>
-      {/* Soft cool ambient fill */}
-      <ambientLight intensity={0.7} color="#cbd5e1" />
-      
-      {/* Warm Key Light hitting the front-left of the truck */}
-      <directionalLight 
-        ref={keyLightRef}
-        
-        intensity={3.0} 
-        color="#fef08a"
-        shadow-mapSize={[2048, 2048]} 
-        shadow-camera-near={10} 
-        shadow-camera-far={300} 
-        shadow-camera-left={-80} 
-        shadow-camera-right={80} 
-        shadow-camera-top={80} 
-        shadow-camera-bottom={-80} 
-        shadow-bias={-0.0001}
-      />
-      
-      {/* Subtle cool rim light hitting the rear-right */}
-      <directionalLight 
-        position={[100, 40, -100]} 
-        intensity={1.8} 
-        color="#7dd3fc"
-      />
-    </group>
-  );
-}
-
-function SkyGradient() {
-  return (
-    <mesh scale={4000}>
-      <sphereGeometry args={[1, 32, 32]} />
-      <shaderMaterial
-        side={THREE.BackSide}
-        uniforms={{
-          topColor: { value: new THREE.Color('#020617') },
-          bottomColor: { value: new THREE.Color('#27272a') },
-          offset: { value: 100 },
-          exponent: { value: 0.6 }
-        }}
-        vertexShader={`
-          varying vec3 vWorldPosition;
-          void main() {
-            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-            vWorldPosition = worldPosition.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `}
-        fragmentShader={`
-          uniform vec3 topColor;
-          uniform vec3 bottomColor;
-          uniform float offset;
-          uniform float exponent;
-          varying vec3 vWorldPosition;
-          void main() {
-            float h = normalize(vWorldPosition + vec3(0.0, offset, 0.0)).y;
-            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-          }
-        `}
-      />
-    </mesh>
-  );
-}
-
-// ------------------------------------------------------------------
-// PHYSICAL WORLD & VEHICLE PHYSICS
-// ------------------------------------------------------------------
-
-function CinematicWorld() {
-  const { camera } = useThree();
-  
-  // STEP 6: Straight highway spline, angled slightly towards the camera (+Z)
-  // so the truck appears to be driving diagonally towards the viewer.
-  const curve = useMemo(() => {
-    return new THREE.CatmullRomCurve3([
-      // Reverse the curve to start from Left and go to Right
-      new THREE.Vector3(-1200, 0, -250),
-      new THREE.Vector3(0, 0, 20),
-      new THREE.Vector3(1200, 0, 250),
-    ], false, 'catmullrom', 0.1);
-  }, []);
-
-  // Tractor kinematic state
-  const tractorRef = useRef();
-  const trailerRef = useRef();
-  
-  // Track route progress
-  const [progress] = useState({ value: 0 });
-  const trailerRearPos = useRef(new THREE.Vector3());
-  const initializedTrailer = useRef(false);
-
-  // Speed configuration
-  const speedUnitsPerSec = 50; // Approx highway speed
-  const curveLength = curve.getLength();
-
-  function assertFiniteVector(name, v) {
-    if (!Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)) {
-      console.error(`${name} contains invalid values`, v);
-    }
-  }
-
-  useFrame((state, delta) => {
-    // 1. Move Tractor
-    const t = 0.5; // STATIC SNAPSHOT
-    const tractorPos = curve.getPointAt(t);
-    const tangent = curve.getTangentAt(t);
-    
-    if (tractorRef.current) {
-      // Truck native front is +Z. lookAt aligns -Z with target.
-      // To make the truck face the tangent (travel direction), we must look opposite to the tangent.
-      const tractorTarget = tractorPos.clone().sub(tangent);
-      tractorRef.current.position.copy(tractorPos);
-      tractorRef.current.lookAt(tractorTarget); 
-    }
-
-    // 2. Trailer Physics (Tractrix / Follow logic)
-    if (tractorRef.current && trailerRef.current) {
-      // Hitch is at local z=1.3. Because +Z is front, z=1.3 is physically behind the cab with 180 rotation.
-      const hitchOffset = new THREE.Vector3(0, 1.165, 1.3); // Inverted due to 180 rotation
-      const hitchWorldPos = tractorPos.clone().add(
-        hitchOffset.applyQuaternion(tractorRef.current.quaternion)
-      );
-
-      // Actual physical distance from kingpin (z=5.6) to rear wheels (z=-5.65) is 11.25
-      const trailerWheelbase = 11.25; 
-
-      if (!initializedTrailer.current) {
-        // Init trailer straight behind
-        const backward = tractorPos.clone().sub(tractorTarget).normalize();
-        trailerRearPos.current.copy(hitchWorldPos).add(backward.multiplyScalar(trailerWheelbase));
-        initializedTrailer.current = true;
-      }
-
-      // dir points from rear axles to hitch (FORWARD)
-      const dir = new THREE.Vector3().subVectors(hitchWorldPos, trailerRearPos.current).normalize();
-      trailerRearPos.current.copy(hitchWorldPos).sub(dir.clone().multiplyScalar(trailerWheelbase));
-
-      trailerRef.current.position.copy(hitchWorldPos);
-      trailerRef.current.position.y = 0; 
-      
-      const lookTarget = hitchWorldPos.clone().sub(dir.multiplyScalar(10));
-      lookTarget.y = 0;
-      trailerRef.current.lookAt(lookTarget);
-    }
-
-    if (tractorRef.current) {
-      const camOffset = new THREE.Vector3(25, 6, 45); 
-      const targetCamPos = tractorPos.clone().add(camOffset);
-      const targetLookAt = tractorPos.clone().add(new THREE.Vector3(-12, 3.5, 0));
-
-      camera.position.copy(targetCamPos);
-      camera.lookAt(targetLookAt);
-      
-      if (!tractorRef.current.userData.loggedBounds) {
-        const box = new THREE.Box3().setFromObject(tractorRef.current);
-        const size = new THREE.Vector3();
-        const center = new THREE.Vector3();
-        box.getSize(size);
-        box.getCenter(center);
-        console.log('====== VEHICLE DEBUG ======');
-        console.log('Position:', tractorRef.current.position.toArray());
-        console.log('Rotation:', tractorRef.current.rotation.toArray());
-        console.log('Scale:', tractorRef.current.scale.toArray());
-        console.log('Bounds Size:', size.toArray());
-        console.log('Bounds Center:', center.toArray());
-        console.log('Camera Pos:', camera.position.toArray());
-        console.log('Camera LookAt:', targetLookAt.toArray());
-        
-        assertFiniteVector('tractorPos', tractorPos);
-        assertFiniteVector('targetCamPos', targetCamPos);
-        
-        tractorRef.current.userData.loggedBounds = true;
-      }
-    }
-  });
-
+  const selectedEvent = events.find((event) => event.id === activeEvent) || events[0];
   return (
     <>
-      <ProceduralHighway curve={curve} />
-      
-      <group ref={tractorRef}>
-        <VaahanTractor speed={speedUnitsPerSec} />
-        {/* Spatial Label attached slightly rearward and above cab */}
-        <Html position={[0, 4.0, -1]} center className="pointer-events-none z-0 opacity-90 scale-90 origin-bottom-left">
-          <div className="flex flex-col items-start min-w-[120px] drop-shadow-2xl bg-[#020617]/70 backdrop-blur-md border border-white/5 p-2.5 rounded-lg pl-3">
-            <div className="flex items-center gap-2 mb-1">
-               <div className="w-1.5 h-1.5 rounded-full bg-[#15803d] shadow-[0_0_8px_rgba(21,128,61,0.8)]"></div>
-               <div className="text-[10px] font-bold text-white tracking-widest uppercase">MH-04-1234</div>
-            </div>
-            <div className="text-[9px] text-white/60 tracking-widest">DELHI → JAIPUR</div>
-            <div className="text-[9px] text-[#15803d] font-semibold tracking-wide mt-1">Trip #0402 • In Transit</div>
+      <color attach="background" args={['#050b14']} />
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[2, 6, 4]} intensity={2.1} color="#dcffe8" castShadow />
+      <pointLight position={[0, 1.8, 0]} intensity={4} distance={7} color="#4bd486" />
+      <group ref={world}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.36, -0.15]} receiveShadow>
+          <planeGeometry args={[7.9, 4.15]} />
+          <meshStandardMaterial color="#09130f" roughness={0.95} transparent opacity={0.72} />
+        </mesh>
+        {routes.map((route) => (
+          <React.Fragment key={route.id}>
+            {route.points.slice(0, -1).map((point, index) => (
+              <SceneLine key={`${route.id}-${index}`} start={point} end={route.points[index + 1]} active={activeRoute === route.id} />
+            ))}
+            <MiniTruck route={route.points} speed={reducedMotion ? 0 : route.speed} delay={route.delay} scale={route.scale} color={route.color} active={activeRoute === route.id} onPointerOver={() => setActiveRoute(route.id)} onPointerOut={() => setActiveRoute(null)} onClick={() => setActiveEvent(events.find((event) => event.route === route.id)?.id || 'FUEL')} />
+          </React.Fragment>
+        ))}
+        <IntelligenceHub active={activeRoute !== null} onPointerOver={() => setActiveRoute('hub')} onPointerOut={() => setActiveRoute(null)} onClick={() => setActiveEvent('FUEL')} />
+        {events.map((event) => (
+          <React.Fragment key={event.id}>
+            <SceneLine start={event.position} end={[0, 0.62, 0]} active={selectedEvent.id === event.id || activeRoute === event.route} />
+            <SignalPacket start={event.position} color={event.color} paused={reducedMotion} />
+            <group position={event.position} onPointerOver={() => setActiveEvent(event.id)} onClick={() => setActiveEvent(event.id)}>
+              <mesh>
+                <octahedronGeometry args={[0.13, 0]} />
+                <meshStandardMaterial color={event.color} emissive={event.color} emissiveIntensity={selectedEvent.id === event.id ? 1.1 : 0.35} />
+              </mesh>
+              <Html center position={[0, 0.22, 0]} distanceFactor={7} className="pointer-events-none">
+                <div className={`whitespace-nowrap rounded border px-2 py-1 text-[8px] font-semibold uppercase tracking-[0.14em] ${selectedEvent.id === event.id ? 'border-white/30 bg-[#07110c]/90 text-white' : 'border-white/10 bg-[#07110c]/55 text-white/45'}`}>
+                  {event.label}
+                </div>
+              </Html>
+            </group>
+          </React.Fragment>
+        ))}
+        <Html center position={[0, 1.48, 0]} distanceFactor={7} className="pointer-events-none">
+          <div className="rounded-lg border border-emerald-200/30 bg-[#07110c]/90 px-3 py-2 text-center shadow-[0_0_24px_rgba(74,209,124,0.14)] backdrop-blur-md">
+            <div className="text-[8px] uppercase tracking-[0.18em] text-emerald-200/70">Fleet intelligence</div>
+            <div className="text-[11px] font-semibold text-white">Context → action</div>
+          </div>
+        </Html>
+        <Html center position={[0, -0.86, 0]} distanceFactor={7} className="pointer-events-none">
+          <div className="rounded-full border border-white/10 bg-[#07110c]/80 px-3 py-1 text-[8px] font-semibold uppercase tracking-[0.15em] text-white/70">
+            {selectedEvent.id} · {selectedEvent.detail}
           </div>
         </Html>
       </group>
-      
-      <group ref={trailerRef}>
-        <VaahanTrailer speed={speedUnitsPerSec} />
-      </group>
     </>
   );
 }
 
-// ------------------------------------------------------------------
-// PROCEDURAL HIGHWAY & ENVIRONMENT
-// ------------------------------------------------------------------
-
-function ProceduralHighway({ curve }) {
-  const { meshGeo, markGeo, shoulderGeo, guardrailGeo, edgeGeo } = useMemo(() => {
-    // Asphalt: [-5.6, 5.6]
-    const shape = new THREE.Shape();
-    shape.moveTo(-5.6, 0); 
-    shape.lineTo(5.6, 0);
-    shape.lineTo(5.6, -10);
-    shape.lineTo(-5.6, -10);
-    shape.lineTo(-5.6, 0);
-    const meshGeo = new THREE.ExtrudeGeometry(shape, { extrudePath: curve, steps: 300, bevelEnabled: false, closed: false });
-    
-    // markShape: Center line (raised to y=0.01 to avoid any Z-fighting with asphalt at y=0)
-    const markShape = new THREE.Shape();
-    markShape.moveTo(-0.1, 0.01); 
-    markShape.lineTo(0.1, 0.01);
-    markShape.lineTo(0.1, -10);
-    markShape.lineTo(-0.1, -10);
-    markShape.lineTo(-0.1, 0.01);
-    const markGeo = new THREE.ExtrudeGeometry(markShape, { extrudePath: curve, steps: 300, bevelEnabled: false, closed: false });
-
-    // edgeShape: White lines next to asphalt [-6.0, -5.6] and [5.6, 6.0]
-    const edgeShapeLeft = new THREE.Shape();
-    edgeShapeLeft.moveTo(-6.0, 0); 
-    edgeShapeLeft.lineTo(-5.6, 0);
-    edgeShapeLeft.lineTo(-5.6, -10);
-    edgeShapeLeft.lineTo(-6.0, -10);
-    edgeShapeLeft.lineTo(-6.0, 0);
-    
-    const edgeShapeRight = new THREE.Shape();
-    edgeShapeRight.moveTo(5.6, 0); 
-    edgeShapeRight.lineTo(6.0, 0);
-    edgeShapeRight.lineTo(6.0, -10);
-    edgeShapeRight.lineTo(5.6, -10);
-    edgeShapeRight.lineTo(5.6, 0);
-    const edgeGeo = new THREE.ExtrudeGeometry([edgeShapeLeft, edgeShapeRight], { extrudePath: curve, steps: 300, bevelEnabled: false, closed: false });
-
-    // shoulderShape: Dark shoulders [-8.0, -6.0] and [6.0, 8.0]
-    const shoulderShapeLeft = new THREE.Shape();
-    shoulderShapeLeft.moveTo(-8.0, 0); 
-    shoulderShapeLeft.lineTo(-6.0, 0);
-    shoulderShapeLeft.lineTo(-6.0, -10);
-    shoulderShapeLeft.lineTo(-8.0, -10);
-    shoulderShapeLeft.lineTo(-8.0, 0);
-    
-    const shoulderShapeRight = new THREE.Shape();
-    shoulderShapeRight.moveTo(6.0, 0); 
-    shoulderShapeRight.lineTo(8.0, 0);
-    shoulderShapeRight.lineTo(8.0, -10);
-    shoulderShapeRight.lineTo(6.0, -10);
-    shoulderShapeRight.lineTo(6.0, 0);
-    const shoulderGeo = new THREE.ExtrudeGeometry([shoulderShapeLeft, shoulderShapeRight], { extrudePath: curve, steps: 300, bevelEnabled: false, closed: false });
-
-    const guardrailShape = new THREE.Shape();
-    guardrailShape.moveTo(-7.1, 0.5); guardrailShape.lineTo(-7, 0.5);
-    guardrailShape.lineTo(-7, 0.8); guardrailShape.lineTo(-7.1, 0.8);
-    guardrailShape.lineTo(-7.1, 0.5);
-    const guardrailGeo = new THREE.ExtrudeGeometry(guardrailShape, { extrudePath: curve, steps: 300, bevelEnabled: false, closed: false });
-
-    return { meshGeo, markGeo, shoulderGeo, guardrailGeo, edgeGeo };
-  }, [curve]);
-
-  // STEP 7: Environment - Foreground, midground, background
-  const terrainGeo = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(4000, 2000, 1, 1);
-    geo.rotateX(-Math.PI / 2);
-    return geo;
-  }, []);
-
-  return (
-    <group>
-      {/* Asphalt */}
-      <mesh geometry={meshGeo} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#1a1d20" roughness={0.8} />
-      </mesh>
-
-      {/* Shoulders */}
-      <mesh geometry={shoulderGeo} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#111516" roughness={0.9} />
-      </mesh>
-      
-      {/* Guardrail */}
-      <mesh geometry={guardrailGeo} position={[0, 0, 0]} castShadow>
-        <meshStandardMaterial color="#475569" metalness={0.5} roughness={0.4} />
-      </mesh>
-
-      {/* Edge Lines */}
-      <mesh geometry={edgeGeo} position={[0, 0, 0]} receiveShadow>
-        <meshStandardMaterial color="#94a3b8" roughness={0.5} />
-      </mesh>
-      
-      {/* Center Line (Mark) */}
-      <mesh geometry={markGeo} position={[0, 0, 0]} receiveShadow>
-         <meshStandardMaterial color="#f8fafc" roughness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-// LocalTerrain removed, replaced by static terrainGeo in ProceduralHighway
-
-// ------------------------------------------------------------------
-// THE VAAHAN VEHICLE LIVERY (GLB ASSET)
-// ------------------------------------------------------------------
-
-function AnimatedWheel({ geometry, material, position, scale, speed }) {
-  const meshRef = useRef();
-  useFrame(({ clock }) => {
-    const time = clock.getElapsedTime();
-    // distance = speed * time
-    // tractor rolls forward (+Z), so wheels roll positively
-    const wheelRot = (speed * time) / 0.53;
-    if (meshRef.current) {
-      meshRef.current.rotation.x = wheelRot;
-    }
+function IntelligenceHub({ active, onPointerOver, onPointerOut, onClick }) {
+  const rings = useRef();
+  useFrame((state) => {
+    if (rings.current) rings.current.rotation.z = state.clock.elapsedTime * 0.35;
   });
   return (
-    <mesh ref={meshRef} geometry={geometry} material={material} position={position} scale={scale} castShadow receiveShadow />
-  );
-}
-
-function VaahanTractor({ speed }) {
-  const { nodes, materials } = useGLTF('/model.glb');
-  
-  useMemo(() => {
-    if (!materials) return;
-    
-    if (materials.paint) {
-      materials.paint.color.set('#f8f9fa'); // Warm off-white
-      materials.paint.roughness = 0.25;
-    }
-    if (materials.glass) {
-      materials.glass.color.set('#020617'); // Deep smoked glass
-      materials.glass.roughness = 0.1;
-      materials.glass.metalness = 0.9;
-    }
-    if (materials.rubber) {
-      materials.rubber.color.set('#1e293b'); // Charcoal rubber
-      materials.rubber.roughness = 0.95;
-    }
-    if (materials.steel) {
-      materials.steel.color.set('#334155'); // Dark charcoal structural trim
-      materials.steel.roughness = 0.6;
-      materials.steel.metalness = 0.4;
-    }
-    if (materials.alloy) {
-      materials.alloy.color.set('#94a3b8'); // Subtle metallic wheels
-      materials.alloy.roughness = 0.4;
-      materials.alloy.metalness = 0.6;
-    }
-    if (materials.accent) {
-      materials.accent.color.set('#166534'); // Forest green grille/stripe accents
-      materials.accent.roughness = 0.3;
-    }
-    if (materials.trim) {
-      materials.trim.color.set('#15803d'); // Forest green front shield/mark
-    }
-    
-    Object.values(materials).forEach(mat => {
-      mat.side = THREE.DoubleSide;
-      mat.needsUpdate = true;
-    });
-    
-    Object.values(nodes).forEach(node => {
-      if (node.isMesh) {
-        node.castShadow = true;
-        node.receiveShadow = true;
-        // ensure frustum culling doesn't break
-        node.frustumCulled = false;
-      }
-    });
-  }, [nodes, materials]);
-
-  return (
-    <>
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1rubber'].geometry} material={materials.rubber} position={[-1.025, 0.5, 0.95]} scale={0.5} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1rubber'].geometry} material={materials.rubber} position={[1.025, 0.5, 0.95]} scale={0.5} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, -1.1]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, -2.2]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1alloy'].geometry} material={materials.alloy} position={[-1.095, 0.5, 0.95]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, -1.1]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, -1.1]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, -2.2]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, -2.2]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0--1steel'].geometry} material={materials.steel} position={[-1.16, 0.5, 0.95]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1steel'].geometry} material={materials.steel} position={[1.19, 0.5, 0.95]} scale={0.201} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, -1.1]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, -2.2]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-0-1alloy'].geometry} material={materials.alloy} position={[1.095, 0.5, 0.95]} scale={0.31} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1--1rubber'].geometry} material={materials.rubber} position={[-0.895, 0.5, -1.1]} scale={0.5} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2--1rubber'].geometry} material={materials.rubber} position={[-0.895, 0.5, -2.2]} scale={0.5} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-1-1rubber'].geometry} material={materials.rubber} position={[0.895, 0.5, -1.1]} scale={0.5} />
-      <AnimatedWheel speed={speed} geometry={nodes['004-cabover-sleeperwheel-2-1rubber'].geometry} material={materials.rubber} position={[0.895, 0.5, -2.2]} scale={0.5} />
-      
-      <mesh geometry={nodes['004-cabover-sleeper22'].geometry} material={materials.glass} position={[0, 2.825, 0.879]} scale={1.5} />
-      <mesh geometry={nodes['004-cabover-sleepercab-door--1'].geometry} material={materials.paint} position={[-1.113, 1.64, 0.7]} scale={0.55} />
-      <mesh geometry={nodes['004-cabover-sleepercab-door-1'].geometry} material={materials.paint} position={[1.113, 1.64, 0.7]} scale={0.55} />
-      <mesh geometry={nodes['004-cabover-sleeper24'].geometry} material={materials.paint} position={[0, 0.935, 1.54]} scale={0.955} />
-      <mesh geometry={nodes['004-cabover-sleeper26'].geometry} material={materials.accent} position={[0, 3.285, 1.2]} scale={0.805} />
-      <mesh geometry={nodes['004-cabover-sleeperfifth-wheel'].geometry} material={materials.steel} position={[0, 1.165, -1.3]} scale={0.45} />
-      <mesh geometry={nodes['004-cabover-sleeper18'].geometry} material={materials.steel} position={[0, 1.809, -0.695]} scale={2.405} />
-      <mesh geometry={nodes['004-cabover-sleeper19'].geometry} material={materials.paint} position={[0, 2.125, 0.15]} scale={1.35} />
-      <mesh geometry={nodes['004-cabover-sleeper20'].geometry} material={materials.trim} position={[0, 1.005, -0.438]} scale={1.987} />
-      <mesh geometry={nodes['004-cabover-sleeper21'].geometry} material={materials.alloy} position={[0, 2.1, 0.008]} scale={1.563} />
-
-      {/* Vaahan V Shield on Left Cab Door (visible side) */}
-      <Html position={[1.13, 1.7, 0.6]} center transform rotation={[0, Math.PI/2, 0]} className="pointer-events-none opacity-90">
-        <div className="w-4 h-4 flex items-center justify-center rounded-[2px] bg-[#166534] text-white font-bold text-[8px] shadow-sm">
-          V
-        </div>
-      </Html>
-    </>
-  );
-}
-
-function VaahanTrailer({ speed }) {
-  const { nodes, materials } = useGLTF('/model.glb');
-  
-  useMemo(() => {
-    if (!materials) return;
-    if (materials.white) {
-      materials.white.color.set('#f1f5f9'); // Warm off-white trailer
-      materials.white.roughness = 0.6;
-      materials.white.metalness = 0.1;
-    }
-    // Nodes shadow casting handled in Tractor useMemo (shared nodes)
-  }, [materials]);
-
-  return (
-    <group position={[0, 0, 5.6]}>
-      {/* Notice we shift Z by -5.6 so the group origin matches the kingpin exactly */}
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0--1rubber'].geometry} material={materials.rubber} position={[-1.04, 0.48, -5.65]} scale={0.48} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0-1rubber'].geometry} material={materials.rubber} position={[1.04, 0.48, -5.65]} scale={0.48} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -5.65]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -4.55]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2--1alloy'].geometry} material={materials.alloy} position={[-1.11, 0.48, -3.45]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -5.65]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -5.65]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -4.55]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -4.55]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2--1steel'].geometry} material={materials.steel} position={[-1.175, 0.48, -3.45]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2-1steel'].geometry} material={materials.steel} position={[1.205, 0.48, -3.45]} scale={0.194} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-0-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -5.65]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -4.55]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2-1alloy'].geometry} material={materials.alloy} position={[1.11, 0.48, -3.45]} scale={0.298} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1--1rubber'].geometry} material={materials.rubber} position={[-0.91, 0.48, -4.55]} scale={0.48} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2--1rubber'].geometry} material={materials.rubber} position={[-0.91, 0.48, -3.45]} scale={0.48} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-1-1rubber'].geometry} material={materials.rubber} position={[0.91, 0.48, -4.55]} scale={0.48} />
-      <AnimatedWheel speed={speed} geometry={nodes['009-dry-van-trailerwheel-2-1rubber'].geometry} material={materials.rubber} position={[0.91, 0.48, -3.45]} scale={0.48} />
-      
-      <mesh geometry={nodes['009-dry-van-trailerkingpin'].geometry} material={materials.steel} position={[0, 1.16, 5.6]} scale={0.14} />
-      <mesh geometry={nodes['009-dry-van-trailer20'].geometry} material={materials.white} position={[0, 2.55, 0]} scale={6.8} />
-      <mesh geometry={nodes['009-dry-van-trailerrear-door--1'].geometry} material={materials.white} position={[-0.61, 2.48, -6.8]} scale={1.25} />
-      <mesh geometry={nodes['009-dry-van-trailerrear-door-1'].geometry} material={materials.white} position={[0.61, 2.48, -6.8]} scale={1.25} />
-      <mesh geometry={nodes['009-dry-van-trailer23'].geometry} material={materials.accent} position={[0, 0.795, -6.87]} scale={1.15} />
-      <mesh geometry={nodes['009-dry-van-trailer18'].geometry} material={materials.steel} position={[0, 1.875, -0.074]} scale={6.876} />
-
-      {/* Vaahan Livery Accents (Thin Green Stripe + Wordmark) on visible left side */}
-      <mesh position={[1.265, 1.4, -2]} castShadow receiveShadow>
-        <boxGeometry args={[0.01, 0.05, 11]} />
-        <meshStandardMaterial color="#166534" roughness={0.4} />
+    <group position={[0, 0.4, 0]} onPointerOver={onPointerOver} onPointerOut={onPointerOut} onClick={onClick}>
+      <mesh>
+        <cylinderGeometry args={[0.42, 0.53, 0.38, 24]} />
+        <meshStandardMaterial color="#1e5138" emissive="#3b9b63" emissiveIntensity={active ? 1.1 : 0.65} metalness={0.45} roughness={0.25} />
       </mesh>
-
-      <Html occlude position={[1.27, 2.6, -6]} center transform rotation={[0, Math.PI/2, 0]} className="pointer-events-none opacity-80">
-        <div className="text-lg font-bold tracking-[0.3em] text-[#334155] uppercase">the vaahan</div>
-      </Html>
+      <group ref={rings}>
+        <mesh rotation={[Math.PI / 2.4, 0.2, 0]}>
+          <torusGeometry args={[0.68, 0.025, 8, 48]} />
+          <meshStandardMaterial color="#8fe9ae" emissive="#4ad17c" emissiveIntensity={active ? 1.5 : 0.8} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2.1, -0.35, 0]}>
+          <torusGeometry args={[0.52, 0.018, 8, 48]} />
+          <meshStandardMaterial color="#4f9d70" emissive="#4ad17c" emissiveIntensity={0.7} />
+        </mesh>
+      </group>
+      {[-1, 1].map((x) => <mesh key={x} position={[x * 0.48, 0.1, 0]}><sphereGeometry args={[0.055, 10, 10]} /><meshBasicMaterial color="#a4f2bd" /></mesh>)}
     </group>
   );
 }
 
-useGLTF.preload('/model.glb');
+function MiniTruck({ route, speed, delay, scale, color, active, onPointerOver, onPointerOut, onClick }) {
+  const ref = useRef();
+  useFrame((state) => {
+    if (!ref.current) return;
+    const progress = (state.clock.elapsedTime * speed + delay) % 1;
+    const index = Math.min(route.length - 2, Math.floor(progress * (route.length - 1)));
+    const local = progress * (route.length - 1) - index;
+    const from = new THREE.Vector3(...route[index]);
+    const to = new THREE.Vector3(...route[index + 1]);
+    ref.current.position.copy(from.lerp(to, local));
+    ref.current.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+  });
+  return (
+    <group ref={ref} scale={scale} onPointerOver={onPointerOver} onPointerOut={onPointerOut} onClick={onClick} castShadow>
+      <mesh scale={active ? 1.08 : 1}><boxGeometry args={[0.38, 0.25, 0.7]} /><meshStandardMaterial color={color} emissive={active ? '#4ad17c' : '#000000'} emissiveIntensity={active ? 0.55 : 0} metalness={0.45} roughness={0.35} /></mesh>
+      <mesh position={[0, 0.19, 0.12]}><boxGeometry args={[0.33, 0.19, 0.28]} /><meshStandardMaterial color="#3f9b67" emissive="#2f784f" emissiveIntensity={0.45} /></mesh>
+      {[-0.16, 0.16].map((x) => <mesh key={x} position={[x, -0.15, -0.18]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.08, 0.08, 0.06, 10]} /><meshStandardMaterial color="#101713" /></mesh>)}
+      <mesh position={[0, 0.05, 0]} scale={[1.8, 1.7, 1.45]} visible={false}><boxGeometry args={[0.38, 0.25, 0.7]} /><meshBasicMaterial transparent opacity={0} /></mesh>
+    </group>
+  );
+}
+
+function SignalPacket({ start, color, paused }) {
+  const ref = useRef();
+  useFrame((state) => {
+    if (!ref.current || paused) return;
+    const progress = (state.clock.elapsedTime * 0.18 + Math.abs(start[0]) * 0.08) % 1;
+    ref.current.position.set(start[0] * (1 - progress), start[1] * (1 - progress) + 0.62 * progress, start[2] * (1 - progress));
+  });
+  return <mesh ref={ref}><sphereGeometry args={[0.052, 8, 8]} /><meshBasicMaterial color={color} /></mesh>;
+}
+
+function SceneLine({ start, end, active = false }) {
+  return <line><bufferGeometry attach="geometry" setFromPoints={[new THREE.Vector3(...start), new THREE.Vector3(...end)]} /><lineBasicMaterial color={active ? '#a4f2bd' : '#4f9d70'} transparent opacity={active ? 0.82 : 0.25} /></line>;
+}

@@ -18,7 +18,7 @@ const SPATIAL_SOURCES = [
   { id: 'drivers', label: 'DRIVERS', sub: 'Field updates', icon: Users, color: 'text-slate-500', pos: { x: 8, y: 55 }, scale: 0.98, delay: 0.3 },
   { id: 'expenses', label: 'EXPENSES', sub: 'Spreadsheets', icon: Receipt, color: 'text-blue-500', pos: { x: 12, y: 70 }, scale: 1.0, delay: 0.4 },
   { id: 'maintenance', label: 'MAINTENANCE', sub: 'Service logs', icon: Wrench, color: 'text-red-500', pos: { x: 20, y: 85 }, scale: 0.95, delay: 0.7 },
-  { id: 'documents', label: 'DOCUMENTS', sub: 'WhatsApp / Email', icon: FileText, color: 'text-purple-500', pos: { x: 32, y: 90 }, scale: 0.9, delay: 0.5 },
+  { id: 'documents', label: 'DOCUMENTS', sub: 'Uploads and records', icon: FileText, color: 'text-purple-500', pos: { x: 32, y: 90 }, scale: 0.9, delay: 0.5 },
   { id: 'payments', label: 'PAYMENTS', sub: 'Bank / ERP', icon: CreditCard, color: 'text-fg-green', pos: { x: 28, y: 50 }, scale: 0.9, delay: 0.8 }
 ];
 
@@ -59,16 +59,16 @@ function ChallengeCopy() {
 
       {/* CTAs */}
       <div className="flex flex-wrap items-center gap-5 pt-2">
-        <a href="#demo" className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-fg-green text-white font-medium hover:bg-fg-green-deep transition-colors shadow-sm shadow-fg-green/10 group text-[13px]">
-          See How Vaahan Solves This
+        <a href="#intelligence" className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-fg-green text-white font-medium hover:bg-fg-green-deep transition-colors shadow-sm shadow-fg-green/10 group text-[13px]">
+          See How FleetGuard Solves This
           <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
         </a>
-        <button className="inline-flex items-center justify-center py-3 text-content-secondary hover:text-content transition-colors group font-medium text-[13px]">
+        <div className="inline-flex items-center py-3 text-content-muted font-medium text-[13px]">
           <span className="flex items-center justify-center w-7 h-7 rounded-full border border-border/80 group-hover:border-content-muted mr-2.5 transition-colors bg-white">
             <Play className="w-3 h-3 ml-0.5 fill-current opacity-70" />
           </span>
-          Watch 2 min video
-        </button>
+          Video walkthrough coming soon
+        </div>
       </div>
     </div>
   );
