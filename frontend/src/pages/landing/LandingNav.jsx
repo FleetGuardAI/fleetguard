@@ -5,7 +5,7 @@ import { LanguageSelector } from '@/components/shared/LanguageSelector';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/utils/cn';
 
-export function LandingNav() {
+export function LandingNav({ onDemo }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navTheme, setNavTheme] = useState('dark');
   const [isAtTop, setIsAtTop] = useState(true);
@@ -66,10 +66,12 @@ export function LandingNav() {
   }, []);
 
   const navLinks = [
-    { label: 'Product', href: '#product' }, 
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Driver App', href: '#apps' },
-    { label: 'Fleet Dashboard', href: '#apps' },
+    { label: 'Product', href: '#product' },
+    { label: 'Intelligence', href: '#intelligence' },
+    { label: 'Operations', href: '#operations' },
+    { label: 'AI Copilot', href: '#copilot' },
+    { label: 'Platform', href: '#platform' },
+    { label: 'Vision', href: '#vision' },
   ];
 
   const handleNavClick = (e, href) => {
@@ -143,21 +145,23 @@ export function LandingNav() {
 
           <div className="hidden md:flex items-center gap-6 pointer-events-auto">
             <a 
-              href="#dashboard"
+              href="/dashboard"
               className={dashClasses}
             >
               Dashboard
             </a>
-            <a
-              href="#demo"
+            <button
+              type="button"
+              onClick={onDemo}
               className={btnClasses}
             >
               Book a Demo
-            </a>
+            </button>
           </div>
 
           {/* Mobile Menu Toggle */}
           <button 
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             className="md:hidden p-2 z-50 relative pointer-events-auto"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
@@ -203,19 +207,20 @@ export function LandingNav() {
                 transition={{ delay: 0.3 }}
                 className="space-y-4 pt-6 border-t border-white/10"
               >
-                <a
-                  href="#dashboard"
+                  <a
+                    href="/dashboard"
                   className="block w-full text-center py-3 text-white font-bold hover:text-fg-green transition-colors"
                 >
                   Dashboard
                 </a>
                 
-                <a
-                  href="#demo"
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); onDemo?.(); }}
                   className="flex items-center justify-center w-full py-3.5 bg-fg-green text-white font-bold rounded-full hover:bg-fg-green-deep transition-colors"
                 >
                   Book a Demo
-                </a>
+                </button>
               </motion.div>
             </div>
           </motion.div>

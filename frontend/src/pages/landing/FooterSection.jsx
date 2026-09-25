@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function FooterSection() {
+export default function FooterSection({ onDemo }) {
   return (
     <>
       {/* Section 11: Final CTA */}
@@ -63,9 +63,9 @@ export default function FooterSection() {
               <Link to="/dashboard" className="inline-flex items-center justify-center bg-fg-green hover:bg-fg-green/90 text-white font-medium px-6 py-3 h-auto text-sm rounded transition-colors">
                 Open Dashboard <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
-              <Link to="#contact" className="inline-flex items-center justify-center bg-transparent border border-white/20 hover:bg-white/5 text-white font-medium px-6 py-3 h-auto text-sm rounded transition-colors">
+              <button type="button" onClick={onDemo} className="inline-flex items-center justify-center bg-transparent border border-white/20 hover:bg-white/5 text-white font-medium px-6 py-3 h-auto text-sm rounded transition-colors">
                 Talk to Us
-              </Link>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -101,23 +101,23 @@ export default function FooterSection() {
               <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Product</h4>
               <ul className="space-y-2.5 text-sm">
                 <li><a href="#product" className="text-content-muted hover:text-white transition-colors">Features</a></li>
-                <li><a href="#how-it-works" className="text-content-muted hover:text-white transition-colors">How it works</a></li>
-                <li><a href="#dashboard" className="text-content-muted hover:text-white transition-colors">Dashboard</a></li>
+                <li><a href="#intelligence" className="text-content-muted hover:text-white transition-colors">How it works</a></li>
+                <li><a href="/dashboard" className="text-content-muted hover:text-white transition-colors">Dashboard</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Apps</h4>
               <ul className="space-y-2.5 text-sm">
-                <li><a href="#apps" className="text-content-muted hover:text-white transition-colors">Driver App</a></li>
-                <li><a href="#apps" className="text-content-muted hover:text-white transition-colors">Fleet Dashboard</a></li>
+                <li><a href="#platform" className="text-content-muted hover:text-white transition-colors">Driver App</a></li>
+                <li><a href="#platform" className="text-content-muted hover:text-white transition-colors">Fleet Dashboard</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">Company</h4>
               <ul className="space-y-2.5 text-sm">
-                <li><a href="#about" className="text-content-muted hover:text-white transition-colors">About</a></li>
+                <li><a href="#vision" className="text-content-muted hover:text-white transition-colors">About</a></li>
                 <li><a href="mailto:info@thevaahan.com" className="text-content-muted hover:text-white transition-colors">Contact</a></li>
               </ul>
             </div>
@@ -126,11 +126,11 @@ export default function FooterSection() {
           <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-[11px] text-content-muted">© 2026 the vaahan. All rights reserved.</p>
             <div className="flex items-center gap-4 text-xs text-content-muted">
-              <a href="#" className="hover:text-white transition-colors">English</a>
+              <a href="#vision" className="hover:text-white transition-colors">English</a>
               <span>•</span>
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#vision" className="hover:text-white transition-colors">Privacy Policy</a>
               <span>•</span>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="#vision" className="hover:text-white transition-colors">Terms of Service</a>
             </div>
           </div>
         </div>

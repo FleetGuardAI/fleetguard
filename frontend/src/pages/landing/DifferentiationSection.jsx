@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { 
   MapPin, Navigation2, Receipt, FileText, 
-  Users, LayoutDashboard, BarChart3, Zap
+  Users, LayoutDashboard, BarChart3, Zap, ChevronRight
 } from 'lucide-react';
 
 // ============================================================================
@@ -64,7 +64,7 @@ const COMPARISON_ROWS = [
 // DESKTOP COMPARISON TABLE
 // ============================================================================
 
-function DesktopComparison() {
+function DesktopComparison({ activeCategory }) {
   const reducedMotion = useReducedMotion();
 
   return (
@@ -86,7 +86,7 @@ function DesktopComparison() {
             return (
               <motion.div
                 key={row.category}
-                className={`flex items-start gap-4 py-5 ${i !== COMPARISON_ROWS.length - 1 ? 'border-b border-border/30' : ''}`}
+                className={`flex items-start gap-4 py-5 transition-colors ${row.category === activeCategory ? 'rounded-xl bg-white/70 px-3 -mx-3' : ''} ${i !== COMPARISON_ROWS.length - 1 ? 'border-b border-border/30' : ''}`}
                 initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
                 whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: i * 0.05, ease: 'easeOut' }}
@@ -125,7 +125,7 @@ function DesktopComparison() {
             return (
               <motion.div
                 key={row.category}
-                className={`flex items-start gap-4 py-5 ${i !== COMPARISON_ROWS.length - 1 ? 'border-b border-fg-green/15' : ''}`}
+                className={`flex items-start gap-4 py-5 transition-colors ${row.category === activeCategory ? 'rounded-xl bg-white/70 px-3 -mx-3 shadow-sm' : ''} ${i !== COMPARISON_ROWS.length - 1 ? 'border-b border-fg-green/15' : ''}`}
                 initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
                 whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 + i * 0.05, ease: 'easeOut' }}
@@ -151,7 +151,7 @@ function DesktopComparison() {
 // MOBILE COMPARISON (STACKED)
 // ============================================================================
 
-function MobileComparison() {
+function MobileComparison({ activeCategory }) {
   const reducedMotion = useReducedMotion();
 
   return (
@@ -161,7 +161,7 @@ function MobileComparison() {
         return (
           <motion.div
             key={row.category}
-            className="rounded-2xl overflow-hidden border border-border/40"
+            className={`rounded-2xl overflow-hidden border transition-colors ${row.category === activeCategory ? 'border-fg-green/40 shadow-sm' : 'border-border/40'}`}
             initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
             whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.04, ease: 'easeOut' }}
@@ -189,11 +189,70 @@ function MobileComparison() {
   );
 }
 
+const EVENT_WORKFLOWS = {
+  Trips: {
+    event: 'TRIP EVENT',
+    traditional: ['Trip created', 'Trip status', 'Route displayed', 'Manual review'],
+    vahan: ['Trip captured', 'Expected vs actual', 'Route context', 'Fuel + operating cost', 'Revenue + profitability', 'Risk', 'Recommendation'],
+  },
+  Expenses: {
+    event: 'EXPENSE EVENT',
+    traditional: ['Expense recorded', 'Report updated', 'Manual review'],
+    vahan: ['Capture', 'Verify evidence', 'Observed behavior', 'Baseline', 'Anomaly', 'Financial impact', 'Decision support'],
+  },
+  Documents: {
+    event: 'DOCUMENT EVENT',
+    traditional: ['Upload document', 'Store document'],
+    vahan: ['Upload', 'OCR', 'Extract fields', 'Classify', 'Update record', 'Track expiry', 'Evidence'],
+  },
+  Intelligence: {
+    event: 'FUEL EVENT',
+    traditional: ['Fuel recorded', 'Dashboard updated', 'Human investigates', 'Human decides'],
+    vahan: ['Observation', 'Baseline', 'Anomaly', 'Financial impact', 'Evidence', 'Signal', 'Recommendation'],
+  },
+  Action: {
+    event: 'OPERATIONAL SIGNAL',
+    traditional: ['Information available', 'Human decides what to do'],
+    vahan: ['Signal', 'Evidence', 'Explanation', 'Recommended action', 'Human confirmation', 'Operational action'],
+  },
+};
+
+function InteractiveComparison({ activeCategory }) {
+  const workflow = EVENT_WORKFLOWS[activeCategory];
+  return (
+    <motion.div
+      key={activeCategory}
+      className="mt-12 grid gap-5 lg:grid-cols-2"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+    >
+      <div className="rounded-[20px] border border-border/40 bg-[#F5F5F3] p-6 md:p-8">
+        <span className="text-[10px] font-bold tracking-widest uppercase text-content-muted">System of record</span>
+        <h3 className="mt-4 text-2xl font-medium text-content">What happened?</h3>
+        <div className="mt-7 space-y-2">
+          {workflow.traditional.map((step, index) => <div key={step} className="flex items-center gap-3 rounded-lg border border-border/40 bg-white/70 px-3 py-3 text-sm text-content-secondary"><span className="text-xs text-content-muted">{String(index + 1).padStart(2, '0')}</span>{step}{index < workflow.traditional.length - 1 && <ChevronRight className="ml-auto h-4 w-4 text-content-muted" />}</div>)}
+        </div>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-content-muted">Human connects the dots</p>
+      </div>
+      <div className="rounded-[20px] border border-fg-green/20 bg-gradient-to-br from-[#EAF5F0] to-[#E2F0E8] p-6 shadow-[0_8px_32px_rgba(31,92,66,0.06)] md:p-8">
+        <span className="text-[10px] font-bold tracking-widest uppercase text-fg-green">System of intelligence · {workflow.event}</span>
+        <h3 className="mt-4 text-2xl font-medium text-content">Why does it matter?</h3>
+        <div className="mt-7 space-y-2">
+          {workflow.vahan.map((step, index) => <motion.div key={step} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.06 }} className="flex items-center gap-3 rounded-lg border border-fg-green/15 bg-white/70 px-3 py-3 text-sm font-medium text-content"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-fg-green text-[10px] text-white">{index + 1}</span>{step}{index < workflow.vahan.length - 1 && <ChevronRight className="ml-auto h-4 w-4 text-fg-green" />}</motion.div>)}
+        </div>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-fg-green">Context → evidence → recommendation</p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ============================================================================
 // MAIN EXPORT
 // ============================================================================
 
 export function DifferentiationSection() {
+  const [activeCategory, setActiveCategory] = useState('Trips');
   const reducedMotion = useReducedMotion();
 
   return (
@@ -222,13 +281,25 @@ export function DifferentiationSection() {
           <p className="text-[16px] md:text-[17px] text-content-secondary font-light leading-relaxed max-w-2xl mx-auto">
             Traditional tools often stop at tracking, records and reports. Vahan connects operational data across the fleet and turns it into decisions.
           </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-2">
+            {['Trips', 'Expenses', 'Documents', 'Intelligence', 'Action'].map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+                className={`rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+                  activeCategory === category
+                    ? 'border-fg-green bg-fg-green text-white'
+                    : 'border-border/70 bg-white text-content-secondary hover:border-fg-green/40 hover:text-fg-green'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </motion.div>
 
-        {/* Desktop comparison */}
-        <DesktopComparison />
-
-        {/* Mobile comparison */}
-        <MobileComparison />
+        <InteractiveComparison activeCategory={activeCategory} />
 
       </div>
     </section>
