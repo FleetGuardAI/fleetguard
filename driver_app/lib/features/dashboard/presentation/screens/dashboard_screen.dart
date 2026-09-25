@@ -8,6 +8,8 @@ import '../../../../core/config/theme/app_colors.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/auth_service.dart';
+import '../../../../core/services/location_service.dart';
+import '../../../../core/services/permission_service.dart';
 import '../providers/dashboard_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -24,9 +26,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final dio = ref.read(apiClientProvider).dio;
       NotificationService.registerFcmToken(dio);
+
+      // Automatically request permissions and start background tracking
+      try {
+        await PermissionService.requestAllPermissions();
+        await LocationService.startTracking();
+      } catch (e) {
+        debugPrint('Failed to start tracking on dashboard: $e');
+      }
     });
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
