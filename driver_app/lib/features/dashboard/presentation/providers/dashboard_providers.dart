@@ -11,3 +11,8 @@ final todayTripsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async
   final tripRepo = ref.watch(tripRepositoryProvider);
   return await tripRepo.getTodayTrips();
 });
+
+final assignedVehicleProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final authRepo = ref.watch(authRepositoryProvider);
+  return await authRepo.getAssignedVehicle();
+});

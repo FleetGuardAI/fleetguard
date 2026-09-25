@@ -34,6 +34,12 @@ export default function ExpenseDashboard() {
   // Receipt Modal State
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Rejection Reason Dialog State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -71,6 +77,7 @@ export default function ExpenseDashboard() {
   const paginatedExpenses = expenses.slice(startIndex, endIndex);
 
   const handleApprove = async (id) => {
+    setActionLoading(true);
     try {
       const updated = await approveExpense(id);
       setExpenses(prev => prev.map(e => e.id === id ? updated : e));
@@ -79,20 +86,38 @@ export default function ExpenseDashboard() {
         setSelectedExpense(updated);
       }
     } catch (e) {
-      error('Action Failed', 'Failed to approve claim.');
+      error('Action Failed', e.message || 'Failed to approve claim.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleReject = async (id) => {
+  const openRejectDialog = (id) => {
+    setRejectTargetId(id);
+    setRejectionReason('');
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectionReason.trim()) {
+      error('Rejection Reason Required', 'Please provide a reason for rejecting this expense claim.');
+      return;
+    }
+    setActionLoading(true);
     try {
-      const updated = await rejectExpense(id);
-      setExpenses(prev => prev.map(e => e.id === id ? updated : e));
-      info('Claim Rejected', `Rejected expense claim #${id}.`);
-      if (selectedExpense && selectedExpense.id === id) {
+      const updated = await rejectExpense(rejectTargetId, rejectionReason.trim());
+      setExpenses(prev => prev.map(e => e.id === rejectTargetId ? updated : e));
+      info('Claim Rejected', `Rejected expense claim #${rejectTargetId}.`);
+      if (selectedExpense && selectedExpense.id === rejectTargetId) {
         setSelectedExpense(updated);
       }
+      setRejectModalOpen(false);
+      setRejectTargetId(null);
+      setRejectionReason('');
     } catch (e) {
-      error('Action Failed', 'Failed to reject claim.');
+      error('Action Failed', e.message || 'Failed to reject claim.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -150,47 +175,62 @@ export default function ExpenseDashboard() {
     {
       key: 'status',
       label: 'Status',
-      render: (item) => (
-        <Badge variant={item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'danger' : 'warning'} dot>
-          {item.status.toUpperCase()}
-        </Badge>
-      )
+      render: (item) => {
+        const s = (item.status || '').toUpperCase();
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge variant={s === 'APPROVED' ? 'success' : s === 'REJECTED' ? 'danger' : 'warning'} dot>
+              {s}
+            </Badge>
+            {s === 'REJECTED' && item.rejection_reason && (
+              <span className="text-[10px] text-red-500 max-w-[120px] truncate" title={item.rejection_reason}>
+                {item.rejection_reason}
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'actions',
       label: 'Actions',
       className: 'text-right',
-      render: (item) => (
-        <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Eye className="h-4 w-4" />}
-            onClick={() => handleViewReceipt(item)}
-            title="Receipt & AI details"
-          />
-          {item.status === 'pending' && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-green-600 hover:bg-green-50"
-                icon={<Check className="h-4 w-4" />}
-                onClick={() => handleApprove(item.id)}
-                title="Approve"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-500 hover:bg-red-50"
-                icon={<X className="h-4 w-4" />}
-                onClick={() => handleReject(item.id)}
-                title="Reject"
-              />
-            </>
-          )}
-        </div>
-      )
+      render: (item) => {
+        const s = (item.status || '').toUpperCase();
+        return (
+          <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Eye className="h-4 w-4" />}
+              onClick={() => handleViewReceipt(item)}
+              title="Receipt & AI details"
+            />
+            {s === 'PENDING' && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-green-600 hover:bg-green-50"
+                  icon={<Check className="h-4 w-4" />}
+                  onClick={() => handleApprove(item.id)}
+                  disabled={actionLoading}
+                  title="Approve"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:bg-red-50"
+                  icon={<X className="h-4 w-4" />}
+                  onClick={() => openRejectDialog(item.id)}
+                  disabled={actionLoading}
+                  title="Reject"
+                />
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
@@ -381,12 +421,21 @@ export default function ExpenseDashboard() {
         description="Verify document OCR and safety parameters."
         closable
         footer={
-          selectedExpense?.status === 'pending' && (
+          selectedExpense && (selectedExpense.status || '').toUpperCase() === 'PENDING' && (
             <>
-              <Button variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => { handleReject(selectedExpense.id); setReceiptModalOpen(false); }}>
+              <Button
+                variant="outline"
+                className="text-red-500 border-red-200 hover:bg-red-50"
+                onClick={() => openRejectDialog(selectedExpense.id)}
+                disabled={actionLoading}
+              >
                 Reject Claim
               </Button>
-              <Button variant="primary" onClick={() => { handleApprove(selectedExpense.id); setReceiptModalOpen(false); }}>
+              <Button
+                variant="primary"
+                onClick={() => handleApprove(selectedExpense.id)}
+                loading={actionLoading}
+              >
                 Approve & Pay
               </Button>
             </>
@@ -398,9 +447,9 @@ export default function ExpenseDashboard() {
             {/* Visual Receipt */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-content-secondary block uppercase">Uploaded Receipt Slip</span>
-              {selectedExpense.receipt_url ? (
+              {selectedExpense.receipt_url || selectedExpense.receiptUrl ? (
                 <div className="border border-border rounded-xl overflow-hidden shadow-sm aspect-[3/4] bg-slate-50 flex items-center justify-center">
-                  <img src={selectedExpense.receipt_url} alt="Expense Slip" className="w-full h-full object-cover" />
+                  <img src={selectedExpense.receipt_url || selectedExpense.receiptUrl} alt="Expense Slip" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="border border-dashed border-border rounded-xl aspect-[3/4] bg-slate-50 flex flex-col items-center justify-center text-center p-4 text-content-secondary">
@@ -416,37 +465,107 @@ export default function ExpenseDashboard() {
               <div className="space-y-2">
                 <span className="text-xs font-bold text-content-secondary block uppercase">Claim Metadata</span>
                 <div className="text-sm space-y-1.5">
-                  <p><span className="text-content-secondary">Driver:</span> <span className="font-semibold text-content">{selectedExpense.driver_name}</span></p>
-                  <p><span className="text-content-secondary">Odo log/Date:</span> <span className="font-medium text-content">{new Date(selectedExpense.date).toLocaleDateString()}</span></p>
+                  <p><span className="text-content-secondary">Driver:</span> <span className="font-semibold text-content">{selectedExpense.driver_name || 'N/A'}</span></p>
+                  <p><span className="text-content-secondary">Date:</span> <span className="font-medium text-content">{selectedExpense.date ? new Date(selectedExpense.date).toLocaleDateString() : 'N/A'}</span></p>
                   <p><span className="text-content-secondary">Category:</span> <span className="font-medium text-content">{getCategoryLabel(selectedExpense.category)}</span></p>
-                  <p><span className="text-content-secondary">Claim Cost:</span> <span className="font-bold text-brand-600 text-lg">₹{selectedExpense.amount.toLocaleString()}</span></p>
+                  <p><span className="text-content-secondary">Claim Cost:</span> <span className="font-bold text-brand-600 text-lg">₹{(selectedExpense.amount || 0).toLocaleString()}</span></p>
                 </div>
               </div>
 
-              {/* AI check card */}
-              <div className={cn(
-                "p-4 rounded-xl border space-y-2",
-                selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical'
-                  ? "bg-red-50/50 border-red-100 text-red-950"
-                  : "bg-emerald-50/50 border-emerald-100 text-emerald-950"
-              )}>
-                <div className="flex items-center gap-2">
-                  {selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical' ? (
-                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
-                  ) : (
-                    <Award className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+              {/* Reviewer Info — shown for APPROVED/REJECTED */}
+              {selectedExpense.reviewed_by && (
+                <div className={cn(
+                  "p-3 rounded-xl border space-y-1",
+                  (selectedExpense.status || '').toUpperCase() === 'APPROVED'
+                    ? "bg-emerald-50/50 border-emerald-100"
+                    : "bg-red-50/50 border-red-100"
+                )}>
+                  <span className="text-xs font-bold text-content-secondary block uppercase">Review Decision</span>
+                  <p className="text-sm">
+                    <span className="text-content-secondary">Reviewed by:</span>{' '}
+                    <span className="font-semibold">User #{selectedExpense.reviewed_by}</span>
+                  </p>
+                  {selectedExpense.reviewed_at && (
+                    <p className="text-xs text-content-secondary">
+                      on {new Date(selectedExpense.reviewed_at).toLocaleString()}
+                    </p>
                   )}
-                  <span className="text-sm font-bold">
-                    AI OCR Risk: {selectedExpense.ai_risk}
-                  </span>
+                  {selectedExpense.rejection_reason && (
+                    <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+                      <span className="text-xs font-bold text-red-700 block">Rejection Reason:</span>
+                      <p className="text-sm text-red-900 mt-0.5">{selectedExpense.rejection_reason}</p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs leading-relaxed opacity-90">
-                  {selectedExpense.ai_details}
-                </p>
-              </div>
+              )}
+
+              {/* AI check card */}
+              {selectedExpense.ai_risk && (
+                <div className={cn(
+                  "p-4 rounded-xl border space-y-2",
+                  selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical'
+                    ? "bg-red-50/50 border-red-100 text-red-950"
+                    : "bg-emerald-50/50 border-emerald-100 text-emerald-950"
+                )}>
+                  <div className="flex items-center gap-2">
+                    {selectedExpense.ai_risk === 'High' || selectedExpense.ai_risk === 'Critical' ? (
+                      <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    ) : (
+                      <Award className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-bold">
+                      AI OCR Risk: {selectedExpense.ai_risk}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed opacity-90">
+                    {selectedExpense.ai_details}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Rejection Reason Dialog */}
+      <Modal
+        open={rejectModalOpen}
+        onClose={() => { setRejectModalOpen(false); setRejectTargetId(null); setRejectionReason(''); }}
+        title="Reject Expense Claim"
+        description="Please provide a reason for rejecting this expense claim. This will be recorded and visible to the driver."
+        closable
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => { setRejectModalOpen(false); setRejectTargetId(null); setRejectionReason(''); }}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleConfirmReject}
+              loading={actionLoading}
+              disabled={!rejectionReason.trim()}
+            >
+              Confirm Rejection
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-content">Rejection Reason *</label>
+          <textarea
+            className="w-full h-24 p-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            placeholder="e.g. Receipt amount does not match claim, duplicate submission, insufficient documentation..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            maxLength={1000}
+          />
+          <p className="text-xs text-content-secondary">{rejectionReason.length}/1000 characters</p>
+        </div>
       </Modal>
     </div>
   );

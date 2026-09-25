@@ -24,6 +24,9 @@ class ExpenseRepository {
         data: formData,
       );
       return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final detail = e.response?.data?['detail'] ?? 'Failed to process receipt (HTTP ${e.response?.statusCode})';
+      throw Exception(detail);
     } catch (e) {
       throw Exception('Failed to process receipt: $e');
     }
@@ -33,14 +36,12 @@ class ExpenseRepository {
     required String category,
     required double amount,
     required String description,
-    required int driverId,
   }) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/expenses', data: {
         'category': category,
         'amount': amount,
         'description': description,
-        'driver_id': driverId,
       });
       return response.data as Map<String, dynamic>;
     } catch (e) {
@@ -50,12 +51,8 @@ class ExpenseRepository {
 
   Future<List<Map<String, dynamic>>> listDriverExpenses() async {
     try {
-      final driverId = await SecureStorage.getDriverId();
-      if (driverId == null) throw Exception('Driver not found in storage');
-
       final response = await _dio.get(
         '/api/v1/driver-app/expenses',
-        queryParameters: {'driver_id': driverId},
       );
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {

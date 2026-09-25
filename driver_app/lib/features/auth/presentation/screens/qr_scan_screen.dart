@@ -32,7 +32,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   Future<void> _processInviteCode(String rawCode) async {
     setState(() => _isProcessing = true);
     
-    // Parse invite token from QR code string (e.g., fleetguard://invite?token=xyz123)
+    // Parse invite token from QR code string (e.g., the vahan://invite?token=xyz123)
     String token = rawCode;
     if (rawCode.contains('token=')) {
       final uri = Uri.parse(rawCode);
@@ -52,7 +52,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         context.go(
           '/auth/phone-verify',
           extra: {
-            'company_name': response['company_name'] ?? 'FleetGuard Partner Fleet',
+            'company_name': response['company_name'] ?? 'the vahan Partner Fleet',
             'invite_token': token,
           },
         );
@@ -115,7 +115,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
-                    'Scan the FleetGuard QR Code provided by your fleet manager to join',
+                    'Scan the the vahan QR Code provided by your fleet manager to join',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.black87, fontSize: 14),
                   ),

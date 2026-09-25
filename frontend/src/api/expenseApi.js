@@ -8,15 +8,17 @@ import api from './client';
  * @returns {object}
  */
 function normalizeExpense(expense) {
+  const plate = expense.truck_plate || (expense.vehicle_id ? `Vehicle ID: ${expense.vehicle_id}` : null);
+  const driverName = expense.driver_name || (expense.driver_id ? `Driver ID: ${expense.driver_id}` : null);
   return {
     id: expense.id,
     business_id: expense.business_id,
-    category: expense.category ? expense.category.toLowerCase() : 'other',
+    category: expense.category || 'MISCELLANEOUS',
     title: expense.description || expense.category || 'Expense',
-    amount: expense.amount,
+    amount: expense.amount || 0,
     currency: expense.currency || 'INR',
-    status: (expense.status || 'pending').toLowerCase(),
-    date: expense.expense_date || expense.created_at || null,
+    status: (expense.status || 'PENDING').toUpperCase(),
+    date: expense.expense_date || expense.date || expense.created_at || null,
     created_at: expense.created_at || null,
     updated_at: expense.updated_at || null,
     receipt_reference: expense.receipt_reference || null,
@@ -26,15 +28,14 @@ function normalizeExpense(expense) {
     maintenance_id: expense.maintenance_id || null,
     origin_type: expense.origin_type || null,
     origin_id: expense.origin_id || null,
-    // Computed display fields
-    truck_plate: expense.truck_plate || (expense.vehicle_id ? `Vehicle ID: ${expense.vehicle_id}` : null),
-    driver_name: expense.driver_name || (expense.driver_id ? `Driver ID: ${expense.driver_id}` : null),
-    category: expense.category || expense.issue_type || 'General Expense',
-    amount: expense.amount || 0,
-    date: expense.date || expense.created_at || new Date().toISOString(),
-    status: (expense.status || 'PENDING').toUpperCase(),
-    vendor: expense.vendor_name || expense.merchant || 'Generic Vendor',
+    truck_plate: plate,
+    driver_name: driverName,
+    vendor: expense.vendor_name || expense.merchant || null,
     receiptUrl: expense.receipt_url || expense.image_url || null,
+    // Approval/Rejection tracking
+    reviewed_by: expense.reviewed_by || null,
+    reviewed_at: expense.reviewed_at || null,
+    rejection_reason: expense.rejection_reason || null,
   };
 }
 
@@ -54,13 +55,16 @@ function mapTicketToExpense(ticket) {
     amount: ticket.amount,
     currency: 'INR',
     date: ticket.created_at || null,
-    status: (ticket.status || 'pending').toLowerCase(),
+    status: (ticket.status || 'pending').toUpperCase(),
     ai_risk: ticket.risk_level || null,
     ai_details: ticket.risk_reasons || null,
     receipt_url: ticket.receipt_url,
     receipt_reference: ticket.receipt_url || null,
     vendor_name: ticket.vendor_name,
     location_name: ticket.location_name,
+    reviewed_by: null,
+    reviewed_at: null,
+    rejection_reason: null,
   };
 }
 
@@ -141,7 +145,7 @@ export async function getExpensesByTrip(tripId) {
 }
 
 /**
- * Create a new expense claim via legacy tickets API.
+ * Create a new expense claim via the Expense Domain API.
  * 
  * @param {object} data
  * @returns {Promise<object>}
@@ -163,13 +167,13 @@ export async function createExpense(data) {
 }
 
 /**
- * Approve an expense claim.
+ * Approve an expense claim via the dedicated approval endpoint.
  * 
  * @param {string|number} id
  * @returns {Promise<object>}
  */
 export async function approveExpense(id) {
-  const expense = await api.expenses.update(id, { status: 'APPROVED' });
+  const expense = await api.post(`/v1/expenses/${id}/approve`, {});
   if (!expense) {
     throw new Error('Failed to approve expense on server');
   }
@@ -177,13 +181,18 @@ export async function approveExpense(id) {
 }
 
 /**
- * Reject an expense claim.
+ * Reject an expense claim via the dedicated rejection endpoint.
+ * A rejection reason is required.
  * 
  * @param {string|number} id
+ * @param {string} rejectionReason - Mandatory reason for rejection
  * @returns {Promise<object>}
  */
-export async function rejectExpense(id) {
-  const expense = await api.expenses.update(id, { status: 'REJECTED' });
+export async function rejectExpense(id, rejectionReason) {
+  if (!rejectionReason || !rejectionReason.trim()) {
+    throw new Error('Rejection reason is required');
+  }
+  const expense = await api.post(`/v1/expenses/${id}/reject`, { rejection_reason: rejectionReason.trim() });
   if (!expense) {
     throw new Error('Failed to reject expense on server');
   }
@@ -206,9 +215,6 @@ export async function uploadExpenseReceiptOCR(file) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Assuming api.client is not configured for FormData easily, we use native fetch
-  // Wait, let's look at how other api calls are made. 
-  // We'll use fetch directly since it's cleaner for FormData.
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
   
   const response = await fetch(`${API_BASE}/v1/driver-app/expenses/ocr`, {

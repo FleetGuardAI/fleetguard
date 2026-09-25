@@ -283,8 +283,8 @@ class DashboardScreen extends ConsumerWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
-                  'assets/images/owner_logo.png',
-                  width: 32,
+                  'assets/images/the_vahan_logo.png',
+                  width: 120,
                   height: 32,
                   fit: BoxFit.contain,
                 ),
@@ -292,7 +292,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              'FleetGuard',
+              'the vahan',
               style: TextStyle(
                 fontSize: 22, 
                 fontWeight: FontWeight.w700,

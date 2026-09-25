@@ -168,10 +168,21 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    AppLogger.error('API Error: ${err.response?.statusCode} on ${err.requestOptions.path}');
+    AppLogger.error('Response: ${err.response?.data}');
+    
     if (err.response?.statusCode == 401) {
-      // Token expired — trigger logout flow safely
-      AppLogger.warning('Auth token expired, cleared credentials');
-      _ref.read(authServiceProvider).logout();
+      // Only logout if the token is truly invalid or expired.
+      // E.g., backend detail message is "Could not validate credentials."
+      final detail = err.response?.data?['detail']?.toString() ?? '';
+      final isAuthPath = err.requestOptions.path.contains('/auth');
+      
+      if (isAuthPath || detail.contains('validate credentials') || detail.contains('expired')) {
+        AppLogger.warning('Auth token expired or invalid, clearing credentials');
+        _ref.read(authServiceProvider).logout();
+      } else {
+        AppLogger.warning('Received 401 on ${err.requestOptions.path}, but it may not be a token expiration. Not logging out.');
+      }
     }
     handler.next(err);
   }

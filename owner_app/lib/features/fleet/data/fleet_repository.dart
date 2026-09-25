@@ -56,7 +56,7 @@ class FleetRepository {
         'label': label,
         'expires_in_days': 30,
       });
-      return response.data['qr_data']; // This is the fleetguard://invite?token=... URL
+      return response.data['qr_data']; // This is the the vahan://invite?token=... URL
     } catch (e) {
       throw Exception('Failed to generate invite: $e');
     }

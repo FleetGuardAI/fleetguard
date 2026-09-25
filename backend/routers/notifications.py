@@ -2,7 +2,7 @@ import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
 
 from database import get_db
 from models.user import User
@@ -30,11 +30,24 @@ async def get_notifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all notifications for the current user's company."""
-    # We get notifications for the user or the company broadly
+    """
+    Get notifications for the current user.
+    
+    Returns:
+    - Notifications targeted specifically at this user (user_id matches)
+    - Company-wide notifications (user_id is NULL) for the user's company
+    
+    Company isolation is enforced: users can only see their own company's notifications.
+    """
     result = await db.execute(
         select(Notification)
         .where(Notification.company_id == current_user.company_id)
+        .where(
+            or_(
+                Notification.user_id == current_user.id,
+                Notification.user_id.is_(None),
+            )
+        )
         .order_by(Notification.created_at.desc())
         .limit(50)
     )
@@ -46,10 +59,16 @@ async def mark_all_notifications_read(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mark all notifications as read for the current company."""
+    """Mark all visible notifications as read for the current user."""
     await db.execute(
         update(Notification)
         .where(Notification.company_id == current_user.company_id)
+        .where(
+            or_(
+                Notification.user_id == current_user.id,
+                Notification.user_id.is_(None),
+            )
+        )
         .values(is_read=True)
     )
     await db.commit()
@@ -62,12 +81,16 @@ async def mark_notification_read(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mark a notification as read."""
+    """Mark a single notification as read. Enforces company and user ownership."""
     result = await db.execute(
         select(Notification)
         .where(
             Notification.id == notification_id,
-            Notification.company_id == current_user.company_id
+            Notification.company_id == current_user.company_id,
+            or_(
+                Notification.user_id == current_user.id,
+                Notification.user_id.is_(None),
+            ),
         )
     )
     notification = result.scalars().first()
@@ -79,3 +102,35 @@ async def mark_notification_read(
     await db.commit()
     
     return {"status": "success", "message": "Notification marked as read"}
+
+
+@router.delete("/api/v1/notifications/{notification_id}")
+async def delete_notification(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a single notification. Enforces company and user ownership.
+    Only notifications visible to the current user can be deleted.
+    """
+    result = await db.execute(
+        select(Notification)
+        .where(
+            Notification.id == notification_id,
+            Notification.company_id == current_user.company_id,
+            or_(
+                Notification.user_id == current_user.id,
+                Notification.user_id.is_(None),
+            ),
+        )
+    )
+    notification = result.scalars().first()
+
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    await db.delete(notification)
+    await db.commit()
+
+    return {"status": "success", "message": "Notification deleted"}

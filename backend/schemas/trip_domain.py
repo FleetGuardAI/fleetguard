@@ -58,6 +58,12 @@ class TripResponse(BaseModel):
     planned_fuel_liters: Optional[float] = None
     cargo_weight: Optional[float] = None
     
+    # --- Customer / Booking ---
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_contact_person: Optional[str] = None
+    instructions: Optional[str] = None
+    
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None
 
@@ -103,6 +109,11 @@ class TripCreate(BaseModel):
     planned_cost: Optional[float] = None
     planned_fuel_liters: Optional[float] = None
     cargo_weight: Optional[float] = None
+    # --- Customer / Booking ---
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_contact_person: Optional[str] = None
+    instructions: Optional[str] = None
 
 class TripUpdated(BaseModel):
     status: Optional[TripStatus] = None

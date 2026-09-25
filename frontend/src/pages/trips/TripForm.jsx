@@ -169,7 +169,7 @@ export default function TripForm() {
       
       const trip = await createTrip(payload);
       success('Dispatch Successful', `Trip ${trip.trip_id} created.`);
-      navigate(`/trips/${trip.id}`);
+      navigate(`/dashboard/trips/${trip.id}`);
     } catch (e) {
       error('Dispatch Error', e.message || 'Failed to dispatch trip.');
     } finally {
@@ -185,7 +185,7 @@ export default function TripForm() {
             Intelligent Dispatch
             <Badge variant="brand" className="ml-2">Trip Intel 2.0</Badge>
           </h1>
-          <p className="text-content-muted">Progressive evaluation powered by FleetGuard AI</p>
+          <p className="text-content-muted">Progressive evaluation powered by the vahan AI</p>
         </div>
       </div>
 
@@ -331,7 +331,7 @@ export default function TripForm() {
             />
             
             <div className="mt-6 flex justify-end gap-4">
-              <Button variant="outline" onClick={() => navigate('/trips')}>Cancel</Button>
+              <Button variant="outline" onClick={() => navigate('/dashboard/trips')}>Cancel</Button>
               <Button 
                 type="submit" 
                 form="trip-form"

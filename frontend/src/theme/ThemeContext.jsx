@@ -3,7 +3,7 @@ import React, { createContext, useContext } from 'react';
 const ThemeContext = createContext();
 
 /**
- * FleetGuard Theme Provider — Fixed Light Theme
+ * the vahan Theme Provider — Fixed Light Theme
  * The application uses a single cohesive light theme.
  * This provider is kept for API compatibility but no longer toggles themes.
  */

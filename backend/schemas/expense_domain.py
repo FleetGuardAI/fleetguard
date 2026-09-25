@@ -34,7 +34,22 @@ class ExpenseResponse(BaseModel):
     origin_type: str
     origin_id: str
     
+    # Approval/Rejection tracking
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseApproveRequest(BaseModel):
+    """Request body for approving an expense."""
+    pass
+
+
+class ExpenseRejectRequest(BaseModel):
+    """Request body for rejecting an expense. Rejection reason is mandatory."""
+    rejection_reason: str = Field(..., min_length=1, max_length=1000, description="Reason for rejecting this expense claim")

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw, Eye } from 'lucide-react';
+import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw, Truck, MapPin } from 'lucide-react';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '@/api/notificationApi';
-import { getDocumentById } from '@/api/documentApi';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchBox } from '@/components/shared/SearchBox';
@@ -23,7 +22,7 @@ export default function Notifications() {
   // Filters
   const [search, setSearch] = useState('');
   const [readFilter, setReadFilter] = useState('all'); // all, unread, read
-  const [typeFilter, setTypeFilter] = useState('all'); // all, alert, expense, document, system
+  const [typeFilter, setTypeFilter] = useState('all'); // all, ALERT, TRIP, VEHICLE, FINANCE, SYSTEM
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -126,37 +125,50 @@ export default function Notifications() {
       }
     }
   };
-
   const getCategoryIcon = (type) => {
     const classes = "h-5 w-5";
     switch (type) {
-      case 'alert':
+      case 'ALERT':
         return <ShieldAlert className={cn(classes, "text-red-500")} />;
-      case 'expense':
+      case 'TRIP':
+        return <MapPin className={cn(classes, "text-blue-500")} />;
+      case 'VEHICLE':
+        return <Truck className={cn(classes, "text-indigo-500")} />;
+      case 'FINANCE':
         return <IndianRupee className={cn(classes, "text-green-600")} />;
-      case 'document':
-        return <FileText className={cn(classes, "text-blue-500")} />;
-      default:
+      case 'SYSTEM':
         return <Settings className={cn(classes, "text-purple-500")} />;
+      default:
+        return <Bell className={cn(classes, "text-gray-500")} />;
     }
   };
 
   const getCategoryClass = (type) => {
     switch (type) {
-      case 'alert':
+      case 'ALERT':
         return 'bg-red-50 border-red-100';
-      case 'expense':
-        return 'bg-green-50 border-green-100';
-      case 'document':
+      case 'TRIP':
         return 'bg-blue-50 border-blue-100';
-      default:
+      case 'VEHICLE':
+        return 'bg-indigo-50 border-indigo-100';
+      case 'FINANCE':
+        return 'bg-green-50 border-green-100';
+      case 'SYSTEM':
         return 'bg-purple-50 border-purple-100';
+      default:
+        return 'bg-gray-50 border-gray-100';
     }
   };
 
   const getCategoryLabel = (type) => {
-    const map = { alert: 'ALERTS', expense: 'EXPENSE CLAIMS', document: 'REGISTRATION', system: 'SYSTEM' };
-    return map[type] || type.toUpperCase();
+    const map = {
+      ALERT: 'ALERTS',
+      TRIP: 'TRIP',
+      VEHICLE: 'VEHICLE',
+      FINANCE: 'FINANCE',
+      SYSTEM: 'SYSTEM',
+    };
+    return map[type] || (type || 'SYSTEM').toUpperCase();
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -230,10 +242,11 @@ export default function Notifications() {
             className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none"
           >
             <option value="all">All Categories</option>
-            <option value="alert">Alerts / Alarms</option>
-            <option value="expense">Expense Logs</option>
-            <option value="document">Permit Documents</option>
-            <option value="system">System Updates</option>
+            <option value="ALERT">Alerts</option>
+            <option value="TRIP">Trip</option>
+            <option value="VEHICLE">Vehicle</option>
+            <option value="FINANCE">Finance</option>
+            <option value="SYSTEM">System</option>
           </select>
         </div>
       </Card>
@@ -293,19 +306,6 @@ export default function Notifications() {
                       <span className="text-[10px] text-content-muted block pt-1">
                         {item.date ? new Date(item.date).toLocaleString() : "Date unavailable"}
                       </span>
-                      {item.payload?.document_id && (
-                        <div className="pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs bg-surface text-brand-600 border-brand-200 hover:bg-brand-50"
-                            onClick={() => handleViewDocument(item.payload.document_id)}
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1.5" />
-                            View Document
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
 

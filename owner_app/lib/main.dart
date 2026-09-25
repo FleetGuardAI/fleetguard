@@ -25,7 +25,7 @@ class FleetGuardOwnerApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp.router(
-      title: 'FleetGuard Owner',
+      title: 'the vahan Owner',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,

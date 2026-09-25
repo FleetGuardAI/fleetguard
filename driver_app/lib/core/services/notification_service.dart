@@ -52,7 +52,6 @@ class NotificationService {
       if (driverId != null) {
         await dio.put(
           '/api/v1/driver-app/fcm-token', 
-          queryParameters: {'driver_id': driverId},
           data: {
             'fcm_token': mockToken,
           },

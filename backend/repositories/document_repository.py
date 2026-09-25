@@ -39,6 +39,11 @@ class DocumentRepository:
             storage_path=payload.storage_path,
             uploaded_by=payload.uploaded_by,
             company_id=payload.company_id,
+            name=payload.name,
+            category=payload.category,
+            expiry_date=payload.expiry_date,
+            target_id=payload.target_id,
+            target_type=payload.target_type,
         )
         self._session.add(doc)
         await self._session.flush()

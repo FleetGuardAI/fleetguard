@@ -40,6 +40,7 @@ class UnifiedPipelineService:
         entity_id: str,
         uploaded_by: str,
         company_id: Optional[int] = None,
+        category: Optional[str] = None,
     ) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         Process a document upload through the unified pipeline.
@@ -56,7 +57,10 @@ class UnifiedPipelineService:
             doc_response = await self.document_service.upload_document(
                 file=file,
                 uploaded_by=uploaded_by,
-                company_id=company_id
+                company_id=company_id,
+                target_id=entity_id,
+                target_type=entity_type.value,
+                category=category or document_type
             )
             # Use raw_storage_path (the actual Supabase object path) not the signed URL
             url = doc_response.raw_storage_path or doc_response.storage_path

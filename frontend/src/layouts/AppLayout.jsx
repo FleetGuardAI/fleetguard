@@ -98,7 +98,7 @@ export default function AppLayout() {
             </button>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 flex items-center justify-center">
-                <img src="/assets/fleetguard-logo.png" alt="FleetGuard" className="w-full h-full object-contain" />
+                <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-full h-full object-contain" />
               </div>
               <span className="text-sm font-bold text-content">Fleet<span className="text-brand-500">Guard</span></span>
             </div>

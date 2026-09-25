@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.emergency import EmergencyAlert, EmergencyStatus
+from models.driver_domain import Driver
+from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.emergency")
 
@@ -20,8 +22,8 @@ router = APIRouter(prefix="/api/v1/driver-app", tags=["Driver Emergency"])
 
 
 class SosRequest(BaseModel):
-    driver_id: int
-    company_id: int
+    driver_id: Optional[int] = None
+    company_id: Optional[int] = None
     vehicle_id: Optional[int] = None
     trip_id: Optional[int] = None
     latitude: Optional[float] = None
@@ -47,6 +49,7 @@ class SosResponse(BaseModel):
 @router.post("/sos", response_model=SosResponse, status_code=status.HTTP_201_CREATED)
 async def trigger_sos(
     payload: SosRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -54,8 +57,8 @@ async def trigger_sos(
     Immediately records live location and alerts fleet manager.
     """
     sos = EmergencyAlert(
-        driver_id=payload.driver_id,
-        company_id=payload.company_id,
+        driver_id=driver.id,
+        company_id=driver.company_id,
         vehicle_id=payload.vehicle_id,
         trip_id=payload.trip_id,
         latitude=payload.latitude,
@@ -69,7 +72,7 @@ async def trigger_sos(
     await db.refresh(sos)
 
     logger.critical(
-        f"🚨 EMERGENCY SOS triggered by Driver #{payload.driver_id} at ({payload.latitude}, {payload.longitude})"
+        f"🚨 EMERGENCY SOS triggered by Driver #{driver.id} at ({payload.latitude}, {payload.longitude})"
     )
 
     return SosResponse(

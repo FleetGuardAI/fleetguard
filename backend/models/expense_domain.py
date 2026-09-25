@@ -75,6 +75,11 @@ class Expense(Base):
     origin_type: Mapped[str] = mapped_column(String(100), nullable=False, default="verified_event")
     origin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     
+    # Approval/Rejection Tracking
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="User ID of the admin who approved/rejected")
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, comment="Timestamp of approval/rejection")
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="Reason for rejection, required when rejecting")
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

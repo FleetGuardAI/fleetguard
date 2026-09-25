@@ -192,13 +192,13 @@ export default function ChatBox() {
       <div className="flex items-center justify-between py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-fg-green-deep flex items-center justify-center border border-fg-green/20">
-            <img src="/assets/fleetguard-logo.png" alt="FleetGuard" className="w-5 h-5 object-contain" />
+            <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-5 h-5 object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-semibold text-fg-text">{t("AI Co-Pilot")}</h1>
               <span className="text-[10px] text-fg-text-sec bg-fg-green-deep/50 border border-fg-green/20 px-2 py-0.5 rounded-lg font-medium">
-                FleetGuard.AI
+                the vahan AI
               </span>
             </div>
             <p className="text-[11px] text-fg-text-sec">{t("Your intelligent operations assistant")}</p>
@@ -321,7 +321,7 @@ export default function ChatBox() {
           </button>
         </div>
         <p className="text-[11px] text-fg-text-sec/40 text-center font-light">
-          {t("FleetGuard AI may make mistakes. Please verify important information.")}
+          {t("the vahan AI may make mistakes. Please verify important information.")}
         </p>
       </div>
     </div>

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from routers.driver_mobile import get_current_driver
 
 from database import get_db
 from models.driver_domain import Driver
@@ -42,7 +43,7 @@ class LocationPoint(BaseModel):
     activity_state: Optional[str] = None
 
 class LocationBatchRequest(BaseModel):
-    driver_id: int
+    driver_id: Optional[int] = None
     locations: List[LocationPoint]
 
 class LocationResponse(BaseModel):
@@ -82,16 +83,15 @@ class LiveDriverLocation(BaseModel):
 @router.post("/api/v1/driver-app/location/batch", status_code=201)
 async def batch_upload_locations(
     payload: LocationBatchRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     """
     Batch upload GPS locations from driver's phone.
     Accepts queued offline locations for sync.
     Validates that the driver belongs to the authenticated user's company.
     """
-    driver = await db.get(Driver, payload.driver_id)
-    if driver is None or driver.company_id != current_user.company_id:
+    if driver is None:
         raise HTTPException(404, "Driver not found")
 
     locations_added = 0
@@ -104,7 +104,7 @@ async def batch_upload_locations(
             ts = datetime.now(tz=timezone.utc)
 
         db_loc = DriverLocation(
-            driver_id=payload.driver_id,
+            driver_id=driver.id,
             company_id=driver.company_id or 0,
             latitude=loc.latitude,
             longitude=loc.longitude,
@@ -128,7 +128,7 @@ async def batch_upload_locations(
 
     await db.commit()
 
-    logger.info(f"Driver {payload.driver_id}: {locations_added} locations synced")
+    logger.info(f"Driver {driver.id}: {locations_added} locations synced")
     return {"message": f"{locations_added} locations recorded"}
 
 

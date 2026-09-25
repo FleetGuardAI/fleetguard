@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 /**
- * FleetGuard Architecture, Slide Deck & Prediction Engine Showcase Page
+ * the vahan Architecture, Slide Deck & Prediction Engine Showcase Page
  */
 export default function ArchitectureShowcase() {
   const [activeTab, setActiveTab] = useState('slides'); // 'architecture' | 'slides' | 'calculator'
@@ -64,7 +64,7 @@ export default function ArchitectureShowcase() {
   // --- Slides Data ---
   const slides = [
     {
-      title: "FleetGuard: Enterprise Telematics & Fraud Prevention",
+      title: "the vahan: Enterprise Telematics & Fraud Prevention",
       subtitle: "Executive Presentation & Architecture Blueprint",
       type: "title",
       bullets: [
@@ -73,7 +73,7 @@ export default function ArchitectureShowcase() {
         "Predictive Machine Learning Core for Downtime & Fraud Reduction",
         "Quantifiable Financial ROI: 32% Maintenance Cost Reduction"
       ],
-      script: "Welcome everyone. FleetGuard is an enterprise-grade fleet intelligence platform engineered to eliminate fleet downtime and financial fraud by merging IoT telemetry, receipt vision AI, and predictive analytics."
+      script: "Welcome everyone. the vahan is an enterprise-grade fleet intelligence platform engineered to eliminate fleet downtime and financial fraud by merging IoT telemetry, receipt vision AI, and predictive analytics."
     },
     {
       title: "Industry Pain Points & Operational Leaks",
@@ -84,7 +84,7 @@ export default function ArchitectureShowcase() {
         { title: "Fuel Theft & Billing Fraud", text: "Fuel equals ~40% of fleet OPEX. Siphoning and fake paper receipts drain profits silently.", color: "border-amber-500 bg-amber-500/10" },
         { title: "Reactive Servicing", text: "Servicing trucks on fixed calendar schedules leads to premature replacement or sudden failure.", color: "border-orange-500 bg-orange-500/10" }
       ],
-      script: "Logistics fleets lose millions annually across three areas: sudden breakdowns, untracked fuel siphoning, and reactive maintenance. FleetGuard acts predictively before these losses occur."
+      script: "Logistics fleets lose millions annually across three areas: sudden breakdowns, untracked fuel siphoning, and reactive maintenance. the vahan acts predictively before these losses occur."
     },
     {
       title: "High-Level System Architecture",
@@ -130,7 +130,7 @@ export default function ArchitectureShowcase() {
         "Fuel Theft Detection: Dual-vector receipt vs tank sensor delta verification",
         "Driver Safety Rating (DRS): Harsh event & fatigue exposure scoring"
       ],
-      script: "FleetGuard doesn't just log data; it runs continuous mathematical models to predict vehicle breakdown risk, component lifespan, fuel theft, and driver safety scores."
+      script: "the vahan doesn't just log data; it runs continuous mathematical models to predict vehicle breakdown risk, component lifespan, fuel theft, and driver safety scores."
     },
     {
       title: "Prediction Deep Dive: Breakdown Risk Index (BRI)",
@@ -143,7 +143,7 @@ export default function ArchitectureShowcase() {
         "Weibull Accelerated Wear: Exponential mileage aging factor (alpha = 1.45)",
         "Automated Action: BRI > 70% automatically dispatches a workshop work order"
       ],
-      script: "Our Breakdown Risk Index evaluates fault codes, temperature spikes, and vehicle age. When BRI crosses 70%, FleetGuard dispatches a work order before the vehicle breaks down."
+      script: "Our Breakdown Risk Index evaluates fault codes, temperature spikes, and vehicle age. When BRI crosses 70%, the vahan dispatches a work order before the vehicle breaks down."
     },
     {
       title: "Prediction Deep Dive: Dual-Vector Fuel Theft Model",
@@ -165,7 +165,7 @@ export default function ArchitectureShowcase() {
         { title: "-85% Fuel Fraud", text: "Zero tolerance for fake paper receipts or illegal siphoning.", color: "border-emerald-500 bg-emerald-500/10" },
         { title: "+18% Fleet Uptime", text: "Eliminating roadside breakdowns keeps freight moving on schedule.", color: "border-emerald-500 bg-emerald-500/10" }
       ],
-      script: "Deploying FleetGuard yields immediate ROI: 32% lower repair bills, virtual elimination of fuel fraud, and an 18% boost in overall fleet availability."
+      script: "Deploying the vahan yields immediate ROI: 32% lower repair bills, virtual elimination of fuel fraud, and an 18% boost in overall fleet availability."
     },
     {
       title: "Deployment Roadmap & Q&A",
@@ -177,7 +177,7 @@ export default function ArchitectureShowcase() {
         "Phase 3 (Weeks 5-6): Predictive ML Analytics & Executive BI Dashboard rollout",
         "Thank you! We welcome your questions and discussion."
       ],
-      script: "FleetGuard is designed for rapid deployment without operational disruption. Thank you, and we look forward to answering your questions."
+      script: "the vahan is designed for rapid deployment without operational disruption. Thank you, and we look forward to answering your questions."
     }
   ];
 
@@ -193,7 +193,7 @@ export default function ArchitectureShowcase() {
             <span className="text-slate-400 text-sm">v2.0 Event-Driven Engine</span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white mt-2">
-            FleetGuard Intelligence Blueprint
+            the vahan Intelligence Blueprint
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Interactive Architecture Flow, Presentation Slide Deck, and Real-Time Mathematical Prediction Engine
@@ -362,7 +362,7 @@ export default function ArchitectureShowcase() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
               <h2 className="text-2xl font-bold text-white mb-4">Core System Architecture Specification</h2>
               <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                FleetGuard uses an asynchronous, event-driven pattern designed for high telemetry throughput and zero data loss. The write path is decoupled from downstream computational pipelines.
+                the vahan uses an asynchronous, event-driven pattern designed for high telemetry throughput and zero data loss. The write path is decoupled from downstream computational pipelines.
               </p>
 
               {/* Architecture Layer Cards */}

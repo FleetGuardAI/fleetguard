@@ -290,7 +290,7 @@ export default function UserManagement() {
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         title="Add Co-Admin User"
-        description="Invite a new operations team member to access FleetGuard."
+        description="Invite a new operations team member to access the vahan."
         closable={!submitting}
         footer={
           <>
@@ -315,7 +315,7 @@ export default function UserManagement() {
 
           <Input
             label="Corporate Email Address"
-            placeholder="e.g. suryansh@fleetguard.com"
+            placeholder="e.g. suryansh@thevahan.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={formErrors.email}
@@ -371,7 +371,7 @@ export default function UserManagement() {
               <QrCode className="w-24 h-24 text-brand-600 opacity-60" />
               <div className="absolute inset-0 flex items-center justify-center">
                  <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                   <img src="/assets/fleetguard-logo.png" alt="FG" className="w-6 h-6 object-contain" />
+                   <img src="/assets/the_vahan_logo.png" alt="FG" className="w-6 h-6 object-contain" />
                  </div>
               </div>
             </div>

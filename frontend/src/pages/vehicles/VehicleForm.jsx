@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { getVehicleById, createVehicle, updateVehicle } from '@/api/vehicleApi';
+import { getVehicleById, createVehicle, updateVehicle, uploadVehicleDocument } from '@/api/vehicleApi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -22,6 +22,16 @@ export default function VehicleForm() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [tankCapacity, setTankCapacity] = useState('');
 
+  // Document state
+  const [documents, setDocuments] = useState({
+    rc: null,
+    insurance: null,
+    puc: null,
+    fitness_certificate: null,
+    permit: null
+  });
+  const [existingDocs, setExistingDocs] = useState({});
+
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [fetchError, setFetchError] = useState(null);
@@ -39,6 +49,14 @@ export default function VehicleForm() {
           setModel(v.model);
           setYear(v.year);
           setTankCapacity(v.tank_capacity);
+          
+          setExistingDocs({
+            rc: v.rc_url,
+            insurance: v.insurance_url,
+            puc: v.puc_url,
+            fitness_certificate: v.fitness_url,
+            permit: v.permit_url
+          });
         } catch (e) {
           setFetchError(e);
           error('Load Failed', 'Could not retrieve vehicle details.');
@@ -92,18 +110,44 @@ export default function VehicleForm() {
     };
 
     try {
+      let vehicleId = id;
       if (isEdit) {
         await updateVehicle(id, payload);
         success('Vehicle Updated', `Successfully updated profile for ${payload.license_plate}`);
       } else {
-        await createVehicle(payload);
+        const newVehicle = await createVehicle(payload);
+        vehicleId = newVehicle.id;
         success('Vehicle Created', `Successfully added new vehicle ${payload.license_plate}`);
       }
-      navigate('/dashboard/vehicles');
+
+      // Upload any selected documents sequentially
+      let uploadSuccess = true;
+      for (const [type, file] of Object.entries(documents)) {
+        if (file) {
+          try {
+            await uploadVehicleDocument(vehicleId, type, file);
+            success('Document Uploaded', `Successfully uploaded ${type.replace('_', ' ').toUpperCase()}`);
+          } catch (e) {
+            uploadSuccess = false;
+            error('Document Upload Failed', `Failed to upload ${type.toUpperCase()}: ${e.message}`);
+          }
+        }
+      }
+
+      if (uploadSuccess) {
+        navigate('/dashboard/vehicles');
+      }
     } catch (e) {
       error('Save Failed', e.message || 'An error occurred while saving.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (type, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDocuments(prev => ({ ...prev, [type]: file }));
     }
   };
 
@@ -198,7 +242,50 @@ export default function VehicleForm() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+          {/* Documents Section */}
+          <div className="pt-4 mt-6 border-t border-border space-y-4">
+            <h3 className="font-semibold text-content text-lg">Vehicle Documents</h3>
+            <p className="text-sm text-content-secondary">Upload valid documents for OCR processing and verification.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {[
+                { type: 'rc', label: 'Registration Certificate (RC)' },
+                { type: 'insurance', label: 'Insurance Policy' },
+                { type: 'puc', label: 'PUC Certificate' },
+                { type: 'fitness_certificate', label: 'Fitness Certificate' },
+                { type: 'permit', label: 'Vehicle Permit' }
+              ].map(({ type, label }) => (
+                <div key={type} className="border border-border p-4 rounded-xl flex flex-col justify-between bg-surface-alt">
+                  <div className="mb-2">
+                    <span className="text-sm font-semibold text-content block">{label}</span>
+                    {existingDocs[type] && !documents[type] && (
+                      <a href={existingDocs[type]} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline inline-block mt-1">
+                        View current document
+                      </a>
+                    )}
+                    {documents[type] && (
+                      <span className="text-xs text-emerald-600 font-medium inline-block mt-1">
+                        Selected: {documents[type].name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <label className="cursor-pointer text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg inline-block transition-colors">
+                      {existingDocs[type] ? 'Replace Document' : 'Upload Document'}
+                      <input 
+                        type="file" 
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden" 
+                        onChange={(e) => handleFileChange(type, e)}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-border">
             <Button
               type="button"
               variant="outline"

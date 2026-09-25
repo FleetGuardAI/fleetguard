@@ -122,9 +122,8 @@ export default function HomePage() {
       {/* NAVBAR */}
       <nav className="navbar" id="navbar">
         <div className="container">
-          <a href="#" className="nav-logo">
-            <svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#25D366"/><path d="M16 6L8 12v8l8 6 8-6v-8L16 6z" fill="#fff" opacity="0.9"/><path d="M16 10l-4 3v5l4 3 4-3v-5l-4-3z" fill="#25D366"/></svg>
-            Fleet<span className="gradient-text">Guard</span>
+          <a href="#" className="nav-logo" style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" style={{ height: '32px', width: 'auto' }} />
           </a>
           <div className="nav-links">
             <a href="#problem">Problem</a>
@@ -146,7 +145,7 @@ export default function HomePage() {
           <div className="hero-content">
             <div className="hero-badge"><span className="dot"></span> WhatsApp-First Verification Platform</div>
             <h1>Verify Every Emergency Truck Expense <span className="gradient-text">Before Payment</span></h1>
-            <p>FleetGuard helps fleet owners prevent fake repair, fuel and puncture claims using AI + human verification directly on WhatsApp.</p>
+            <p>the vahan helps fleet owners prevent fake repair, fuel and puncture claims using AI + human verification directly on WhatsApp.</p>
             <div className="hero-buttons">
               <a href="mailto:fleetguardinfo@gmail.com?subject=Enquiry&body=Hi%20FleetGuard%20Team%2C%0A%0AI%20would%20like%20to%20book%20a%20demo.%0A%0AName%3A%20%0AMobile%3A%20%0A%0AThank%20you." className="btn btn-primary btn-lg">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 2H7a5 5 0 00-5 5v10a5 5 0 005 5h10a5 5 0 005-5V7a5 5 0 00-5-5zm-1 14H8a1 1 0 010-2h8a1 1 0 010 2zm0-4H8a1 1 0 010-2h8a1 1 0 010 2zm0-4H8a1 1 0 010-2h8a1 1 0 010 2z"/></svg>
@@ -164,7 +163,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="hero-visual">
-            <img src="/assets/dashboard-mockup.png" alt="FleetGuard Dashboard"/>
+            <img src="/assets/dashboard-mockup.png" alt="the vahan Dashboard"/>
             <div className="float-card card-1"><div className="fc-icon green">✅</div><div className="fc-text"><h4>Claim Verified</h4><p>Truck RJ14 XX 1234</p></div></div>
             <div className="float-card card-2"><div className="fc-icon blue">📍</div><div className="fc-text"><h4>Location Matched</h4><p>NH-48, Udaipur</p></div></div>
           </div>
@@ -253,12 +252,12 @@ export default function HomePage() {
         <div className="container">
           <div>
             <div className="section-label">Live Demo</div>
-            <h2 className="section-title reveal">See FleetGuard <span className="gradient-text">in Action</span></h2>
+            <h2 className="section-title reveal">See the vahan <span className="gradient-text">in Action</span></h2>
             <p className="section-subtitle reveal">A real WhatsApp conversation showing how driver claims get verified before you pay a single rupee.</p>
             <div style={{ marginTop: '32px' }}>
               {[
-                { num: '1️⃣', title: 'Driver Reports Issue', desc: 'The driver messages the FleetGuard bot about an emergency expense.' },
-                { num: '2️⃣', title: 'Bot Collects Proof', desc: 'FleetGuard asks for video, bill photo, location and amount — all on WhatsApp.' },
+                { num: '1️⃣', title: 'Driver Reports Issue', desc: 'The driver messages the the vahan bot about an emergency expense.' },
+                { num: '2️⃣', title: 'Bot Collects Proof', desc: 'the vahan asks for video, bill photo, location and amount — all on WhatsApp.' },
                 { num: '3️⃣', title: 'Owner Gets Verified Alert', desc: 'You receive a clean, verified summary with all proof before approving payment.' },
               ].map(w => (
                 <div key={w.num} className="why-card reveal" style={{ marginBottom: '16px' }}>
@@ -272,7 +271,7 @@ export default function HomePage() {
             <div className="chat-window reveal">
               <div className="chat-header">
                 <div className="chat-avatar">FG</div>
-                <div className="chat-name"><h4>FleetGuard Bot</h4><p>online</p></div>
+                <div className="chat-name"><h4>the vahan Bot</h4><p>online</p></div>
               </div>
               <div className="chat-body">
                 <div className="msg msg-out">Puncture issue on highway<span className="time">10:14 AM</span></div>
@@ -287,13 +286,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* WHY FLEETGUARD */}
+      {/* WHY the vahan */}
       <section className="section" id="why" style={{ background: 'var(--bg-tertiary)' }}>
         <div className="container">
           <div style={{ textAlign: 'center' }}>
-            <div className="section-label" style={{ justifyContent: 'center' }}>Why FleetGuard</div>
+            <div className="section-label" style={{ justifyContent: 'center' }}>Why the vahan</div>
             <h2 className="section-title reveal">Benefits That <span className="gradient-text">Impact Your Bottom Line</span></h2>
-            <p className="section-subtitle reveal" style={{ margin: '0 auto' }}>FleetGuard isn't just software — it's operational control for your fleet.</p>
+            <p className="section-subtitle reveal" style={{ margin: '0 auto' }}>the vahan isn't just software — it's operational control for your fleet.</p>
           </div>
           <div className="why-grid">
             {[
@@ -318,7 +317,7 @@ export default function HomePage() {
         <div className="container">
           <div style={{ textAlign: 'center' }}>
             <div className="section-label" style={{ justifyContent: 'center' }}>Meet the Founders</div>
-            <h2 className="section-title reveal">The Team Behind <span className="gradient-text">FleetGuard</span></h2>
+            <h2 className="section-title reveal">The Team Behind <span className="gradient-text">the vahan</span></h2>
             <p className="section-subtitle reveal" style={{ margin: '0 auto' }}>Young entrepreneurs solving operational trust problems in India's trucking industry through technology and WhatsApp-first workflows.</p>
           </div>
           <div className="founders-grid">
@@ -326,7 +325,7 @@ export default function HomePage() {
               <div className="founder-info">
                 <h3>Rudra Rathore</h3>
                 <p className="founder-role">Co-Founder &amp; CEO</p>
-                <blockquote>"I saw fleet owners losing lakhs every month to unverified expense claims. I built FleetGuard to bring trust and transparency using the one platform every driver already uses: WhatsApp."</blockquote>
+                <blockquote>"I saw fleet owners losing lakhs every month to unverified expense claims. I built the vahan to bring trust and transparency using the one platform every driver already uses: WhatsApp."</blockquote>
                 <div className="founder-links">
                   <a href="https://www.linkedin.com/in/rudrapratap-singh-rathore-930060205" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
                   <a href="https://www.instagram.com/rudrapratapsinghrathore001" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
@@ -358,9 +357,9 @@ export default function HomePage() {
           </div>
           <div className="testimonials-grid">
             {[
-              { stars: '★★★★★', text: '"Before FleetGuard, my drivers would call and demand ₹2,000 for a puncture. Now I get video proof, bill photo and GPS location — all verified. My fake claims dropped by 40% in the first month."', initials: 'MK', name: 'Mahesh Kumar', role: 'Fleet Owner · 45 Trucks · Jaipur' },
-              { stars: '★★★★★', text: '"The best part is zero app installation. My drivers are not tech-savvy — they can barely use smartphones. But WhatsApp? They all know it. FleetGuard just works without any training."', initials: 'PS', name: 'Priya Sharma', role: 'Logistics Manager · TransLink Corp · Mumbai' },
-              { stars: '★★★★★', text: '"I manage 120+ trucks across 3 states. FleetGuard gives me a single dashboard for every emergency expense. The fraud detection alone saved us ₹3 lakhs last quarter."', initials: 'RS', name: 'Rajveer Singh', role: 'Transport Operator · Singh Logistics · Delhi NCR' },
+              { stars: '★★★★★', text: '"Before the vahan, my drivers would call and demand ₹2,000 for a puncture. Now I get video proof, bill photo and GPS location — all verified. My fake claims dropped by 40% in the first month."', initials: 'MK', name: 'Mahesh Kumar', role: 'Fleet Owner · 45 Trucks · Jaipur' },
+              { stars: '★★★★★', text: '"The best part is zero app installation. My drivers are not tech-savvy — they can barely use smartphones. But WhatsApp? They all know it. the vahan just works without any training."', initials: 'PS', name: 'Priya Sharma', role: 'Logistics Manager · TransLink Corp · Mumbai' },
+              { stars: '★★★★★', text: '"I manage 120+ trucks across 3 states. the vahan gives me a single dashboard for every emergency expense. The fraud detection alone saved us ₹3 lakhs last quarter."', initials: 'RS', name: 'Rajveer Singh', role: 'Transport Operator · Singh Logistics · Delhi NCR' },
             ].map(t => (
               <div key={t.name} className="testimonial-card reveal">
                 <div className="tc-stars">{t.stars}</div>
@@ -393,9 +392,8 @@ export default function HomePage() {
         <div className="container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <a href="#" className="nav-logo">
-                <svg viewBox="0 0 32 32" fill="none" width="28" height="28"><rect width="32" height="32" rx="8" fill="#25D366"/><path d="M16 6L8 12v8l8 6 8-6v-8L16 6z" fill="#fff" opacity="0.9"/><path d="M16 10l-4 3v5l4 3 4-3v-5l-4-3z" fill="#25D366"/></svg>
-                Fleet<span className="gradient-text">Guard</span>
+              <a href="#" className="nav-logo" style={{ display: 'flex', alignItems: 'center' }}>
+                <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" style={{ height: '32px', width: 'auto' }} />
               </a>
               <p>AI-powered expense verification for fleet owners. Built on WhatsApp. No apps needed.</p>
             </div>
@@ -420,7 +418,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>© 2026 FleetGuard. All rights reserved.</p>
+            <p>© 2026 the vahan. All rights reserved.</p>
             <div className="footer-social">
               <a href="mailto:fleetguardinfo@gmail.com" aria-label="Email">✉️</a>
               <a href="https://www.instagram.com/fleetgaurd/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
