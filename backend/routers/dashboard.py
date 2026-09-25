@@ -26,7 +26,7 @@ from services.cache_service import cache_service
 @router.get("/kpis")
 async def get_dashboard_kpis(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.MANAGER)),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.ADMIN)),
 ):
     """
     Get aggregate KPIs for the dashboard.
