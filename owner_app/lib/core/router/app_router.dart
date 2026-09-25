@@ -63,43 +63,7 @@ class RouterNotifier extends ChangeNotifier {
         _ref.read(authStateProvider.notifier).state = false;
       } else {
         debugPrint('[STARTUP] Token found: true');
-        debugPrint('[STARTUP] Validating session');
-        
-        try {
-          // Read dio, but don't depend on interceptors since we inject token manually for this specific check
-          final dio = _ref.read(apiClientProvider).dio;
-          final response = await dio.get(
-            '/api/v1/auth/me',
-            options: Options(
-              headers: {'Authorization': 'Bearer $token'},
-            ),
-          ).timeout(const Duration(seconds: 10));
-          
-          if (response.statusCode == 200) {
-            debugPrint('[STARTUP] Session valid');
-            _ref.read(authStateProvider.notifier).state = true;
-          } else {
-            debugPrint('[STARTUP] Session invalid (status: ${response.statusCode})');
-            await SecureStorage.clearAuth();
-            _ref.read(authStateProvider.notifier).state = false;
-          }
-        } on DioException catch (e) {
-          if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-            debugPrint('[STARTUP] Session invalid (401/403)');
-            await SecureStorage.clearAuth();
-            _ref.read(authStateProvider.notifier).state = false;
-          } else {
-            debugPrint('[STARTUP] Backend unavailable: $e');
-            _hasError = true;
-            notifyListeners();
-            return; // Stop initialization, wait for retry
-          }
-        } catch (e) {
-          debugPrint('[STARTUP] Validation error: $e');
-          _hasError = true;
-          notifyListeners();
-          return; // Stop initialization, wait for retry
-        }
+        _ref.read(authStateProvider.notifier).state = true;
       }
       
       debugPrint('[STARTUP] Initialization completed');
