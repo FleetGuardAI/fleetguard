@@ -19,6 +19,7 @@ dependencies:
 
   # Networking
   dio: ^5.4.0
+  web_socket_channel: ^2.4.0
 
   # Routing
   go_router: ^13.0.0
@@ -73,8 +74,6 @@ flutter:
 
   assets:
     - assets/images/
-
-    - assets/icons/
 
   # fonts:
   #   - family: Inter

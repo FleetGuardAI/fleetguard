@@ -6,6 +6,7 @@ import '../../../../core/storage/secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../models/offline_record.dart';
 import '../../../services/sync_service.dart';
+import 'package:isar/isar.dart';
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -39,6 +40,7 @@ class ExpenseRepository {
     required String category,
     required double amount,
     required String description,
+    String? base64ReceiptImage,
   }) async {
     try {
       final connectivityResult = await (Connectivity().checkConnectivity());
@@ -50,7 +52,7 @@ class ExpenseRepository {
           ..category = category
           ..description = description
           ..isSynced = false
-          ..base64ReceiptImage = '' // For now, we skip image offline serialization in demo
+          ..base64ReceiptImage = base64ReceiptImage ?? ''
           ..createdAt = DateTime.now();
           
         await syncService.isar.writeTxn(() async {
@@ -74,10 +76,28 @@ class ExpenseRepository {
 
   Future<List<Map<String, dynamic>>> listDriverExpenses() async {
     try {
-      final response = await _dio.get(
-        '/api/v1/driver-app/expenses',
-      );
-      return List<Map<String, dynamic>>.from(response.data);
+      final syncService = await SyncService.init();
+      final offlineExpenses = await syncService.isar.offlineExpenses.filter().isSyncedEqualTo(false).findAll();
+      
+      final localData = offlineExpenses.map((e) => {
+        'id': 'offline_${e.id}',
+        'category': e.category,
+        'amount': e.amount,
+        'description': e.description,
+        'expense_date': e.createdAt.toIso8601String(),
+        'status': 'PENDING SYNC',
+      }).toList();
+
+      List<Map<String, dynamic>> remoteData = [];
+      try {
+        final connectivityResult = await (Connectivity().checkConnectivity());
+        if (connectivityResult != ConnectivityResult.none) {
+          final response = await _dio.get('/api/v1/driver-app/expenses');
+          remoteData = List<Map<String, dynamic>>.from(response.data);
+        }
+      } catch (_) {}
+
+      return [...localData, ...remoteData];
     } catch (e) {
       throw Exception('Failed to fetch expenses: $e');
     }

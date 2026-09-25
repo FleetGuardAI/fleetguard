@@ -26,7 +26,7 @@ dependencies:
   go_router: ^13.0.0
 
   # Maps
-  google_maps_flutter: ^2.5.3
+  google_maps_flutter: ^2.18.0
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
   url_launcher: ^6.2.2
@@ -39,9 +39,10 @@ dependencies:
   # Camera & Media
   image_picker: ^1.0.7
   camera: ^0.10.5+9
+  flutter_image_compress: ^2.2.0
 
   # QR Code
-  mobile_scanner: ^4.0.1
+  mobile_scanner: ^7.4.0
   qr_flutter: ^4.1.0
 
   # Storage
@@ -65,8 +66,10 @@ dependencies:
   syncfusion_flutter_signaturepad: ^30.1.42
   lottie: ^3.0.0
 
-  # Notifications (local - no Firebase needed for demo)
+  # Notifications (Firebase)
   flutter_local_notifications: ^17.0.0
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
 
   # Permissions
   permission_handler: ^11.2.0

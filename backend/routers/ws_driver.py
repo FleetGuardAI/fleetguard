@@ -84,3 +84,52 @@ async def driver_websocket_endpoint(
     except Exception as e:
         logger.error(f"WS Exception driver #{driver_id}: {e}")
         ws_manager.disconnect(driver_id)
+
+class OwnerConnectionManager:
+    """Manages active owner WebSocket connections for fleet tracking."""
+    def __init__(self):
+        self.active_connections: Dict[int, List[WebSocket]] = {}
+
+    async def connect(self, company_id: int, websocket: WebSocket):
+        await websocket.accept()
+        if company_id not in self.active_connections:
+            self.active_connections[company_id] = []
+        self.active_connections[company_id].append(websocket)
+        logger.info(f"Owner for company #{company_id} WebSocket connected")
+
+    def disconnect(self, company_id: int, websocket: WebSocket):
+        if company_id in self.active_connections:
+            self.active_connections[company_id].remove(websocket)
+            if not self.active_connections[company_id]:
+                del self.active_connections[company_id]
+        logger.info(f"Owner for company #{company_id} WebSocket disconnected")
+
+    async def broadcast_to_company(self, company_id: int, message: dict):
+        if company_id in self.active_connections:
+            for websocket in self.active_connections[company_id]:
+                await websocket.send_text(json.dumps(message))
+
+owner_ws_manager = OwnerConnectionManager()
+
+@router.websocket("/fleet/{company_id}")
+async def fleet_websocket_endpoint(
+    websocket: WebSocket,
+    company_id: int,
+    token: str = Query(...),
+):
+    await owner_ws_manager.connect(company_id, websocket)
+    try:
+        await websocket.send_text(json.dumps({"type": "connection_established", "status": "connected"}))
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        owner_ws_manager.disconnect(company_id, websocket)
+    except Exception as e:
+        logger.error(f"WS Exception owner for company #{company_id}: {e}")
+        owner_ws_manager.disconnect(company_id, websocket)
