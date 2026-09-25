@@ -48,13 +48,6 @@ const engines = [
     desc: 'Ask questions. Get context. Take action.',
     icon: Sparkles,
     color: 'text-purple-500'
-  },
-  {
-    id: 'driver',
-    name: 'Driver & Vehicle Intelligence',
-    desc: 'Understand your people and assets.',
-    icon: Users,
-    color: 'text-cyan-500'
   }
 ];
 
