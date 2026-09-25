@@ -114,8 +114,8 @@ void onStart(ServiceInstance service) async {
   startLocationStream();
 
   // Smart Polling based on Activity
-  final activityRecognition = ar.ActivityRecognition.activityStream(runForegroundService: true);
-  activityRecognition.listen((ar.Activity activity) {
+  final activityRecognition = ar.ActivityRecognition().activityStream(runForegroundService: true);
+  activityRecognition.listen((ar.ActivityEvent activity) {
     if (activity.type == ar.ActivityType.STILL) {
       stopLocationStream();
     } else if (activity.type == ar.ActivityType.IN_VEHICLE || 
