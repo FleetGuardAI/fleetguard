@@ -28,6 +28,12 @@ subprojects {
                     setNamespace.invoke(android, project.group.toString())
                 }
             } catch (e: Exception) { }
+
+            try {
+                val compileOptions = android.javaClass.getMethod("getCompileOptions").invoke(android)
+                compileOptions.javaClass.getMethod("setSourceCompatibility", org.gradle.api.JavaVersion::class.java).invoke(compileOptions, org.gradle.api.JavaVersion.VERSION_17)
+                compileOptions.javaClass.getMethod("setTargetCompatibility", org.gradle.api.JavaVersion::class.java).invoke(compileOptions, org.gradle.api.JavaVersion.VERSION_17)
+            } catch (e: Exception) { }
         }
     }
 }
@@ -43,7 +49,7 @@ tasks.register<Delete>("clean") {
 allprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 }
