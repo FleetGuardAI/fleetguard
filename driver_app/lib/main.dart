@@ -7,6 +7,7 @@ import 'core/services/location_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/security/root_detection.dart';
 import 'core/utils/logger.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,9 @@ void main() async {
 
   // Initialize background location service
   await LocationService.initialize();
+
+  // Initialize Background Sync
+  SyncService.initializeWorkManager();
 
   runApp(
     const ProviderScope(

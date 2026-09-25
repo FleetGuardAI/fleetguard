@@ -49,6 +49,12 @@ dependencies:
   sqflite: ^2.3.2
   path_provider: ^2.1.2
   path: ^1.8.3
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  
+  # Background Sync & Battery
+  workmanager: ^0.5.2
+  activity_recognition_flutter: ^3.0.0
 
   # UI
   google_fonts: ^6.1.0
@@ -84,6 +90,7 @@ dev_dependencies:
   json_serializable: ^6.7.1
   freezed: ^2.4.6
   riverpod_generator: ^2.3.9
+  isar_generator: ^3.1.0+1
   mockito: ^5.4.4
   integration_test:
     sdk: flutter

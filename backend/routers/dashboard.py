@@ -15,22 +15,29 @@ from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver
 from models.trip_domain import Trip, TripStatus
 from models.ticket import Ticket, TicketStatus, RiskLevel
-from services.auth_service import get_current_user
-from models.user import User
+from services.auth_service import requires_role
+from models.user import User, UserRole
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
+from services.cache_service import cache_service
+
 @router.get("/kpis")
 async def get_dashboard_kpis(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.MANAGER)),
 ):
     """
     Get aggregate KPIs for the dashboard.
     All metrics are scoped to the authenticated user's company.
     """
     company_id = current_user.company_id
+    cache_key = f"dashboard_kpis_{company_id}"
+    
+    cached_data = await cache_service.get(cache_key)
+    if cached_data:
+        return cached_data
 
     # Vehicle stats — scoped to company
     vehicle_result = await db.execute(
@@ -75,7 +82,7 @@ async def get_dashboard_kpis(
     )
     tk = ticket_result.one()
 
-    return {
+    response_data = {
         "vehicles": {
             "total": v.total,
             "active": v.active,
@@ -98,13 +105,16 @@ async def get_dashboard_kpis(
             "total_amount": float(tk.total_amount),
         },
     }
+    
+    await cache_service.set(cache_key, response_data, ttl=300)  # 5 minute TTL
+    return response_data
 
 
 @router.get("/recent-activity")
 async def get_recent_activity(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.MANAGER)),
 ):
     """
     Get recent ticket activity for the dashboard.

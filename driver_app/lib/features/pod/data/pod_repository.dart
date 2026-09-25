@@ -3,6 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../../models/offline_record.dart';
+import '../../../services/sync_service.dart';
 
 final podRepositoryProvider = Provider<PodRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -39,6 +42,24 @@ class PodRepository {
     String? photoUrl,
   }) async {
     try {
+      final connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult == ConnectivityResult.none) {
+        // Offline -> Save to Isar
+        final syncService = await SyncService.init();
+        final pod = OfflinePOD()
+          ..tripId = tripId.toString()
+          ..base64Image = photoUrl ?? ''
+          ..notes = remarks
+          ..isSynced = false
+          ..createdAt = DateTime.now();
+          
+        await syncService.isar.writeTxn(() async {
+          await syncService.isar.offlinePODs.put(pod);
+        });
+        return;
+      }
+
+      // Online
       await _dio.post(
         '/api/v1/driver-app/pod/$tripId',
         data: {

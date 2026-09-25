@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../../core/config/theme/app_colors.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/network/api_client.dart';
@@ -16,6 +18,9 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _isOffline = false;
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
   @override
   void initState() {
     super.initState();
@@ -23,6 +28,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final dio = ref.read(apiClientProvider).dio;
       NotificationService.registerFcmToken(dio);
     });
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      setState(() {
+        _isOffline = results.contains(ConnectivityResult.none);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _changeDutyStatus(String status) async {
@@ -155,6 +172,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_isOffline)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade300),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.wifi_off, color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Offline Mode - Data will sync automatically',
+                            style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // --- Driver Profile & Duty Status Card ---
                 Card(
                   child: Padding(
@@ -234,10 +275,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(
-                                      'Duty Status: ${dutyStr.replaceAll('_', ' ')}',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Duty Status: ${dutyStr.replaceAll('_', ' ')}',
+                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              dutyStr == 'ON_DUTY' ? Icons.gps_fixed : Icons.energy_savings_leaf, 
+                                              size: 12, 
+                                              color: dutyStr == 'ON_DUTY' ? Colors.blue : Colors.green
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              dutyStr == 'ON_DUTY' ? 'Smart GPS: Active' : 'Smart GPS: Paused (Battery Saver)',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: dutyStr == 'ON_DUTY' ? Colors.blue : Colors.green,
+                                                fontWeight: FontWeight.bold
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

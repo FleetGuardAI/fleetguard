@@ -105,17 +105,21 @@ export default function TripList() {
         <div className="text-xs text-content-secondary space-y-0.5">
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-content-muted" />
-            {new Date(t.start_date).toLocaleDateString()}
+            {new Date(t.start_date || t.planned_start_time).toLocaleDateString()}
           </div>
-          {t.end_date ? (
+          {t.end_date || t.actual_end_time ? (
             <div className="flex items-center gap-1 text-green-600">
               <CheckCircle className="h-3 w-3" />
-              {new Date(t.end_date).toLocaleDateString()}
+              {new Date(t.end_date || t.actual_end_time).toLocaleDateString()}
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3 text-content-muted" />
-              Est: {new Date(t.expected_delivery).toLocaleDateString()}
+              {t.estimated_arrival_time ? (
+                <span className="text-brand-600 font-medium">ETA: {new Date(t.estimated_arrival_time).toLocaleString()}</span>
+              ) : (
+                <span>Est: {new Date(t.expected_delivery || t.planned_end_time).toLocaleDateString()}</span>
+              )}
             </div>
           )}
         </div>
