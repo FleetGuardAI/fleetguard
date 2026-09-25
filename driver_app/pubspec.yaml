@@ -54,7 +54,7 @@ dependencies:
   
   # Background Sync & Battery
   workmanager: ^0.5.2
-  activity_recognition_flutter: ^3.0.0
+  activity_recognition_flutter: ^6.1.0
 
   # UI
   google_fonts: ^6.1.0
