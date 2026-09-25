@@ -34,6 +34,21 @@ subprojects {
                 compileOptions.javaClass.getMethod("setSourceCompatibility", org.gradle.api.JavaVersion::class.java).invoke(compileOptions, org.gradle.api.JavaVersion.VERSION_17)
                 compileOptions.javaClass.getMethod("setTargetCompatibility", org.gradle.api.JavaVersion::class.java).invoke(compileOptions, org.gradle.api.JavaVersion.VERSION_17)
             } catch (e: Exception) { }
+
+            try {
+                val setCompileSdk = android.javaClass.getMethod("setCompileSdkVersion", Int::class.java)
+                setCompileSdk.invoke(android, 36)
+            } catch (e: Exception) {
+                try {
+                    val setCompileSdkStr = android.javaClass.getMethod("setCompileSdkVersion", String::class.java)
+                    setCompileSdkStr.invoke(android, "android-36")
+                } catch (e2: Exception) {
+                    try {
+                        val setCompileSdk = android.javaClass.getMethod("setCompileSdk", Int::class.java)
+                        setCompileSdk.invoke(android, 36)
+                    } catch (e3: Exception) { }
+                }
+            }
         }
     }
 }
