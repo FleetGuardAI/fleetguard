@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
@@ -38,17 +39,26 @@ class PodRepository {
     required int tripId,
     required String receiverName,
     required String remarks,
-    String? signatureUrl,
-    String? photoUrl,
+    required File signatureFile,
+    File? photoFile,
   }) async {
     try {
       final connectivityResult = await (Connectivity().checkConnectivity());
       if (connectivityResult == ConnectivityResult.none) {
         // Offline -> Save to Isar
+        final signatureBytes = await signatureFile.readAsBytes();
+        final signatureBase64 = base64Encode(signatureBytes);
+        
+        String? photoBase64;
+        if (photoFile != null) {
+          final photoBytes = await photoFile.readAsBytes();
+          photoBase64 = base64Encode(photoBytes);
+        }
+
         final syncService = await SyncService.init();
         final pod = OfflinePOD()
           ..tripId = tripId.toString()
-          ..base64Image = photoUrl ?? ''
+          ..base64Image = photoBase64 ?? ''
           ..notes = remarks
           ..isSynced = false
           ..createdAt = DateTime.now();
@@ -60,6 +70,12 @@ class PodRepository {
       }
 
       // Online
+      final String signatureUrl = await uploadFile(signatureFile, 'signature');
+      String? photoUrl;
+      if (photoFile != null) {
+        photoUrl = await uploadFile(photoFile, 'pod_photo');
+      }
+
       await _dio.post(
         '/api/v1/driver-app/pod/$tripId',
         data: {

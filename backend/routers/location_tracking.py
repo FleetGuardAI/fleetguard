@@ -128,6 +128,22 @@ async def batch_upload_locations(
 
     await db.commit()
 
+    if latest_location:
+        from routers.ws_driver import owner_ws_manager
+        # Broadcast the updated location to all owners in the same company
+        await owner_ws_manager.broadcast_to_company(driver.company_id or 0, {
+            "type": "location_update",
+            "driver_id": driver.id,
+            "driver_name": driver.name,
+            "latitude": latest_location.latitude,
+            "longitude": latest_location.longitude,
+            "speed": latest_location.speed,
+            "heading": latest_location.heading,
+            "battery_percent": latest_location.battery_percent,
+            "duty_status": driver.duty_status.value if driver.duty_status else None,
+            "last_updated": datetime.now(tz=timezone.utc).isoformat()
+        })
+
     logger.info(f"Driver {driver.id}: {locations_added} locations synced")
     return {"message": f"{locations_added} locations recorded"}
 

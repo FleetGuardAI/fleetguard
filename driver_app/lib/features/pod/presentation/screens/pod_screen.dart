@@ -81,19 +81,13 @@ class _PodScreenState extends ConsumerState<PodScreen> {
     
     try {
       final repo = ref.read(podRepositoryProvider);
-      
-      final String signatureUrl = await repo.uploadFile(_signatureFile!, 'signature');
-      String? photoUrl;
-      if (_photoFile != null) {
-        photoUrl = await repo.uploadFile(_photoFile!, 'pod_photo');
-      }
 
       await repo.submitPod(
         tripId: widget.tripId,
         receiverName: _receiverController.text.trim(),
         remarks: _remarksController.text.trim(),
-        signatureUrl: signatureUrl,
-        photoUrl: photoUrl,
+        signatureFile: _signatureFile!,
+        photoFile: _photoFile,
       );
 
       setState(() => _isSubmitting = false);

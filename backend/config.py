@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
     LLM_BASE_URL: Optional[str] = None
-    OCR_PROVIDER: str = "mock"
-    OCR_SPACE_API_KEY: str | None = None
+    OCR_PROVIDER: str = "ocr_space"
+    OCR_SPACE_API_KEY: str | None = "helloworld"
 
     # --- Maps & Routing ---
     GOOGLE_MAPS_API_KEY: Optional[str] = None
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     MSG91_WIDGET_TOKEN: Optional[str] = None
     OTP_PROVIDER: str = "MSG91"
     OTP_MOCK_MODE: bool = False
-    PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True
+    PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = False
 
     # --- Kafka (Event Bus) ---
     KAFKA_ENABLED: bool = False

@@ -169,11 +169,31 @@ class OCRSpaceProvider(OCRProvider):
                 end_time = time.monotonic()
                 processing_time_ms = int((end_time - start_time) * 1000)
 
+                # Basic Regex parsing for OCR Space since it doesn't return structured fields
+                extracted_fields = {}
+                import re
+                
+                # Attempt to find amount (e.g. Rs. 4500, Total: 100)
+                amount_match = re.search(r'(?:Rs\.?|INR|Total(?: Amount)?)[^0-9]*([0-9,]+\.?[0-9]*)', full_text, re.IGNORECASE)
+                if amount_match:
+                    extracted_fields["Total"] = amount_match.group(1).replace(',', '')
+                
+                # Attempt to find Date
+                date_match = re.search(r'\d{1,2}[\s/\-](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s/\-]\d{2,4}', full_text, re.IGNORECASE)
+                if date_match:
+                    extracted_fields["TransactionDate"] = date_match.group(0)
+                
+                # Assume first non-empty line is merchant name
+                lines = [line.strip() for line in full_text.split('\n') if line.strip()]
+                if lines:
+                    # Often the top lines have the company name
+                    extracted_fields["MerchantName"] = lines[0] if len(lines) > 0 else "Unknown"
+
                 return OCRResult(
                     text=full_text,
                     confidence=avg_confidence,
                     provider_name="ocr_space",
-                    extracted_fields={},
+                    extracted_fields=extracted_fields,
                     processing_time_ms=processing_time_ms,
                     provider_request_id=data.get("SearchablePDFURL"),  # Use a tracking id if available
                     metadata={"document_type": document_type}

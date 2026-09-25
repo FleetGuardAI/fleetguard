@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +27,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
   String _category = 'FUEL';
   bool _isOcrProcessing = false;
   bool _isSubmitting = false;
+  File? _receiptImage;
 
   void _simulateCameraAndOcr() async {
     final picker = ImagePicker();
@@ -32,11 +35,26 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     
     if (pickedFile == null) return;
 
-    setState(() => _isOcrProcessing = true);
+    // Compress image to ensure it is under 1MB for OCR
+    final targetPath = '${pickedFile.path}_compressed.jpg';
+    final compressedFile = await FlutterImageCompress.compressAndGetFile(
+      pickedFile.path,
+      targetPath,
+      quality: 70, // 70% quality usually drops to 100-300kb
+      minWidth: 1024,
+      minHeight: 1024,
+    );
+
+    if (compressedFile == null) return;
+
+    setState(() {
+      _isOcrProcessing = true;
+      _receiptImage = File(compressedFile.path);
+    });
     
     try {
       final repo = ref.read(expenseRepositoryProvider);
-      final ocrResult = await repo.processReceiptOcr(File(pickedFile.path));
+      final ocrResult = await repo.processReceiptOcr(_receiptImage!);
       
       setState(() {
         _isOcrProcessing = false;
@@ -88,11 +106,18 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     
     try {
       final repo = ref.read(expenseRepositoryProvider);
+      String? base64Image;
+      
+      if (_receiptImage != null) {
+        final bytes = await _receiptImage!.readAsBytes();
+        base64Image = base64Encode(bytes);
+      }
       
       await repo.createExpense(
         category: _category,
         amount: double.tryParse(_amountController.text) ?? 0,
         description: '${_vendorController.text} (GST: ${_gstController.text})',
+        base64ReceiptImage: base64Image,
       );
       
       setState(() => _isSubmitting = false);

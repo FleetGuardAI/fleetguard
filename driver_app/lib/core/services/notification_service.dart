@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
 
@@ -45,15 +47,29 @@ class NotificationService {
   /// Register FCM token with backend
   static Future<void> registerFcmToken(Dio dio) async {
     try {
-      final mockToken = 'mock_fcm_token_${Random().nextInt(999999)}';
-      AppLogger.info('Mock FCM Token generated: $mockToken');
+      String? token;
+      try {
+        // Attempt to get real FCM token
+        if (Firebase.apps.isNotEmpty) {
+           token = await FirebaseMessaging.instance.getToken();
+        }
+      } catch (e) {
+        AppLogger.error('Firebase not fully configured: $e');
+      }
+
+      if (token == null) {
+        AppLogger.warning('Falling back to mock FCM token since Firebase is missing google-services.json');
+        token = 'mock_fcm_token_${Random().nextInt(999999)}';
+      }
+      
+      AppLogger.info('FCM Token generated: $token');
       
       final driverId = await SecureStorage.getDriverId();
       if (driverId != null) {
         await dio.put(
           '/api/v1/driver-app/fcm-token', 
           data: {
-            'fcm_token': mockToken,
+            'fcm_token': token,
           },
         );
         AppLogger.info('FCM Token successfully registered with backend.');
