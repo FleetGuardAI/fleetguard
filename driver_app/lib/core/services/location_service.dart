@@ -39,11 +39,6 @@ void onStart(ServiceInstance service) async {
       accuracy: LocationAccuracy.high,
       distanceFilter: 10,
       intervalDuration: const Duration(seconds: AppConfig.gpsIntervalSeconds),
-      foregroundNotificationConfig: const ForegroundNotificationConfig(
-        notificationTitle: 'the vahan Driver',
-        notificationText: 'Tracking your location for fleet management',
-        enableWakeLock: true,
-      ),
     );
   } else if (Platform.isIOS) {
     locationSettings = AppleSettings(
@@ -114,7 +109,7 @@ void onStart(ServiceInstance service) async {
   startLocationStream();
 
   // Smart Polling based on Activity
-  final activityRecognition = ar.ActivityRecognition().activityStream(runForegroundService: true);
+  final activityRecognition = ar.ActivityRecognition().activityStream(runForegroundService: false);
   activityRecognition.listen((ar.ActivityEvent activity) {
     if (activity.type == ar.ActivityType.STILL) {
       stopLocationStream();
