@@ -114,14 +114,14 @@ void onStart(ServiceInstance service) async {
   startLocationStream();
 
   // Smart Polling based on Activity
-  final activityRecognition = ActivityRecognition.activityStream(runForegroundService: true);
-  activityRecognition.listen((Activity activity) {
-    if (activity.type == ActivityType.STILL) {
-      stopLocationStream();
-    } else if (activity.type == ActivityType.IN_VEHICLE || activity.type == ActivityType.ON_BICYCLE) {
-      startLocationStream();
-    }
-  });
+  // final activityRecognition = ActivityRecognition.activityStream(runForegroundService: true);
+  // activityRecognition.listen((Activity activity) {
+  //   if (activity.type == ActivityType.STILL) {
+  //     stopLocationStream();
+  //   } else if (activity.type == ActivityType.IN_VEHICLE || activity.type == ActivityType.ON_BICYCLE) {
+  //     startLocationStream();
+  //   }
+  // });
 
   // Background network sync
   Timer.periodic(const Duration(seconds: AppConfig.locationSyncIntervalSeconds), (_) async {
