@@ -1,0 +1,93 @@
+[
+  {
+    "scenario": "1. Normal Driving",
+    "events_count": 8,
+    "conditions_opened": 4,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "2. Stationary",
+    "events_count": 8,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "3. Brief Exit",
+    "events_count": 8,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "4. Walk Away",
+    "events_count": 20,
+    "conditions_opened": 2,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "5. Persistent Separation",
+    "events_count": 24,
+    "conditions_opened": 2,
+    "alerts_spawned": 2,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "6. Driver Returns",
+    "events_count": 8,
+    "conditions_opened": 2,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "7. Vehicle Moves, Driver Stat",
+    "events_count": 24,
+    "conditions_opened": 2,
+    "alerts_spawned": 2,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "8. Source Divergence",
+    "events_count": 16,
+    "conditions_opened": 2,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "9. Phone Outage",
+    "events_count": 24,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "10. Hardware Outage",
+    "events_count": 24,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "13. Jitter",
+    "events_count": 12,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "14. Multipath Jumps",
+    "events_count": 12,
+    "conditions_opened": 1,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  },
+  {
+    "scenario": "17. No False Alert (Noisy)",
+    "events_count": 40,
+    "conditions_opened": 0,
+    "alerts_spawned": 0,
+    "alerts_resolved": 0
+  }
+]

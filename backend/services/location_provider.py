@@ -161,3 +161,38 @@ class LocationProvider:
         except Exception as e:
             logger.error(f"Error fetching place details: {e}")
             return None
+
+    async def reverse_geocode(self, lat: float, lng: float) -> Optional[str]:
+        if self.provider not in ["google", "geoapify"] or not self.api_key:
+            return "Mock City"
+
+        try:
+            if self.provider == "geoapify":
+                url = f"https://api.geoapify.com/v1/geocode/reverse?lat={lat}&lon={lng}&apiKey={self.api_key}"
+                response = await self.client.get(url)
+                response.raise_for_status()
+                data = response.json()
+                features = data.get("features", [])
+                if features:
+                    city = features[0].get("properties", {}).get("city")
+                    if city:
+                        return city.lower()
+                return None
+
+            # Google Geocoding API
+            url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lng}&key={self.api_key}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = data.get("results", [])
+            if results:
+                # Find locality
+                for component in results[0].get("address_components", []):
+                    if "locality" in component.get("types", []):
+                        return component.get("long_name", "").lower()
+                        
+            return None
+        except Exception as e:
+            logger.error(f"Error in reverse geocoding: {e}")
+            return None

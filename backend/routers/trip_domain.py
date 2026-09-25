@@ -34,9 +34,20 @@ async def list_trips(
     current_user: User = Depends(get_current_user)
 ) -> List[TripResponse]:
     """List all trips with optional status and search filters."""
+    from services.eta_service import EtaService
     service = TripService(uow)
     trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id, search=search)
-    return [TripResponse.model_validate(t) for t in trips]
+    
+    eta_service = EtaService(uow.session)
+    response_list = []
+    for t in trips:
+        trip_resp = TripResponse.model_validate(t)
+        if t.status == TripStatus.IN_PROGRESS:
+            enrichment = await eta_service.enrich_trip_response(t)
+            trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+        response_list.append(trip_resp)
+        
+    return response_list
 
 @router.post("/trips", response_model=TripResponse, status_code=201)
 async def create_trip(
@@ -187,11 +198,19 @@ async def get_trip(
     current_user: User = Depends(get_current_user)
 ) -> TripResponse:
     """Get a single trip by ID."""
+    from services.eta_service import EtaService
     service = TripService(uow)
     trip = await service.get_trip(trip_id)
     if not trip or trip.company_id != current_user.company_id:
         raise HTTPException(404, f"Trip {trip_id} not found")
-    return TripResponse.model_validate(trip)
+        
+    trip_resp = TripResponse.model_validate(trip)
+    if trip.status == TripStatus.IN_PROGRESS:
+        eta_service = EtaService(uow.session)
+        enrichment = await eta_service.enrich_trip_response(trip)
+        trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+        
+    return trip_resp
 
 
 @router.patch("/trips/{trip_id}", response_model=TripResponse)

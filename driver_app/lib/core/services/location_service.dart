@@ -11,6 +11,10 @@ import '../config/app_config.dart';
 import '../storage/local_database.dart';
 import '../utils/logger.dart';
 
+import 'package:activity_recognition_flutter/activity_recognition_flutter.dart';
+import 'package:dio/dio.dart';
+import '../storage/secure_storage.dart';
+
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
@@ -56,32 +60,106 @@ void onStart(ServiceInstance service) async {
     );
   }
 
-  Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
-    try {
-      if (service is AndroidServiceInstance) {
-        service.setForegroundNotificationInfo(
-          title: "the vahan Driver",
-          content: "Tracking location: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}",
-        );
+  StreamSubscription<Position>? positionStream;
+  
+  void startLocationStream() {
+    if (positionStream != null && !positionStream!.isPaused) return;
+    
+    if (positionStream != null && positionStream!.isPaused) {
+      positionStream!.resume();
+      return;
+    }
+
+    positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
+      try {
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: "the vahan Driver",
+            content: "Tracking location: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}",
+          );
+        }
+        
+        await LocalDatabase.insertLocation({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'speed': position.speed,
+          'heading': position.heading,
+          'accuracy': position.accuracy,
+          'timestamp': position.timestamp.toIso8601String(),
+          'battery_percent': -1,
+          'activity_state': 'ACTIVE',
+        });
+        
+        service.invoke('update', {
+          "latitude": position.latitude,
+          "longitude": position.longitude,
+        });
+      } catch (e) {
+        print('Failed to store location in background: $e');
       }
-      
-      await LocalDatabase.insertLocation({
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'speed': position.speed,
-        'heading': position.heading,
-        'accuracy': position.accuracy,
-        'timestamp': position.timestamp.toIso8601String(),
-        'battery_percent': -1,
-        'activity_state': 'ACTIVE',
-      });
-      
-      service.invoke('update', {
-        "latitude": position.latitude,
-        "longitude": position.longitude,
-      });
+    });
+  }
+
+  void stopLocationStream() {
+    positionStream?.pause();
+    if (service is AndroidServiceInstance) {
+      service.setForegroundNotificationInfo(
+        title: "the vahan Driver (Paused)",
+        content: "Vehicle stationary. Battery saving mode active.",
+      );
+    }
+  }
+
+  // Initial start
+  startLocationStream();
+
+  // Smart Polling based on Activity
+  final activityRecognition = ActivityRecognition.activityStream(runForegroundService: true);
+  activityRecognition.listen((Activity activity) {
+    if (activity.type == ActivityType.STILL) {
+      stopLocationStream();
+    } else if (activity.type == ActivityType.IN_VEHICLE || activity.type == ActivityType.ON_BICYCLE) {
+      startLocationStream();
+    }
+  });
+
+  // Background network sync
+  Timer.periodic(const Duration(seconds: AppConfig.locationSyncIntervalSeconds), (_) async {
+    try {
+      final locations = await LocalDatabase.getUnSyncedLocations(limit: AppConfig.gpsBatchSize);
+      if (locations.isEmpty) return;
+
+      final token = await SecureStorage.getAccessToken();
+      if (token == null) return;
+
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+      ));
+
+      final response = await dio.post(
+        '/api/v1/driver-app/location/batch',
+        data: {
+          'locations': locations.map((l) => {
+            'latitude': l['latitude'],
+            'longitude': l['longitude'],
+            'speed': l['speed'],
+            'heading': l['heading'],
+            'accuracy': l['accuracy'],
+            'timestamp': l['timestamp'],
+            'battery_percent': l['battery_percent'],
+            'activity_state': l['activity_state'],
+          }).toList(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final ids = locations.map((l) => l['id'] as int).toList();
+        await LocalDatabase.markLocationsSynced(ids);
+      }
     } catch (e) {
-      print('Failed to store location in background: $e');
+      print('Background sync failed: $e');
     }
   });
 }

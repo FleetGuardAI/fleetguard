@@ -47,6 +47,7 @@ class TripResponse(BaseModel):
     actual_start_time: Optional[datetime] = None
     planned_end_time: Optional[datetime] = None
     actual_end_time: Optional[datetime] = None
+    estimated_arrival_time: Optional[datetime] = None
 
     # --- Assignments ---
     vehicle_id: Optional[int] = None
