@@ -86,11 +86,11 @@ export default function Register() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden p-8 space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-12 h-12 flex items-center justify-center">
-            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+          <div className="h-12 flex items-center justify-center mb-2">
+            <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" className="h-full w-auto object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900">
-            Create Fleet<span className="text-emerald-600">Guard</span> Account
+            Create Account
           </h2>
           <p className="text-sm text-slate-500">
             Register your company and primary admin access
@@ -101,7 +101,7 @@ export default function Register() {
           <Input
             label="Company Name"
             type="text"
-            placeholder="FleetGuard Logistics Ltd"
+            placeholder="The Vahan Logistics Ltd"
             value={form.company_name}
             onChange={(e) => setField('company_name', e.target.value)}
             error={errors.company_name}
@@ -134,7 +134,7 @@ export default function Register() {
           <Input
             label="Email (Optional)"
             type="email"
-            placeholder="owner@fleetguard.com"
+            placeholder="owner@thevahan.com"
             value={form.email}
             onChange={(e) => setField('email', e.target.value)}
             error={errors.email}

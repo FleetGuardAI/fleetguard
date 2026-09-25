@@ -253,20 +253,19 @@ async def list_driver_documents(
         raise HTTPException(status_code=403, detail="Only admins can view driver documents")
 
     # Fetch documents where target_id == str(driver_id) and target_type == "DRIVER"
-    result = await db.execute(
-        select(Document)
-        .where(Document.target_id == str(driver_id))
-        .where(Document.target_type == "DRIVER")
-        .where(Document.company_id == current_user.company_id)
-        .order_by(desc(Document.created_at))
-    )
+    stmt = select(Document).where(Document.target_id == str(driver_id)).where(Document.target_type == "DRIVER")
+    if current_user.role != UserRole.SUPER_ADMIN:
+        stmt = stmt.where(Document.company_id == current_user.company_id)
+    
+    result = await db.execute(stmt.order_by(desc(Document.created_at)))
     docs = result.scalars().all()
     
     from services.file_upload_service import storage_service
     results = []
     for doc in docs:
         resp = DocumentResponse.model_validate(doc)
-        resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+        signed_url = storage_service.create_signed_url(doc.storage_path)
+        resp.storage_path = signed_url if signed_url else doc.storage_path
         results.append(resp)
     return results
 
@@ -349,7 +348,7 @@ async def verify_document(
                     any_latest_rejected = True
                     
             if has_all_required and all_required_approved:
-                driver.verification_status = VerificationStatus.APPROVED
+                driver.verification_status = VerificationStatus.PENDING_APPROVAL
             elif any_latest_rejected:
                 driver.verification_status = VerificationStatus.REJECTED
             elif has_all_required:
@@ -357,10 +356,24 @@ async def verify_document(
             else:
                 driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
 
+            # Create notification for the driver on rejection
+            if payload.status == DocumentVerificationStatus.REJECTED and driver.user_id:
+                from models.notification import Notification, NotificationCategory
+                category_label = (doc.category or "document").replace("_", " ").title()
+                notification = Notification(
+                    category=NotificationCategory.SYSTEM,
+                    title="Document Rejected",
+                    description=f"Your {category_label} document has been rejected. Reason: {payload.rejection_reason}",
+                    company_id=current_user.company_id,
+                    user_id=driver.user_id,
+                )
+                db.add(notification)
+
     await db.commit()
     await db.refresh(doc)
     
     from services.file_upload_service import storage_service
     resp = DocumentResponse.model_validate(doc)
-    resp.storage_path = storage_service.create_signed_url(doc.storage_path)
+    signed_url = storage_service.create_signed_url(doc.storage_path)
+    resp.storage_path = signed_url if signed_url else doc.storage_path
     return resp

@@ -99,13 +99,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Logo */}
       <div className="flex items-center h-16 px-5 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <img src="/assets/fleetguard-logo.png" alt="FleetGuard Logo" className="w-full h-full object-contain" />
+        <div className="flex items-center gap-2.5 w-full">
+          <div className="h-8 flex items-center justify-start flex-shrink-0">
+            <img src="/assets/the_vahan_logo.png" alt="the vahan Logo" className="h-full w-auto object-contain" />
           </div>
-          <span className="text-[15px] font-bold text-content whitespace-nowrap">
-            Fleet<span className="text-brand-500">Guard</span>
-          </span>
         </div>
         {isMobile && (
           <button onClick={onMobileClose} className="ml-auto p-1.5 rounded-lg hover:bg-surface-tertiary text-content-secondary" aria-label="Close navigation">

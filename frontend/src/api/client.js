@@ -1,5 +1,5 @@
 /**
- * FleetGuard API Client
+ * the vahan API Client
  * Fetch wrapper for communicating with the FastAPI backend.
  * @module api/client
  */
@@ -59,7 +59,7 @@ async function request(endpoint, options = {}) {
     const data = await response.json();
     return data;
   } catch (err) {
-    console.warn(`[FleetGuard API] ${endpoint} failed:`, err.message);
+    console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
     throw err;
   }
 }
@@ -339,6 +339,7 @@ const api = {
   // ── Generic REST Methods ───────────────────────────────
   get: (url) => request(url),
   post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
+  put: (url, body) => request(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
   patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (url) => request(url, { method: 'DELETE' }),
 };

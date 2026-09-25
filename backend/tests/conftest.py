@@ -4,10 +4,15 @@ import pytest_asyncio
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
 
 os.environ["OCR_PROVIDER"] = "mock"
 os.environ["GOOGLE_DOCUMENT_AI_PROJECT_ID"] = "test"
-os.environ["GOOGLE_DOCUMENT_AI_PROCESSOR_ID"] = "test"
 os.environ["GOOGLE_DOCUMENT_AI_LOCATION"] = "us"
 os.environ["GOOGLE_MAPS_API_KEY"] = "test"
 os.environ["TEST_DATABASE_URL"] = "sqlite+aiosqlite:///./test_db.sqlite"
@@ -20,7 +25,7 @@ from config import settings
 # We must monkeypatch StorageService BEFORE anything else imports it,
 # or just monkeypatch the instance directly since it's a singleton.
 import services.file_upload_service as file_upload_service
-file_upload_service.storage_service.supabase = file_upload_service.MockSupabaseStorage()
+file_upload_service.storage_service._supabase = file_upload_service.MockSupabaseStorage()
 file_upload_service.storage_service.bucket = "test-bucket"
 
 import services.otp_service as otp_service

@@ -1,21 +1,28 @@
 """
 FleetGuard — Expense Domain API Router
-Provides Read-Only REST APIs for the Expense Business Domain.
-(Write operations are processed asynchronously via Operational Events).
+Provides REST APIs for the Expense Business Domain.
+Includes proper approval/rejection workflow with authorization.
 """
 
+import logging
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from database import get_db
-from models.expense_domain import ExpenseCategory, ExpenseStatus
-from schemas.expense_domain import ExpenseResponse
+from models.expense_domain import ExpenseCategory, ExpenseStatus, Expense
+from schemas.expense_domain import ExpenseResponse, ExpenseApproveRequest, ExpenseRejectRequest
 from repositories.expense_repository import ExpenseRepository
 from services.auth_service import get_current_user
-from models.user import User
+from models.user import User, UserRole
+
+logger = logging.getLogger("fleetguard.expense_domain")
 
 router = APIRouter(prefix="/v1", tags=["Expense Domain"])
+
+# Roles allowed to approve/reject expenses
+REVIEWER_ROLES = {UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN}
 
 
 @router.get("/expenses/search", response_model=List[ExpenseResponse])
@@ -122,11 +129,9 @@ async def create_expense(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> ExpenseResponse:
-    from models.expense_domain import Expense
     from models.vehicle_domain import Vehicle
     from models.driver_domain import Driver
     from models.trip_domain import Trip
-    from datetime import datetime
     import uuid
 
     if payload.get("vehicle_id"):
@@ -163,6 +168,7 @@ async def create_expense(
     await db.refresh(expense)
     return ExpenseResponse.model_validate(expense)
 
+
 @router.patch("/expenses/{expense_id}", response_model=ExpenseResponse)
 async def update_expense(
     expense_id: int,
@@ -170,14 +176,104 @@ async def update_expense(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> ExpenseResponse:
-    from models.expense_domain import Expense
+    """Update non-status expense fields. For approval/rejection, use the dedicated endpoints."""
     expense = await db.get(Expense, expense_id)
     if not expense or expense.company_id != current_user.company_id:
         raise HTTPException(404, f"Expense {expense_id} not found")
 
+    # Block direct status changes via PATCH — use approve/reject endpoints instead
     if "status" in payload:
-        expense.status = payload["status"]
+        raise HTTPException(
+            400,
+            "Status changes are not allowed via PATCH. Use POST /expenses/{id}/approve or /expenses/{id}/reject."
+        )
     
+    if "description" in payload:
+        expense.description = payload["description"]
+    if "amount" in payload:
+        expense.amount = float(payload["amount"])
+    if "category" in payload:
+        try:
+            expense.category = ExpenseCategory(payload["category"])
+        except ValueError:
+            pass
+
     await db.commit()
     await db.refresh(expense)
+    return ExpenseResponse.model_validate(expense)
+
+
+@router.post("/expenses/{expense_id}/approve", response_model=ExpenseResponse)
+async def approve_expense(
+    expense_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> ExpenseResponse:
+    """
+    Approve a pending expense claim.
+    Only COMPANY_ADMIN, SUPER_ADMIN, FLEET_MANAGER, or ADMIN roles can approve.
+    """
+    # Authorization check
+    if current_user.role not in REVIEWER_ROLES:
+        raise HTTPException(403, "You do not have permission to approve expenses")
+
+    expense = await db.get(Expense, expense_id)
+    if not expense or expense.company_id != current_user.company_id:
+        raise HTTPException(404, f"Expense {expense_id} not found")
+
+    # State validation — only PENDING expenses can be approved
+    if expense.status != ExpenseStatus.PENDING:
+        raise HTTPException(
+            400,
+            f"Cannot approve expense with status '{expense.status.value}'. Only PENDING expenses can be approved."
+        )
+
+    expense.status = ExpenseStatus.APPROVED
+    expense.reviewed_by = str(current_user.id)
+    expense.reviewed_at = datetime.now(timezone.utc)
+    expense.rejection_reason = None  # Clear any previous rejection reason
+
+    await db.commit()
+    await db.refresh(expense)
+
+    logger.info(f"Expense {expense_id} approved by user {current_user.id}")
+    return ExpenseResponse.model_validate(expense)
+
+
+@router.post("/expenses/{expense_id}/reject", response_model=ExpenseResponse)
+async def reject_expense(
+    expense_id: int,
+    payload: ExpenseRejectRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> ExpenseResponse:
+    """
+    Reject a pending expense claim.
+    Only COMPANY_ADMIN, SUPER_ADMIN, FLEET_MANAGER, or ADMIN roles can reject.
+    A rejection reason is required.
+    """
+    # Authorization check
+    if current_user.role not in REVIEWER_ROLES:
+        raise HTTPException(403, "You do not have permission to reject expenses")
+
+    expense = await db.get(Expense, expense_id)
+    if not expense or expense.company_id != current_user.company_id:
+        raise HTTPException(404, f"Expense {expense_id} not found")
+
+    # State validation — only PENDING expenses can be rejected
+    if expense.status != ExpenseStatus.PENDING:
+        raise HTTPException(
+            400,
+            f"Cannot reject expense with status '{expense.status.value}'. Only PENDING expenses can be rejected."
+        )
+
+    expense.status = ExpenseStatus.REJECTED
+    expense.reviewed_by = str(current_user.id)
+    expense.reviewed_at = datetime.now(timezone.utc)
+    expense.rejection_reason = payload.rejection_reason
+
+    await db.commit()
+    await db.refresh(expense)
+
+    logger.info(f"Expense {expense_id} rejected by user {current_user.id}: {payload.rejection_reason}")
     return ExpenseResponse.model_validate(expense)

@@ -241,6 +241,46 @@ export default function VehicleDetail() {
         </Card>
       </div>
 
+      {/* Documents Section */}
+      <div className="pt-2">
+        <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+          <Info className="h-5 w-5 text-brand-600" />
+          Vehicle Documents
+        </h2>
+        <Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[
+              { type: 'rc', label: 'RC', url: vehicle.rc_url, expiry: null },
+              { type: 'insurance', label: 'Insurance', url: vehicle.insurance_url, expiry: vehicle.insurance_expiry },
+              { type: 'puc', label: 'PUC', url: vehicle.puc_url, expiry: vehicle.puc_expiry },
+              { type: 'fitness', label: 'Fitness', url: vehicle.fitness_url, expiry: vehicle.fitness_expiry },
+              { type: 'permit', label: 'Permit', url: vehicle.permit_url, expiry: vehicle.permit_expiry }
+            ].map(({ type, label, url, expiry }) => (
+              <div key={type} className="border border-border p-4 rounded-xl bg-surface-alt flex flex-col justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-content block mb-1">{label}</span>
+                  {expiry && (
+                    <span className="text-xs text-content-secondary flex items-center gap-1 mt-1">
+                      <Calendar className="h-3 w-3" />
+                      Exp: {new Date(expiry).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-border">
+                  {url ? (
+                    <a href={url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline flex items-center gap-1">
+                      <Info className="h-3 w-3" /> View Document
+                    </a>
+                  ) : (
+                    <span className="text-xs text-content-muted">Not uploaded</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       {/* Financial Intelligence Section */}
       <div className="pt-2">
         <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">

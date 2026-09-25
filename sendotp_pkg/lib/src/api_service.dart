@@ -47,7 +47,12 @@ class ApiService {
     } else {
       final responseBody = response.body;
       if (responseCode >= 200 && responseCode < 400) {
-        return jsonDecode(responseBody);
+        final decoded = jsonDecode(responseBody);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        if (decoded is String) return {'message': decoded};
+        if (decoded is List) return {'data': decoded};
+        return {'data': decoded?.toString() ?? 'Success'};
       } else {
         throw Exception('Failed to ${isPost ? 'post' : 'get'} data: $responseCode, $responseBody');
       }

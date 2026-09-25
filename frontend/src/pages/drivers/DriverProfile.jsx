@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User } from 'lucide-react';
-import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument } from '@/api/driverApi';
+import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User, XCircle } from 'lucide-react';
+import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument, approveDriver } from '@/api/driverApi';
 import { getVehicles } from '@/api/vehicleApi';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -31,9 +31,14 @@ export default function DriverProfile() {
   const [deleting, setDeleting] = useState(false);
 
   const [documents, setDocuments] = useState([]);
-  const [verifyingDoc, setVerifyingDoc] = useState(null);
-  const [verifyStatus, setVerifyStatus] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  
+  const [bulkDecisions, setBulkDecisions] = useState({});
+  const [bulkVerifying, setBulkVerifying] = useState(false);
+
+  // Driver approval state
+  const [approving, setApproving] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [driverRejectionReason, setDriverRejectionReason] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -50,6 +55,7 @@ export default function DriverProfile() {
       const mappedDocs = (docsData || []).map(doc => ({
         id: doc.id,
         name: doc.category ? doc.category.replace('_', ' ').toUpperCase() : `Document #${doc.id}`,
+        category: doc.category,
         status: doc.verification_status.toLowerCase(),
         url: doc.storage_path,
         rejection_reason: doc.rejection_reason,
@@ -101,21 +107,88 @@ export default function DriverProfile() {
     }
   };
 
-  const handleVerifyDocument = async () => {
-    if (verifyStatus === 'REJECTED' && !rejectionReason) {
-      error('Rejection Reason Required', 'Please provide a reason for rejecting the document.');
+  const updateBulkDecision = (docId, field, value) => {
+    setBulkDecisions(prev => ({
+      ...prev,
+      [docId]: {
+        ...prev[docId] || {},
+        [field]: value
+      }
+    }));
+  };
+
+  const handleBulkVerify = async () => {
+    const decisions = Object.entries(bulkDecisions);
+    if (decisions.length === 0) return;
+    
+    // Check if any rejected document is missing a reason
+    const missingReason = decisions.find(([_, dec]) => dec.status === 'REJECTED' && !dec.reason);
+    if (missingReason) {
+      error('Rejection Reason Required', 'Please provide a rejection reason for all rejected documents.');
       return;
     }
+
+    setBulkVerifying(true);
     try {
-      await verifyDriverDocument(verifyingDoc.id, verifyStatus, rejectionReason);
-      success('Verification Updated', `Document marked as ${verifyStatus.toLowerCase()}.`);
-      setVerifyingDoc(null);
-      setRejectionReason('');
-      loadData(); // reload to get new driver status and updated doc
+      await Promise.all(decisions.map(([docId, dec]) => 
+        verifyDriverDocument(docId, dec.status, dec.reason)
+      ));
+      success('Verifications Updated', 'Successfully processed document verifications.');
+      setBulkDecisions({});
+      loadData();
     } catch (e) {
-      error('Verification Error', 'Failed to update document status.');
+      error('Verification Error', 'Failed to update document statuses.');
+    } finally {
+      setBulkVerifying(false);
     }
   };
+
+  const handleApproveDriver = async () => {
+    setApproving(true);
+    try {
+      await approveDriver(driver.id, 'APPROVED');
+      success('Driver Approved', `${driver.name} has been approved and activated.`);
+      await loadData();
+    } catch (e) {
+      error('Approval Error', e.message || 'Failed to approve driver.');
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleRejectDriver = async () => {
+    if (!driverRejectionReason) {
+      error('Rejection Reason Required', 'Please provide a reason for rejecting the driver.');
+      return;
+    }
+    setApproving(true);
+    try {
+      await approveDriver(driver.id, 'REJECTED', driverRejectionReason);
+      success('Driver Rejected', `${driver.name} has been rejected.`);
+      setRejectModalOpen(false);
+      setDriverRejectionReason('');
+      await loadData();
+    } catch (e) {
+      error('Rejection Error', e.message || 'Failed to reject driver.');
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // Check if all required documents are present and approved
+  const requiredCategories = ['license_front', 'license_back', 'aadhaar_front', 'aadhaar_back', 'selfie'];
+  const allDocsApproved = requiredCategories.every(cat => {
+    const doc = documents.find(d => d.category === cat);
+    return doc && doc.status === 'approved';
+  });
+  const hasRejectedDocs = documents.some(d => d.status === 'rejected');
+  const hasMissingDocs = requiredCategories.some(cat => !documents.find(d => d.category === cat));
+
+  const canApproveDriver =
+    driver?.verification_status === 'PENDING_APPROVAL' &&
+    allDocsApproved &&
+    !hasRejectedDocs &&
+    !hasMissingDocs;
 
   const getRiskVariant = (score) => {
     if (score > 60) return 'danger';
@@ -155,8 +228,8 @@ export default function DriverProfile() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-content">{driver.name}</h1>
-              <Badge variant={driver.is_active ? 'success' : 'neutral'} dot>
-                {driver.is_active ? 'Active' : 'Inactive'}
+              <Badge variant={driver.status === 'ACTIVE' ? 'success' : 'neutral'} dot>
+                {driver.status === 'ACTIVE' ? 'Active' : 'Inactive'}
               </Badge>
             </div>
             <p className="text-sm text-content-secondary mt-0.5 flex items-center gap-1">
@@ -246,6 +319,43 @@ export default function DriverProfile() {
         </Card>
       </div>
 
+      {/* Driver Approval Banner */}
+      {canApproveDriver && (
+        <Card className="p-4 border-2 border-green-200 bg-green-50/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-green-900">Ready for Final Approval</h3>
+                <p className="text-xs text-green-700">All 5 required documents have been verified and approved.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-200 text-red-700 hover:bg-red-50"
+                icon={<XCircle className="h-4 w-4" />}
+                onClick={() => setRejectModalOpen(true)}
+              >
+                Reject Driver
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<CheckCircle className="h-4 w-4" />}
+                onClick={handleApproveDriver}
+                loading={approving}
+              >
+                Approve Driver
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Allocated Vehicle Card */}
         <Card className="lg:col-span-1">
@@ -307,134 +417,140 @@ export default function DriverProfile() {
               Credentials Documents Verification
             </CardTitle>
           </CardHeader>
-          <div className="space-y-4">
-            {/* We no longer show old fields like driver.license_front_url directly here, 
-                since they are managed via the documents table now. */}
-
-
+          <div className="p-4 flex justify-between items-center bg-surface-secondary border-b border-border">
+            <span className="text-sm text-content-secondary">Review and verify uploaded credentials below.</span>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              disabled={Object.keys(bulkDecisions).length === 0} 
+              loading={bulkVerifying} 
+              onClick={handleBulkVerify}
+            >
+              Submit Verifications
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
             {/* System-level documents */}
             {documents.length === 0 ? (
-              <div className="text-sm text-content-secondary py-4">No documents uploaded.</div>
-            ) : documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-surface border border-border rounded-xl hover:border-brand-300 transition-colors gap-3"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-surface-secondary text-content-secondary mt-0.5">
-                    {doc.url ? (
-                      <img src={doc.url} alt={doc.name} className="h-10 w-10 object-cover rounded" onError={(e) => { e.target.style.display = 'none'; }} />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
+              <div className="col-span-full text-sm text-content-secondary py-4">No documents uploaded.</div>
+            ) : documents.map((doc) => {
+              const currentDecision = bulkDecisions[doc.id] || {};
+              return (
+              <Card key={doc.id} className="overflow-hidden flex flex-col border border-border shadow-sm hover:shadow-md transition-shadow">
+                <div className="h-48 bg-surface-secondary relative flex items-center justify-center border-b border-border p-2">
+                  {doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noreferrer" className="h-full w-full flex items-center justify-center cursor-pointer">
+                      <img src={doc.url} alt={doc.name} className="max-h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </a>
+                  ) : (
+                    <FileText className="h-10 w-10 text-content-muted" />
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
+                      {doc.status.toUpperCase()}
+                    </Badge>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
-                    <span className="text-xs text-content-secondary mt-0.5 block flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-content-muted" />
-                      Uploaded: {doc.created_at}
+                </div>
+                <div className="p-4 flex flex-col flex-1">
+                  <h4 className="text-sm font-semibold text-content">{doc.name}</h4>
+                  <span className="text-xs text-content-secondary mt-1 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Uploaded: {doc.created_at}
+                  </span>
+                  {doc.rejection_reason && (
+                    <span className="text-xs text-red-600 mt-2 block bg-red-50 p-2 rounded">
+                      Rejected: {doc.rejection_reason}
                     </span>
-                    {doc.rejection_reason && (
-                      <span className="text-xs text-red-600 mt-0.5 block">
-                        Rejected: {doc.rejection_reason}
-                      </span>
-                    )}
-                  </div>
+                  )}
+                  
+                  {doc.status === 'pending' && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name={`status-${doc.id}`} 
+                            value="APPROVED" 
+                            checked={currentDecision.status === 'APPROVED'} 
+                            onChange={() => updateBulkDecision(doc.id, 'status', 'APPROVED')}
+                            className="text-green-600 focus:ring-green-500 cursor-pointer"
+                          />
+                          <span className="text-sm font-medium text-green-700">Approve</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name={`status-${doc.id}`} 
+                            value="REJECTED" 
+                            checked={currentDecision.status === 'REJECTED'} 
+                            onChange={() => updateBulkDecision(doc.id, 'status', 'REJECTED')}
+                            className="text-red-600 focus:ring-red-500 cursor-pointer"
+                          />
+                          <span className="text-sm font-medium text-red-700">Reject</span>
+                        </label>
+                      </div>
+                      {currentDecision.status === 'REJECTED' && (
+                        <input
+                          type="text"
+                          value={currentDecision.reason || ''}
+                          onChange={(e) => updateBulkDecision(doc.id, 'reason', e.target.value)}
+                          placeholder="Rejection Reason..."
+                          className="w-full h-8 px-2 border border-border bg-surface text-content text-xs rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <Badge variant={doc.status === 'approved' ? 'success' : doc.status === 'rejected' ? 'danger' : 'warning'}>
-                    {doc.status.toUpperCase()}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<CheckCircle className="h-3.5 w-3.5 text-brand-600" />}
-                    onClick={() => {
-                      setVerifyingDoc(doc);
-                      setVerifyStatus('');
-                      setRejectionReason('');
-                    }}
-                  >
-                    Verify
-                  </Button>
-                </div>
-              </div>
-            ))}
+              </Card>
+            )})}
           </div>
         </Card>
       </div>
 
-      {/* Verify Document Modal */}
+
+
+      {/* Driver Rejection Modal */}
       <Modal
-        open={!!verifyingDoc}
-        onClose={() => setVerifyingDoc(null)}
-        title="Verify Document"
-        description={`Review the document for ${verifyingDoc?.name}`}
+        open={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Reject Driver"
+        description={`Reject the driver account for ${driver?.name}`}
+        closable={!approving}
         footer={
           <>
-            <Button variant="outline" onClick={() => setVerifyingDoc(null)}>
+            <Button variant="outline" onClick={() => setRejectModalOpen(false)} disabled={approving}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleVerifyDocument} 
-              disabled={!verifyStatus || (verifyStatus === 'REJECTED' && !rejectionReason)}
-            >
-              Confirm
+            <Button variant="danger" onClick={handleRejectDriver} loading={approving} disabled={!driverRejectionReason}>
+              Reject Driver
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          {verifyingDoc?.url && (
-            <div className="flex justify-center bg-surface-secondary p-2 rounded-lg border border-border">
-              <img src={verifyingDoc.url} alt="Document preview" className="max-h-64 object-contain rounded" />
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-content-secondary">
-              Verification Decision
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2">
-                <input 
-                  type="radio" 
-                  name="status" 
-                  value="APPROVED" 
-                  checked={verifyStatus === 'APPROVED'} 
-                  onChange={(e) => setVerifyStatus(e.target.value)} 
-                />
-                <span className="text-sm font-medium text-green-700">Approve</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input 
-                  type="radio" 
-                  name="status" 
-                  value="REJECTED" 
-                  checked={verifyStatus === 'REJECTED'} 
-                  onChange={(e) => setVerifyStatus(e.target.value)} 
-                />
-                <span className="text-sm font-medium text-red-700">Reject</span>
-              </label>
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
+            <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-950">
+                This will reject the driver's account
+              </p>
+              <p className="text-xs text-red-700">
+                The driver will remain inactive and will be notified of the rejection reason.
+              </p>
             </div>
           </div>
-
-          {verifyStatus === 'REJECTED' && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-content-secondary">
-                Rejection Reason (Required)
-              </label>
-              <input
-                type="text"
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="e.g. Image is blurry, name mismatch..."
-                className="w-full h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-content-secondary">
+              Rejection Reason (Required)
+            </label>
+            <input
+              type="text"
+              value={driverRejectionReason}
+              onChange={(e) => setDriverRejectionReason(e.target.value)}
+              placeholder="e.g. Documents do not match, identity verification failed..."
+              className="w-full h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            />
+          </div>
         </div>
       </Modal>
 

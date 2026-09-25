@@ -11,7 +11,7 @@ export async function getSettings() {
     const userObj = localUser ? JSON.parse(localUser) : null;
 
     return {
-      companyName: userObj?.company?.company_name || 'FleetGuard Logistics Pvt Ltd',
+      companyName: userObj?.company?.company_name || 'the vahan Logistics Pvt Ltd',
       primaryContact: userObj?.user?.full_name || 'Admin User',
       timezone: 'Asia/Kolkata (IST)',
       currency: 'INR (₹)',
@@ -21,7 +21,7 @@ export async function getSettings() {
     };
   } catch {
     return {
-      companyName: 'FleetGuard Logistics Pvt Ltd',
+      companyName: 'the vahan Logistics Pvt Ltd',
       primaryContact: 'Admin User',
       timezone: 'Asia/Kolkata (IST)',
       currency: 'INR (₹)',

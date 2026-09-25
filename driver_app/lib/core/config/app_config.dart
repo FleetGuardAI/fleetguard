@@ -1,4 +1,4 @@
-/// FleetGuard Driver App Configuration
+/// the vahan Driver App Configuration
 ///
 /// Central configuration constants loaded from environment or compile-time flags.
 /// For demo mode, defaults point to localhost backend.
@@ -24,13 +24,6 @@ class AppConfig {
   /// Driver app API prefix
   static const String driverApiPrefix = '/api/v1/driver-app';
 
-  static const String msg91MobileWidgetId = String.fromEnvironment(
-    'MSG91_MOBILE_WIDGET_ID',
-  );
-
-  static const String msg91MobileWidgetToken = String.fromEnvironment(
-    'MSG91_MOBILE_WIDGET_TOKEN',
-  );
 
   /// GPS tracking interval in seconds
   static const int gpsIntervalSeconds = 5;

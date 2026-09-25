@@ -85,9 +85,9 @@ class Settings(BaseSettings):
     # In DEBUG this can help local testing of forgot-password without SMS/email integration.
     # --- MSG91 OTP ---
     MSG91_AUTH_KEY: Optional[str] = None
+    MSG91_TEMPLATE_ID: Optional[str] = None
     MSG91_WIDGET_ID: Optional[str] = None
     MSG91_WIDGET_TOKEN: Optional[str] = None
-    MSG91_TEMPLATE_ID: Optional[str] = None
     OTP_PROVIDER: str = "MSG91"
     OTP_MOCK_MODE: bool = False
     PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = True

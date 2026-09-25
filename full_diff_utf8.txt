@@ -1,0 +1,1081 @@
+﻿diff --git a/backend/repositories/document_repository.py b/backend/repositories/document_repository.py
+index 2b09f9c..41b850b 100644
+--- a/backend/repositories/document_repository.py
++++ b/backend/repositories/document_repository.py
+@@ -39,6 +39,11 @@ class DocumentRepository:
+             storage_path=payload.storage_path,
+             uploaded_by=payload.uploaded_by,
+             company_id=payload.company_id,
++            name=payload.name,
++            category=payload.category,
++            expiry_date=payload.expiry_date,
++            target_id=payload.target_id,
++            target_type=payload.target_type,
+         )
+         self._session.add(doc)
+         await self._session.flush()
+diff --git a/backend/routers/documents.py b/backend/routers/documents.py
+index 73c961c..af61b95 100644
+--- a/backend/routers/documents.py
++++ b/backend/routers/documents.py
+@@ -349,7 +349,7 @@ async def verify_document(
+                     any_latest_rejected = True
+                     
+             if has_all_required and all_required_approved:
+-                driver.verification_status = VerificationStatus.APPROVED
++                driver.verification_status = VerificationStatus.PENDING_APPROVAL
+             elif any_latest_rejected:
+                 driver.verification_status = VerificationStatus.REJECTED
+             elif has_all_required:
+@@ -357,6 +357,19 @@ async def verify_document(
+             else:
+                 driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
+ 
++            # Create notification for the driver on rejection
++            if payload.status == DocumentVerificationStatus.REJECTED and driver.user_id:
++                from models.notification import Notification, NotificationCategory
++                category_label = (doc.category or "document").replace("_", " ").title()
++                notification = Notification(
++                    category=NotificationCategory.SYSTEM,
++                    title="Document Rejected",
++                    description=f"Your {category_label} document has been rejected. Reason: {payload.rejection_reason}",
++                    company_id=current_user.company_id,
++                    user_id=driver.user_id,
++                )
++                db.add(notification)
++
+     await db.commit()
+     await db.refresh(doc)
+     
+diff --git a/backend/routers/driver_domain.py b/backend/routers/driver_domain.py
+index 1245653..c0da7c2 100644
+--- a/backend/routers/driver_domain.py
++++ b/backend/routers/driver_domain.py
+@@ -6,6 +6,7 @@ Provides REST APIs for Driver Business Domain CRUD operations.
+ from datetime import datetime, timezone
+ from fastapi import APIRouter, Depends, HTTPException, Query, status
+ from typing import List, Optional
++from pydantic import BaseModel, Field
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+@@ -18,7 +19,7 @@ from models.vehicle_domain import Vehicle
+ from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+ from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
+ from services.auth_service import get_current_user
+-from models.user import User
++from models.user import User, UserRole
+ 
+ router = APIRouter(prefix="/v1", tags=["Driver Domain"])
+ 
+@@ -154,3 +155,142 @@ async def delete_driver(
+     await db.delete(driver)
+     await db.commit()
+     return {"message": f"Driver {driver_id} deleted successfully"}
++
++
++class DriverApprovalRequest(BaseModel):
++    action: str = Field(..., description="APPROVED or REJECTED")
++    reason: Optional[str] = Field(None, description="Required if action is REJECTED")
++
++
++@router.post("/drivers/{driver_id}/approve", response_model=DriverResponse)
++async def approve_driver(
++    driver_id: int,
++    payload: DriverApprovalRequest,
++    db: AsyncSession = Depends(get_db),
++    current_user: User = Depends(get_current_user),
++) -> DriverResponse:
++    """
++    Approve or reject a driver's account after document verification.
++
++    Requires COMPANY_ADMIN or SUPER_ADMIN role. Enforces company ownership.
++
++    For APPROVED:
++    - All 5 required document categories must have latest doc with verification_status=APPROVED
++    - Sets driver.verification_status=APPROVED, driver.status=ACTIVE
++    - Activates linked User (is_active=True)
++    - Creates a SYSTEM notification for the driver
++
++    For REJECTED:
++    - Sets driver.verification_status=REJECTED
++    - Keeps driver and user inactive
++    - Creates a SYSTEM notification for the driver with rejection reason
++    """
++    from models.driver_domain import VerificationStatus
++    from models.document import Document, DocumentVerificationStatus
++    from models.notification import Notification, NotificationCategory
++    from pydantic import BaseModel as PydanticBaseModel
++
++    # Role check
++    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
++        raise HTTPException(status_code=403, detail="Only admins can approve or reject drivers")
++
++    if payload.action not in ("APPROVED", "REJECTED"):
++        raise HTTPException(status_code=400, detail="Action must be 'APPROVED' or 'REJECTED'")
++
++    if payload.action == "REJECTED" and not payload.reason:
++        raise HTTPException(status_code=400, detail="Rejection reason is required")
++
++    # Fetch driver with company check
++    driver = await db.get(Driver, driver_id)
++    if not driver or driver.company_id != current_user.company_id:
++        raise HTTPException(status_code=404, detail=f"Driver {driver_id} not found")
++
++    if payload.action == "APPROVED":
++        # Verify all 5 required document categories are present and approved
++        all_docs_result = await db.execute(
++            select(Document)
++            .where(Document.target_id == str(driver_id))
++            .where(Document.target_type == "DRIVER")
++            .where(Document.company_id == current_user.company_id)
++            .order_by(Document.created_at.desc())
++        )
++        all_docs = all_docs_result.scalars().all()
++
++        latest_by_category = {}
++        for d in all_docs:
++            if d.category and d.category not in latest_by_category:
++                latest_by_category[d.category] = d
++
++        required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
++        missing = []
++        not_approved = []
++        for cat in required_categories:
++            latest_doc = latest_by_category.get(cat)
++            if not latest_doc:
++                missing.append(cat)
++            elif latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
++                not_approved.append(cat)
++
++        if missing:
++            raise HTTPException(
++                status_code=400,
++                detail=f"Cannot approve: missing required documents: {', '.join(missing)}"
++            )
++        if not_approved:
++            raise HTTPException(
++                status_code=400,
++                detail=f"Cannot approve: documents not yet approved: {', '.join(not_approved)}"
++            )
++
++        # Approve driver
++        driver.verification_status = VerificationStatus.APPROVED
++        driver.status = DriverStatus.ACTIVE
++
++        # Activate linked user
++        if driver.user_id:
++            user = await db.get(User, driver.user_id)
++            if user:
++                user.is_active = True
++
++            # Create approval notification
++            notification = Notification(
++                category=NotificationCategory.SYSTEM,
++                title="Driver Account Approved",
++                description="Your driver account has been approved. You can now use the FleetGuard driver app.",
++                company_id=current_user.company_id,
++                user_id=driver.user_id,
++            )
++            db.add(notification)
++
++    else:
++        # Reject driver
++        driver.verification_status = VerificationStatus.REJECTED
++        # Keep driver inactive
++        driver.status = DriverStatus.INACTIVE
++
++        # Keep linked user inactive
++        if driver.user_id:
++            user = await db.get(User, driver.user_id)
++            if user:
++                user.is_active = False
++
++            # Create rejection notification
++            notification = Notification(
++                category=NotificationCategory.SYSTEM,
++                title="Driver Account Rejected",
++                description=f"Your driver account has been rejected. Reason: {payload.reason}",
++                company_id=current_user.company_id,
++                user_id=driver.user_id,
++            )
++            db.add(notification)
++
++    await db.commit()
++    await db.refresh(driver)
++
++    resp = DriverResponse.model_validate(driver)
++    # Enrich with assigned vehicle
++    v_result = await db.execute(
++        select(Vehicle.registration_number).where(Vehicle.assigned_driver_id == driver.id).limit(1)
++    )
++    resp.assigned_vehicle = v_result.scalar_one_or_none()
++    return resp
+diff --git a/backend/routers/driver_mobile.py b/backend/routers/driver_mobile.py
+index cae7496..9109f18 100644
+--- a/backend/routers/driver_mobile.py
++++ b/backend/routers/driver_mobile.py
+@@ -37,7 +37,7 @@ from config import settings
+ from services.otp_service import get_otp_provider
+ from services.file_upload_service import storage_service
+ from utils.security import hash_password, create_access_token
+-from services.auth_service import get_current_user
++from services.auth_service import get_current_user_allow_inactive
+ 
+ logger = logging.getLogger("fleetguard.driver_mobile")
+ 
+@@ -117,7 +117,7 @@ class FcmTokenRequest(BaseModel):
+ # ==========================================================================
+ 
+ async def get_current_driver(
+-    current_user: User = Depends(get_current_user),
++    current_user: User = Depends(get_current_user_allow_inactive),
+     db: AsyncSession = Depends(get_db)
+ ) -> Driver:
+     """
+@@ -255,7 +255,7 @@ async def verify_otp(
+                     mobile_number=disambiguated_phone,
+                     password_hash=hash_password(secrets.token_urlsafe(24)),
+                     role=UserRole.DRIVER,
+-                    is_active=True,
++                    is_active=False,
+                 )
+                 db.add(user)
+                 try:
+@@ -275,7 +275,7 @@ async def verify_otp(
+                 mobile_number=payload.phone_number,
+                 password_hash=hash_password(secrets.token_urlsafe(24)),
+                 role=UserRole.DRIVER,
+-                is_active=True,
++                is_active=False,
+             )
+             db.add(user)
+             try:
+@@ -293,7 +293,7 @@ async def verify_otp(
+             phone_number=payload.phone_number,
+             company_id=company_id,
+             user_id=user.id,
+-            status=DriverStatus.ACTIVE,
++            status=DriverStatus.INACTIVE,
+             verification_status=VerificationStatus.PENDING_DOCUMENTS,
+             origin_type="driver_app",
+         )
+@@ -338,7 +338,7 @@ async def verify_otp(
+                         mobile_number=disambiguated_phone,
+                         password_hash=hash_password(secrets.token_urlsafe(24)),
+                         role=UserRole.DRIVER,
+-                        is_active=True,
++                        is_active=False,
+                     )
+                     db.add(user)
+                     try:
+@@ -508,7 +508,7 @@ async def upload_document(
+                 any_latest_rejected = True
+                 
+         if has_all_required and all_required_approved:
+-            driver.verification_status = VerificationStatus.APPROVED
++            driver.verification_status = VerificationStatus.PENDING_APPROVAL
+         elif any_latest_rejected:
+             driver.verification_status = VerificationStatus.REJECTED
+         elif has_all_required:
+diff --git a/backend/routers/notifications.py b/backend/routers/notifications.py
+index 29d9398..38e405a 100644
+--- a/backend/routers/notifications.py
++++ b/backend/routers/notifications.py
+@@ -2,7 +2,7 @@ import logging
+ from typing import List
+ from fastapi import APIRouter, Depends, HTTPException, status
+ from sqlalchemy.ext.asyncio import AsyncSession
+-from sqlalchemy import select, update
++from sqlalchemy import select, update, or_
+ 
+ from database import get_db
+ from models.user import User
+@@ -30,11 +30,24 @@ async def get_notifications(
+     current_user: User = Depends(get_current_user),
+     db: AsyncSession = Depends(get_db)
+ ):
+-    """Get all notifications for the current user's company."""
+-    # We get notifications for the user or the company broadly
++    """
++    Get notifications for the current user.
++    
++    Returns:
++    - Notifications targeted specifically at this user (user_id matches)
++    - Company-wide notifications (user_id is NULL) for the user's company
++    
++    Company isolation is enforced: users can only see their own company's notifications.
++    """
+     result = await db.execute(
+         select(Notification)
+         .where(Notification.company_id == current_user.company_id)
++        .where(
++            or_(
++                Notification.user_id == current_user.id,
++                Notification.user_id.is_(None),
++            )
++        )
+         .order_by(Notification.created_at.desc())
+         .limit(50)
+     )
+@@ -46,10 +59,16 @@ async def mark_all_notifications_read(
+     current_user: User = Depends(get_current_user),
+     db: AsyncSession = Depends(get_db)
+ ):
+-    """Mark all notifications as read for the current company."""
++    """Mark all visible notifications as read for the current user."""
+     await db.execute(
+         update(Notification)
+         .where(Notification.company_id == current_user.company_id)
++        .where(
++            or_(
++                Notification.user_id == current_user.id,
++                Notification.user_id.is_(None),
++            )
++        )
+         .values(is_read=True)
+     )
+     await db.commit()
+@@ -62,12 +81,16 @@ async def mark_notification_read(
+     current_user: User = Depends(get_current_user),
+     db: AsyncSession = Depends(get_db)
+ ):
+-    """Mark a notification as read."""
++    """Mark a single notification as read. Enforces company and user ownership."""
+     result = await db.execute(
+         select(Notification)
+         .where(
+             Notification.id == notification_id,
+-            Notification.company_id == current_user.company_id
++            Notification.company_id == current_user.company_id,
++            or_(
++                Notification.user_id == current_user.id,
++                Notification.user_id.is_(None),
++            ),
+         )
+     )
+     notification = result.scalars().first()
+@@ -79,3 +102,35 @@ async def mark_notification_read(
+     await db.commit()
+     
+     return {"status": "success", "message": "Notification marked as read"}
++
++
++@router.delete("/api/v1/notifications/{notification_id}")
++async def delete_notification(
++    notification_id: int,
++    current_user: User = Depends(get_current_user),
++    db: AsyncSession = Depends(get_db)
++):
++    """
++    Delete a single notification. Enforces company and user ownership.
++    Only notifications visible to the current user can be deleted.
++    """
++    result = await db.execute(
++        select(Notification)
++        .where(
++            Notification.id == notification_id,
++            Notification.company_id == current_user.company_id,
++            or_(
++                Notification.user_id == current_user.id,
++                Notification.user_id.is_(None),
++            ),
++        )
++    )
++    notification = result.scalars().first()
++
++    if not notification:
++        raise HTTPException(status_code=404, detail="Notification not found")
++
++    await db.delete(notification)
++    await db.commit()
++
++    return {"status": "success", "message": "Notification deleted"}
+diff --git a/backend/services/auth_service.py b/backend/services/auth_service.py
+index df1d18c..c5eca34 100644
+--- a/backend/services/auth_service.py
++++ b/backend/services/auth_service.py
+@@ -507,6 +507,74 @@ async def get_current_user(
+     return user
+ 
+ 
++async def get_current_user_allow_inactive(
++    token: str = Depends(_oauth2_scheme),
++    db: AsyncSession = Depends(get_db),
++) -> User:
++    """
++    FastAPI dependency that decodes the Bearer JWT and returns the live User.
++
++    Unlike ``get_current_user``, this variant allows **DRIVER**-role users
++    whose ``is_active`` flag is False to pass through.  This is required so
++    that newly registered drivers (who start inactive until admin approval)
++    can still complete their onboarding (profile creation, document upload).
++
++    Non-DRIVER users that are inactive are still rejected with HTTP 403.
++    """
++    _CREDENTIALS_EXCEPTION = HTTPException(
++        status_code=status.HTTP_401_UNAUTHORIZED,
++        detail="Could not validate credentials.",
++        headers={"WWW-Authenticate": "Bearer"},
++    )
++
++    try:
++        payload = decode_access_token(token)
++        user_id_str: Optional[str] = payload.get("sub")
++        token_jti: Optional[str] = payload.get("jti")
++        token_company_id: Optional[int] = payload.get("company_id")
++        if user_id_str is None:
++            raise _CREDENTIALS_EXCEPTION
++        if token_jti is None:
++            raise _CREDENTIALS_EXCEPTION
++        if payload.get("type") == "refresh":
++            raise _CREDENTIALS_EXCEPTION
++        user_id = int(user_id_str)
++    except (JWTError, ValueError):
++        raise _CREDENTIALS_EXCEPTION
++
++    now = _utcnow()
++    session_result = await db.execute(
++        select(AuthSession).where(
++            AuthSession.session_jti == token_jti,
++            AuthSession.user_id == user_id,
++            AuthSession.revoked_at.is_(None),
++            AuthSession.expires_at > now,
++        )
++    )
++    auth_session = session_result.scalar_one_or_none()
++    if auth_session is None:
++        raise _CREDENTIALS_EXCEPTION
++
++    result = await db.execute(select(User).where(User.id == user_id))
++    user: Optional[User] = result.scalar_one_or_none()
++
++    if user is None:
++        raise _CREDENTIALS_EXCEPTION
++    if token_company_id is not None and user.company_id != int(token_company_id):
++        raise _CREDENTIALS_EXCEPTION
++
++    # Allow inactive DRIVER-role users through for onboarding.
++    # All other inactive users are still blocked.
++    if not user.is_active and user.role != UserRole.DRIVER:
++        raise HTTPException(
++            status_code=status.HTTP_403_FORBIDDEN,
++            detail="Your account has been deactivated.",
++        )
++
++    auth_session.last_seen_at = now
++    return user
++
++
+ async def create_token_for_user(
+     user: User,
+     db: AsyncSession,
+diff --git a/driver_app/.flutter-plugins-dependencies b/driver_app/.flutter-plugins-dependencies
+index dcc40fd..a52d7ba 100644
+--- a/driver_app/.flutter-plugins-dependencies
++++ b/driver_app/.flutter-plugins-dependencies
+@@ -1 +1 @@
+-{"info":"This is a generated file; do not edit or check into version control.","plugins":{"ios":[{"name":"camera_avfoundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_avfoundation-0.9.23+2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_background_service_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_background_service_ios-5.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_jailbreak_detection_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_jailbreak_detection_plus-1.10.7\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage-9.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_apple-2.3.14\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_ios-2.18.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_ios-0.8.13+6\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"integration_test","path":"C:\\\\src\\\\flutter\\\\packages\\\\integration_test\\\\","native_build":true,"dependencies":[],"dev_dependency":true},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_foundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_foundation-2.6.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"permission_handler_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_apple-9.5.0\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"sqflite_darwin","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_darwin-2.4.3+1\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_ios-6.4.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"android":[{"name":"camera_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_android-0.10.11\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_background_service_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_background_service_android-6.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_jailbreak_detection_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_jailbreak_detection_plus-1.10.7\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_plugin_android_lifecycle","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_plugin_android_lifecycle-2.0.35\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage-9.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_android-4.6.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_android-2.19.12\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"image_picker_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_android-0.8.13+19\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"integration_test","path":"C:\\\\src\\\\flutter\\\\packages\\\\integration_test\\\\","native_build":true,"dependencies":[],"dev_dependency":true},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"jni_flutter","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni_flutter-1.0.2\\\\","native_build":true,"dependencies":["jni"],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_android-2.3.1\\\\","native_build":false,"dependencies":["jni","jni_flutter"],"dev_dependency":false},{"name":"permission_handler_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_android-12.1.0\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"sqflite_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_android-2.4.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_android-6.3.32\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"macos":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"file_selector_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_macos-0.9.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_macos-3.1.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_apple-2.3.14\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_macos-0.2.2+1\\\\","native_build":false,"dependencies":["file_selector_macos"],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_foundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_foundation-2.6.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"sqflite_darwin","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_darwin-2.4.3+1\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_macos-3.2.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"linux":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"file_selector_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_linux-0.9.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications_linux-4.0.1\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_linux-1.2.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_linux-0.2.2\\\\","native_build":false,"dependencies":["file_selector_linux"],"dev_dependency":false},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_linux-2.2.2\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_linux-3.2.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"windows":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"file_selector_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_windows-0.9.3+5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_windows-3.1.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_windows-0.2.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_windows-0.2.2\\\\","native_build":false,"dependencies":["file_selector_windows"],"dev_dependency":false},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_windows-2.3.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"permission_handler_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_windows-0.2.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_windows-3.1.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"web":[{"name":"camera_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_web-0.3.5+4\\\\","dependencies":[],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_web-1.2.1\\\\","dependencies":[],"dev_dependency":false},{"name":"geolocator_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_web-3.0.0\\\\","dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_web-0.6.3\\\\","dependencies":[],"dev_dependency":false},{"name":"image_picker_for_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_for_web-3.1.1\\\\","dependencies":[],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","dependencies":[],"dev_dependency":false},{"name":"permission_handler_html","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_html-0.1.4+0\\\\","dependencies":[],"dev_dependency":false},{"name":"url_launcher_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_web-2.4.3\\\\","dependencies":[],"dev_dependency":false}]},"dependencyGraph":[{"name":"camera","dependencies":["camera_android","camera_avfoundation","camera_web","flutter_plugin_android_lifecycle"]},{"name":"camera_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"camera_avfoundation","dependencies":[]},{"name":"camera_web","dependencies":[]},{"name":"connectivity_plus","dependencies":[]},{"name":"file_selector_linux","dependencies":[]},{"name":"file_selector_macos","dependencies":[]},{"name":"file_selector_windows","dependencies":[]},{"name":"flutter_background_service","dependencies":["flutter_background_service_android","flutter_background_service_ios"]},{"name":"flutter_background_service_android","dependencies":[]},{"name":"flutter_background_service_ios","dependencies":[]},{"name":"flutter_jailbreak_detection_plus","dependencies":[]},{"name":"flutter_local_notifications","dependencies":["flutter_local_notifications_linux"]},{"name":"flutter_local_notifications_linux","dependencies":[]},{"name":"flutter_plugin_android_lifecycle","dependencies":[]},{"name":"flutter_secure_storage","dependencies":["flutter_secure_storage_linux","flutter_secure_storage_macos","flutter_secure_storage_web","flutter_secure_storage_windows"]},{"name":"flutter_secure_storage_linux","dependencies":[]},{"name":"flutter_secure_storage_macos","dependencies":[]},{"name":"flutter_secure_storage_web","dependencies":[]},{"name":"flutter_secure_storage_windows","dependencies":["path_provider"]},{"name":"geolocator","dependencies":["geolocator_android","geolocator_apple","geolocator_web","geolocator_windows"]},{"name":"geolocator_android","dependencies":[]},{"name":"geolocator_apple","dependencies":[]},{"name":"geolocator_web","dependencies":[]},{"name":"geolocator_windows","dependencies":[]},{"name":"google_maps_flutter","dependencies":["google_maps_flutter_android","google_maps_flutter_ios","google_maps_flutter_web"]},{"name":"google_maps_flutter_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"google_maps_flutter_ios","dependencies":[]},{"name":"google_maps_flutter_web","dependencies":[]},{"name":"image_picker","dependencies":["image_picker_android","image_picker_for_web","image_picker_ios","image_picker_linux","image_picker_macos","image_picker_windows"]},{"name":"image_picker_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"image_picker_for_web","dependencies":[]},{"name":"image_picker_ios","dependencies":[]},{"name":"image_picker_linux","dependencies":["file_selector_linux"]},{"name":"image_picker_macos","dependencies":["file_selector_macos"]},{"name":"image_picker_windows","dependencies":["file_selector_windows"]},{"name":"integration_test","dependencies":[]},{"name":"jni","dependencies":[]},{"name":"jni_flutter","dependencies":["jni"]},{"name":"mobile_scanner","dependencies":[]},{"name":"path_provider","dependencies":["path_provider_android","path_provider_foundation","path_provider_linux","path_provider_windows"]},{"name":"path_provider_android","dependencies":["jni","jni_flutter"]},{"name":"path_provider_foundation","dependencies":[]},{"name":"path_provider_linux","dependencies":[]},{"name":"path_provider_windows","dependencies":[]},{"name":"permission_handler","dependencies":["permission_handler_android","permission_handler_apple","permission_handler_html","permission_handler_windows"]},{"name":"permission_handler_android","dependencies":[]},{"name":"permission_handler_apple","dependencies":[]},{"name":"permission_handler_html","dependencies":[]},{"name":"permission_handler_windows","dependencies":[]},{"name":"sqflite","dependencies":["sqflite_android","sqflite_darwin"]},{"name":"sqflite_android","dependencies":[]},{"name":"sqflite_darwin","dependencies":[]},{"name":"url_launcher","dependencies":["url_launcher_android","url_launcher_ios","url_launcher_linux","url_launcher_macos","url_launcher_web","url_launcher_windows"]},{"name":"url_launcher_android","dependencies":[]},{"name":"url_launcher_ios","dependencies":[]},{"name":"url_launcher_linux","dependencies":[]},{"name":"url_launcher_macos","dependencies":[]},{"name":"url_launcher_web","dependencies":[]},{"name":"url_launcher_windows","dependencies":[]}],"date_created":"2026-09-06 18:22:14.614705","version":"3.44.8","swift_package_manager_enabled":{"ios":false,"macos":false}}
+\ No newline at end of file
++{"info":"This is a generated file; do not edit or check into version control.","plugins":{"ios":[{"name":"camera_avfoundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_avfoundation-0.9.23+2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_background_service_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_background_service_ios-5.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_jailbreak_detection_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_jailbreak_detection_plus-1.10.7\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage-9.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_apple-2.3.14\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_ios-2.18.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_ios-0.8.13+6\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"integration_test","path":"C:\\\\src\\\\flutter\\\\packages\\\\integration_test\\\\","native_build":true,"dependencies":[],"dev_dependency":true},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_foundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_foundation-2.6.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"permission_handler_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_apple-9.5.0\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"sqflite_darwin","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_darwin-2.4.3+1\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_ios","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_ios-6.4.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"android":[{"name":"camera_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_android-0.10.11\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_background_service_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_background_service_android-6.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_jailbreak_detection_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_jailbreak_detection_plus-1.10.7\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_plugin_android_lifecycle","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_plugin_android_lifecycle-2.0.35\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage-9.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_android-4.6.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_android-2.19.12\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"image_picker_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_android-0.8.13+19\\\\","native_build":true,"dependencies":["flutter_plugin_android_lifecycle"],"dev_dependency":false},{"name":"integration_test","path":"C:\\\\src\\\\flutter\\\\packages\\\\integration_test\\\\","native_build":true,"dependencies":[],"dev_dependency":true},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"jni_flutter","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni_flutter-1.0.2\\\\","native_build":true,"dependencies":["jni"],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_android-2.3.1\\\\","native_build":false,"dependencies":["jni","jni_flutter"],"dev_dependency":false},{"name":"permission_handler_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_android-12.1.0\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"sqflite_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_android-2.4.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_android","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_android-6.3.32\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"macos":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"file_selector_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_macos-0.9.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications-17.2.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_macos-3.1.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_apple","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_apple-2.3.14\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_macos-0.2.2+1\\\\","native_build":false,"dependencies":["file_selector_macos"],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_foundation","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_foundation-2.6.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"sqflite_darwin","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\sqflite_darwin-2.4.3+1\\\\","shared_darwin_source":true,"native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_macos","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_macos-3.2.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"linux":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"file_selector_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_linux-0.9.4\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_local_notifications_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_local_notifications_linux-4.0.1\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_linux-1.2.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_linux-0.2.2\\\\","native_build":false,"dependencies":["file_selector_linux"],"dev_dependency":false},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_linux-2.2.2\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_linux","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_linux-3.2.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"windows":[{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"file_selector_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\file_selector_windows-0.9.3+5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_windows-3.1.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"geolocator_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_windows-0.2.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"image_picker_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_windows-0.2.2\\\\","native_build":false,"dependencies":["file_selector_windows"],"dev_dependency":false},{"name":"jni","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\jni-1.0.3\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"path_provider_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\path_provider_windows-2.3.0\\\\","native_build":false,"dependencies":[],"dev_dependency":false},{"name":"permission_handler_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_windows-0.2.2\\\\","native_build":true,"dependencies":[],"dev_dependency":false},{"name":"url_launcher_windows","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_windows-3.1.5\\\\","native_build":true,"dependencies":[],"dev_dependency":false}],"web":[{"name":"camera_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\camera_web-0.3.5+4\\\\","dependencies":[],"dev_dependency":false},{"name":"connectivity_plus","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\connectivity_plus-7.3.1\\\\","dependencies":[],"dev_dependency":false},{"name":"flutter_secure_storage_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\flutter_secure_storage_web-1.2.1\\\\","dependencies":[],"dev_dependency":false},{"name":"geolocator_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\geolocator_web-3.0.0\\\\","dependencies":[],"dev_dependency":false},{"name":"google_maps_flutter_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\google_maps_flutter_web-0.6.3\\\\","dependencies":[],"dev_dependency":false},{"name":"image_picker_for_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\image_picker_for_web-3.1.1\\\\","dependencies":[],"dev_dependency":false},{"name":"mobile_scanner","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\mobile_scanner-4.0.1\\\\","dependencies":[],"dev_dependency":false},{"name":"permission_handler_html","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\permission_handler_html-0.1.4+0\\\\","dependencies":[],"dev_dependency":false},{"name":"url_launcher_web","path":"C:\\\\Users\\\\ratho\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub.dev\\\\url_launcher_web-2.4.3\\\\","dependencies":[],"dev_dependency":false}]},"dependencyGraph":[{"name":"camera","dependencies":["camera_android","camera_avfoundation","camera_web","flutter_plugin_android_lifecycle"]},{"name":"camera_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"camera_avfoundation","dependencies":[]},{"name":"camera_web","dependencies":[]},{"name":"connectivity_plus","dependencies":[]},{"name":"file_selector_linux","dependencies":[]},{"name":"file_selector_macos","dependencies":[]},{"name":"file_selector_windows","dependencies":[]},{"name":"flutter_background_service","dependencies":["flutter_background_service_android","flutter_background_service_ios"]},{"name":"flutter_background_service_android","dependencies":[]},{"name":"flutter_background_service_ios","dependencies":[]},{"name":"flutter_jailbreak_detection_plus","dependencies":[]},{"name":"flutter_local_notifications","dependencies":["flutter_local_notifications_linux"]},{"name":"flutter_local_notifications_linux","dependencies":[]},{"name":"flutter_plugin_android_lifecycle","dependencies":[]},{"name":"flutter_secure_storage","dependencies":["flutter_secure_storage_linux","flutter_secure_storage_macos","flutter_secure_storage_web","flutter_secure_storage_windows"]},{"name":"flutter_secure_storage_linux","dependencies":[]},{"name":"flutter_secure_storage_macos","dependencies":[]},{"name":"flutter_secure_storage_web","dependencies":[]},{"name":"flutter_secure_storage_windows","dependencies":["path_provider"]},{"name":"geolocator","dependencies":["geolocator_android","geolocator_apple","geolocator_web","geolocator_windows"]},{"name":"geolocator_android","dependencies":[]},{"name":"geolocator_apple","dependencies":[]},{"name":"geolocator_web","dependencies":[]},{"name":"geolocator_windows","dependencies":[]},{"name":"google_maps_flutter","dependencies":["google_maps_flutter_android","google_maps_flutter_ios","google_maps_flutter_web"]},{"name":"google_maps_flutter_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"google_maps_flutter_ios","dependencies":[]},{"name":"google_maps_flutter_web","dependencies":[]},{"name":"image_picker","dependencies":["image_picker_android","image_picker_for_web","image_picker_ios","image_picker_linux","image_picker_macos","image_picker_windows"]},{"name":"image_picker_android","dependencies":["flutter_plugin_android_lifecycle"]},{"name":"image_picker_for_web","dependencies":[]},{"name":"image_picker_ios","dependencies":[]},{"name":"image_picker_linux","dependencies":["file_selector_linux"]},{"name":"image_picker_macos","dependencies":["file_selector_macos"]},{"name":"image_picker_windows","dependencies":["file_selector_windows"]},{"name":"integration_test","dependencies":[]},{"name":"jni","dependencies":[]},{"name":"jni_flutter","dependencies":["jni"]},{"name":"mobile_scanner","dependencies":[]},{"name":"path_provider","dependencies":["path_provider_android","path_provider_foundation","path_provider_linux","path_provider_windows"]},{"name":"path_provider_android","dependencies":["jni","jni_flutter"]},{"name":"path_provider_foundation","dependencies":[]},{"name":"path_provider_linux","dependencies":[]},{"name":"path_provider_windows","dependencies":[]},{"name":"permission_handler","dependencies":["permission_handler_android","permission_handler_apple","permission_handler_html","permission_handler_windows"]},{"name":"permission_handler_android","dependencies":[]},{"name":"permission_handler_apple","dependencies":[]},{"name":"permission_handler_html","dependencies":[]},{"name":"permission_handler_windows","dependencies":[]},{"name":"sqflite","dependencies":["sqflite_android","sqflite_darwin"]},{"name":"sqflite_android","dependencies":[]},{"name":"sqflite_darwin","dependencies":[]},{"name":"url_launcher","dependencies":["url_launcher_android","url_launcher_ios","url_launcher_linux","url_launcher_macos","url_launcher_web","url_launcher_windows"]},{"name":"url_launcher_android","dependencies":[]},{"name":"url_launcher_ios","dependencies":[]},{"name":"url_launcher_linux","dependencies":[]},{"name":"url_launcher_macos","dependencies":[]},{"name":"url_launcher_web","dependencies":[]},{"name":"url_launcher_windows","dependencies":[]}],"date_created":"2026-09-11 15:37:08.675719","version":"3.44.8","swift_package_manager_enabled":{"ios":false,"macos":false}}
+\ No newline at end of file
+diff --git a/driver_app/lib/features/auth/presentation/screens/document_upload_screen.dart b/driver_app/lib/features/auth/presentation/screens/document_upload_screen.dart
+index d64cf56..702ab7b 100644
+--- a/driver_app/lib/features/auth/presentation/screens/document_upload_screen.dart
++++ b/driver_app/lib/features/auth/presentation/screens/document_upload_screen.dart
+@@ -40,6 +40,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
+           newDocs[d['category']] = d as Map<String, dynamic>;
+         }
+       }
++
++      if (!mounted) return;
++      
+       setState(() {
+         _documents = newDocs;
+         _isLoading = false;
+@@ -130,37 +133,59 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
+     );
+   }
+ 
+-  void _captureAndUpload(String type) async {
+-    final picker = ImagePicker();
+-    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+-    
+-    if (pickedFile == null) return;
++ Future<void> _captureAndUpload(String type) async {
++  final picker = ImagePicker();
++
++  final pickedFile = await picker.pickImage(
++    source: ImageSource.camera,
++    imageQuality: 70,
++  );
++
++  if (pickedFile == null || !mounted) return;
++
++  setState(() {
++    _documents[type] = {
++      'local_state': 'UPLOADING',
++      'verification_status': null,
++    };
++  });
++
++  try {
++    final repo = ref.read(authRepositoryProvider);
++
++    await repo.uploadDocument(
++      File(pickedFile.path),
++      type,
++    );
++
++    if (!mounted) return;
+ 
+     setState(() {
+-      _documents[type] = {'local_state': 'UPLOADING'};
++      _documents[type] = {
++        'local_state': null,
++        'verification_status': 'PENDING',
++      };
+     });
+ 
+-    try {
+-      final repo = ref.read(authRepositoryProvider);
+-      await repo.uploadDocument(File(pickedFile.path), type);
+-      await _loadDocuments(); // Refresh to get the PENDING status from backend
+-        
+-      if (mounted) {
+-        ScaffoldMessenger.of(context).showSnackBar(
+-          const SnackBar(content: Text('Uploaded successfully!')),
+-        );
+-      }
+-    } catch (e) {
+-      if (mounted) {
+-        setState(() {
+-          _documents.remove(type);
+-        });
+-        ScaffoldMessenger.of(context).showSnackBar(
+-          SnackBar(content: Text('Upload failed: $e')),
+-        );
+-      }
+-    }
++    ScaffoldMessenger.of(context).showSnackBar(
++      const SnackBar(
++        content: Text('Uploaded successfully!'),
++      ),
++    );
++  } catch (e) {
++    if (!mounted) return;
++
++    setState(() {
++      _documents.remove(type);
++    });
++
++    ScaffoldMessenger.of(context).showSnackBar(
++      SnackBar(
++        content: Text('Upload failed: $e'),
++      ),
++    );
+   }
++}
+ 
+   @override
+   Widget build(BuildContext context) {
+diff --git a/frontend/src/api/client.js b/frontend/src/api/client.js
+index 151b766..23db4f2 100644
+--- a/frontend/src/api/client.js
++++ b/frontend/src/api/client.js
+@@ -339,6 +339,7 @@ const api = {
+   // ΓöÇΓöÇ Generic REST Methods ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+   get: (url) => request(url),
+   post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
++  put: (url, body) => request(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+   patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
+   delete: (url) => request(url, { method: 'DELETE' }),
+ };
+diff --git a/frontend/src/api/driverApi.js b/frontend/src/api/driverApi.js
+index 1a71740..4ff9d93 100644
+--- a/frontend/src/api/driverApi.js
++++ b/frontend/src/api/driverApi.js
+@@ -15,11 +15,11 @@ function normalizeDriver(d) {
+     employee_id: d.employee_id || null,
+     license_number: d.license_number || null,
+     license_valid_until: d.license_valid_until || null,
+-    status: (d.status || d.employment_status || 'unknown').toLowerCase(),
++    status: d.status || null,
+     employment_status: d.employment_status || null,
+     avatar_url: d.avatar_url || null,
+     age: d.age || null,
+-    verification_status: d.verification_status || 'NOT_STARTED',
++    verification_status: d.verification_status || null,
+     license_front_url: d.license_front_url || null,
+     license_back_url: d.license_back_url || null,
+     aadhaar_front_url: d.aadhaar_front_url || null,
+@@ -118,3 +118,19 @@ export async function verifyDriverDocument(documentId, status, rejectionReason =
+   }
+   return await api.post(`/api/v1/documents/${documentId}/verify`, payload);
+ }
++
++/**
++ * Approve or reject a driver's account.
++ *
++ * @param {number} driverId
++ * @param {'APPROVED' | 'REJECTED'} action
++ * @param {string|null} reason - Required when action is 'REJECTED'
++ * @returns {Promise<object>} Updated driver object
++ */
++export async function approveDriver(driverId, action, reason = null) {
++  const payload = { action };
++  if (reason) {
++    payload.reason = reason;
++  }
++  return await api.post(`/api/v1/drivers/${driverId}/approve`, payload);
++}
+diff --git a/frontend/src/api/notificationApi.js b/frontend/src/api/notificationApi.js
+index 0203ed4..6a98e97 100644
+--- a/frontend/src/api/notificationApi.js
++++ b/frontend/src/api/notificationApi.js
+@@ -1,38 +1,52 @@
+ import api from './client';
+ 
+ /**
+- * Fetch system notifications from real backend operational events.
++ * Notification field mapping:
+  *
+- * @param {object} params
++ * Backend returns:  is_read, category, description, created_at
++ * Frontend uses:    read,    type,     message,     date
++ *
++ * Normalization is done here so the UI can use its preferred field names
++ * without coupling to the backend schema.
++ */
++
++/**
++ * Map backend category values to frontend type keys used for icons/styles.
++ */
++const CATEGORY_TO_TYPE = {
++  ALERT: 'ALERT',
++  TRIP: 'TRIP',
++  VEHICLE: 'VEHICLE',
++  FINANCE: 'FINANCE',
++  SYSTEM: 'SYSTEM',
++};
++
++function normalizeNotification(n) {
++  return {
++    id: n.id,
++    title: n.title,
++    message: n.description,
++    type: CATEGORY_TO_TYPE[n.category] || n.category || 'SYSTEM',
++    date: n.created_at || null,
++    read: n.is_read ?? false,
++  };
++}
++
++/**
++ * Fetch notifications from the real backend notification endpoint.
++ *
++ * @param {object} params - Optional filters: search, type, read
+  * @returns {Promise<Array>}
+  */
+ export async function getNotifications(params = {}) {
+-  let events = [];
++  let notifications = [];
+   try {
+-    events = await api.events.list({ limit: 50 }) || [];
++    const raw = await api.get('/api/v1/notifications') || [];
++    notifications = raw.map(normalizeNotification);
+   } catch {
+-    events = [];
++    notifications = [];
+   }
+ 
+-  let notifications = events.map(e => {
+-    let fallbackMsg = `Event ${e.event_type} registered for ${e.entity_type} ${e.entity_id}`;
+-    if (e.event_type === 'DOCUMENT_UPLOADED') {
+-      const docType = e.payload?.document_type ? e.payload.document_type.replace(/_/g, ' ') : 'Document';
+-      fallbackMsg = `Document Uploaded: ${docType}`;
+-      if (e.payload?.filename) fallbackMsg += ` (${e.payload.filename})`;
+-    }
+-
+-    return {
+-      id: e.id,
+-      title: e.event_type ? e.event_type.replace(/_/g, ' ').toUpperCase() : 'SYSTEM NOTICE',
+-      message: e.payload?.description || e.payload?.notes || fallbackMsg,
+-      type: e.verification_status === 'VERIFIED' ? 'info' : 'warning',
+-      date: e.occurred_at || e.timestamp || e.created_at || null,
+-      read: false,
+-      payload: e.payload,
+-    };
+-  });
+-
+   if (params.search) {
+     const q = params.search.toLowerCase();
+     notifications = notifications.filter(n =>
+@@ -52,14 +66,25 @@ export async function getNotifications(params = {}) {
+   return notifications;
+ }
+ 
++/**
++ * Mark a single notification as read.
++ * @param {number} id
++ */
+ export async function markNotificationRead(id) {
+-  return { id, read: true };
++  return await api.put(`/api/v1/notifications/${id}/read`);
+ }
+ 
++/**
++ * Mark all notifications as read.
++ */
+ export async function markAllNotificationsRead() {
+-  return { success: true };
++  return await api.put('/api/v1/notifications/read-all');
+ }
+ 
++/**
++ * Delete a single notification.
++ * @param {number} id
++ */
+ export async function deleteNotification(id) {
+-  return { id, deleted: true };
++  return await api.delete(`/api/v1/notifications/${id}`);
+ }
+diff --git a/frontend/src/pages/drivers/DriverProfile.jsx b/frontend/src/pages/drivers/DriverProfile.jsx
+index fabe12e..4173437 100644
+--- a/frontend/src/pages/drivers/DriverProfile.jsx
++++ b/frontend/src/pages/drivers/DriverProfile.jsx
+@@ -1,7 +1,7 @@
+ import React, { useState, useEffect } from 'react';
+ import { useNavigate, useParams } from 'react-router-dom';
+-import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User } from 'lucide-react';
+-import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument } from '@/api/driverApi';
++import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User, XCircle } from 'lucide-react';
++import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument, approveDriver } from '@/api/driverApi';
+ import { getVehicles } from '@/api/vehicleApi';
+ import { Button } from '@/components/ui/Button';
+ import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
+@@ -35,6 +35,11 @@ export default function DriverProfile() {
+   const [verifyStatus, setVerifyStatus] = useState(false);
+   const [rejectionReason, setRejectionReason] = useState('');
+ 
++  // Driver approval state
++  const [approving, setApproving] = useState(false);
++  const [rejectModalOpen, setRejectModalOpen] = useState(false);
++  const [driverRejectionReason, setDriverRejectionReason] = useState('');
++
+   const loadData = async () => {
+     setLoading(true);
+     setErr(null);
+@@ -50,6 +55,7 @@ export default function DriverProfile() {
+       const mappedDocs = (docsData || []).map(doc => ({
+         id: doc.id,
+         name: doc.category ? doc.category.replace('_', ' ').toUpperCase() : `Document #${doc.id}`,
++        category: doc.category,
+         status: doc.verification_status.toLowerCase(),
+         url: doc.storage_path,
+         rejection_reason: doc.rejection_reason,
+@@ -117,6 +123,53 @@ export default function DriverProfile() {
+     }
+   };
+ 
++  const handleApproveDriver = async () => {
++    setApproving(true);
++    try {
++      await approveDriver(driver.id, 'APPROVED');
++      success('Driver Approved', `${driver.name} has been approved and activated.`);
++      await loadData();
++    } catch (e) {
++      error('Approval Error', e.message || 'Failed to approve driver.');
++    } finally {
++      setApproving(false);
++    }
++  };
++
++  const handleRejectDriver = async () => {
++    if (!driverRejectionReason) {
++      error('Rejection Reason Required', 'Please provide a reason for rejecting the driver.');
++      return;
++    }
++    setApproving(true);
++    try {
++      await approveDriver(driver.id, 'REJECTED', driverRejectionReason);
++      success('Driver Rejected', `${driver.name} has been rejected.`);
++      setRejectModalOpen(false);
++      setDriverRejectionReason('');
++      await loadData();
++    } catch (e) {
++      error('Rejection Error', e.message || 'Failed to reject driver.');
++    } finally {
++      setApproving(false);
++    }
++  };
++
++  // Check if all required documents are present and approved
++  const requiredCategories = ['license_front', 'license_back', 'aadhaar_front', 'aadhaar_back', 'selfie'];
++  const allDocsApproved = requiredCategories.every(cat => {
++    const doc = documents.find(d => d.category === cat);
++    return doc && doc.status === 'approved';
++  });
++  const hasRejectedDocs = documents.some(d => d.status === 'rejected');
++  const hasMissingDocs = requiredCategories.some(cat => !documents.find(d => d.category === cat));
++
++  const canApproveDriver =
++    driver?.verification_status === 'PENDING_APPROVAL' &&
++    allDocsApproved &&
++    !hasRejectedDocs &&
++    !hasMissingDocs;
++
+   const getRiskVariant = (score) => {
+     if (score > 60) return 'danger';
+     if (score > 30) return 'warning';
+@@ -155,8 +208,8 @@ export default function DriverProfile() {
+           <div>
+             <div className="flex items-center gap-2">
+               <h1 className="text-2xl font-bold text-content">{driver.name}</h1>
+-              <Badge variant={driver.is_active ? 'success' : 'neutral'} dot>
+-                {driver.is_active ? 'Active' : 'Inactive'}
++              <Badge variant={driver.status === 'ACTIVE' ? 'success' : 'neutral'} dot>
++                {driver.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+               </Badge>
+             </div>
+             <p className="text-sm text-content-secondary mt-0.5 flex items-center gap-1">
+@@ -246,6 +299,43 @@ export default function DriverProfile() {
+         </Card>
+       </div>
+ 
++      {/* Driver Approval Banner */}
++      {canApproveDriver && (
++        <Card className="p-4 border-2 border-green-200 bg-green-50/50">
++          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
++            <div className="flex items-center gap-3">
++              <div className="p-2 rounded-lg bg-green-100">
++                <CheckCircle className="h-5 w-5 text-green-600" />
++              </div>
++              <div>
++                <h3 className="text-sm font-semibold text-green-900">Ready for Final Approval</h3>
++                <p className="text-xs text-green-700">All 5 required documents have been verified and approved.</p>
++              </div>
++            </div>
++            <div className="flex gap-2">
++              <Button
++                variant="outline"
++                size="sm"
++                className="border-red-200 text-red-700 hover:bg-red-50"
++                icon={<XCircle className="h-4 w-4" />}
++                onClick={() => setRejectModalOpen(true)}
++              >
++                Reject Driver
++              </Button>
++              <Button
++                variant="primary"
++                size="sm"
++                icon={<CheckCircle className="h-4 w-4" />}
++                onClick={handleApproveDriver}
++                loading={approving}
++              >
++                Approve Driver
++              </Button>
++            </div>
++          </div>
++        </Card>
++      )}
++
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         {/* Allocated Vehicle Card */}
+         <Card className="lg:col-span-1">
+@@ -308,10 +398,6 @@ export default function DriverProfile() {
+             </CardTitle>
+           </CardHeader>
+           <div className="space-y-4">
+-            {/* We no longer show old fields like driver.license_front_url directly here, 
+-                since they are managed via the documents table now. */}
+-
+-
+             {/* System-level documents */}
+             {documents.length === 0 ? (
+               <div className="text-sm text-content-secondary py-4">No documents uploaded.</div>
+@@ -438,6 +524,51 @@ export default function DriverProfile() {
+         </div>
+       </Modal>
+ 
++      {/* Driver Rejection Modal */}
++      <Modal
++        open={rejectModalOpen}
++        onClose={() => setRejectModalOpen(false)}
++        title="Reject Driver"
++        description={`Reject the driver account for ${driver?.name}`}
++        closable={!approving}
++        footer={
++          <>
++            <Button variant="outline" onClick={() => setRejectModalOpen(false)} disabled={approving}>
++              Cancel
++            </Button>
++            <Button variant="danger" onClick={handleRejectDriver} loading={approving} disabled={!driverRejectionReason}>
++              Reject Driver
++            </Button>
++          </>
++        }
++      >
++        <div className="space-y-4">
++          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
++            <ShieldAlert className="h-5 w-5 text-red-600 flex-shrink-0" />
++            <div>
++              <p className="text-sm font-semibold text-red-950">
++                This will reject the driver's account
++              </p>
++              <p className="text-xs text-red-700">
++                The driver will remain inactive and will be notified of the rejection reason.
++              </p>
++            </div>
++          </div>
++          <div className="space-y-2">
++            <label className="block text-sm font-medium text-content-secondary">
++              Rejection Reason (Required)
++            </label>
++            <input
++              type="text"
++              value={driverRejectionReason}
++              onChange={(e) => setDriverRejectionReason(e.target.value)}
++              placeholder="e.g. Documents do not match, identity verification failed..."
++              className="w-full h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
++            />
++          </div>
++        </div>
++      </Modal>
++
+       {/* Allocation Selection Modal */}
+       <Modal
+         open={assignModalOpen}
+diff --git a/frontend/src/pages/notifications/Notifications.jsx b/frontend/src/pages/notifications/Notifications.jsx
+index 5a8b384..4352703 100644
+--- a/frontend/src/pages/notifications/Notifications.jsx
++++ b/frontend/src/pages/notifications/Notifications.jsx
+@@ -1,7 +1,6 @@
+ import React, { useState, useEffect } from 'react';
+-import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw, Eye } from 'lucide-react';
++import { Bell, Check, Trash2, Mail, MailOpen, ShieldAlert, FileText, IndianRupee, Settings, RefreshCw, Truck, MapPin } from 'lucide-react';
+ import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '@/api/notificationApi';
+-import { getDocumentById } from '@/api/documentApi';
+ import { Card } from '@/components/ui/Card';
+ import { Button } from '@/components/ui/Button';
+ import { SearchBox } from '@/components/shared/SearchBox';
+@@ -23,7 +22,7 @@ export default function Notifications() {
+   // Filters
+   const [search, setSearch] = useState('');
+   const [readFilter, setReadFilter] = useState('all'); // all, unread, read
+-  const [typeFilter, setTypeFilter] = useState('all'); // all, alert, expense, document, system
++  const [typeFilter, setTypeFilter] = useState('all'); // all, ALERT, TRIP, VEHICLE, FINANCE, SYSTEM
+ 
+   const loadNotifications = async () => {
+     setLoading(true);
+@@ -90,49 +89,50 @@ export default function Notifications() {
+     }
+   };
+ 
+-  const handleViewDocument = async (docId) => {
+-    try {
+-      const doc = await getDocumentById(docId);
+-      if (doc && doc.storage_path) {
+-        window.open(doc.storage_path, '_blank');
+-      } else {
+-        error("Document Unavailable", "Could not retrieve document URL.");
+-      }
+-    } catch (e) {
+-      error("Access Denied", "You do not have permission to access this document or it does not exist.");
+-    }
+-  };
+-
+   const getCategoryIcon = (type) => {
+     const classes = "h-5 w-5";
+     switch (type) {
+-      case 'alert':
++      case 'ALERT':
+         return <ShieldAlert className={cn(classes, "text-red-500")} />;
+-      case 'expense':
++      case 'TRIP':
++        return <MapPin className={cn(classes, "text-blue-500")} />;
++      case 'VEHICLE':
++        return <Truck className={cn(classes, "text-indigo-500")} />;
++      case 'FINANCE':
+         return <IndianRupee className={cn(classes, "text-green-600")} />;
+-      case 'document':
+-        return <FileText className={cn(classes, "text-blue-500")} />;
+-      default:
++      case 'SYSTEM':
+         return <Settings className={cn(classes, "text-purple-500")} />;
++      default:
++        return <Bell className={cn(classes, "text-gray-500")} />;
+     }
+   };
+ 
+   const getCategoryClass = (type) => {
+     switch (type) {
+-      case 'alert':
++      case 'ALERT':
+         return 'bg-red-50 border-red-100';
+-      case 'expense':
+-        return 'bg-green-50 border-green-100';
+-      case 'document':
++      case 'TRIP':
+         return 'bg-blue-50 border-blue-100';
+-      default:
++      case 'VEHICLE':
++        return 'bg-indigo-50 border-indigo-100';
++      case 'FINANCE':
++        return 'bg-green-50 border-green-100';
++      case 'SYSTEM':
+         return 'bg-purple-50 border-purple-100';
++      default:
++        return 'bg-gray-50 border-gray-100';
+     }
+   };
+ 
+   const getCategoryLabel = (type) => {
+-    const map = { alert: 'ALERTS', expense: 'EXPENSE CLAIMS', document: 'REGISTRATION', system: 'SYSTEM' };
+-    return map[type] || type.toUpperCase();
++    const map = {
++      ALERT: 'ALERTS',
++      TRIP: 'TRIP',
++      VEHICLE: 'VEHICLE',
++      FINANCE: 'FINANCE',
++      SYSTEM: 'SYSTEM',
++    };
++    return map[type] || (type || 'SYSTEM').toUpperCase();
+   };
+ 
+   const unreadCount = notifications.filter(n => !n.read).length;
+@@ -206,10 +206,11 @@ export default function Notifications() {
+             className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none"
+           >
+             <option value="all">All Categories</option>
+-            <option value="alert">Alerts / Alarms</option>
+-            <option value="expense">Expense Logs</option>
+-            <option value="document">Permit Documents</option>
+-            <option value="system">System Updates</option>
++            <option value="ALERT">Alerts</option>
++            <option value="TRIP">Trip</option>
++            <option value="VEHICLE">Vehicle</option>
++            <option value="FINANCE">Finance</option>
++            <option value="SYSTEM">System</option>
+           </select>
+         </div>
+       </Card>
+@@ -269,19 +270,6 @@ export default function Notifications() {
+                       <span className="text-[10px] text-content-muted block pt-1">
+                         {item.date ? new Date(item.date).toLocaleString() : "Date unavailable"}
+                       </span>
+-                      {item.payload?.document_id && (
+-                        <div className="pt-2">
+-                          <Button
+-                            variant="outline"
+-                            size="sm"
+-                            className="h-7 text-xs bg-surface text-brand-600 border-brand-200 hover:bg-brand-50"
+-                            onClick={() => handleViewDocument(item.payload.document_id)}
+-                          >
+-                            <Eye className="w-3.5 h-3.5 mr-1.5" />
+-                            View Document
+-                          </Button>
+-                        </div>
+-                      )}
+                     </div>
+                   </div>
+ 

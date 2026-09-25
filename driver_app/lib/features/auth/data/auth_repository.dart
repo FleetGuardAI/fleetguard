@@ -30,7 +30,7 @@ class AuthRepository {
       final response = await _dio.post('/api/v1/driver-app/send-otp', data: {
         'phone_number': phoneNumber
       });
-      return response.data; // { "message": "OTP sent successfully", "demo_otp": "123456" }
+      return response.data;
     } catch (e) {
       throw Exception('Failed to send OTP: $e');
     }
@@ -47,27 +47,42 @@ class AuthRepository {
     }
   }
 
-  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String reqId, String otp, String inviteToken, [String? msg91Token]) async {
+  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String reqId, String otp, [String? inviteToken, String? msg91Token]) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/verify-otp', data: {
         'phone_number': phoneNumber,
         'req_id': reqId,
         'otp_code': otp,
-        'invite_token': inviteToken,
+        if (inviteToken != null && inviteToken.isNotEmpty) 'invite_token': inviteToken,
         if (msg91Token != null) 'msg91_token': msg91Token,
       });
-      return response.data; 
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      if (data is String) return {'message': data};
+      if (data is List) return {'data': data};
+      return {'data': data?.toString() ?? 'Success'};
     } on DioException catch (e) {
       final errorData = e.response?.data;
       debugPrint('[AUTH REPO] HTTP ${e.response?.statusCode}: ${e.response?.statusMessage}');
       debugPrint('[AUTH REPO] Endpoint: ${e.requestOptions.path}');
       debugPrint('[AUTH REPO] Request keys: ${e.requestOptions.data.keys.toList()}');
+      
+      String errorDetail = 'Unknown error';
       if (errorData is Map) {
         debugPrint('[AUTH REPO] Error body: $errorData');
-      } else {
+        errorDetail = errorData['detail']?.toString() ?? errorData['message']?.toString() ?? e.message ?? errorDetail;
+      } else if (errorData is String) {
         debugPrint('[AUTH REPO] Error data string: $errorData');
+        errorDetail = errorData.isNotEmpty ? errorData : (e.message ?? errorDetail);
+      } else if (errorData is List) {
+        debugPrint('[AUTH REPO] Error data list: $errorData');
+        errorDetail = errorData.join(', ');
+      } else {
+        debugPrint('[AUTH REPO] Error data unknown: $errorData');
+        errorDetail = e.message ?? errorDetail;
       }
-      throw Exception('Verification failed: ${errorData?['detail'] ?? e.message}');
+      throw Exception('Verification failed: $errorDetail');
     } catch (e) {
       throw Exception('Failed to verify OTP: $e');
     }
@@ -93,6 +108,15 @@ class AuthRepository {
       return response.data;
     } catch (e) {
       throw Exception('Failed to get profile: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAssignedVehicle() async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/vehicle');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to get assigned vehicle: $e');
     }
   }
 

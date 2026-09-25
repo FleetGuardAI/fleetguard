@@ -81,7 +81,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('FleetGuard requires the following permissions to provide live tracking, emergency alerts, and receipt OCR.'),
+            const Text('the vahan requires the following permissions to provide live tracking, emergency alerts, and receipt OCR.'),
             const SizedBox(height: 20),
             Expanded(
               child: ListView(

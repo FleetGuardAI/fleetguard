@@ -94,6 +94,10 @@ async def create_trip(
         planned_cost=payload.planned_cost,
         planned_fuel_liters=payload.planned_fuel_liters,
         cargo_weight=payload.cargo_weight,
+        customer_name=payload.customer_name,
+        customer_phone=payload.customer_phone,
+        customer_contact_person=payload.customer_contact_person,
+        instructions=payload.instructions,
         origin_type="rest_api"
     )
     
@@ -140,6 +144,21 @@ async def create_trip(
         logging.getLogger(__name__).error(f"Failed to calculate pre-trip intelligence: {e}")
         
     db.add(trip)
+    
+    if payload.driver_id:
+        from models.driver_domain import Driver
+        from models.notification import Notification, NotificationCategory
+        driver_for_notif = await db.get(Driver, payload.driver_id)
+        if driver_for_notif and driver_for_notif.user_id:
+            notification = Notification(
+                category=NotificationCategory.TRIP,
+                title="New Trip Assigned",
+                description=f"Trip {trip.origin_location} to {trip.destination_location} has been assigned to you.",
+                company_id=current_user.company_id,
+                user_id=driver_for_notif.user_id,
+            )
+            db.add(notification)
+            
     await db.commit()
     await db.refresh(trip)
 

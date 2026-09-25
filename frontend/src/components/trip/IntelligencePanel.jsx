@@ -99,7 +99,7 @@ export function IntelligencePanel({ intelligence, isLoading, error }) {
             "text-sm max-w-md",
             isTake ? "text-emerald-700" : isReview ? "text-amber-700" : "text-rose-700"
           )}>
-            Based on {confidence_level === 'INSUFFICIENT' ? 'limited inputs' : 'FleetGuard intelligence'}, this trip presents a <span className="font-semibold">{risk_level}</span> operational risk.
+            Based on {confidence_level === 'INSUFFICIENT' ? 'limited inputs' : 'the vahan intelligence'}, this trip presents a <span className="font-semibold">{risk_level}</span> operational risk.
           </p>
         </div>
       </motion.div>

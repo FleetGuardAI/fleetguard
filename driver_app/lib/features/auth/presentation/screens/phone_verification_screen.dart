@@ -8,17 +8,16 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/validators.dart';
 import '../../data/auth_repository.dart';
-import 'package:sendotp_flutter_sdk/sendotp_flutter_sdk.dart';
 
 class PhoneVerificationScreen extends ConsumerStatefulWidget {
 
   const PhoneVerificationScreen({
     super.key,
-    required this.companyName,
-    required this.inviteToken,
+    this.companyName,
+    this.inviteToken,
   });
-  final String companyName;
-  final String inviteToken;
+  final String? companyName;
+  final String? inviteToken;
 
   @override
   ConsumerState<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
@@ -32,42 +31,15 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   bool _otpSent = false;
   bool _isLoading = false;
   String? _reqId;
-  
-  bool _msg91InitError = false;
-  
   int _countdown = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _initMsg91();
   }
 
-  void _initMsg91() {
-    final widgetId = AppConfig.msg91MobileWidgetId;
-    final widgetToken = AppConfig.msg91MobileWidgetToken;
-    
-    if (widgetId.isEmpty || widgetToken.isEmpty) {
-      debugPrint('[MSG91 MOBILE] ERROR: Missing MSG91_MOBILE_WIDGET_ID or MSG91_MOBILE_WIDGET_TOKEN');
-      setState(() {
-        _msg91InitError = true;
-      });
-      return;
-    }
-    
-    try {
-      OTPWidget.initializeWidget(widgetId, widgetToken);
-      debugPrint('[MSG91 MOBILE] INITIALIZED');
-    } catch (e) {
-      debugPrint('[MSG91 MOBILE] ERROR during initialization: $e');
-      setState(() {
-        _msg91InitError = true;
-      });
-    }
-  }
-
-  void _executeFleetGuardVerification(String msg91Token) async {
+  void _executeFleetGuardVerification() async {
     try {
       final repo = ref.read(authRepositoryProvider);
       final response = await repo.verifyOtp(
@@ -75,7 +47,6 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         _reqId ?? 'widget-req',
         _otpController.text.trim(), 
         widget.inviteToken,
-        msg91Token,
       );
 
       await SecureStorage.setPhoneNumber(_phoneController.text.trim());
@@ -87,11 +58,13 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         await SecureStorage.setVerificationStatus(response['verification_status']);
       }
       // Store company name for welcome screen
-      if (widget.companyName.isNotEmpty) {
-        await SecureStorage.setCompanyName(widget.companyName);
+      if (widget.companyName != null && widget.companyName!.isNotEmpty) {
+        await SecureStorage.setCompanyName(widget.companyName!);
       }
       // Store invite token for session persistence
-      await SecureStorage.setInviteToken(widget.inviteToken);
+      if (widget.inviteToken != null && widget.inviteToken!.isNotEmpty) {
+        await SecureStorage.setInviteToken(widget.inviteToken!);
+      }
 
       setState(() => _isLoading = false);
 
@@ -108,7 +81,7 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('FleetGuard verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(content: Text('Verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }
@@ -130,14 +103,9 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
 
   void _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    if (_msg91InitError) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mobile OTP configuration is missing.')));
-      return;
-    }
 
     setState(() => _isLoading = true);
-    debugPrint('[MSG91 MOBILE] SEND_STARTED');
+    debugPrint('[SERVER OTP] SEND_STARTED');
     
     String phone = _phoneController.text.trim();
     String formattedMobile = phone.replaceAll(RegExp(r'\D'), '');
@@ -146,35 +114,26 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
     }
     
     try {
-      final response = await OTPWidget.sendOTP({
-        'identifier': formattedMobile,
-      });
+      final repo = ref.read(authRepositoryProvider);
+      final response = await repo.sendOtp(formattedMobile);
       
-      if (response != null && response['type'] != 'error') {
-        debugPrint('[MSG91 MOBILE] SEND_SUCCESS, keys: ${response.keys.toList()}');
-        setState(() {
-          _isLoading = false;
-          _otpSent = true;
-          // Extract reqId correctly based on actual response structure
-          _reqId = response['message']?.toString() ?? response['reqId']?.toString() ?? 'unknown_req';
-        });
-        _startCountdown();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your phone!')));
-        }
-      } else {
-        debugPrint('[MSG91 MOBILE] SEND_ERROR');
-        setState(() => _isLoading = false);
-        if (mounted) {
-          final errMsg = response?['message'] ?? 'Unknown error';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
-        }
+      _reqId = response['req_id'];
+      debugPrint('[SERVER OTP] SENT reqId: $_reqId');
+
+      setState(() {
+        _isLoading = false;
+        _otpSent = true;
+      });
+      _startCountdown();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP sent to your phone!')));
       }
     } catch (e) {
-      debugPrint('[MSG91 MOBILE] SEND_ERROR');
+      debugPrint('[SERVER OTP] SEND_ERROR: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Theme.of(context).colorScheme.error));
       }
     }
   }
@@ -182,44 +141,29 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
   void _resendOtp() async {
     if (_countdown > 0) return;
     
-    if (_msg91InitError) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mobile OTP configuration is missing.')));
-      return;
-    }
-
     if (_reqId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot resend without Request ID.')));
       return;
     }
 
     setState(() => _isLoading = true);
-    debugPrint('[MSG91 MOBILE] RETRY_STARTED');
+    debugPrint('[SERVER OTP] RETRY_STARTED');
     
     try {
-      final response = await OTPWidget.retryOTP({
-        'reqId': _reqId,
-      });
+      final repo = ref.read(authRepositoryProvider);
+      await repo.resendOtp(_reqId!);
       
-      if (response != null && response['type'] != 'error') {
-        debugPrint('[MSG91 MOBILE] RETRY_SUCCESS');
-        setState(() => _isLoading = false);
-        _startCountdown();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP resent successfully')));
-        }
-      } else {
-        debugPrint('[MSG91 MOBILE] RETRY_ERROR');
-        setState(() => _isLoading = false);
-        if (mounted) {
-          final errMsg = response?['message'] ?? 'Unknown error';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
-        }
+      setState(() => _isLoading = false);
+      _startCountdown();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OTP resent successfully')));
       }
     } catch (e) {
-      debugPrint('[MSG91 MOBILE] RETRY_ERROR');
+      debugPrint('[SERVER OTP] RETRY_ERROR: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to resend: $e'), backgroundColor: Theme.of(context).colorScheme.error));
       }
     }
   }
@@ -232,56 +176,8 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
       return;
     }
 
-    if (_msg91InitError) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mobile OTP configuration is missing.')));
-      return;
-    }
-
     setState(() => _isLoading = true);
-    debugPrint('[MSG91 MOBILE] VERIFY_STARTED');
-    
-    try {
-      final response = await OTPWidget.verifyOTP({
-        'reqId': _reqId,
-        'otp': _otpController.text.trim(),
-      });
-      
-      if (response != null && response['type'] != 'error') {
-        debugPrint('[MSG91 MOBILE] VERIFY_SUCCESS, keys: ${response.keys.toList()}');
-        
-        String msg91Token = '';
-        if (response['message'] is String && response['type'] != 'error') {
-          msg91Token = response['message'];
-        } else if (response['token'] is String) {
-          msg91Token = response['token'];
-        } else if (response['access_token'] is String) {
-          msg91Token = response['access_token'];
-        } else if (response['jwt'] is String) {
-          msg91Token = response['jwt'];
-        } else if (response['data'] is String) {
-          msg91Token = response['data'];
-        }
-        
-        if (msg91Token.isEmpty) {
-          msg91Token = jsonEncode(response);
-        }
-        
-        _executeFleetGuardVerification(msg91Token);
-      } else {
-        debugPrint('[MSG91 MOBILE] VERIFY_ERROR');
-        setState(() => _isLoading = false);
-        if (mounted) {
-          final errMsg = response?['message'] ?? 'Unknown error';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $errMsg'), backgroundColor: Theme.of(context).colorScheme.error));
-        }
-      }
-    } catch (e) {
-      debugPrint('[MSG91 MOBILE] VERIFY_ERROR');
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error));
-      }
-    }
+    _executeFleetGuardVerification();
   }
 
   @override
@@ -315,7 +211,9 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                   Text(
                     _otpSent
                         ? 'Enter 6-digit OTP sent to ${_phoneController.text}'
-                        : 'Joining fleet: ${widget.companyName.isNotEmpty ? widget.companyName : "FleetGuard Partner"}',
+                        : (widget.companyName != null && widget.companyName!.isNotEmpty)
+                            ? 'Joining fleet: ${widget.companyName}'
+                            : 'Welcome back to FleetGuard',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.outline,
                         ),
@@ -390,6 +288,18 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
                             child: const Text('Change Phone Number'),
                           ),
                         ],
+                      ),
+                    ),
+                  ],
+                  if (!_otpSent && widget.inviteToken == null) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => context.push('/auth/qr-scan'),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('New Driver? Scan QR Code to Join'),
                       ),
                     ),
                   ],

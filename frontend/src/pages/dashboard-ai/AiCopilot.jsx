@@ -189,13 +189,13 @@ export function AiCopilot() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/40 flex-shrink-0 relative z-10 bg-surface/40 backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center border border-brand-100">
-                  <img src="/assets/fleetguard-logo.png" alt="FleetGuard" className="w-5 h-5 object-contain" />
+                  <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-5 h-5 object-contain" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-base font-semibold text-content">{t("AI Co-Pilot")}</h1>
                     <span className="text-[10px] text-content-secondary bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-lg font-medium">
-                      FleetGuard.AI
+                      the vahan AI
                     </span>
                   </div>
                   <p className="text-[11px] text-content-secondary">{t("Your intelligent operations assistant")}</p>
@@ -316,7 +316,7 @@ export function AiCopilot() {
                 </button>
               </div>
               <p className="text-[10px] text-content-muted text-center font-light">
-                {t("FleetGuard AI may make mistakes. Please verify important information.")}
+                {t("the vahan AI may make mistakes. Please verify important information.")}
               </p>
             </div>
           </motion.div>

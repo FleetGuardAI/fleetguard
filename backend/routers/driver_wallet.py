@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.driver_wallet import WalletTransaction, TransactionType, TransactionStatus
+from models.driver_domain import Driver
+from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.wallet")
 
@@ -41,18 +43,17 @@ class WalletSummaryResponse(BaseModel):
 
 
 class AdvanceRequest(BaseModel):
-    driver_id: int
-    company_id: int
     amount: float
     reason: Optional[str] = None
 
 
 @router.get("/wallet", response_model=WalletSummaryResponse)
 async def get_driver_wallet(
-    driver_id: int = Query(...),
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Get driver wallet balance, summary, and recent transactions."""
+    driver_id = driver.id
     result = await db.execute(
         select(WalletTransaction)
         .where(WalletTransaction.driver_id == driver_id)
@@ -80,42 +81,9 @@ async def get_driver_wallet(
         for t in txs[:20]
     ]
 
-    # Return realistic summary if no transactions exist in DB
+    # Empty state logic uses actual calculated zeros
     if not txs:
-        balance = 14500.0
-        total_salary = 22000.0
-        total_advances = 8000.0
-        total_incentives = 2500.0
-        pending_payments = 2000.0
-        recent = [
-            TransactionResponse(
-                id=101,
-                driver_id=driver_id,
-                transaction_type="SALARY",
-                amount=22000.0,
-                status="COMPLETED",
-                description="July Monthly Salary",
-                created_at=datetime.now(timezone.utc),
-            ),
-            TransactionResponse(
-                id=102,
-                driver_id=driver_id,
-                transaction_type="ADVANCE",
-                amount=5000.0,
-                status="APPROVED",
-                description="Trip Advance - Mumbai Route",
-                created_at=datetime.now(timezone.utc),
-            ),
-            TransactionResponse(
-                id=103,
-                driver_id=driver_id,
-                transaction_type="INCENTIVE",
-                amount=2500.0,
-                status="COMPLETED",
-                description="On-Time Delivery Incentive",
-                created_at=datetime.now(timezone.utc),
-            ),
-        ]
+        balance = 0.0
 
     return WalletSummaryResponse(
         balance=balance,
@@ -130,12 +98,13 @@ async def get_driver_wallet(
 @router.post("/wallet/advance-request", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 async def request_advance(
     payload: AdvanceRequest,
+    driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit salary advance request."""
     tx = WalletTransaction(
-        driver_id=payload.driver_id,
-        company_id=payload.company_id,
+        driver_id=driver.id,
+        company_id=driver.company_id,
         transaction_type=TransactionType.ADVANCE,
         amount=payload.amount,
         status=TransactionStatus.PENDING,
@@ -146,7 +115,7 @@ async def request_advance(
     await db.commit()
     await db.refresh(tx)
 
-    logger.info(f"Driver #{payload.driver_id} requested advance of ₹{payload.amount}")
+    logger.info(f"Driver #{driver.id} requested advance of ₹{payload.amount}")
 
     return TransactionResponse(
         id=tx.id,

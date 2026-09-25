@@ -14,29 +14,34 @@ from schemas.location import RouteCalculationRequest
 
 @pytest.mark.asyncio
 async def test_location_autocomplete_mocked():
-    provider = LocationProvider()
-    
-    with patch("httpx.AsyncClient.get") as mock_get:
+    with patch("config.settings.GOOGLE_MAPS_API_KEY", "test"), \
+         patch("config.settings.LOCATION_PROVIDER", "google"):
+        provider = LocationProvider()
+        
+        from unittest.mock import AsyncMock
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "predictions": [
+            "suggestions": [
                 {
-                    "place_id": "test_id_123",
-                    "description": "Mumbai, Maharashtra, India",
-                    "structured_formatting": {
-                        "main_text": "Mumbai",
-                        "secondary_text": "Maharashtra, India"
+                    "placePrediction": {
+                        "placeId": "test_id_123",
+                        "text": {"text": "Mumbai"},
+                        "structuredFormat": {
+                            "mainText": {"text": "Mumbai"},
+                            "secondaryText": {"text": "Maharashtra, India"}
+                        }
                     }
                 }
             ]
         }
-        mock_get.return_value = mock_response
+        provider.client.post = AsyncMock(return_value=mock_response)
         
         results = await provider.autocomplete("Mumbai")
+        print("DEBUG RESULTS:", results)
+        print("DEBUG CALL:", provider.client.post.call_args)
         assert len(results) == 1
-        # The LocationProvider mock uses: return [LocationAutocompletePrediction(place_id=f"mock-{query}", main_text=query, secondary_text="Mock State, Country")]
-        assert results[0].place_id == "mock-Mumbai"
+        assert results[0].place_id == "test_id_123"
         assert results[0].main_text == "Mumbai"
 
 @pytest.mark.asyncio

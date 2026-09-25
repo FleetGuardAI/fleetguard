@@ -1,5 +1,5 @@
 /**
- * FleetGuard AI Opportunity Service
+ * the vahan AI Opportunity Service
  * Derives AI opportunities from real backend data (fuel alerts, expenses, maintenance anomalies).
  * Falls back to curated intelligence data when no backend anomalies are detected.
  */

@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from schemas.document import DocumentResponse
 
 from database import get_db
@@ -36,7 +37,7 @@ from config import settings
 from services.otp_service import get_otp_provider
 from services.file_upload_service import storage_service
 from utils.security import hash_password, create_access_token
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user_allow_inactive, get_current_user
 
 logger = logging.getLogger("fleetguard.driver_mobile")
 
@@ -62,7 +63,7 @@ class VerifyOtpRequest(BaseModel):
     phone_number: str
     req_id: str
     otp_code: str
-    invite_token: str
+    invite_token: Optional[str] = None
     msg91_token: Optional[str] = None
 
 class VerifyOtpResponse(BaseModel):
@@ -115,13 +116,13 @@ class FcmTokenRequest(BaseModel):
 # Dependencies
 # ==========================================================================
 
-async def get_current_driver(
-    current_user: User = Depends(get_current_user),
+async def get_onboarding_driver(
+    current_user: User = Depends(get_current_user_allow_inactive),
     db: AsyncSession = Depends(get_db)
 ) -> Driver:
     """
-    Get the authenticated driver profile.
-    Prevents IDOR by using the trusted JWT token to look up the driver.
+    Get the authenticated driver profile for onboarding ONLY.
+    Allows access even if user/driver is inactive.
     """
     result = await db.execute(
         select(Driver).where(Driver.user_id == current_user.id)
@@ -132,6 +133,26 @@ async def get_current_driver(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Authenticated user is not registered as a driver"
+        )
+    return driver
+
+async def get_current_driver(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Driver:
+    """
+    Get the authenticated driver profile for normal operations.
+    Enforces that User is active AND Driver is active.
+    """
+    result = await db.execute(
+        select(Driver).where(Driver.user_id == current_user.id)
+    )
+    driver = result.scalar_one_or_none()
+    
+    if not driver or driver.status != DriverStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authenticated user is not an active driver"
         )
     return driver
 
@@ -206,64 +227,92 @@ async def verify_otp(
             detail=result.message
         )
 
-    # Validate invite token
-    invite_result = await db.execute(
-        select(FleetInvite).where(FleetInvite.invite_token == payload.invite_token)
-    )
-    invite = invite_result.scalar_one_or_none()
-    if invite is None or not invite.is_valid:
-        raise HTTPException(400, "Invalid or expired invite")
+    # Validate invite token if provided
+    company_id = None
+    if payload.invite_token:
+        invite_result = await db.execute(
+            select(FleetInvite).where(FleetInvite.invite_token == payload.invite_token)
+        )
+        invite = invite_result.scalar_one_or_none()
+        if invite is None or not invite.is_valid:
+            raise HTTPException(400, "Invalid or expired invite")
+        company_id = invite.company_id
 
-    company_id = invite.company_id
-
-    # Check if driver already exists
+    # Check if driver already exists globally (phone_number is globally unique)
     driver_result = await db.execute(
         select(Driver).where(Driver.phone_number == payload.phone_number)
     )
-    driver = driver_result.scalar_one_or_none()
+    driver = driver_result.scalars().first()
 
     is_new = driver is None
 
-    if is_new:
-        # Check if user with this phone exists
-        user_result = await db.execute(
-            select(User).where(User.mobile_number == payload.phone_number)
+    if is_new and not company_id:
+        raise HTTPException(
+            status_code=404,
+            detail="No driver profile found. Please scan a fleet QR code to join."
         )
-        user = user_result.scalar_one_or_none()
 
-        if user is None:
-            # Create new user with DRIVER role
-            user = User(
-                company_id=company_id,
-                full_name=payload.phone_number,  # Will be updated during profile creation
-                mobile_number=payload.phone_number,
-                password_hash=hash_password(secrets.token_urlsafe(24)),  # Random password
-                role=UserRole.DRIVER,
-                is_active=True,
+    if is_new:
+        disambiguated_phone = f"{payload.phone_number}_d{company_id}"
+
+        # Check if user with this phone (or disambiguated) exists
+        user_result = await db.execute(
+            select(User).where(
+                User.mobile_number.in_([payload.phone_number, disambiguated_phone])
             )
-            db.add(user)
-            await db.flush()
-        elif user.company_id == company_id and user.role == UserRole.DRIVER:
-            # Same company, same role — reuse the user as-is
-            pass
+        )
+        existing_users = user_result.scalars().all()
+        user_map = {u.mobile_number: u for u in existing_users}
+
+        user = None
+
+        if disambiguated_phone in user_map:
+            # We already have a disambiguated user for this company, reuse it
+            user = user_map[disambiguated_phone]
+        elif payload.phone_number in user_map:
+            primary_user = user_map[payload.phone_number]
+            if primary_user.company_id == company_id and primary_user.role == UserRole.DRIVER:
+                # Same company, same role — reuse the primary user
+                user = primary_user
+            else:
+                # Primary exists but is different company/role. Create disambiguated.
+                user = User(
+                    company_id=company_id,
+                    full_name=payload.phone_number,
+                    mobile_number=disambiguated_phone,
+                    password_hash=hash_password(secrets.token_urlsafe(24)),
+                    role=UserRole.DRIVER,
+                    is_active=False,
+                )
+                db.add(user)
+                try:
+                    async with db.begin_nested():
+                        await db.flush()
+                except IntegrityError:
+                    # It was created concurrently! Fetch it.
+                    user_result = await db.execute(
+                        select(User).where(User.mobile_number == disambiguated_phone)
+                    )
+                    user = user_result.scalar_one()
         else:
-            # User exists but belongs to a different company or has a non-DRIVER role
-            # (e.g., they are COMPANY_ADMIN for another tenant).
-            # We must NOT overwrite their company_id/role — create a fresh DRIVER user.
-            logger.info(
-                f"[DRIVER ONBOARD] Existing user {user.id} has role={user.role}, "
-                f"company_id={user.company_id}. Creating new DRIVER user for company {company_id}."
-            )
+            # No user exists. Create primary user.
             user = User(
                 company_id=company_id,
                 full_name=payload.phone_number,
-                mobile_number=f"{payload.phone_number}_d{company_id}",  # disambiguate
+                mobile_number=payload.phone_number,
                 password_hash=hash_password(secrets.token_urlsafe(24)),
                 role=UserRole.DRIVER,
-                is_active=True,
+                is_active=False,
             )
             db.add(user)
-            await db.flush()
+            try:
+                async with db.begin_nested():
+                    await db.flush()
+            except IntegrityError:
+                user_result = await db.execute(
+                    select(User).where(User.mobile_number == payload.phone_number)
+                )
+                user = user_result.scalar_one()
 
         # Create new driver
         driver = Driver(
@@ -271,15 +320,69 @@ async def verify_otp(
             phone_number=payload.phone_number,
             company_id=company_id,
             user_id=user.id,
-            status=DriverStatus.ACTIVE,
+            status=DriverStatus.INACTIVE,
             verification_status=VerificationStatus.PENDING_DOCUMENTS,
             origin_type="driver_app",
         )
         db.add(driver)
-        await db.flush()
+        try:
+            async with db.begin_nested():
+                await db.flush()
+        except IntegrityError:
+            # Driver was created concurrently
+            driver_result = await db.execute(
+                select(Driver).where(Driver.phone_number == payload.phone_number)
+            )
+            driver = driver_result.scalar_one()
+    else:
+        # Driver already exists. 
+        # If they are joining a new company via invite, we should update their company_id
+        # to the new company so they can operate under it, as phone_number is globally unique.
+        if company_id is not None and driver.company_id != company_id:
+            driver.company_id = company_id
+            
+            # We must also ensure they use the correct user for this company.
+            disambiguated_phone = f"{payload.phone_number}_d{company_id}"
+            user_result = await db.execute(
+                select(User).where(
+                    User.mobile_number.in_([payload.phone_number, disambiguated_phone])
+                )
+            )
+            existing_users = user_result.scalars().all()
+            user_map = {u.mobile_number: u for u in existing_users}
+            
+            if disambiguated_phone in user_map:
+                driver.user_id = user_map[disambiguated_phone].id
+            elif payload.phone_number in user_map:
+                primary = user_map[payload.phone_number]
+                if primary.company_id == company_id:
+                    driver.user_id = primary.id
+                else:
+                    # Create disambiguated user
+                    user = User(
+                        company_id=company_id,
+                        full_name=payload.phone_number,
+                        mobile_number=disambiguated_phone,
+                        password_hash=hash_password(secrets.token_urlsafe(24)),
+                        role=UserRole.DRIVER,
+                        is_active=False,
+                    )
+                    db.add(user)
+                    try:
+                        async with db.begin_nested():
+                            await db.flush()
+                    except IntegrityError:
+                        user_result = await db.execute(
+                            select(User).where(User.mobile_number == disambiguated_phone)
+                        )
+                        user = user_result.scalar_one()
+                    driver.user_id = user.id
 
-        # Increment invite usage
+    if 'invite' in locals() and invite is not None:
         invite.use_count += 1
+
+    # For token generation, ensure company_id correctly points to the driver's current company
+    final_company_id = company_id if company_id is not None else driver.company_id
 
     # Generate JWT token
     from models.auth_session import AuthSession
@@ -287,7 +390,7 @@ async def verify_otp(
     jti = secrets.token_urlsafe(24)
     session = AuthSession(
         user_id=driver.user_id or 0,
-        company_id=company_id,
+        company_id=final_company_id,
         session_jti=jti,
         remember_me=True,
         expires_at=datetime.now(tz=timezone.utc) + __import__('datetime').timedelta(days=30),
@@ -297,7 +400,7 @@ async def verify_otp(
     token = create_access_token(
         data={
             "sub": str(driver.user_id),
-            "company_id": company_id,
+            "company_id": final_company_id,
             "role": UserRole.DRIVER.value,
             "driver_id": driver.id,
             "jti": jti,
@@ -319,10 +422,12 @@ async def verify_otp(
 # Profile Endpoints
 # ==========================================================================
 
+from sqlalchemy.exc import IntegrityError
+
 @router.post("/register", response_model=DriverProfileResponse)
 async def register_driver_profile(
     payload: DriverProfileRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -347,7 +452,15 @@ async def register_driver_profile(
 
     driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The provided License Number or Aadhaar Number is already registered."
+        )
+
     await db.refresh(driver)
 
     response = _driver_to_response(driver)
@@ -359,7 +472,7 @@ async def register_driver_profile(
 async def upload_document(
     document_type: str = Form(..., description="license_front, license_back, aadhaar_front, aadhaar_back, selfie"),
     file: UploadFile = File(...),
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -392,7 +505,8 @@ async def upload_document(
             entity_type=EntityType.DRIVER,
             entity_id=str(driver.id),
             uploaded_by=f"driver_{driver.id}",
-            company_id=driver.company_id
+            company_id=driver.company_id,
+            category=document_type
         )
         logger.info("[UPLOAD DEBUG] storage upload completed")
 
@@ -434,7 +548,7 @@ async def upload_document(
                 any_latest_rejected = True
                 
         if has_all_required and all_required_approved:
-            driver.verification_status = VerificationStatus.APPROVED
+            driver.verification_status = VerificationStatus.PENDING_APPROVAL
         elif any_latest_rejected:
             driver.verification_status = VerificationStatus.REJECTED
         elif has_all_required:
@@ -463,7 +577,7 @@ async def upload_document(
 
 @router.get("/documents", response_model=list[DocumentResponse])
 async def get_my_documents(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -499,7 +613,7 @@ async def get_my_documents(
 
 @router.post("/face-verify", response_model=FaceVerifyResponse)
 async def face_verify(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -526,7 +640,7 @@ async def face_verify(
 
 @router.get("/profile", response_model=DriverProfileResponse)
 async def get_driver_profile(
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Get driver profile with approval status."""
@@ -538,7 +652,7 @@ async def get_driver_profile(
 @router.patch("/profile", response_model=DriverProfileResponse)
 async def update_driver_profile(
     payload: DriverProfileRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver profile details."""
@@ -547,7 +661,15 @@ async def update_driver_profile(
     if payload.license_number:
         driver.license_number = payload.license_number
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The provided License Number is already registered."
+        )
+        
     await db.refresh(driver)
     response = _driver_to_response(driver)
     response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
@@ -557,7 +679,7 @@ async def update_driver_profile(
 @router.put("/fcm-token")
 async def update_fcm_token(
     payload: FcmTokenRequest,
-    driver: Driver = Depends(get_current_driver),
+    driver: Driver = Depends(get_onboarding_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Update driver's FCM push notification token."""
