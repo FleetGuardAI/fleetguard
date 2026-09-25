@@ -234,3 +234,16 @@ class CompanyUpdateRequest(BaseModel):
     mobile_number: Optional[str] = None
     email: Optional[str] = None
 
+
+class AuthSessionOut(BaseModel):
+    id: int
+    user_id: int
+    last_seen_at: Optional[datetime]
+    created_at: datetime
+    expires_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+class ActiveSessionsResponse(BaseModel):
+    sessions: list[AuthSessionOut]
+

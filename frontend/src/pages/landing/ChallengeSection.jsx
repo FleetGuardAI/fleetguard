@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  Map, Droplets, Receipt, FileText,
+import { 
+  Map, Droplets, Receipt, FileText, 
   Truck, Users, Wrench, CreditCard,
   ArrowRight, Play, Activity, ShieldAlert, ArrowDown
 } from 'lucide-react';
@@ -45,13 +45,13 @@ function ChallengeCopy() {
           01 The Challenge
         </span>
       </div>
-
+      
       {/* Headline */}
       <h2 className="text-4xl md:text-[40px] lg:text-[44px] font-medium tracking-tight leading-[1.15] text-content">
         Your fleet generates<br className="hidden md:block"/> information everywhere.<br/>
         <span className="text-fg-green">The hard part is<br className="hidden md:block"/> knowing what matters.</span>
       </h2>
-
+      
       {/* Supporting Copy */}
       <p className="text-[17px] text-content-secondary font-light leading-relaxed max-w-[420px]">
         Trips, fuel, expenses, documents, driver updates, maintenance, payments — information lives in different systems, teams and formats, making it hard to get a clear, real-time picture.
@@ -97,24 +97,19 @@ function ChallengeMetrics() {
 
 function SignalModule({ data }) {
   const reducedMotion = useReducedMotion();
-
+  
   return (
-    <motion.div
+    <motion.div 
       className="absolute flex items-center gap-2.5 z-20 group cursor-default"
-      style={{
-        top: `${data.pos.y}%`,
-        left: `${data.pos.x}%`,
+      style={{ 
+        top: `${data.pos.y}%`, 
+        left: `${data.pos.x}%`, 
         scale: data.scale,
         transform: 'translate(-50%, -50%)' // Ensure anchor is center
       }}
       initial={reducedMotion ? { opacity: 1 } : { opacity: 0, filter: 'blur(4px)' }}
-      animate={{ y: [0, -6, 0] }}
       whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, filter: 'blur(0px)' }}
-      transition={{
-        opacity: { duration: 0.8, delay: data.delay, ease: "easeOut" },
-        filter: { duration: 0.8, delay: data.delay, ease: "easeOut" },
-        y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: data.delay }
-      }}
+      transition={{ duration: 0.8, delay: data.delay, ease: "easeOut" }}
       viewport={{ once: true, margin: "-50px" }}
     >
       <div className="shrink-0 w-8 h-8 rounded-full bg-white border border-border/60 flex items-center justify-center shadow-sm relative transition-colors group-hover:border-border">
@@ -132,9 +127,9 @@ function SignalModule({ data }) {
 
 function FleetContextGraph({ className, style }) {
   const reducedMotion = useReducedMotion();
-
+  
   return (
-    <motion.div
+    <motion.div 
       className={`z-20 flex flex-col items-center justify-center ${className || ''}`}
       style={style}
       initial={reducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
@@ -145,22 +140,22 @@ function FleetContextGraph({ className, style }) {
       <div className="relative w-[260px] h-[260px] flex items-center justify-center">
         {/* Abstract core glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.08),_transparent_60%)] rounded-full pointer-events-none"></div>
-
+        
         {/* Abstract map/route geometry */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 260 260">
            {/* Connecting route arcs */}
            <path d="M 40,200 C 90,80 180,60 230,160" fill="none" stroke="#4ADE80" strokeWidth="1.5" strokeDasharray="4 6" strokeOpacity="0.4" />
            <path d="M 60,80 C 140,140 200,140 230,80" fill="none" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2 4" strokeOpacity="0.5" />
-
+           
            {/* Boundary rings representing "unified context" */}
            <circle cx="130" cy="130" r="75" fill="none" stroke="#cbd5e1" strokeWidth="0.5" strokeOpacity="0.3" />
            <circle cx="130" cy="130" r="110" fill="none" stroke="#cbd5e1" strokeWidth="0.5" strokeOpacity="0.15" />
         </svg>
-
+        
         {/* Minimal vehicle markers */}
         <div className="absolute top-[72px] left-[195px] w-1.5 h-1.5 rounded-full bg-slate-400"></div>
         <div className="absolute top-[178px] left-[105px] w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-
+        
         {/* Highlighted active vehicle tracking */}
         <div className="absolute top-[105px] left-[85px] flex flex-col items-center">
            <div className="relative flex items-center justify-center">
@@ -169,20 +164,20 @@ function FleetContextGraph({ className, style }) {
                  <div className="w-1.5 h-1.5 bg-fg-green rounded-full"></div>
               </div>
            </div>
-
+           
            {/* Overlapping Signals arriving at the vehicle */}
            <div className="absolute top-4 left-4 flex flex-col gap-1 z-30">
               <div className="px-1.5 py-0.5 bg-white/90 backdrop-blur-sm border border-border/40 text-[7px] font-bold text-slate-700 rounded-sm shadow-sm whitespace-nowrap">TRIP 4092</div>
               <div className="px-1.5 py-0.5 bg-white/90 backdrop-blur-sm border border-border/40 text-[7px] font-bold text-amber-600 rounded-sm shadow-sm whitespace-nowrap">LOW FUEL</div>
            </div>
         </div>
-
+        
         {/* The Core Intelligence Label */}
         <div className="absolute bottom-6 text-center">
            <div className="text-[9px] font-bold text-content-secondary uppercase tracking-[0.2em] mb-1 opacity-80">
               The Vaahan
            </div>
-           <div className="text-[12px] font-bold text-content leading-tight tracking-wider animate-pulse">
+           <div className="text-[12px] font-bold text-content leading-tight tracking-wider">
               CONTEXTUAL<br/>INTELLIGENCE
            </div>
         </div>
@@ -193,10 +188,10 @@ function FleetContextGraph({ className, style }) {
 
 function OperationalDashboard({ className, style }) {
   const reducedMotion = useReducedMotion();
-
+  
   return (
-    <motion.div
-      className={`z-30 flex flex-col bg-[#0b1120] border border-[#1e293b] rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.4)] overflow-hidden w-[240px] lg:w-[260px] ${className || ''}`}
+    <motion.div 
+      className={`z-30 flex flex-col bg-[#0b1120] border border-[#1e293b] rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.4)] overflow-hidden w-[280px] lg:w-[300px] ${className || ''}`}
       style={style}
       initial={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
       whileInView={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 1, x: 0 }}
@@ -215,11 +210,11 @@ function OperationalDashboard({ className, style }) {
           <span className="text-[9px] text-fg-green font-bold uppercase tracking-widest opacity-80">Live</span>
         </div>
       </div>
-
+      
       <div className="p-3.5 grid grid-cols-2 gap-2.5 relative bg-[#0b1120]">
         {/* Subtle internal grid depth */}
         <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:12px_12px] pointer-events-none"></div>
-
+        
         {/* Main Metric */}
         <div className="col-span-2 bg-white/[0.03] border border-white/5 rounded-xl p-3 relative z-10 hover:bg-white/[0.04] transition-colors">
           <div className="flex items-center justify-between mb-2">
@@ -237,7 +232,7 @@ function OperationalDashboard({ className, style }) {
           <div className="text-[8px] text-white/50 font-bold uppercase tracking-widest mb-1.5">Trips On Time</div>
           <div className="text-base font-semibold text-white/95">98.4%</div>
         </div>
-
+        
         <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 relative z-10">
           <div className="text-[8px] text-white/50 font-bold uppercase tracking-widest mb-1.5">Active Alerts</div>
           <div className="flex items-center gap-2">
@@ -280,11 +275,11 @@ function OperationalDashboard({ className, style }) {
 
 function ContinuousConnectionGraph() {
   const reducedMotion = useReducedMotion();
-  const nodeX = 420; // 42% of 1000
-  const nodeY = 300; // 50% of 600
+  const nodeX = NODE_POS.x * 10;
+  const nodeY = NODE_POS.y * 7.5;
 
   return (
-    <svg viewBox="0 0 1000 600" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-10">
+    <svg viewBox="0 0 1000 750" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-10">
        <defs>
          <linearGradient id="fadeLine" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#cbd5e1" stopOpacity="0" />
@@ -292,24 +287,24 @@ function ContinuousConnectionGraph() {
             <stop offset="100%" stopColor="#cbd5e1" stopOpacity="0.1" />
          </linearGradient>
        </defs>
-
+       
        {/* Source to Node flows */}
        {SPATIAL_SOURCES.map((s, i) => {
          const x1 = s.pos.x * 10;
-         const y1 = s.pos.y * 6;
-
+         const y1 = s.pos.y * 7.5;
+         
          // Smooth converging routing
          const cp1x = x1 + (nodeX - x1) * 0.4;
          const cp1y = y1;
          const cp2x = nodeX - (nodeX - x1) * 0.2;
          const cp2y = nodeY;
-
+         
          const pathData = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${nodeX},${nodeY}`;
-
+         
          return (
            <g key={i}>
              {/* Base ambient track */}
-             <motion.path
+             <motion.path 
                d={pathData}
                fill="none"
                stroke="url(#fadeLine)"
@@ -321,7 +316,7 @@ function ContinuousConnectionGraph() {
              />
              {/* Continuous subtle data pulses */}
              {!reducedMotion && (
-               <motion.path
+               <motion.path 
                  d={pathData}
                  fill="none"
                  stroke="#4ADE80"
@@ -331,7 +326,7 @@ function ContinuousConnectionGraph() {
                  initial={{ pathLength: 0.015, pathOffset: 0, opacity: 0 }}
                  whileInView={{ opacity: 0.5 }}
                  animate={{ pathOffset: 1 }}
-                 transition={{
+                 transition={{ 
                    pathOffset: { duration: 3.5, repeat: Infinity, ease: "linear", delay: s.delay + 1 },
                    opacity: { duration: 0.5, delay: s.delay + 1 }
                  }}
@@ -340,10 +335,10 @@ function ContinuousConnectionGraph() {
            </g>
          )
        })}
-
-       {/* Node to Dashboard resolution path - specifically terminates at 65% (x=650) */}
-       <motion.path
-          d={`M ${nodeX},${nodeY} L 650,${nodeY}`}
+       
+       {/* Node to Dashboard resolution path */}
+       <motion.path 
+          d={`M ${nodeX},${nodeY} C ${nodeX + 80},${nodeY} 850,${nodeY} 1000,${nodeY}`}
           fill="none"
           stroke="#4ADE80"
           strokeWidth="2"
@@ -354,33 +349,29 @@ function ContinuousConnectionGraph() {
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 1.2, delay: 1.5, ease: "easeOut" }}
        />
-
-       {/* Central Convergence Intelligence Node */}
-       <circle cx={nodeX} cy={nodeY} r="3" fill="#176B4D" className="opacity-90" />
-       <circle cx={nodeX} cy={nodeY} r="3" fill="#4ADE80" className="animate-ping" opacity="0.6" style={{ transformOrigin: `${nodeX}px ${nodeY}px` }} />
     </svg>
   );
 }
 
 function VisualEcosystemCanvas() {
   return (
-    <div className="relative w-full aspect-[4/5] sm:aspect-[4/3] lg:aspect-[16/9] max-h-[600px] flex items-center justify-center">
+    <div className="relative w-full aspect-[4/5] sm:aspect-[4/3] lg:aspect-[16/11] max-h-[750px] flex items-center justify-center">
       {/* Extreme subtle background depth */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_50%,_#e2e8f0_1px,_transparent_1px)] bg-[length:32px_32px] opacity-[0.25] pointer-events-none z-0"></div>
-
+      
       <ContinuousConnectionGraph />
-
+      
       {SPATIAL_SOURCES.map((source, idx) => (
         <SignalModule key={source.id} data={source} index={idx} />
       ))}
-
-      <FleetContextGraph
+      
+      <FleetContextGraph 
          className="absolute"
-         style={{ left: '42%', top: '50%', transform: 'translate(-50%, -50%)' }}
+         style={{ left: '40%', top: '50%', transform: 'translate(-50%, -50%)' }}
       />
-      <OperationalDashboard
+      <OperationalDashboard 
          className="absolute"
-         style={{ left: '68%', top: '50%', transform: 'translateY(-50%)' }}
+         style={{ top: '50%', right: '4%', transform: 'translateY(-50%)' }}
       />
     </div>
   );
@@ -412,11 +403,11 @@ function MobileVisualFallback() {
           <MobileSignalModule key={source.id} data={source} />
         ))}
       </div>
-
+      
       <div className="flex justify-center -my-6 text-border/60">
          <ArrowDown className="w-5 h-5" strokeWidth={1.5} />
       </div>
-
+      
       <div className="relative transform scale-90 -my-8 mx-auto w-fit">
         <FleetContextGraph />
       </div>
@@ -439,10 +430,10 @@ function MobileVisualFallback() {
 
 export function ChallengeSection() {
   return (
-    <section className="py-16 md:py-20 bg-[#fafaf9] overflow-hidden relative">
+    <section className="py-20 md:py-24 bg-[#fafaf9] overflow-hidden relative">
       <div className="container mx-auto px-6 max-w-[1440px]">
         <div className="flex flex-col xl:flex-row items-center xl:items-start gap-16 xl:gap-8">
-
+          
           {/* Left: Copy & Metrics */}
           <div className="w-full xl:w-[32%] xl:pt-16 flex flex-col justify-between relative z-40">
             <ChallengeCopy />
@@ -453,7 +444,7 @@ export function ChallengeSection() {
           <div className="hidden md:block w-full xl:w-[68%]">
             <VisualEcosystemCanvas />
           </div>
-
+          
           {/* Right: Visualization Stack (Mobile only) */}
           <div className="block md:hidden w-full">
             <MobileVisualFallback />

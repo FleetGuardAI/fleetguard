@@ -176,12 +176,18 @@ export default function TripDetail() {
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-border">
                   <span className="text-content-secondary">Dispatch Timestamp</span>
-                  <span className="font-medium text-content">{new Date(trip.start_date).toLocaleDateString()}</span>
+                  <span className="font-medium text-content">{new Date(trip.start_date || trip.planned_start_time).toLocaleDateString()}</span>
                 </div>
+                {trip.estimated_arrival_time && trip.status === 'in_progress' && (
+                  <div className="flex justify-between items-center py-1 border-b border-border bg-brand-50 rounded px-1 -mx-1">
+                    <span className="text-brand-700 font-medium">Live ETA (Traffic)</span>
+                    <span className="font-bold text-brand-700">{new Date(trip.estimated_arrival_time).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-1">
                   <span className="text-content-secondary">Delivery Date</span>
                   <span className="font-medium text-content">
-                    {trip.end_date ? new Date(trip.end_date).toLocaleDateString() : `${new Date(trip.expected_delivery).toLocaleDateString()} (Est.)`}
+                    {trip.end_date || trip.actual_end_time ? new Date(trip.end_date || trip.actual_end_time).toLocaleDateString() : `${new Date(trip.expected_delivery || trip.planned_end_time).toLocaleDateString()} (Est.)`}
                   </span>
                 </div>
               </div>

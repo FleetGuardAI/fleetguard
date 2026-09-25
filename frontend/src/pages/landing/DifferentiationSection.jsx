@@ -135,7 +135,7 @@ function DesktopComparison({ activeCategory }) {
                   <Icon className="w-4 h-4 text-fg-green" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-semibold tracking-widest uppercase text-fg-green block mb-1.5 opacity-100">{row.category}</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-fg-green/70 block mb-1.5">{row.category}</span>
                   <p className="text-[14px] text-content font-medium leading-relaxed">{row.right}</p>
                 </div>
               </motion.div>
@@ -178,8 +178,8 @@ function MobileComparison({ activeCategory }) {
               <p className="text-[13px] text-content-secondary font-light leading-relaxed">{row.left}</p>
             </div>
             {/* With Vahan */}
-            <div className="px-5 py-4 bg-[#EDF7F1] border-t border-fg-green/15">
-              <span className="text-[10px] font-semibold tracking-widest uppercase text-fg-green block mb-1 opacity-100">With Vahan</span>
+            <div className="px-5 py-4 bg-[#EDF7F1] border-t border-fg-green/10">
+              <span className="text-[10px] font-bold tracking-widest uppercase text-fg-green/70 block mb-1">With Vahan</span>
               <p className="text-[13px] text-content font-medium leading-relaxed">{row.right}</p>
             </div>
           </motion.div>

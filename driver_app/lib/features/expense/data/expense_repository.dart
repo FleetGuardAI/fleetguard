@@ -3,6 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../../models/offline_record.dart';
+import '../../../services/sync_service.dart';
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -38,6 +41,26 @@ class ExpenseRepository {
     required String description,
   }) async {
     try {
+      final connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult == ConnectivityResult.none) {
+        // Offline -> Save to Isar
+        final syncService = await SyncService.init();
+        final expense = OfflineExpense()
+          ..amount = amount
+          ..category = category
+          ..description = description
+          ..isSynced = false
+          ..base64ReceiptImage = '' // For now, we skip image offline serialization in demo
+          ..createdAt = DateTime.now();
+          
+        await syncService.isar.writeTxn(() async {
+          await syncService.isar.offlineExpenses.put(expense);
+        });
+        
+        return {'status': 'queued', 'message': 'Saved offline. Will sync when connected.'};
+      }
+
+      // Online
       final response = await _dio.post('/api/v1/driver-app/expenses', data: {
         'category': category,
         'amount': amount,
