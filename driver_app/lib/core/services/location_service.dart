@@ -118,7 +118,11 @@ void onStart(ServiceInstance service) async {
   activityRecognition.listen((Activity activity) {
     if (activity.type == ActivityType.STILL) {
       stopLocationStream();
-    } else if (activity.type == ActivityType.IN_VEHICLE || activity.type == ActivityType.ON_BICYCLE) {
+    } else if (activity.type == ActivityType.IN_VEHICLE || 
+               activity.type == ActivityType.ON_BICYCLE || 
+               activity.type == ActivityType.ON_FOOT || 
+               activity.type == ActivityType.WALKING || 
+               activity.type == ActivityType.RUNNING) {
       startLocationStream();
     }
   });
