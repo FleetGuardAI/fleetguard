@@ -114,7 +114,7 @@ async def get_dashboard_kpis(
 async def get_recent_activity(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.MANAGER)),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.DISPATCHER, UserRole.ADMIN)),
 ):
     """
     Get recent ticket activity for the dashboard.

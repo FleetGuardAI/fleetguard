@@ -107,6 +107,20 @@ export default function DashboardOverview() {
 
   useEffect(() => { loadData(); }, []);
 
+  const [mapRefreshing, setMapRefreshing] = useState(false);
+  const refreshMap = async () => {
+    setMapRefreshing(true);
+    try {
+      const tracking = await getLiveTracking();
+      setLiveTrucks(tracking || []);
+      success('Driver locations updated');
+    } catch (e) {
+      error("Failed to refresh map locations");
+    } finally {
+      setMapRefreshing(false);
+    }
+  };
+
   if (fetchError && !loading) {
     return (
       <div className="flex w-full min-h-full bg-surface-base items-center justify-center p-6">
@@ -224,7 +238,15 @@ export default function DashboardOverview() {
               </div>
             </div>
           </div>
-          <div className="lg:col-span-7 h-[540px]">
+          <div className="lg:col-span-7 h-[540px] relative">
+             <button
+               onClick={refreshMap}
+               disabled={mapRefreshing}
+               className="absolute top-4 right-4 z-10 p-2.5 bg-white border border-border rounded-xl shadow-elevated text-content-secondary hover:text-brand-500 hover:border-brand-300 transition-all focus:outline-none disabled:opacity-50"
+               title="Refresh Driver Locations"
+             >
+               <RefreshCw className={cn("w-4 h-4", mapRefreshing && "animate-spin")} />
+             </button>
              <FleetMap trucks={liveTrucks} />
           </div>
         </div>
