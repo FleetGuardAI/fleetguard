@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "replay_config": {
+      "thresholds_used": {
+        "PHONE_GPS_EVENT_STALE_AFTER_SECONDS": 300,
+        "HARDWARE_GPS_EVENT_STALE_AFTER_SECONDS": 120,
+        "MAX_LOCATION_COMPARISON_TIMESTAMP_DELTA_SECONDS": 120,
+        "DRIVER_VEHICLE_PROXIMITY_METERS": 50.0,
+        "DRIVER_VEHICLE_POSSIBLE_PROXIMITY_METERS": 200.0,
+        "SIGNIFICANT_SOURCE_DIVERGENCE_METERS": 500.0,
+        "VEHICLE_MOVING_SPEED_THRESHOLD_KMH": 10.0,
+        "DRIVER_STATIONARY_SPEED_THRESHOLD_KMH": 2.0,
+        "MINIMUM_ANOMALY_DURATION_SECONDS": 300
+      },
+      "start_time": null,
+      "end_time": null,
+      "vehicle_ids_filter": null,
+      "company_ids_filter": null
+    },
+    "totals": {
+      "vehicles_replayed": 1,
+      "events_replayed": 240,
+      "phone_gps_events": 120,
+      "hardware_gps_events": 120,
+      "comparable_source_samples": 239,
+      "conditions_created": 1,
+      "conditions_resolved": 1,
+      "alerts_that_would_open": 0,
+      "alerts_that_would_resolve": 0,
+      "duplicate_evals_prevented": 0,
+      "data_quality_exclusions": 0,
+      "timestamp_skew_exclusions": 0,
+      "stale_source_exclusions": 0
+    },
+    "per_anomaly_type": {},
+    "hysteresis_analysis": {
+      "total_resolved_alerts": 0,
+      "potential_flap_events": 0,
+      "flap_threshold_used_sec": 600,
+      "vehicles_with_flap": 0,
+      "median_flap_duration_sec": null,
+      "P95_flap_duration_sec": null
+    }
+  },
+  "records": []
+}

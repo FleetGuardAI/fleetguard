@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, BarChart2, Calendar, FileSpreadsheet, DownloadCloud, TrendingUp, ShieldCheck, Filter, Wrench, Receipt, Truck, Route, IndianRupee, Activity } from 'lucide-react';
+import { FileText, Download, BarChart2, Calendar, FileSpreadsheet, DownloadCloud, TrendingUp, ShieldCheck, Filter, Wrench, Receipt, Truck, Route, IndianRupee, Activity, Info } from 'lucide-react';
 import { getFleetReportData, exportReport } from '@/api/reportApi';
 import { getVehicles } from '@/api/vehicleApi';
-import { getDocuments } from '@/api/documentApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -10,10 +9,27 @@ import { Badge } from '@/components/ui/Badge';
 import { Loader } from '@/components/ui/Loader';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useToast } from '@/components/ui/Toast';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 import { cn } from '@/utils/cn';
+
+// --- Shared Custom Tooltip ---
+const CustomTooltip = ({ active, payload, label, formatter }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    return (
+      <div className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-md rounded-lg p-3 min-w-[120px]">
+        {label && <p className="text-xs font-semibold text-slate-500 mb-1">{label}</p>}
+        <p className="text-sm font-bold" style={{ color: data.color || data.payload.fill || '#0f172a' }}>
+          {formatter ? formatter(data.value, data.payload) : data.value}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 
 export default function Reports() {
   const { success, error } = useToast();
@@ -34,23 +50,14 @@ export default function Reports() {
     setLoading(true);
     setErr(null);
     try {
-      const [rData, vData, docsData] = await Promise.all([
-        getFleetReportData(),
-        getVehicles(),
-        getDocuments().catch(() => [])
+      const [rData, vData] = await Promise.all([
+        getFleetReportData({ vehicle_id: selectedVehicle }),
+        getVehicles()
       ]);
       setReportData(rData);
       setVehicles(vData);
-
-      const docs = (docsData || []).map(d => ({
-        id: d.id,
-        name: d.original_filename || d.filename || `Report ${d.id}`,
-        type: d.category || 'Archive',
-        date: d.created_at || new Date().toISOString(),
-        size: d.file_size ? `${(d.file_size / (1024 * 1024)).toFixed(1)} MB` : '1.2 MB',
-        format: (d.original_filename || '').endsWith('.csv') ? 'csv' : 'pdf',
-      }));
-      setReadyReports(docs);
+      // Backend does not currently support fetching generated reports
+      setReadyReports([]);
     } catch (e) {
       setErr(e);
       error('Load Error', 'Failed to retrieve analytics.');
@@ -58,6 +65,10 @@ export default function Reports() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedVehicle]); // re-fetch when vehicle filter changes
 
   useEffect(() => {
     loadData();
@@ -153,40 +164,52 @@ export default function Reports() {
             icon={<FileText className="h-4 w-4 text-red-500" />}
             loading={exporting}
             onClick={() => handleExport('pdf', 'fleet')}
+            disabled={loading || !!err}
           >
-            Export PDF
+            {exporting ? 'Generating PDF...' : 'Export PDF'}
           </Button>
           <Button
             variant="outline"
             icon={<FileSpreadsheet className="h-4 w-4 text-emerald-600" />}
             loading={exporting}
             onClick={() => handleExport('csv', 'fleet')}
+            disabled={loading || !!err}
           >
-            Export CSV
+            {exporting ? 'Generating CSV...' : 'Export CSV'}
           </Button>
         </div>
       </div>
 
       {/* Customizable Filters panel */}
       <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
           <div className="flex items-center gap-1.5 text-content-secondary text-sm font-semibold">
             <Filter className="h-4 w-4 text-brand-600" />
             Query Bounds:
           </div>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none"
-          />
-          <span className="text-xs text-content-muted">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none opacity-50 cursor-not-allowed"
+              disabled
+              title="Date filtering is not yet supported by the analytics engine."
+            />
+            <span className="text-xs text-content-muted">to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none opacity-50 cursor-not-allowed"
+              disabled
+              title="Date filtering is not yet supported by the analytics engine."
+            />
+          </div>
+          <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+            <Info className="h-3 w-3" />
+            <span>Date filters currently unsupported by API. Showing all-time data.</span>
+          </div>
         </div>
 
         <div className="w-full md:w-auto">
@@ -259,15 +282,19 @@ export default function Reports() {
             </CardTitle>
           </CardHeader>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={reportData.mileageTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} />
-                <YAxis domain={[3.5, 5.0]} stroke="#94a3b8" fontSize={11} />
-                <Tooltip />
-                <Line type="monotone" dataKey="avg_mileage" stroke="#0f172a" strokeWidth={3} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            {!reportData.mileageTrend || reportData.mileageTrend.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-400">No mileage data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={reportData.mileageTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} />
+                  <YAxis domain={[3.5, 5.0]} stroke="#94a3b8" fontSize={11} />
+                  <Tooltip content={<CustomTooltip formatter={(value) => `${value} km/L`} label="Fuel Mileage" />} />
+                  <Line type="monotone" dataKey="avg_mileage" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
@@ -280,15 +307,25 @@ export default function Reports() {
             </CardTitle>
           </CardHeader>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={reportData.driverSafetyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} />
-                <Tooltip />
-                <Bar dataKey="safetyScore" fill="#0f62fe" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+            {!reportData.driverSafetyStats || reportData.driverSafetyStats.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-400">No driver safety data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reportData.driverSafetyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorSafety" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.6}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+                  <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} />
+                  <Tooltip content={<CustomTooltip formatter={(value, payload) => `${value} / 100`} label="Driver Safety" />} />
+                  <Bar dataKey="safetyScore" fill="url(#colorSafety)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
@@ -301,30 +338,62 @@ export default function Reports() {
             </CardTitle>
           </CardHeader>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={reportData.expenseDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
+            {!reportData.expenseDistribution || reportData.expenseDistribution.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-400">No expense data available</div>
+            ) : (
+              <div className="flex flex-col lg:flex-row h-full items-center justify-center">
+                <div className="w-full lg:w-3/5 h-64 lg:h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={reportData.expenseDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {reportData.expenseDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        content={
+                          <CustomTooltip 
+                            formatter={(value, payload) => (
+                              <div className="flex flex-col">
+                                <span>{value}%</span>
+                                {payload.payload.amount !== undefined && (
+                                  <span className="text-xs font-normal text-slate-500 mt-0.5">
+                                    ₹{payload.payload.amount.toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          />
+                        }
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full lg:w-2/5 flex flex-wrap lg:flex-col justify-center gap-3 lg:gap-2 mt-4 lg:mt-0 pb-4 lg:pb-0 px-4">
                   {reportData.expenseDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <div key={`legend-${index}`} className="flex items-center gap-2 text-sm">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                      <span className="text-slate-700 font-medium truncate" title={entry.name}>
+                        {entry.name} <span className="text-slate-500 ml-1">{entry.value}%</span>
+                      </span>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
-        {/* Vehicle Maintenance Costs Area Chart */}
+        {/* Vehicle Maintenance Costs Bar Chart */}
         <Card className="space-y-4">
           <CardHeader className="p-0">
             <CardTitle className="text-base flex items-center gap-2">
@@ -333,21 +402,25 @@ export default function Reports() {
             </CardTitle>
           </CardHeader>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={reportData.maintenanceCostByVehicle} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="vehicle" stroke="#94a3b8" fontSize={10} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₹${val/1000}k`} />
-                <Tooltip formatter={(value) => `₹${value}`} />
-                <Area type="monotone" dataKey="cost" stroke="#ef4444" fillOpacity={1} fill="url(#colorCost)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {!reportData.maintenanceCostByVehicle || reportData.maintenanceCostByVehicle.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-400">No maintenance data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reportData.maintenanceCostByVehicle} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorMaintenance" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.6}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="vehicle" stroke="#94a3b8" fontSize={10} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₹${val/1000}k`} />
+                  <Tooltip content={<CustomTooltip formatter={(value) => `₹${value.toLocaleString()}`} />} />
+                  <Bar dataKey="cost" fill="url(#colorMaintenance)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>
@@ -357,14 +430,22 @@ export default function Reports() {
         <CardHeader className="p-6 pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-brand-600" />
-            Historical Compliance Archives
+            Historical Reports
           </CardTitle>
         </CardHeader>
-        <Table
-          columns={columns}
-          data={readyReports}
-          keyExtractor={(item) => item.id}
-        />
+        {readyReports && readyReports.length > 0 ? (
+          <Table
+            columns={columns}
+            data={readyReports}
+            keyExtractor={(item) => item.id}
+          />
+        ) : (
+          <div className="p-12 text-center flex flex-col items-center justify-center">
+            <FileText className="h-12 w-12 text-slate-300 mb-4" />
+            <h3 className="text-lg font-semibold text-slate-700">No reports generated yet</h3>
+            <p className="text-slate-500 mt-2 max-w-sm">Generate a report using the filters above and it will appear here in your historical archives.</p>
+          </div>
+        )}
       </Card>
     </div>
   );

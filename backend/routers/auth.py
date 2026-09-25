@@ -201,9 +201,66 @@ async def update_company(
 
     return MeResponse(
         user=UserOut.model_validate(current_user),
-        company=CompanyOut.model_validate(company),
+        company=CompanyOut.model_validate(current_user.company),
         role=current_user.role,
     )
+
+
+from models.auth_session import AuthSession
+from schemas.auth import ActiveSessionsResponse
+from sqlalchemy import update
+
+@router.get(
+    "/sessions",
+    response_model=ActiveSessionsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get active sessions for the current user",
+)
+async def get_active_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import select
+    from services.auth_service import _utcnow
+    now = _utcnow()
+    result = await db.execute(
+        select(AuthSession).where(
+            AuthSession.user_id == current_user.id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
+        )
+    )
+    return ActiveSessionsResponse(sessions=list(result.scalars().all()))
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    response_model=GenericMessageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Revoke a specific session",
+)
+async def revoke_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from services.auth_service import _utcnow
+    now = _utcnow()
+    result = await db.execute(
+        update(AuthSession)
+        .where(
+            AuthSession.id == session_id,
+            AuthSession.user_id == current_user.id,
+            AuthSession.revoked_at.is_(None)
+        )
+        .values(revoked_at=now)
+    )
+    await db.commit()
+    
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Session not found or already revoked")
+        
+    return GenericMessageResponse(message="Session revoked successfully")
 
 
 @router.post(
