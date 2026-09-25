@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId = "com.fleetguard.driver"
-        minSdk = flutter.minSdkVersion // Flutter google_maps needs 21 min
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
