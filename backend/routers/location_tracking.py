@@ -160,37 +160,61 @@ async def get_driver_live_location(
 @router.get("/api/v1/tracking/driver/{driver_id}/history", response_model=List[LocationResponse])
 async def get_driver_location_history(
     driver_id: int,
-    limit: int = Query(100, ge=1, le=500),
+    start_time: Optional[datetime] = Query(None),
+    end_time: Optional[datetime] = Query(None),
+    limit: int = Query(500, ge=1, le=2000),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get driver's location history (most recent first). Company-scoped."""
-    # Verify driver belongs to the authenticated company
+    """Get driver's location history with optional time filters."""
     driver = await db.get(Driver, driver_id)
     if driver is None or driver.company_id != current_user.company_id:
         raise HTTPException(404, "Driver not found")
 
-    result = await db.execute(
-        select(DriverLocation)
-        .where(DriverLocation.driver_id == driver_id)
-        .order_by(desc(DriverLocation.timestamp))
-        .limit(limit)
-    )
+    query = select(DriverLocation).where(DriverLocation.driver_id == driver_id)
+    
+    if start_time:
+        query = query.where(DriverLocation.timestamp >= start_time)
+    if end_time:
+        query = query.where(DriverLocation.timestamp <= end_time)
+
+    query = query.order_by(desc(DriverLocation.timestamp)).limit(limit)
+    result = await db.execute(query)
     locations = result.scalars().all()
 
-    return [LocationResponse(
-        id=loc.id,
-        driver_id=loc.driver_id,
-        latitude=loc.latitude,
-        longitude=loc.longitude,
-        speed=loc.speed,
-        heading=loc.heading,
-        accuracy=loc.accuracy,
-        timestamp=loc.timestamp,
-        battery_percent=loc.battery_percent,
-        activity_state=loc.activity_state,
-        source=loc.source.value,
-    ) for loc in locations]
+    return [LocationResponse.model_validate(loc) for loc in locations]
+
+@router.get("/api/v1/tracking/trip/{trip_id}/route", response_model=List[LocationResponse])
+async def get_trip_route_history(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the actual GPS route for a specific trip based on its start/end time."""
+    trip = await db.get(Trip, trip_id)
+    if trip is None or trip.company_id != current_user.company_id:
+        raise HTTPException(404, "Trip not found")
+        
+    start_time = trip.actual_start_time or trip.planned_start_time
+    end_time = trip.actual_end_time or datetime.now(tz=timezone.utc)
+    
+    if not start_time:
+        return []
+
+    query = (
+        select(DriverLocation)
+        .where(
+            DriverLocation.driver_id == trip.driver_id,
+            DriverLocation.timestamp >= start_time,
+            DriverLocation.timestamp <= end_time
+        )
+        .order_by(DriverLocation.timestamp.asc())
+        .limit(2000)
+    )
+    result = await db.execute(query)
+    locations = result.scalars().all()
+
+    return [LocationResponse.model_validate(loc) for loc in locations]
 
 
 @router.get("/api/v1/tracking/fleet/live", response_model=List[LiveDriverLocation])

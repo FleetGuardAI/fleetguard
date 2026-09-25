@@ -13,6 +13,7 @@ export async function getLiveTracking() {
       driver_name: loc.driver_name,
       vehicle_id: loc.vehicle_id,
       vehicle_registration: loc.vehicle_registration,
+      trip_id: loc.trip_id,
       lat: loc.latitude,
       lng: loc.longitude,
       speed: loc.speed || 0,
@@ -25,4 +26,22 @@ export async function getLiveTracking() {
     console.error("Failed to fetch live telematics data", err);
     return [];
   }
+}
+
+export async function getDriverHistory(driverId, startTime = null, endTime = null) {
+  let url = `/tracking/driver/${driverId}/history`;
+  const params = new URLSearchParams();
+  if (startTime) params.append('start_time', startTime.toISOString());
+  if (endTime) params.append('end_time', endTime.toISOString());
+  
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+  const { data } = await api.client.get(url);
+  return data;
+}
+
+export async function getTripRoute(tripId) {
+  const { data } = await api.client.get(`/tracking/trip/${tripId}/route`);
+  return data;
 }
