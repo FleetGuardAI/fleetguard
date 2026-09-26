@@ -2,11 +2,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/storage/secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../models/offline_record.dart';
 import '../../../services/sync_service.dart';
-import 'package:isar/isar.dart';
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -45,20 +43,17 @@ class ExpenseRepository {
     try {
       final connectivityResult = await (Connectivity().checkConnectivity());
       if (connectivityResult == ConnectivityResult.none) {
-        // Offline -> Save to Isar
+        // Offline → Save to sqflite
         final syncService = await SyncService.init();
-        final expense = OfflineExpense()
-          ..amount = amount
-          ..category = category
-          ..description = description
-          ..isSynced = false
-          ..base64ReceiptImage = base64ReceiptImage ?? ''
-          ..createdAt = DateTime.now();
-          
-        await syncService.isar.writeTxn(() async {
-          await syncService.isar.offlineExpenses.put(expense);
-        });
-        
+        final expense = OfflineExpense(
+          amount: amount,
+          category: category,
+          description: description,
+          isSynced: false,
+          base64ReceiptImage: base64ReceiptImage ?? '',
+          createdAt: DateTime.now(),
+        );
+        await syncService.saveExpense(expense);
         return {'status': 'queued', 'message': 'Saved offline. Will sync when connected.'};
       }
 
@@ -77,8 +72,8 @@ class ExpenseRepository {
   Future<List<Map<String, dynamic>>> listDriverExpenses() async {
     try {
       final syncService = await SyncService.init();
-      final offlineExpenses = await syncService.isar.offlineExpenses.filter().isSyncedEqualTo(false).findAll();
-      
+      final offlineExpenses = await syncService.getPendingExpenses();
+
       final localData = offlineExpenses.map((e) => {
         'id': 'offline_${e.id}',
         'category': e.category,

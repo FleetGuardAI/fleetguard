@@ -14,8 +14,8 @@ dependencies:
     sdk: flutter
 
   # State Management
-  flutter_riverpod: ^2.4.9
-  riverpod_annotation: ^2.3.3
+  flutter_riverpod: ^2.6.0
+  riverpod_annotation: ^2.6.0
 
   # Networking
   dio: ^5.4.0
@@ -50,8 +50,6 @@ dependencies:
   sqflite: ^2.3.2
   path_provider: ^2.1.2
   path: ^1.8.3
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
   
   # Background Sync & Battery
   workmanager: ^0.10.9
@@ -89,11 +87,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
-  build_runner: ^2.4.8
-  json_serializable: ^6.7.1
-  freezed: ^2.4.6
-  riverpod_generator: ^2.3.9
-  isar_generator: ^3.1.0+1
+  build_runner: ^2.5.0
+  json_serializable: ^6.9.0
+  freezed: ^2.6.0
+  riverpod_generator: ^2.6.0
+  build_resolvers: ^2.5.6
   mockito: ^5.4.4
   integration_test:
     sdk: flutter
