@@ -32,7 +32,7 @@ jobs:
         channel: 'stable'
 
     - name: Install Dependencies
-      run: flutter pub upgrade
+      run: flutter pub upgrade --major-versions
 
     - name: Generate Code
       run: dart run build_runner build --delete-conflicting-outputs --verbose
