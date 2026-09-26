@@ -122,4 +122,4 @@ flutter:
           weight: 700
 
 dependency_overrides:
-  analyzer: ^6.7.0
+  analyzer: ^6.4.1
