@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../data/tracking_repository.dart';
 import '../../../../core/storage/secure_storage.dart';
-import '../../../../core/config/app_config.dart';
 
 final fleetLocationsProvider = StreamProvider.autoDispose<List<LiveDriverLocation>>((ref) async* {
   final repository = ref.watch(trackingRepositoryProvider);
@@ -12,12 +11,17 @@ final fleetLocationsProvider = StreamProvider.autoDispose<List<LiveDriverLocatio
   final initialLocations = await repository.getFleetLiveLocations();
   yield initialLocations;
   
-  final token = await SecureStorage.getToken();
+  final token = await SecureStorage.getAccessToken();
   final companyId = await SecureStorage.getCompanyId();
   if (token == null || companyId == null) return;
   
-  // Convert http/https to ws/wss
-  final wsUrl = AppConfig.baseUrl.replaceFirst('http', 'ws') + '/api/v1/ws/fleet/$companyId?token=$token';
+  // Build WebSocket URL from the same env var used by the HTTP client
+  const baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://fleetguard-hpip.onrender.com',
+  );
+  final wsUrl = baseUrl.replaceFirst('https', 'wss').replaceFirst('http', 'ws')
+      + '/api/v1/ws/fleet/$companyId?token=$token';
   
   final channel = WebSocketChannel.connect(Uri.parse(wsUrl));
   
