@@ -121,5 +121,3 @@ flutter:
         - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
 
-dependency_overrides:
-  analyzer: ^6.4.1
