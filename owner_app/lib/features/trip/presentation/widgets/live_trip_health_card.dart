@@ -70,7 +70,7 @@ class LiveTripHealthCard extends StatelessWidget {
                 children: [
                   if (!data.snapshotAvailable)
                     Container(
-                      margin: const EdgeInsets.bottom(16),
+                      margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: AppColors.statusAmber.withValues(alpha: 0.1),

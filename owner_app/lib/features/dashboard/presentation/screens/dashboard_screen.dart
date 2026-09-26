@@ -436,7 +436,7 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     final userProfileAsync = ref.watch(userProfileProvider);
-    final userName = userProfileAsync.valueOrNull?.fullName ?? 'Owner';
+    final userName = userProfileAsync.value?.fullName ?? 'Owner';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
