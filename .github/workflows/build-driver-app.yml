@@ -34,7 +34,7 @@ jobs:
       run: flutter pub upgrade
 
     - name: Generate Code
-      run: dart run build_runner build --delete-conflicting-outputs
+      run: dart run build_runner build --delete-conflicting-outputs --verbose
 
     - name: Build APK
       run: flutter build apk --release
