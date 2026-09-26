@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/storage/secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../models/offline_record.dart';
 import '../../../services/sync_service.dart';
@@ -45,10 +44,10 @@ class PodRepository {
     try {
       final connectivityResult = await (Connectivity().checkConnectivity());
       if (connectivityResult == ConnectivityResult.none) {
-        // Offline -> Save to Isar
+        // Offline → Save to sqflite
         final signatureBytes = await signatureFile.readAsBytes();
         final signatureBase64 = base64Encode(signatureBytes);
-        
+
         String? photoBase64;
         if (photoFile != null) {
           final photoBytes = await photoFile.readAsBytes();
@@ -56,16 +55,14 @@ class PodRepository {
         }
 
         final syncService = await SyncService.init();
-        final pod = OfflinePOD()
-          ..tripId = tripId.toString()
-          ..base64Image = photoBase64 ?? ''
-          ..notes = remarks
-          ..isSynced = false
-          ..createdAt = DateTime.now();
-          
-        await syncService.isar.writeTxn(() async {
-          await syncService.isar.offlinePODs.put(pod);
-        });
+        final pod = OfflinePOD(
+          tripId: tripId.toString(),
+          base64Image: photoBase64 ?? '',
+          notes: remarks,
+          isSynced: false,
+          createdAt: DateTime.now(),
+        );
+        await syncService.savePod(pod);
         return;
       }
 
