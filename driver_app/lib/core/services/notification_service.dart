@@ -88,10 +88,10 @@ class NotificationService {
     String channelId = 'general',
   }) async {
     await _plugin.show(
-      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      NotificationDetails(
         android: AndroidNotificationDetails(
           channelId,
           _channelName(channelId),
