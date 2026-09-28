@@ -33,9 +33,16 @@ jobs:
 
     - name: Verify Flutter
       run: |
-        flutter --version
-        dart --version
-        flutter doctor -v
+        flutter --version > flutter_verify.log 2>&1 || true
+        dart --version >> flutter_verify.log 2>&1 || true
+        flutter doctor -v >> flutter_verify.log 2>&1 || true
+        cat flutter_verify.log
+
+    - name: Upload Verify Logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: driver-verify-logs
+        path: driver_app/flutter_verify.log
 
     - name: Install Dependencies
       run: flutter pub upgrade
