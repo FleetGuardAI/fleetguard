@@ -111,13 +111,13 @@ void onStart(ServiceInstance service) async {
   // Smart Polling based on Activity
   final activityRecognition = ar.ActivityRecognition().activityStream(runForegroundService: false);
   activityRecognition.listen((ar.ActivityEvent activity) {
-    if (activity.type == ar.ActivityType.STILL) {
+    if (activity.type == ar.ActivityType.still) {
       stopLocationStream();
-    } else if (activity.type == ar.ActivityType.IN_VEHICLE || 
-               activity.type == ar.ActivityType.ON_BICYCLE || 
-               activity.type == ar.ActivityType.ON_FOOT || 
-               activity.type == ar.ActivityType.WALKING || 
-               activity.type == ar.ActivityType.RUNNING) {
+    } else if (activity.type == ar.ActivityType.inVehicle || 
+               activity.type == ar.ActivityType.onBicycle || 
+               activity.type == ar.ActivityType.onFoot || 
+               activity.type == ar.ActivityType.walking || 
+               activity.type == ar.ActivityType.running) {
       startLocationStream();
     }
   });
