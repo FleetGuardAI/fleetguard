@@ -170,6 +170,16 @@ class Trip(Base):
         comment="Delivery/handling instructions for the driver"
     )
 
+    # --- Receiver Information ---
+    receiver_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    receiver_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    receiver_company: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    receiver_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    receiver_city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    receiver_state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    receiver_pincode: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    receiver_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # --- Traceability ---
     origin_type: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True,

@@ -71,6 +71,24 @@ async def create_trip(
         driver = await db.get(Driver, payload.driver_id)
         if not driver or driver.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid driver_id")
+            
+    # Validate required receiver fields if any receiver info is provided
+    has_receiver_info = any([
+        payload.receiver_name, payload.receiver_phone, payload.receiver_company,
+        payload.receiver_address, payload.receiver_city, payload.receiver_state,
+        payload.receiver_pincode, payload.receiver_notes
+    ])
+    if has_receiver_info:
+        if not payload.receiver_name:
+            raise HTTPException(400, "Receiver Name is required")
+        if not payload.receiver_phone:
+            raise HTTPException(400, "Receiver Phone Number is required")
+        if not payload.receiver_address:
+            raise HTTPException(400, "Receiver Address is required")
+        if not payload.receiver_city:
+            raise HTTPException(400, "Receiver City is required")
+        if not payload.receiver_pincode:
+            raise HTTPException(400, "Receiver Pincode is required")
 
     trip_id = f"TRP-{str(uuid.uuid4())[:8].upper()}"
 
@@ -109,6 +127,14 @@ async def create_trip(
         customer_phone=payload.customer_phone,
         customer_contact_person=payload.customer_contact_person,
         instructions=payload.instructions,
+        receiver_name=payload.receiver_name,
+        receiver_phone=payload.receiver_phone,
+        receiver_company=payload.receiver_company,
+        receiver_address=payload.receiver_address,
+        receiver_city=payload.receiver_city,
+        receiver_state=payload.receiver_state,
+        receiver_pincode=payload.receiver_pincode,
+        receiver_notes=payload.receiver_notes,
         origin_type="rest_api"
     )
     

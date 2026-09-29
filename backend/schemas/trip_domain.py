@@ -65,6 +65,16 @@ class TripResponse(BaseModel):
     customer_contact_person: Optional[str] = None
     instructions: Optional[str] = None
     
+    # --- Receiver Information ---
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_company: Optional[str] = None
+    receiver_address: Optional[str] = None
+    receiver_city: Optional[str] = None
+    receiver_state: Optional[str] = None
+    receiver_pincode: Optional[str] = None
+    receiver_notes: Optional[str] = None
+    
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None
 
@@ -115,6 +125,16 @@ class TripCreate(BaseModel):
     customer_phone: Optional[str] = None
     customer_contact_person: Optional[str] = None
     instructions: Optional[str] = None
+
+    # --- Receiver Information ---
+    receiver_name: Optional[str] = None
+    receiver_phone: Optional[str] = None
+    receiver_company: Optional[str] = None
+    receiver_address: Optional[str] = None
+    receiver_city: Optional[str] = None
+    receiver_state: Optional[str] = None
+    receiver_pincode: Optional[str] = None
+    receiver_notes: Optional[str] = None
 
 class TripUpdated(BaseModel):
     status: Optional[TripStatus] = None
