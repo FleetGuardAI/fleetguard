@@ -35,9 +35,16 @@ export default function TripForm() {
     planned_start_time: '',
     planned_end_time: '',
     revenue: '',
-    cargo_weight: ''
+    cargo_weight: '',
+    receiver_name: '',
+    receiver_phone: '',
+    receiver_company: '',
+    receiver_address: '',
+    receiver_city: '',
+    receiver_state: '',
+    receiver_pincode: '',
+    receiver_notes: ''
   });
-
   // Intelligence State
   const [intelligence, setIntelligence] = useState(null);
   const [evaluating, setEvaluating] = useState(false);
@@ -143,6 +150,10 @@ export default function TripForm() {
       error('Validation Error', 'Please assign a vehicle and driver.');
       return;
     }
+    if (!formData.receiver_name || !formData.receiver_phone || !formData.receiver_address || !formData.receiver_city || !formData.receiver_pincode) {
+      error('Validation Error', 'Please fill in all required Receiver Information fields.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -165,6 +176,14 @@ export default function TripForm() {
         route_polyline: routeData?.polyline,
         revenue: formData.revenue ? Number(formData.revenue) : null,
         cargo_weight: formData.cargo_weight ? Number(formData.cargo_weight) : null,
+        receiver_name: formData.receiver_name,
+        receiver_phone: formData.receiver_phone,
+        receiver_company: formData.receiver_company || null,
+        receiver_address: formData.receiver_address,
+        receiver_city: formData.receiver_city,
+        receiver_state: formData.receiver_state || null,
+        receiver_pincode: formData.receiver_pincode,
+        receiver_notes: formData.receiver_notes || null,
       };
       
       const trip = await createTrip(payload);
@@ -314,6 +333,66 @@ export default function TripForm() {
                   placeholder="e.g., 18"
                   value={formData.cargo_weight}
                   onChange={(e) => setFormData({...formData, cargo_weight: e.target.value})}
+                />
+              </div>
+            </Card>
+
+            {/* 4. Receiver Information */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
+                <User className="w-5 h-5 text-brand-500" />
+                4. Receiver Information
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Receiver Name *"
+                    value={formData.receiver_name}
+                    onChange={(e) => setFormData({...formData, receiver_name: e.target.value})}
+                    required
+                  />
+                  <Input
+                    label="Receiver Phone *"
+                    type="tel"
+                    value={formData.receiver_phone}
+                    onChange={(e) => setFormData({...formData, receiver_phone: e.target.value})}
+                    required
+                  />
+                </div>
+                <Input
+                  label="Company / Business Name (Optional)"
+                  value={formData.receiver_company}
+                  onChange={(e) => setFormData({...formData, receiver_company: e.target.value})}
+                />
+                <Input
+                  label="Address *"
+                  value={formData.receiver_address}
+                  onChange={(e) => setFormData({...formData, receiver_address: e.target.value})}
+                  required
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    label="City *"
+                    value={formData.receiver_city}
+                    onChange={(e) => setFormData({...formData, receiver_city: e.target.value})}
+                    required
+                  />
+                  <Input
+                    label="State (Optional)"
+                    value={formData.receiver_state}
+                    onChange={(e) => setFormData({...formData, receiver_state: e.target.value})}
+                  />
+                  <Input
+                    label="Pincode *"
+                    value={formData.receiver_pincode}
+                    onChange={(e) => setFormData({...formData, receiver_pincode: e.target.value})}
+                    required
+                  />
+                </div>
+                <Input
+                  label="Notes / Instructions (Optional)"
+                  value={formData.receiver_notes}
+                  onChange={(e) => setFormData({...formData, receiver_notes: e.target.value})}
                 />
               </div>
             </Card>

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/trip_providers.dart';
 import '../../data/trip_repository.dart';
 import '../../../dashboard/presentation/providers/dashboard_providers.dart';
@@ -94,6 +95,64 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    // Receiver Information Card
+                    if (trip['receiver_name'] != null || trip['receiver_phone'] != null || trip['receiver_address'] != null)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Receiver Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  Icon(Icons.person, color: Colors.blue),
+                                ],
+                              ),
+                              const Divider(height: 20),
+                              if (trip['receiver_name'] != null) Text('Name: ${trip['receiver_name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              if (trip['receiver_phone'] != null) Text('Phone: ${trip['receiver_phone']}'),
+                              if (trip['receiver_company'] != null) Text('Company: ${trip['receiver_company']}'),
+                              if (trip['receiver_address'] != null) Text('Address: ${trip['receiver_address']}, ${trip['receiver_city']}, ${trip['receiver_state'] ?? ''} - ${trip['receiver_pincode']}'),
+                              if (trip['receiver_notes'] != null) Text('Notes: ${trip['receiver_notes']}', style: const TextStyle(color: Colors.grey)),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  if (trip['receiver_phone'] != null)
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          final url = Uri.parse('tel:${trip['receiver_phone']}');
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url);
+                                          }
+                                        },
+                                        icon: const Icon(Icons.phone),
+                                        label: const Text('Call'),
+                                      ),
+                                    ),
+                                  if (trip['receiver_phone'] != null) const SizedBox(width: 8),
+                                  if (trip['destination_lat'] != null && trip['destination_lng'] != null)
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${trip['destination_lat']},${trip['destination_lng']}');
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                                          }
+                                        },
+                                        icon: const Icon(Icons.navigation),
+                                        label: const Text('Navigate'),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     Card(
                       child: Padding(

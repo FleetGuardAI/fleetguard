@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Phone, Star, ShieldAlert, Truck, FileText, Upload, Calendar, RefreshCw, CheckCircle, Clock, AlertTriangle, User, XCircle } from 'lucide-react';
-import { getDriverById, assignVehicle, getDriverDocuments, verifyDriverDocument, approveDriver } from '@/api/driverApi';
-import { getVehicles } from '@/api/vehicleApi';
+import { getDriverById, getDriverDocuments, verifyDriverDocument, approveDriver } from '@/api/driverApi';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -20,11 +19,6 @@ export default function DriverProfile() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
-  // Assign vehicle state
-  const [vehicles, setVehicles] = useState([]);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [assigning, setAssigning] = useState(false);
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -44,13 +38,11 @@ export default function DriverProfile() {
     setLoading(true);
     setErr(null);
     try {
-      const [d, v, docsData] = await Promise.all([
+      const [d, docsData] = await Promise.all([
         getDriverById(id),
-        getVehicles(),
         getDriverDocuments(id).catch(() => [])
       ]);
       setDriver(d);
-      setVehicles(v);
 
       const mappedDocs = (docsData || []).map(doc => ({
         id: doc.id,
@@ -88,24 +80,6 @@ export default function DriverProfile() {
     }
   };
 
-  const handleAssignVehicle = async () => {
-    if (!selectedVehicleId) return;
-    setAssigning(true);
-    try {
-      await assignVehicle(driver.id, selectedVehicleId);
-      const targetTruck = vehicles.find(v => v.id === Number(selectedVehicleId));
-      setDriver(prev => ({
-        ...prev,
-        assignedTruck: targetTruck
-      }));
-      success('Vehicle Assigned', `Successfully assigned vehicle ${targetTruck.license_plate} to ${driver.name}.`);
-      setAssignModalOpen(false);
-    } catch (e) {
-      error('Assignment Error', 'Failed to assign vehicle.');
-    } finally {
-      setAssigning(false);
-    }
-  };
 
   const updateBulkDecision = (docId, field, value) => {
     setBulkDecisions(prev => ({
@@ -381,17 +355,6 @@ export default function DriverProfile() {
                 <span className="text-content-secondary">Tank Capacity</span>
                 <span className="font-semibold text-content">{driver.assignedTruck.tank_capacity} Liters</span>
               </div>
-
-              <Button
-                variant="outline"
-                className="w-full mt-2"
-                onClick={() => {
-                  setSelectedVehicleId(String(driver.assignedTruck.id));
-                  setAssignModalOpen(true);
-                }}
-              >
-                Change Assignment
-              </Button>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 border border-dashed border-border rounded-xl text-center space-y-3">
@@ -402,9 +365,6 @@ export default function DriverProfile() {
                   This operator is not currently linked to any fleet truck.
                 </p>
               </div>
-              <Button variant="primary" size="sm" onClick={() => setAssignModalOpen(true)}>
-                Allocate Vehicle
-              </Button>
             </div>
           )}
         </Card>
@@ -554,42 +514,6 @@ export default function DriverProfile() {
         </div>
       </Modal>
 
-      {/* Allocation Selection Modal */}
-      <Modal
-        open={assignModalOpen}
-        onClose={() => setAssignModalOpen(false)}
-        title="Allocate Fleet Truck"
-        description={`Link a vehicle to ${driver.name} for upcoming operations.`}
-        closable={!assigning}
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setAssignModalOpen(false)} disabled={assigning}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleAssignVehicle} loading={assigning} disabled={!selectedVehicleId}>
-              Confirm Allocation
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-content-secondary">
-            Select Active Vehicle
-          </label>
-          <select
-            value={selectedVehicleId}
-            onChange={(e) => setSelectedVehicleId(e.target.value)}
-            className="w-full h-10 px-3 border border-border bg-surface text-content text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-          >
-            <option value="">-- Choose Truck --</option>
-            {vehicles.map(v => (
-              <option key={v.id} value={v.id}>
-                {v.license_plate} - {v.make} {v.model}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
