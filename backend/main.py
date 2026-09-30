@@ -236,6 +236,14 @@ from routers.driver_emergency import router as driver_emergency_router
 from routers.driver_wallet import router as driver_wallet_router
 from routers.ws_driver import router as ws_driver_router
 
+# --- Admin Internal Portal ---
+from routers.admin_auth import router as admin_auth_router
+from routers.admin_support import router as admin_support_router
+from routers.admin_dashboard import router as admin_dashboard_router
+from routers.admin_documents import router as admin_documents_router
+from routers.admin_audit import router as admin_audit_router
+from routers.admin_passwords import router as admin_passwords_router
+
 # --- Logging ---
 logging.basicConfig(
     level=logging.INFO,
@@ -379,6 +387,14 @@ app.include_router(driver_pod_router)
 app.include_router(driver_emergency_router)
 app.include_router(driver_wallet_router)
 app.include_router(ws_driver_router)
+
+# Mount Admin Internal Portal Routers
+app.include_router(admin_auth_router)
+app.include_router(admin_support_router)
+app.include_router(admin_dashboard_router)
+app.include_router(admin_documents_router)
+app.include_router(admin_audit_router)
+app.include_router(admin_passwords_router)
 
 logger.info(
     f"📋 Registered routes: "
