@@ -34,7 +34,7 @@ export default function Login() {
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-3 mb-2">
             <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-8 w-auto object-contain" />
-            <span className="text-2xl font-bold tracking-wide text-slate-900">Fleet<span className="text-emerald-600">Guard</span></span>
+            <span className="text-2xl font-bold tracking-wide text-slate-900">Vahan</span>
           </div>
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Operations Portal</h2>
         </div>

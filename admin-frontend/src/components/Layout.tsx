@@ -28,7 +28,7 @@ export default function Layout() {
         <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-shrink-0">
           <div className="flex items-center gap-2">
             <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-6 w-auto object-contain brightness-0 invert" />
-            <span className="text-lg font-bold tracking-wide">Fleet<span className="text-emerald-500">Guard</span></span>
+            <span className="text-lg font-bold tracking-wide">Vahan</span>
           </div>
         </div>
         
