@@ -23,8 +23,14 @@ export default function Login() {
       
       login(response.data.access_token);
       navigate('/dashboard');
-    } catch (err) {
-      setError('Invalid credentials');
+    } catch (err: any) {
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Invalid credentials');
+      }
     }
   };
 
