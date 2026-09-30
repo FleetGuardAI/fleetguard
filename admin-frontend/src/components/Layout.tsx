@@ -26,9 +26,8 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800 shadow-xl">
         <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-6 w-auto object-contain brightness-0 invert" />
-            <span className="text-lg font-bold tracking-wide">Vahan</span>
+          <div className="flex items-center justify-center gap-2 w-full">
+            <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-8 w-auto object-contain brightness-0 invert" />
           </div>
         </div>
         
