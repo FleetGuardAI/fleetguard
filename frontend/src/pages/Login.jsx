@@ -570,7 +570,25 @@ export default function Login() {
           </form>
         )}
 
-        <div className="text-center text-xs text-slate-500">
+        {/* Skip Login (Test Mode) */}
+        <Button
+          type="button"
+          onClick={() => {
+            localStorage.setItem('fleetguard_token', 'test-token');
+            localStorage.setItem('fleetguard_token_type', 'bearer');
+            localStorage.setItem('fleetguard_user', JSON.stringify({ 
+              name: 'Test Admin', 
+              role: 'admin',
+              email: 'test@fleetguard.com'
+            }));
+            navigate('/dashboard');
+          }}
+          className="w-full justify-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2.5 rounded-lg"
+        >
+          Skip Login (Test Mode)
+        </Button>
+
+        <div className="text-center text-xs text-slate-500 mt-4">
           <p className="mb-2">
             New company?{' '}
             <Link to="/register" className="text-emerald-600 hover:underline">
