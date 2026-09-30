@@ -17,7 +17,7 @@ async def login(
     admin = await authenticate_admin(payload.email, payload.password, db)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"admin_id": str(admin.id), "role": admin.role.name},
+        data={"admin_id": str(admin.id), "role": getattr(admin.role.name, 'value', str(admin.role.name))},
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
