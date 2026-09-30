@@ -54,6 +54,10 @@ from models.trip_start_selfie import TripStartSelfie
 # --- Owner App ---
 from models.notification import Notification, NotificationCategory
 
+# --- Admin & Support (Internal) ---
+from models.admin_domain import AdminRole, Permission, AdminRolePermission, AdminUser, AdminAuditLog, AdminNotification
+from models.support_domain import SupportTicket, SupportTicketMessage, SupportTicketAttachment, PasswordResetRequestAdmin
+
 __all__ = [
     # Auth
     "Company",
@@ -102,4 +106,15 @@ __all__ = [
     "WalletTransaction",
     "TripStartSelfie",
     "Notification",
+    # Admin & Support
+    "AdminRole",
+    "Permission",
+    "AdminRolePermission",
+    "AdminUser",
+    "AdminAuditLog",
+    "AdminNotification",
+    "SupportTicket",
+    "SupportTicketMessage",
+    "SupportTicketAttachment",
+    "PasswordResetRequestAdmin",
 ]
