@@ -32,9 +32,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-8 w-auto object-contain" />
-            <span className="text-2xl font-bold tracking-wide text-slate-900">Vahan</span>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <img src="/assets/the_vahan_logo.png" alt="Vahan Logo" className="h-12 w-auto object-contain" />
           </div>
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Operations Portal</h2>
         </div>
