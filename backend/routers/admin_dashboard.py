@@ -6,7 +6,7 @@ from datetime import datetime, date
 from database import get_db
 from models.admin_domain import AdminUser, AdminAuditLog
 from models.support_domain import SupportTicket, TicketStatus, PasswordResetRequestAdmin
-from models.document import Document, VerificationStatus
+from models.document import Document, DocumentVerificationStatus
 from services.admin_auth_service import get_current_admin, require_admin_permission
 
 router = APIRouter(prefix="/api/v1/admin/dashboard", tags=["Admin Dashboard"])
@@ -23,7 +23,7 @@ async def get_dashboard_metrics(
     open_tickets = open_tickets_query.scalar() or 0
     
     # 2. Pending Verifications
-    pending_docs_query = await db.execute(select(func.count()).where(Document.verification_status == VerificationStatus.PENDING))
+    pending_docs_query = await db.execute(select(func.count()).where(Document.verification_status == DocumentVerificationStatus.PENDING))
     pending_docs = pending_docs_query.scalar() or 0
     
     # 3. Tickets Resolved Today
