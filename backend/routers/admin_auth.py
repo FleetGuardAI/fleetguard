@@ -9,7 +9,7 @@ from models.admin_domain import AdminUser
 
 router = APIRouter(prefix="/api/v1/admin/auth", tags=["Admin Auth"])
 
-@router.post("/login", response_model=Token, summary="Admin Login")
+@router.post("/login", summary="Admin Login")
 async def login(
     payload: AdminLogin,
     db: AsyncSession = Depends(get_db)
