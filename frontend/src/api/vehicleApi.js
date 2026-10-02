@@ -134,6 +134,50 @@ export async function getVehicleHistory(id, hours = 24) {
 }
 
 /**
+ * Extract fields from a vehicle RC via OCR (before vehicle creation).
+ * 
+ * @param {File} file - The document file to upload
+ * @returns {Promise<object>} - Upload result with extracted fields
+ */
+export async function extractRCOCR(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const API_BASE = import.meta.env.VITE_API_URL || '/api';
+  const localToken = localStorage.getItem('fleetguard_token');
+  const sessionToken = sessionStorage.getItem('fleetguard_token');
+  const token = localToken || sessionToken;
+  const tokenType = localToken
+    ? localStorage.getItem('fleetguard_token_type') || 'bearer'
+    : sessionStorage.getItem('fleetguard_token_type') || 'bearer';
+
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `${tokenType} ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}/v1/documents/ocr/rc`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let errMsg = 'OCR processing failed.';
+    try {
+      const errorData = await response.json();
+      errMsg = errorData.detail || errorData.message || errMsg;
+    } catch {
+      // Ignored
+    }
+    throw new Error(errMsg);
+  }
+
+  const data = await response.json();
+  return data.data; // The actual extracted fields are inside data.data
+}
+
+/**
  * Upload a vehicle document (RC, Insurance, PUC, Fitness Certificate, Permit).
  * Uses the backend unified document pipeline for upload, OCR, and storage.
  * 
