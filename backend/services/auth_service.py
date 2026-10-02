@@ -373,6 +373,15 @@ async def create_forgot_password_request(
         expires_at=expires_at,
     )
     db.add(reset_entry)
+    
+    from models.support_domain import PasswordResetRequestAdmin, RequesterType
+    admin_req = PasswordResetRequestAdmin(
+        requester_type=RequesterType.FLEET_OWNER.value,
+        requester_email_phone=identifier,
+        reason="Automated Forgot Password Flow",
+        status="PENDING",
+    )
+    db.add(admin_req)
 
     if settings.DEBUG and settings.PASSWORD_RESET_DEBUG_RETURN_TOKEN:
         return ForgotPasswordResponse(

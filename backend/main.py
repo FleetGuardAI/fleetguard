@@ -202,6 +202,7 @@ import models  # noqa: F401
 # Import routers
 from routers.dashboard import router as dashboard_router
 from routers.tickets import router as tickets_router
+from routers.support import router as support_router
 # from routers.assignment_domain import router as assignment_domain_router
 from routers.driver_domain import router as driver_domain_router
 from routers.trip_domain import router as trip_domain_router
@@ -364,6 +365,7 @@ API_PREFIX = "/api"
 
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(tickets_router, prefix=API_PREFIX)
+app.include_router(support_router, prefix=API_PREFIX)
 app.include_router(driver_domain_router, prefix=API_PREFIX)
 app.include_router(trip_domain_router, prefix=API_PREFIX)
 app.include_router(maintenance_domain_router, prefix=API_PREFIX)

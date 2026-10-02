@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertCircle, RefreshCw, KeyRound, CheckCircle, XCircle } from 'lucide-react';
-import api from '../api';
+import api, { getApiErrorMessage } from '../api';
 
 interface PasswordReset {
   id: number;
@@ -30,7 +30,7 @@ export default function PasswordResets() {
         data: err.response?.data,
         url: err.config?.url
       });
-      setError('Failed to load password reset requests. Please try again.');
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -109,8 +109,8 @@ export default function PasswordResets() {
         ) : filteredRequests.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             <KeyRound className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-            <p className="text-lg font-medium text-slate-700">No requests found</p>
-            <p>No password reset requests are currently pending.</p>
+            <p className="text-lg font-medium text-slate-700">No pending password reset requests</p>
+            <p>All password reset requests have been processed or none exist.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

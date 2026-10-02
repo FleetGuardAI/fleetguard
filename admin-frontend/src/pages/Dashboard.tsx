@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, AlertCircle, CheckCircle, Clock, FileCheck } from 'lucide-react';
-import api from '../api';
+import api, { getApiErrorMessage } from '../api';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -19,7 +19,7 @@ export default function Dashboard() {
         setActivities(activityRes.data);
       } catch (err) {
         console.error("Dashboard fetch error", err);
-        setError('Failed to load dashboard data. Please try again.');
+        setError(getApiErrorMessage(err));
       } finally {
         setLoading(false);
       }

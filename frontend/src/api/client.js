@@ -7,6 +7,28 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+function getApiErrorMessage(error) {
+  if (error?.detail) {
+    if (typeof error.detail === 'string') {
+      return error.detail;
+    }
+    if (Array.isArray(error.detail)) {
+      return error.detail
+        .map(item => {
+          if (typeof item === 'string') return item;
+          if (item.loc) return `${item.loc.join('.')}: ${item.msg}`;
+          return item.msg || item.message || JSON.stringify(item);
+        })
+        .join(', ');
+    }
+    return JSON.stringify(error.detail);
+  }
+  if (error?.message) {
+    return error.message;
+  }
+  return 'An unexpected error occurred.';
+}
+
 /**
  * @param {string} endpoint - API path (e.g. '/dashboard/kpis')
  * @param {RequestInit} [options] - Fetch options
@@ -52,7 +74,7 @@ async function request(endpoint, options = {}) {
     }
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: response.statusText }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
+      throw new Error(getApiErrorMessage(error));
     }
     if (response.status === 204) return null;
     
@@ -87,6 +109,16 @@ const api = {
     create: (data) => request('/tickets', { method: 'POST', body: JSON.stringify(data) }),
     action: (id, payload) =>
       request(`/tickets/${id}/action`, { method: 'POST', body: JSON.stringify(payload) }),
+  },
+
+  // ── Support Tickets (/api/v1/support/tickets) ──────────────
+  support: {
+    list: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/support/tickets${query ? `?${query}` : ''}`);
+    },
+    get: (id) => request(`/v1/support/tickets/${id}`),
+    create: (data) => request('/v1/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // ── Drivers (/api/v1/drivers) ─────────────────
