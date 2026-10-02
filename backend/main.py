@@ -264,6 +264,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"   Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   Event Bus: {event_bus}")
+    
+    logger.info("PRODUCTION CORS ORIGINS: %s", settings.CORS_ORIGINS)
+    logger.info("CORS SUPER ADMIN ALLOWED: %s", "https://super-admin-seven-sepia.vercel.app" in settings.CORS_ORIGINS)
 
     logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
 
@@ -346,6 +349,13 @@ async def health_check() -> dict[str, str]:
         "status": "healthy",
         "database": "connected",
         "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
+    }
+
+@app.get("/api/v1/health/cors", tags=["Health"])
+async def cors_health_check() -> dict:
+    return {
+        "cors_origins": settings.CORS_ORIGINS,
+        "super_admin_allowed": "https://super-admin-seven-sepia.vercel.app" in settings.CORS_ORIGINS
     }
 
 
