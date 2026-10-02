@@ -41,7 +41,12 @@ export default function SupportTickets() {
     try {
       const response = await api.get('/tickets');
       setTickets(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Tickets fetch error", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       setError('Failed to load tickets. Please try again.');
     } finally {
       setLoading(false);

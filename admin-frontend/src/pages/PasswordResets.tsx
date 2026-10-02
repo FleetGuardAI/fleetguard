@@ -24,7 +24,12 @@ export default function PasswordResets() {
     try {
       const response = await api.get('/password-resets');
       setRequests(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Password resets fetch error", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       setError('Failed to load password reset requests. Please try again.');
     } finally {
       setLoading(false);
@@ -41,7 +46,12 @@ export default function PasswordResets() {
     try {
       const res = await api.post(`/password-resets/${id}/${action}`);
       setRequests(requests.map(r => r.id === id ? res.data : r));
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Password resets action error", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       alert(`Failed to ${action} request.`);
     } finally {
       setActionLoading(null);
