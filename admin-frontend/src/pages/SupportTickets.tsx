@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, RefreshCw, X, MessageSquare, Send } from 'lucide-react';
-import api from '../api';
+import api, { getApiErrorMessage } from '../api';
 
 interface Ticket {
   id: number;
@@ -47,7 +47,7 @@ export default function SupportTickets() {
         data: err.response?.data,
         url: err.config?.url
       });
-      setError('Failed to load tickets. Please try again.');
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }

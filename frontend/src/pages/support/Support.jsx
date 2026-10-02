@@ -31,7 +31,7 @@ export default function Support() {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await api.tickets.list().catch(() => []);
+      const data = await api.support.list().catch(() => []);
       setTickets(data);
     } catch (e) {
       setFetchError(e);
@@ -53,14 +53,23 @@ export default function Support() {
 
     setSubmitting(true);
     try {
+      // Map frontend category to backend TicketCategory enum
+      const categoryMap = {
+        'General Inquiry': 'OTHER',
+        'Technical Issue': 'APP_BUG',
+        'Billing & Payments': 'PAYMENT',
+        'Hardware / Telematics': 'TECHNICAL',
+        'Feature Request': 'FEATURE_REQUEST',
+      };
+      const backendCategory = categoryMap[category] || 'OTHER';
+
       const payload = {
         title: subject,
-        issue_type: category,
+        category: backendCategory,
         description,
-        status: 'open',
-        priority: 'medium',
+        priority: 'MEDIUM',
       };
-      await api.tickets.create(payload);
+      await api.support.create(payload);
       success('Ticket Submitted', 'Our support team will get back to you shortly.');
       setModalOpen(false);
       setSubject('');
@@ -85,16 +94,16 @@ export default function Support() {
       render: (t) => <span className="font-semibold text-content">{t.title}</span>
     },
     {
-      key: 'issue_type',
+      key: 'category',
       label: 'Category',
-      render: (t) => <span className="text-content-secondary">{t.issue_type}</span>
+      render: (t) => <span className="text-content-secondary">{t.category}</span>
     },
     {
       key: 'status',
       label: 'Status',
       render: (t) => (
-        <Badge variant={t.status?.toLowerCase() === 'resolved' ? 'success' : 'warning'}>
-          {t.status || 'Open'}
+        <Badge variant={t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'success' : 'warning'}>
+          {t.status || 'OPEN'}
         </Badge>
       )
     },

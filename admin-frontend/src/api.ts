@@ -44,4 +44,30 @@ api.interceptors.response.use(
   }
 );
 
+export function getApiErrorMessage(error: any): string {
+  if (error?.response?.data) {
+    const data = error.response.data;
+    if (typeof data === "string") return data;
+    if (data.detail) {
+      if (typeof data.detail === "string") return data.detail;
+      if (Array.isArray(data.detail)) {
+        return data.detail.map((item: any) => {
+          if (typeof item === "string") return item;
+          if (item.loc) return `${item.loc.join('.')}: ${item.msg}`;
+          return item.msg || item.message || JSON.stringify(item);
+        }).join(", ");
+      }
+      return JSON.stringify(data.detail);
+    }
+    if (data.message) {
+      return typeof data.message === "string" ? data.message : JSON.stringify(data.message);
+    }
+    return JSON.stringify(data);
+  }
+  if (error?.message) {
+    return error.message;
+  }
+  return "An unexpected error occurred.";
+}
+
 export default api;

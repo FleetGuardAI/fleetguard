@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../AuthContext';
-import api from '../api';
+import api, { getApiErrorMessage } from '../api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -29,13 +29,7 @@ export default function Login() {
         data: err.response?.data,
         url: err.config?.url
       });
-      if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Invalid credentials');
-      }
+      setError(getApiErrorMessage(err));
     }
   };
 
@@ -90,16 +84,18 @@ export default function Login() {
             Sign In to Admin
           </button>
           
-          <button 
-            type="button"
-            onClick={() => {
-              login("test_admin_token_bypass");
-              navigate('/dashboard');
-            }}
-            className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-sm mt-3"
-          >
-            Skip Login (Test Mode)
-          </button>
+          {import.meta.env.DEV && (
+            <button 
+              type="button"
+              onClick={() => {
+                login("test_admin_token_bypass");
+                navigate('/dashboard');
+              }}
+              className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-sm mt-3"
+            >
+              Skip Login (Test Mode)
+            </button>
+          )}
         </form>
       </div>
     </div>

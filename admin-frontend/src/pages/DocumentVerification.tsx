@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertCircle, RefreshCw, FileText, CheckCircle, XCircle } from 'lucide-react';
-import api from '../api';
+import api, { getApiErrorMessage } from '../api';
 
 interface Document {
   id: string;
@@ -38,7 +38,7 @@ export default function DocumentVerification() {
         data: err.response?.data,
         url: err.config?.url
       });
-      setError('Failed to load documents. Please try again.');
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
