@@ -119,9 +119,10 @@ async def list_documents(
     """
     List documents with optional filtering by storage status.
     """
+    company_id = current_user.company_id if current_user.role != UserRole.SUPER_ADMIN else None
     return await service.list_documents(
         status=storage_status,
-        company_id=current_user.company_id,
+        company_id=company_id,
         limit=limit,
         offset=offset,
     )
@@ -290,9 +291,11 @@ async def verify_document(
     if payload.status == DocumentVerificationStatus.REJECTED and not payload.rejection_reason:
         raise HTTPException(status_code=400, detail="Rejection reason is required when rejecting")
 
-    result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.company_id == current_user.company_id)
-    )
+    stmt = select(Document).where(Document.id == document_id)
+    if current_user.role != UserRole.SUPER_ADMIN:
+        stmt = stmt.where(Document.company_id == current_user.company_id)
+        
+    result = await db.execute(stmt)
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")

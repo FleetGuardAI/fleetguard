@@ -32,7 +32,12 @@ export default function DocumentVerification() {
     try {
       const response = await api.get('/documents');
       setDocuments(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Document verification fetch failed", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       setError('Failed to load documents. Please try again.');
     } finally {
       setLoading(false);
@@ -49,7 +54,12 @@ export default function DocumentVerification() {
     try {
       const res = await api.post(`/documents/${id}/approve`);
       setDocuments(documents.map(d => d.id === id ? res.data : d));
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Document approve failed", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       alert("Failed to approve document.");
     } finally {
       setActionLoading(null);
@@ -65,7 +75,12 @@ export default function DocumentVerification() {
       setDocuments(documents.map(d => d.id === rejectingDocId ? res.data : d));
       setRejectingDocId(null);
       setRejectionReason('');
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Document reject failed", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       alert("Failed to reject document.");
     } finally {
       setActionLoading(null);

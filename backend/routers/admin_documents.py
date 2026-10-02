@@ -6,19 +6,20 @@ from datetime import datetime
 
 from database import get_db
 from models.admin_domain import AdminUser, AdminAuditLog
-from models.document import Document, DocumentVerificationStatus
+from models.document import Document, DocumentVerificationStatus, DocumentStorageStatus
 from models.notification import Notification, NotificationCategory
 from services.admin_auth_service import require_admin_permission
 from pydantic import BaseModel
+import uuid
 
 router = APIRouter(prefix="/api/v1/admin/documents", tags=["Admin Documents"])
 
 class DocumentResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     original_filename: str
     mime_type: str
-    status: str
-    verification_status: str
+    status: DocumentStorageStatus
+    verification_status: DocumentVerificationStatus
     uploaded_by: Optional[str] = None
     company_id: Optional[int] = None
     target_type: Optional[str] = None
