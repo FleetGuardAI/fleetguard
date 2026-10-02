@@ -196,18 +196,21 @@ async def get_driver_location_history(
 
     query = query.order_by(desc(DriverLocation.timestamp)).limit(limit)
     result = await db.execute(query)
-    locations = result.scalars().all()
+    locations = list(result.scalars().all())
+    locations.reverse()  # Return in chronological order
 
     return [LocationResponse.model_validate(loc) for loc in locations]
 
 @router.get("/api/v1/tracking/trip/{trip_id}/route", response_model=List[LocationResponse])
 async def get_trip_route_history(
-    trip_id: int,
+    trip_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get the actual GPS route for a specific trip based on its start/end time."""
-    trip = await db.get(Trip, trip_id)
+    result = await db.execute(select(Trip).where(Trip.trip_id == trip_id))
+    trip = result.scalar_one_or_none()
+    
     if trip is None or trip.company_id != current_user.company_id:
         raise HTTPException(404, "Trip not found")
         

@@ -60,6 +60,7 @@ export function FleetMap({ trucks = [] }) {
   const [historyRoute, setHistoryRoute] = useState([]);
   const [historyMode, setHistoryMode] = useState('24h'); // '1h', '12h', '24h', 'trip'
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
 
   useEffect(() => {
     if (!selectedTruck) {
@@ -68,10 +69,11 @@ export function FleetMap({ trucks = [] }) {
     }
     const fetchHistory = async () => {
       setIsLoadingHistory(true);
+      setHistoryError(null);
       try {
+        let data = [];
         if (historyMode === 'trip' && selectedTruck.trip_id) {
-          const data = await getTripRoute(selectedTruck.trip_id);
-          setHistoryRoute(data.map(d => [d.latitude, d.longitude]));
+          data = await getTripRoute(selectedTruck.trip_id);
         } else {
           const now = new Date();
           const start = new Date();
@@ -79,11 +81,28 @@ export function FleetMap({ trucks = [] }) {
           if (historyMode === '12h') start.setHours(now.getHours() - 12);
           if (historyMode === '24h') start.setHours(now.getHours() - 24);
           
-          const data = await getDriverHistory(selectedTruck.id, start, now);
-          setHistoryRoute(data.map(d => [d.latitude, d.longitude]));
+          data = await getDriverHistory(selectedTruck.id, start, now);
         }
+
+        // Validate data and coordinates
+        const validPoints = Array.isArray(data) ? data.filter(d => 
+          typeof d.latitude === 'number' && typeof d.longitude === 'number' &&
+          !isNaN(d.latitude) && !isNaN(d.longitude)
+        ) : [];
+
+        if (validPoints.length === 0) {
+          if (Array.isArray(data) && data.length > 0) {
+            setHistoryError("Invalid GPS data");
+          } else {
+            setHistoryError(historyMode === 'trip' ? "Trip has no recorded GPS points" : "No GPS history available for this period");
+          }
+        }
+
+        setHistoryRoute(validPoints.map(d => [d.latitude, d.longitude]));
       } catch (e) {
         console.error("Failed to fetch route", e);
+        setHistoryError(historyMode === 'trip' ? "Failed to load trip history" : "Failed to load GPS history");
+        setHistoryRoute([]);
       } finally {
         setIsLoadingHistory(false);
       }
@@ -108,7 +127,7 @@ export function FleetMap({ trucks = [] }) {
           />
           <MapBounds trucks={trucks} route={historyRoute} />
           
-          {historyRoute.length > 0 && (
+          {historyRoute.length > 1 && (
             <Polyline 
               positions={historyRoute} 
               pathOptions={{ color: '#22C55E', weight: 4, opacity: 0.8 }} 
@@ -198,13 +217,20 @@ export function FleetMap({ trucks = [] }) {
               </div>
             )}
             
-            <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-              <span className="text-[11px] text-content-muted flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                {historyRoute.length} points loaded
-              </span>
-              {isLoadingHistory && (
-                <span className="text-[11px] text-brand-500 font-medium animate-pulse">Loading...</span>
+            <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-content-muted flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  {historyRoute.length} points loaded
+                </span>
+                {isLoadingHistory && (
+                  <span className="text-[11px] text-brand-500 font-medium animate-pulse">Loading history...</span>
+                )}
+              </div>
+              {historyError && !isLoadingHistory && (
+                <div className="text-[11px] text-red-500 bg-red-50 p-2 rounded-md border border-red-100">
+                  {historyError}
+                </div>
               )}
             </div>
           </div>
