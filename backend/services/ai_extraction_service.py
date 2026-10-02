@@ -100,12 +100,21 @@ Raw Text:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
                 temperature=0.0,
-                max_tokens=256
+                max_tokens=1024
             )
             content = response.choices[0].message.content
-            return json.loads(content)
+            
+            # Clean up potential markdown code blocks returned by the model
+            content = content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            elif content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+                
+            return json.loads(content.strip())
         except Exception as e:
             logger.error(f"AI Extraction failed: {e}")
             raise RuntimeError(f"AI extraction failed: {str(e)}")
