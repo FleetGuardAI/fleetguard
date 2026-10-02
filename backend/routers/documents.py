@@ -12,6 +12,9 @@ import random
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+
+logger = logging.getLogger("fleetguard.routers.documents")
 
 from database import get_db
 from models.document import DocumentStorageStatus
