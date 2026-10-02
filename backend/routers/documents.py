@@ -171,7 +171,26 @@ async def ocr_driver_license(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
+    text = result.text or ""
     fields = result.extracted_fields
+
+    from services.ai_extraction_service import ai_extractor
+    if ai_extractor.is_available:
+        try:
+            ai_data = await ai_extractor.extract_license_data(text)
+            if ai_data.get("name") or ai_data.get("license_number"):
+                return {
+                    "status": "success",
+                    "data": {
+                        "name": ai_data.get("name"),
+                        "license_number": ai_data.get("license_number"),
+                        "date_of_birth": ai_data.get("date_of_birth"),
+                        "valid_until": ai_data.get("valid_until"),
+                        "vehicle_class": ai_data.get("vehicle_class"),
+                    }
+                }
+        except Exception as e:
+            logger.error(f"AI Extraction failed, falling back to basic fields: {e}")
 
     return {
         "status": "success",
@@ -228,11 +247,39 @@ async def ocr_vehicle_rc(
         
     text = result.text or ""
     
-    # Safely log raw OCR text for debugging (without sensitive PII if possible, but it's an RC so it's fine for development)
+    # Safely log raw OCR text for debugging
     logger.info(f"--- OCR COMPLETED ---\nCharacters: {len(text)}\nRaw Text:\n{text}\n---------------------")
     
     fields = result.extracted_fields or {}
     
+    # Try AI Extraction first!
+    from services.ai_extraction_service import ai_extractor
+    if ai_extractor.is_available:
+        try:
+            ai_data = await ai_extractor.extract_rc_data(text)
+            
+            # Use AI data if it found at least a registration number or something meaningful
+            if ai_data.get("registration_number") or ai_data.get("manufacturer") or ai_data.get("model"):
+                
+                # Normalize AI gvw to numbers only
+                import re
+                gvw_val = ai_data.get("gvw")
+                if gvw_val and isinstance(gvw_val, str):
+                    ai_data["gvw"] = re.sub(r'[^\d]', '', gvw_val)
+                    
+                return {
+                    "status": "success",
+                    "data": {
+                        "registration_number": ai_data.get("registration_number"),
+                        "manufacturer": ai_data.get("manufacturer"),
+                        "model": ai_data.get("model"),
+                        "fuel_type": ai_data.get("fuel_type"),
+                        "gvw": ai_data.get("gvw")
+                    }
+                }
+        except Exception as e:
+            logger.error(f"AI Extraction failed, falling back to Regex: {e}")
+            
     import re
     
     def extract_regex(pattern, text, flags=re.IGNORECASE):

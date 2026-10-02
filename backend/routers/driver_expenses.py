@@ -132,27 +132,45 @@ async def process_receipt_ocr(
             status_code=500, 
             detail="Receipt processing failed. Please try again."
         )
-        
+    text = ocr_result.text or ""
     fields = ocr_result.extracted_fields
     
-    # Parse extracted fields robustly
-    vendor = fields.get("MerchantName", "Unknown Vendor")
-    date = fields.get("TransactionDate", datetime.now().strftime("%Y-%m-%d"))
+    # Try AI Extraction first!
+    from services.ai_extraction_service import ai_extractor
     
-    # Attempt to normalize amount. 
-    amount_raw = fields.get("Total")
+    vendor = "Unknown Vendor"
+    date = datetime.now().strftime("%Y-%m-%d")
     amount = 0.0
-    if amount_raw is not None:
+    gst_number = None
+    
+    if ai_extractor.is_available:
         try:
-            if isinstance(amount_raw, str):
-                clean_amount = amount_raw.replace("₹", "").replace("Rs.", "").replace("INR", "").replace(",", "").strip()
-                amount = float(clean_amount)
-            else:
-                amount = float(amount_raw)
-        except ValueError:
-            amount = 0.0
+            ai_data = await ai_extractor.extract_expense_data(text)
+            if ai_data.get("vendor") or ai_data.get("amount") is not None:
+                vendor = ai_data.get("vendor") or vendor
+                date = ai_data.get("date") or date
+                amount = float(ai_data.get("amount") or 0.0)
+                gst_number = ai_data.get("gst_number")
+        except Exception as e:
+            logger.error(f"AI Extraction failed, falling back to basic fields: {e}")
             
-    gst_number = fields.get("MerchantTaxId")
+    if vendor == "Unknown Vendor" and amount == 0.0:
+        # Fallback to OCR Provider Extracted Fields
+        vendor = fields.get("MerchantName", "Unknown Vendor")
+        date = fields.get("TransactionDate", datetime.now().strftime("%Y-%m-%d"))
+        
+        amount_raw = fields.get("Total")
+        if amount_raw is not None:
+            try:
+                if isinstance(amount_raw, str):
+                    clean_amount = amount_raw.replace("₹", "").replace("Rs.", "").replace("INR", "").replace(",", "").strip()
+                    amount = float(clean_amount)
+                else:
+                    amount = float(amount_raw)
+            except ValueError:
+                amount = 0.0
+                
+        gst_number = fields.get("MerchantTaxId")
 
     # Store OCR evidence using the existing Evidence framework
     try:
