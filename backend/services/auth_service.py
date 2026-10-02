@@ -376,7 +376,7 @@ async def create_forgot_password_request(
     
     from models.support_domain import PasswordResetRequestAdmin, RequesterType
     admin_req = PasswordResetRequestAdmin(
-        requester_type=RequesterType.FLEET_OWNER.value,
+        requester_type=RequesterType.FLEET_OWNER,
         requester_email_phone=identifier,
         reason="Automated Forgot Password Flow",
         status="PENDING",
