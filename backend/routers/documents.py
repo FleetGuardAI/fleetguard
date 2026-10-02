@@ -274,7 +274,7 @@ async def ocr_vehicle_rc(
     if manufacturer and manufacturer.lower() not in ["class", "model", "name"]:
         extracted_data["manufacturer"] = manufacturer
 
-    extracted_data["model"] = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class|Model|Vehicle\s*Class|Maker[\'\s]*Model)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
+    extracted_data["model"] = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class(?:ification)?|Model(?:\s*Name)?|Vehicle\s*Class(?:es)?|Maker[\'\s]*Model|Maker[\'\s]*Description)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
 
     fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)', text)
     if fuel_type:
@@ -286,7 +286,7 @@ async def ocr_vehicle_rc(
         elif "PETROL" in fuel_type:
             extracted_data["fuel_type"] = "PETROL"
 
-    gvw = extract_regex(r'(?:GVW|G\.?V\.?W\.?|Gross\s*Veh[\.\w]*\s*Wt[\.\w]*|Gross\s*Vehicle\s*Weight|Unladen\s*Weight)[\s:\-]*([0-9,]+)', text)
+    gvw = extract_regex(r'(?:GVW|G\.?V\.?W\.?|Gross\s*Veh[\.\w]*\s*Wt[\.\w]*|Gross\s*Vehicle\s*Weight|Unladen\s*Weight|U\.?L\.?W\.?|Unladen|R\.?L\.?W\.?|Reg[\.\w]*\s*Laden\s*Wt[\.\w]*|Laden\s*Weight)(?:\s*\([A-Za-z\s]+\))?[\s:\-]*([0-9,]{3,7})', text)
     if gvw:
         extracted_data["gvw"] = gvw.replace(',', '')
     
