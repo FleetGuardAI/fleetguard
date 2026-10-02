@@ -244,6 +244,22 @@ async def ocr_vehicle_rc(
             return val if val else None
         return None
 
+    def is_invalid_value(val: str) -> bool:
+        if not val: return True
+        val_lower = val.lower().strip()
+        invalid_keywords = [
+            "regn", "registration", "model", "maker", "class", "date", 
+            "chassis", "engine", "fuel", "colour", "type", "capacity", 
+            "weight", "owner", "address", "name", "no.", "number",
+            "validity", "month", "year", "mfg", "issued", "authority",
+            "financier", "seating", "body", "vehicle"
+        ]
+        for keyword in invalid_keywords:
+            if val_lower == keyword or val_lower.startswith(keyword + " ") or val_lower.startswith(keyword + "."):
+                return True
+        if len(val_lower) < 2: return True
+        return False
+
     extracted_data = {
         "registration_number": None,
         "manufacturer": None,
@@ -271,20 +287,34 @@ async def ocr_vehicle_rc(
         extracted_data["registration_number"] = fields.get("DocumentNumber")
 
     manufacturer = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Name|Manufacturer(?:[\'\s]*s?\s*Name)?|Maker(?![\'\s]*s?\s*Class)|Make|Mkr)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
-    if manufacturer and manufacturer.lower() not in ["class", "model", "name"]:
+    if manufacturer and not is_invalid_value(manufacturer):
         extracted_data["manufacturer"] = manufacturer
+    else:
+        common_makers = ["MARUTI", "SUZUKI", "HYUNDAI", "TATA", "MAHINDRA", "HONDA", "TOYOTA", "BAJAJ", "TVS", "ROYAL ENFIELD", "HERO", "ASHOK LEYLAND", "EICHER", "BHARATBENZ", "KTM", "YAMAHA", "FORD", "KIA", "RENAULT", "VOLKSWAGEN", "SKODA", "MG", "JEEP", "NISSAN", "DATSUN", "ISUZU", "PIAGGIO", "FORCE", "SML ISUZU", "VOLVO", "SCANIA", "MERCEDES"]
+        for maker in common_makers:
+            if maker in text.upper():
+                extracted_data["manufacturer"] = maker
+                break
 
-    extracted_data["model"] = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class(?:ification)?|Model(?:\s*Name)?|Vehicle\s*Class(?:es)?|Maker[\'\s]*Model|Maker[\'\s]*Description|Description|Class(?:[\s]*of[\s]*Vehicle)?)[\s:\-]*([A-Za-z0-9\s\.\&\-]+?)(?=\n|$)', text)
+    model = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class(?:ification)?|Model(?:\s*Name)?|Vehicle\s*Class(?:es)?|Maker[\'\s]*Model|Maker[\'\s]*Description|Description|Class(?:[\s]*of[\s]*Vehicle)?)[\s:\-]*([A-Za-z0-9\s\.\&\-]+?)(?=\n|$)', text)
+    if model and not is_invalid_value(model):
+        extracted_data["model"] = model
 
     fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)', text)
-    if fuel_type:
+    if fuel_type and not is_invalid_value(fuel_type):
         fuel_type = fuel_type.upper()
-        if fuel_type in ["DIESEL", "PETROL", "CNG", "LNG", "LPG", "ELECTRIC", "HYBRID"]:
+        if fuel_type in ["DIESEL", "PETROL", "CNG", "LNG", "LPG", "ELECTRIC", "HYBRID", "BATTERY"]:
             extracted_data["fuel_type"] = fuel_type
         elif "DIESEL" in fuel_type:
             extracted_data["fuel_type"] = "DIESEL"
         elif "PETROL" in fuel_type:
             extracted_data["fuel_type"] = "PETROL"
+            
+    if not extracted_data.get("fuel_type"):
+        for fuel in ["DIESEL", "PETROL", "CNG", "ELECTRIC", "LPG", "BATTERY", "HYBRID"]:
+            if fuel in text.upper():
+                extracted_data["fuel_type"] = fuel
+                break
 
     gvw = extract_regex(r'(?:GVW|G\.?V\.?W\.?|Gross\s*Veh[\.\w]*\s*Wt[\.\w]*|Gross\s*Vehicle\s*Weight|Unladen\s*Weight|U\.?L\.?W\.?|Unladen|R\.?L\.?W\.?|Reg[\.\w]*\s*Laden\s*Wt[\.\w]*|Laden\s*Weight)(?:\s*\([A-Za-z\s]+\))?[\s:\-]*([0-9,]{3,7})', text)
     if gvw:
