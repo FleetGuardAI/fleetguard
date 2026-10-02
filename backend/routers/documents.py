@@ -211,29 +211,70 @@ async def ocr_vehicle_rc(
     provider = get_ocr_provider()
     
     try:
-        # We can use idDocument or generic document model
+        # We use a generic document model for RCs as they are not standard ID cards
         result = await provider.extract_text(
             file_data=content, 
             mime_type=file.content_type or "image/jpeg", 
-            document_type="idDocument"
+            document_type="rc"
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"OCR Exception: {e}")
+        raise HTTPException(status_code=500, detail="Unable to process the document. Please try again.")
         
-    fields = result.extracted_fields
+    text = result.text or ""
+    fields = result.extracted_fields or {}
+    
+    import re
+    
+    def extract_regex(pattern, text, flags=re.IGNORECASE):
+        match = re.search(pattern, text, flags)
+        if match:
+            # Clean up the extracted string
+            val = match.group(1).strip()
+            # Remove any trailing non-alphanumeric chars that might have been caught
+            val = re.sub(r'^[^\w]+|[^\w]+$', '', val)
+            if val:
+                return val
+        return None
+
+    # Registration Number
+    reg_num = extract_regex(r'(?:Registration\s*No\.?|REGN\s*NO\.?|Regn\.\s*No\.?|Vehicle\s*Registration|Reg\s*No)[\s:\-]*([A-Z0-9]{8,11})', text)
+    if not reg_num:
+        # Fallback to general DocumentNumber if generic processor found it
+        reg_num = fields.get("DocumentNumber")
+        
+    manufacturer = extract_regex(r'(?:Maker|Manufacturer|Make)[\s:\-]*([A-Za-z0-9\s]+?)(?=\n|$)', text)
+    model = extract_regex(r'(?:Model|Maker\s*Model)[\s:\-]*([A-Za-z0-9\s]+?)(?=\n|$)', text)
+    fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)(?=\n|$)', text)
+    gvw = extract_regex(r'(?:GVW|Gross\s*Vehicle\s*Weight|Unladen\s*Weight)[\s:\-]*([0-9,]+)', text)
+    
+    if gvw:
+        gvw = gvw.replace(',', '')
+
+    # Return empty response if no fields found, so frontend can show failure
+    extracted_data = {
+        "registration_number": reg_num,
+        "manufacturer": manufacturer,
+        "model": model,
+        "fuel_type": fuel_type,
+        "gvw": gvw,
+    }
+    
+    # Check if we actually extracted meaningful data
+    has_meaningful_data = any(v is not None and v != "" for v in extracted_data.values())
+    
+    if not has_meaningful_data:
+        # Signal to the frontend that OCR succeeded but no usable fields were found
+        return {
+            "status": "success",
+            "data": {}
+        }
 
     return {
         "status": "success",
-        "data": {
-            "registration_number": fields.get("DocumentNumber"),
-            "owner_name": fields.get("FirstName", "") + " " + fields.get("LastName", "") if fields.get("FirstName") or fields.get("LastName") else None,
-            "manufacturer": None,
-            "model": None,
-            "fuel_type": None,
-            "gvw": None,
-        }
+        "data": extracted_data
     }
 
 

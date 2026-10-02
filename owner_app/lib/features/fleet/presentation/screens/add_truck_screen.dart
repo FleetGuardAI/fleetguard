@@ -15,6 +15,8 @@ class AddTruckScreen extends ConsumerStatefulWidget {
 class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
   bool _isScanning = false;
   bool _showVerification = false;
+  bool _isExtractionSuccess = false;
+  String _extractionMessage = '';
   final ImagePicker _picker = ImagePicker();
 
   final _regController = TextEditingController();
@@ -44,11 +46,24 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
 
       if (mounted) {
         setState(() {
-          _regController.text = result['registration_number'] ?? '';
-          _manufacturerController.text = result['manufacturer'] ?? '';
-          _modelController.text = result['model'] ?? '';
-          _fuelTypeController.text = result['fuel_type'] ?? '';
-          _gvwController.text = result['gvw'] ?? '';
+          // Verify if actual meaningful fields were extracted
+          final hasFields = result.isNotEmpty && 
+                           (result.values.any((v) => v != null && v.toString().trim().isNotEmpty));
+
+          if (hasFields) {
+            _regController.text = result['registration_number']?.toString() ?? '';
+            _manufacturerController.text = result['manufacturer']?.toString() ?? '';
+            _modelController.text = result['model']?.toString() ?? '';
+            _fuelTypeController.text = result['fuel_type']?.toString() ?? '';
+            _gvwController.text = result['gvw']?.toString() ?? '';
+            
+            _isExtractionSuccess = true;
+            _extractionMessage = 'Vehicle details extracted successfully. Please verify and correct if needed.';
+          } else {
+            // Keep fields empty, but show warning message
+            _isExtractionSuccess = false;
+            _extractionMessage = 'Document scanned, but vehicle details could not be extracted. Please enter them manually.';
+          }
           
           _isScanning = false;
           _showVerification = true;
@@ -58,9 +73,15 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
       if (mounted) {
         setState(() => _isScanning = false);
 
-        String errorMsg = 'Could not read document. Please try a clearer image.';
-        if (e.toString().contains('timeout') || e.toString().contains('Timeout')) {
+        String errorMsg = 'Unable to process the document. Please try again.';
+        final errStr = e.toString().toLowerCase();
+        
+        if (errStr.contains('timeout')) {
           errorMsg = 'Network timeout. Please check your connection.';
+        } else if (errStr.contains('valid image')) {
+          errorMsg = "This doesn't appear to be a valid vehicle document.";
+        } else if (e.toString().startsWith('Exception:')) {
+          errorMsg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
         }
         
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -184,20 +205,29 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
+            Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: _isExtractionSuccess 
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: _isExtractionSuccess 
+                    ? AppColors.primary.withValues(alpha: 0.3)
+                    : Colors.orange.withValues(alpha: 0.3)
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, color: AppColors.primary),
+                Icon(
+                  _isExtractionSuccess ? Icons.check_circle : Icons.warning_amber_rounded, 
+                  color: _isExtractionSuccess ? AppColors.primary : Colors.orange
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Data extracted successfully. Please verify and correct if needed.',
+                    _extractionMessage,
                     style: TextStyle(color: isDark ? AppColors.darkOnSurface : AppColors.lightOnSurface),
                   ),
                 ),
