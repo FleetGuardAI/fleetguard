@@ -274,7 +274,7 @@ async def ocr_vehicle_rc(
     if manufacturer and manufacturer.lower() not in ["class", "model", "name"]:
         extracted_data["manufacturer"] = manufacturer
 
-    extracted_data["model"] = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class(?:ification)?|Model(?:\s*Name)?|Vehicle\s*Class(?:es)?|Maker[\'\s]*Model|Maker[\'\s]*Description|Description)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
+    extracted_data["model"] = extract_regex(r'(?:M(?:a)?k(?:e)?r[\'\s]*s?\s*Class(?:ification)?|Model(?:\s*Name)?|Vehicle\s*Class(?:es)?|Maker[\'\s]*Model|Maker[\'\s]*Description|Description|Class(?:[\s]*of[\s]*Vehicle)?)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
 
     fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)', text)
     if fuel_type:
