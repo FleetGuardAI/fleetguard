@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { getVehicleById, createVehicle, updateVehicle, uploadVehicleDocument } from '@/api/vehicleApi';
+import { getVehicleById, createVehicle, updateVehicle, uploadVehicleDocument, extractRCOCR } from '@/api/vehicleApi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -36,6 +36,8 @@ export default function VehicleForm() {
   const [fetching, setFetching] = useState(isEdit);
   const [fetchError, setFetchError] = useState(null);
   const [errors, setErrors] = useState({});
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionStatus, setExtractionStatus] = useState(null);
 
   useEffect(() => {
     if (isEdit) {
@@ -151,6 +153,40 @@ export default function VehicleForm() {
     }
   };
 
+  const handleRCUploadForOCR = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    setExtractionStatus(null);
+    try {
+      const data = await extractRCOCR(file);
+      
+      const hasFields = data && Object.values(data).some(v => v !== null && String(v).trim() !== '');
+
+      if (hasFields) {
+        if (data.registration_number) setLicensePlate(data.registration_number);
+        if (data.manufacturer) setMake(data.manufacturer);
+        if (data.model) setModel(data.model);
+        // Map GVW or Fuel types if needed, although VehicleForm fields only require Make, Model, Plate, Year, Capacity
+        
+        setExtractionStatus('success');
+        success('Vehicle details extracted successfully.', 'Please verify before saving.');
+      } else {
+        setExtractionStatus('partial');
+        error('OCR Complete', 'Document scanned, but vehicle details could not be extracted. Please enter them manually.');
+      }
+      
+      // Also save the file in documents
+      setDocuments(prev => ({ ...prev, rc: file }));
+    } catch (e) {
+      setExtractionStatus('error');
+      error('OCR Failed', e.message || 'Unable to process the document. Please try again.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   if (fetching) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -190,6 +226,38 @@ export default function VehicleForm() {
       </div>
 
       <Card>
+        {!isEdit && (
+          <div className="mb-6 p-4 border border-brand-200 bg-brand-50 rounded-xl">
+            <h3 className="font-semibold text-brand-900 mb-1">Fast Track Setup</h3>
+            <p className="text-sm text-brand-700 mb-4">Upload the Registration Certificate (RC) to automatically extract vehicle details.</p>
+            
+            <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isExtracting ? 'bg-brand-200 text-brand-600' : 'bg-brand-600 text-white hover:bg-brand-700'}`}>
+              {isExtracting ? <Loader size="sm" /> : <Save className="h-4 w-4" />}
+              {isExtracting ? 'Extracting Data...' : 'Upload RC for Scan'}
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden" 
+                onChange={handleRCUploadForOCR}
+                disabled={isExtracting}
+              />
+            </label>
+            
+            {extractionStatus === 'success' && (
+              <p className="mt-3 text-sm text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Vehicle details extracted successfully. Please verify before saving.
+              </p>
+            )}
+            {extractionStatus === 'partial' && (
+              <p className="mt-3 text-sm text-orange-700 bg-orange-50 p-2 rounded-lg border border-orange-200 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                Some details could not be extracted. Please enter them manually.
+              </p>
+            )}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="License Plate"

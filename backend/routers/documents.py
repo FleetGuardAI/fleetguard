@@ -233,34 +233,55 @@ async def ocr_vehicle_rc(
         if match:
             # Clean up the extracted string
             val = match.group(1).strip()
-            # Remove any trailing non-alphanumeric chars that might have been caught
             val = re.sub(r'^[^\w]+|[^\w]+$', '', val)
-            if val:
-                return val
+            return val if val else None
         return None
 
-    # Registration Number
-    reg_num = extract_regex(r'(?:Registration\s*No\.?|REGN\s*NO\.?|Regn\.\s*No\.?|Vehicle\s*Registration|Reg\s*No)[\s:\-]*([A-Z0-9]{8,11})', text)
-    if not reg_num:
-        # Fallback to general DocumentNumber if generic processor found it
-        reg_num = fields.get("DocumentNumber")
-        
-    manufacturer = extract_regex(r'(?:Maker|Manufacturer|Make)[\s:\-]*([A-Za-z0-9\s]+?)(?=\n|$)', text)
-    model = extract_regex(r'(?:Model|Maker\s*Model)[\s:\-]*([A-Za-z0-9\s]+?)(?=\n|$)', text)
-    fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)(?=\n|$)', text)
-    gvw = extract_regex(r'(?:GVW|Gross\s*Vehicle\s*Weight|Unladen\s*Weight)[\s:\-]*([0-9,]+)', text)
-    
-    if gvw:
-        gvw = gvw.replace(',', '')
-
-    # Return empty response if no fields found, so frontend can show failure
     extracted_data = {
-        "registration_number": reg_num,
-        "manufacturer": manufacturer,
-        "model": model,
-        "fuel_type": fuel_type,
-        "gvw": gvw,
+        "registration_number": None,
+        "manufacturer": None,
+        "model": None,
+        "fuel_type": None,
+        "gvw": None,
     }
+
+    # Better regex for Indian Registration Number
+    # e.g. UP32AB1234, UP 32 AB 1234, DL 01 C 1234
+    reg_pattern = r'[A-Z]{2}\s*[0-9]{1,2}\s*[A-Z]{1,3}\s*[0-9]{4}'
+    reg_matches = re.findall(reg_pattern, text, re.IGNORECASE)
+    
+    if reg_matches:
+        extracted_data["registration_number"] = re.sub(r'\s+', '', reg_matches[0]).upper()
+    else:
+        # Fallback to key-value matching
+        reg_num = extract_regex(r'(?:REGISTRATION\s*NO\.?|REGN\s*NO\.?|Regn\.\s*No\.?|Vehicle\s*Registration|Reg\s*No)[\s:\-]*([A-Z0-9\s]{8,15})', text)
+        if reg_num:
+            reg_num = re.sub(r'\s+', '', reg_num).upper()
+            if not reg_num.isalpha() and not reg_num.isdigit():
+                extracted_data["registration_number"] = reg_num
+                
+    if not extracted_data["registration_number"]:
+        extracted_data["registration_number"] = fields.get("DocumentNumber")
+
+    manufacturer = extract_regex(r'(?:Maker|Manufacturer|Make)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
+    if manufacturer and manufacturer.lower() not in ["class", "model", "name"]:
+        extracted_data["manufacturer"] = manufacturer
+
+    extracted_data["model"] = extract_regex(r'(?:Model|Maker[\'\s]*Model|Maker[\'\s]*Class)[\s:\-]*([A-Za-z0-9\s\.\&]+?)(?=\n|$)', text)
+
+    fuel_type = extract_regex(r'(?:Fuel|Fuel\s*Type)[\s:\-]*([A-Za-z]+)', text)
+    if fuel_type:
+        fuel_type = fuel_type.upper()
+        if fuel_type in ["DIESEL", "PETROL", "CNG", "LNG", "LPG", "ELECTRIC", "HYBRID"]:
+            extracted_data["fuel_type"] = fuel_type
+        elif "DIESEL" in fuel_type:
+            extracted_data["fuel_type"] = "DIESEL"
+        elif "PETROL" in fuel_type:
+            extracted_data["fuel_type"] = "PETROL"
+
+    gvw = extract_regex(r'(?:GVW|Gross\s*Vehicle\s*Weight|Unladen\s*Weight)[\s:\-]*([0-9,]+)', text)
+    if gvw:
+        extracted_data["gvw"] = gvw.replace(',', '')
     
     # Check if we actually extracted meaningful data
     has_meaningful_data = any(v is not None and v != "" for v in extracted_data.values())

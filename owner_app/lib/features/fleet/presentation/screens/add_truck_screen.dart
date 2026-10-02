@@ -46,27 +46,41 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
 
       if (mounted) {
         setState(() {
-          // Verify if actual meaningful fields were extracted
-          final hasFields = result.isNotEmpty && 
-                           (result.values.any((v) => v != null && v.toString().trim().isNotEmpty));
+          // Count how many meaningful fields were extracted
+          int filledFieldsCount = 0;
+          if (result['registration_number'] != null && result['registration_number'].toString().trim().isNotEmpty) filledFieldsCount++;
+          if (result['manufacturer'] != null && result['manufacturer'].toString().trim().isNotEmpty) filledFieldsCount++;
+          if (result['model'] != null && result['model'].toString().trim().isNotEmpty) filledFieldsCount++;
+          if (result['fuel_type'] != null && result['fuel_type'].toString().trim().isNotEmpty) filledFieldsCount++;
+          if (result['gvw'] != null && result['gvw'].toString().trim().isNotEmpty) filledFieldsCount++;
 
-          if (hasFields) {
+          if (filledFieldsCount > 0) {
             _regController.text = result['registration_number']?.toString() ?? '';
             _manufacturerController.text = result['manufacturer']?.toString() ?? '';
             _modelController.text = result['model']?.toString() ?? '';
             _fuelTypeController.text = result['fuel_type']?.toString() ?? '';
             _gvwController.text = result['gvw']?.toString() ?? '';
             
-            _isExtractionSuccess = true;
-            _extractionMessage = 'Vehicle details extracted successfully. Please verify and correct if needed.';
+            // Registration, manufacturer and model are critical
+            bool isFullyExtracted = _regController.text.isNotEmpty && 
+                                   _manufacturerController.text.isNotEmpty && 
+                                   _modelController.text.isNotEmpty;
+            
+            if (isFullyExtracted) {
+              _isExtractionSuccess = true;
+              _extractionMessage = 'Vehicle details extracted successfully. Please verify before saving.';
+            } else {
+              _isExtractionSuccess = true; // Still use green/orange depending on UI design, but user requested specific text
+              _extractionMessage = 'Some vehicle details were extracted. Please verify and complete the missing fields.';
+            }
           } else {
             // Keep fields empty, but show warning message
             _isExtractionSuccess = false;
-            _extractionMessage = 'Document scanned, but vehicle details could not be extracted. Please enter them manually.';
+            _extractionMessage = 'The document was scanned, but vehicle details could not be extracted. Please enter the details manually or scan again.';
           }
           
-          _isScanning = false;
           _showVerification = true;
+          _isScanning = false;
         });
       }
     } catch (e) {
@@ -205,24 +219,28 @@ class _AddTruckScreenState extends ConsumerState<AddTruckScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-            Container(
+          Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _isExtractionSuccess 
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : Colors.orange.withValues(alpha: 0.1),
+              color: _extractionMessage.contains('Some') 
+                  ? Colors.blue.withValues(alpha: 0.1)
+                  : (_isExtractionSuccess ? AppColors.primary.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isExtractionSuccess 
-                    ? AppColors.primary.withValues(alpha: 0.3)
-                    : Colors.orange.withValues(alpha: 0.3)
+                color: _extractionMessage.contains('Some')
+                    ? Colors.blue.withValues(alpha: 0.3)
+                    : (_isExtractionSuccess ? AppColors.primary.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3))
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  _isExtractionSuccess ? Icons.check_circle : Icons.warning_amber_rounded, 
-                  color: _isExtractionSuccess ? AppColors.primary : Colors.orange
+                  _extractionMessage.contains('Some')
+                      ? Icons.info_outline
+                      : (_isExtractionSuccess ? Icons.check_circle : Icons.warning_amber_rounded), 
+                  color: _extractionMessage.contains('Some')
+                      ? Colors.blue
+                      : (_isExtractionSuccess ? AppColors.primary : Colors.orange)
                 ),
                 const SizedBox(width: 12),
                 Expanded(
