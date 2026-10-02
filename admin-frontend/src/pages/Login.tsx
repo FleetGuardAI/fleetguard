@@ -24,6 +24,11 @@ export default function Login() {
       login(response.data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
+      console.error("Login request failed", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       if (err.response?.data?.detail) {
         setError(err.response.data.detail);
       } else if (err.message) {

@@ -28,7 +28,12 @@ export default function AuditLogs() {
     try {
       const response = await api.get('/audit-logs');
       setLogs(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Audit logs fetch error", {
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url
+      });
       setError('Failed to load audit logs. Please try again.');
     } finally {
       setLoading(false);
