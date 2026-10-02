@@ -14,11 +14,11 @@ class AIExtractionService:
     def __init__(self):
         self.client = None
         if AsyncOpenAI and settings.OPENAI_API_KEY:
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self.client = AsyncOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                base_url=settings.LLM_BASE_URL if settings.LLM_BASE_URL else None
+            )
             self.model = settings.OPENAI_MODEL or "gpt-4o-mini"
-            if self.model == "gpt-4o":
-                # Override to mini for OCR parsing to save time/cost unless configured differently
-                self.model = "gpt-4o-mini"
 
     @property
     def is_available(self) -> bool:
