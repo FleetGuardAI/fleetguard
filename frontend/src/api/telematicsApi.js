@@ -29,7 +29,7 @@ export async function getLiveTracking() {
 }
 
 export async function getDriverHistory(driverId, startTime = null, endTime = null) {
-  let url = `/tracking/driver/${driverId}/history`;
+  let url = `/v1/tracking/driver/${driverId}/history`;
   const params = new URLSearchParams();
   if (startTime) params.append('start_time', startTime.toISOString());
   if (endTime) params.append('end_time', endTime.toISOString());
@@ -37,11 +37,9 @@ export async function getDriverHistory(driverId, startTime = null, endTime = nul
   if (params.toString()) {
     url += `?${params.toString()}`;
   }
-  const { data } = await api.client.get(url);
-  return data;
+  return await api.get(url);
 }
 
 export async function getTripRoute(tripId) {
-  const { data } = await api.client.get(`/tracking/trip/${tripId}/route`);
-  return data;
+  return await api.get(`/v1/tracking/trip/${tripId}/route`);
 }
