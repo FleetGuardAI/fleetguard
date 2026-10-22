@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../services/auth_service.dart';
 import '../../features/auth/data/auth_repository.dart';
+import '../../features/auth/presentation/screens/driver_login_screen.dart';
+import '../../features/auth/presentation/screens/fleet_mismatch_screen.dart';
 import '../../features/auth/presentation/screens/qr_scan_screen.dart';
 import '../../features/auth/presentation/screens/phone_verification_screen.dart';
 import '../../features/auth/presentation/screens/profile_creation_screen.dart';
@@ -43,10 +45,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
 
       if (!isLoggedIn && !isAuthRoute) {
-        return '/auth/phone-verify';
+        return '/auth/login';
       }
 
       if (isLoggedIn && isAuthRoute) {
+        // Allow scanning QR and fleet mismatch resolution even when already authenticated
+        if (state.matchedLocation == '/auth/qr-scan' ||
+            state.matchedLocation == '/auth/fleet-mismatch') {
+          return null;
+        }
+
         final status = await SecureStorage.getVerificationStatus();
         switch (status) {
           case 'PENDING_DOCUMENTS':
@@ -82,8 +90,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // --- Auth Flow ---
       GoRoute(
+        path: '/auth/login',
+        builder: (context, state) => const DriverLoginScreen(),
+      ),
+      GoRoute(
         path: '/auth/qr-scan',
         builder: (context, state) => const QrScanScreen(),
+      ),
+      GoRoute(
+        path: '/auth/fleet-mismatch',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return FleetMismatchScreen(
+            currentCompanyName: extra?['current_company_name'] ?? 'Current Fleet',
+            targetCompanyName: extra?['target_company_name'] ?? 'Target Fleet',
+            targetCompanyId: extra?['target_company_id'] is int ? extra!['target_company_id'] : 0,
+            inviteToken: extra?['invite_token'] ?? '',
+          );
+        },
       ),
       GoRoute(
         path: '/auth/phone-verify',
@@ -287,7 +311,7 @@ class _SplashScreenState extends ConsumerState<_SplashScreen> {
 
     final isLoggedIn = await SecureStorage.isLoggedIn();
     if (!isLoggedIn) {
-      context.go('/auth/phone-verify');
+      context.go('/auth/login');
       return;
     }
 
@@ -296,7 +320,11 @@ class _SplashScreenState extends ConsumerState<_SplashScreen> {
       final profile = await ref.read(authRepositoryProvider).getProfile();
       final vStatus = profile['verification_status'];
       if (vStatus != null) {
-        await SecureStorage.setVerificationStatus(vStatus);
+        await SecureStorage.setVerificationStatus(vStatus.toString());
+      }
+      final compName = profile['company_name'];
+      if (compName != null && compName.toString().isNotEmpty) {
+        await SecureStorage.setCompanyName(compName.toString());
       }
     } catch (e) {
       debugPrint('Splash sync error: $e');
