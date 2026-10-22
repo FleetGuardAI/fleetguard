@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import uuid
 
 from database import get_db
@@ -223,9 +223,37 @@ async def send_ticket_message(
             detail="This support ticket has been closed. Please raise a new ticket."
         )
 
+    cleaned_content = payload.content.strip()
+    if not cleaned_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty."
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    recent_threshold = now_utc - timedelta(seconds=10)
+
+    # 10-second idempotency check to prevent duplicate messages
+    dup_q = (
+        select(SupportTicketMessage)
+        .where(
+            SupportTicketMessage.ticket_id == ticket.id,
+            SupportTicketMessage.content == cleaned_content,
+            SupportTicketMessage.message_type == MessageType.PUBLIC,
+            SupportTicketMessage.sender_type == RequesterType.FLEET_OWNER,
+            SupportTicketMessage.sender_id == current_user.id,
+            SupportTicketMessage.created_at >= recent_threshold,
+        )
+        .order_by(SupportTicketMessage.id.desc())
+    )
+    dup_res = await db.execute(dup_q)
+    existing_message = dup_res.scalar_one_or_none()
+    if existing_message:
+        return existing_message
+
     message = SupportTicketMessage(
         ticket_id=ticket.id,
-        content=payload.content,
+        content=cleaned_content,
         message_type=MessageType.PUBLIC,
         sender_type=RequesterType.FLEET_OWNER,
         sender_id=current_user.id,
@@ -236,7 +264,7 @@ async def send_ticket_message(
     # Re-open or keep in progress if awaiting action
     if ticket.status in [TicketStatus.WAITING_FOR_USER, TicketStatus.RESOLVED]:
         ticket.status = TicketStatus.IN_PROGRESS
-    ticket.updated_at = datetime.now(timezone.utc)
+    ticket.updated_at = now_utc
 
     await db.commit()
     await db.refresh(message)

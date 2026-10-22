@@ -406,13 +406,13 @@ async def reset_password_with_token(
 ) -> GenericMessageResponse:
     """Reset password using valid one-time token and revoke all active sessions."""
     now = _utcnow()
-    token_hash = _hash_token(payload.reset_token)
+    raw_token = payload.reset_token.strip() if payload.reset_token else ""
+    token_hash = _hash_token(raw_token)
 
+    # Check token record
     result = await db.execute(
         select(PasswordResetToken).where(
-            PasswordResetToken.token_hash == token_hash,
-            PasswordResetToken.used_at.is_(None),
-            PasswordResetToken.expires_at > now,
+            PasswordResetToken.token_hash == token_hash
         )
     )
     reset_entry = result.scalar_one_or_none()
@@ -420,6 +420,22 @@ async def reset_password_with_token(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token is invalid or expired.",
+        )
+
+    if reset_entry.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset token has already been used.",
+        )
+
+    expires_at = reset_entry.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset token has expired.",
         )
 
     user_result = await db.execute(
@@ -436,27 +452,30 @@ async def reset_password_with_token(
         )
 
     user.password_hash = hash_password(payload.new_password)
+    user.updated_at = now
     reset_entry.used_at = now
 
+    # Revoke all active sessions for this account atomically
     await db.execute(
         update(AuthSession)
         .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=now)
     )
 
+    # Transition PasswordResetRequestAdmin to COMPLETED
     from models.support_domain import PasswordResetRequestAdmin
     await db.execute(
         update(PasswordResetRequestAdmin)
         .where(
             PasswordResetRequestAdmin.requester_email_phone == reset_entry.requested_identifier,
-            PasswordResetRequestAdmin.status == "PENDING"
+            PasswordResetRequestAdmin.status.in_(["PENDING", "APPROVED"])
         )
-        .values(status="APPROVED", updated_at=now)
+        .values(status="COMPLETED", updated_at=now)
     )
     await db.commit()
 
     logger.info("Password reset completed: user_id=%d company_id=%d", user.id, user.company_id)
-    return GenericMessageResponse(message="Password has been reset successfully.")
+    return GenericMessageResponse(message="Password has been reset successfully. Please log in with your new password.")
 
 
 async def get_current_user(

@@ -55,11 +55,19 @@ export default function Support() {
     setSelectedTicket(ticket);
     setMessagesLoading(true);
     setReplyText('');
+    const tId = ticket.ticket_id || ticket.id;
     try {
-      const data = await api.support.getMessages(ticket.ticket_id || ticket.id);
+      const [ticketData, data] = await Promise.all([
+        api.support.get(tId).catch(() => ticket),
+        api.support.getMessages(tId).catch(() => [])
+      ]);
+      if (ticketData) {
+        setSelectedTicket(ticketData);
+        setTickets(prev => prev.map(t => (t.id === ticketData.id || t.ticket_id === ticketData.ticket_id) ? ticketData : t));
+      }
       setMessages(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Failed to load ticket messages', err);
+      console.error('Failed to load ticket details and messages', err);
       setMessages([]);
     } finally {
       setMessagesLoading(false);
@@ -74,17 +82,30 @@ export default function Support() {
 
   const handleSendReply = async (e) => {
     e.preventDefault();
-    if (!replyText.trim() || !selectedTicket) return;
+    const text = replyText.trim();
+    if (!text || !selectedTicket || sendingReply) return;
 
     setSendingReply(true);
+    const tId = selectedTicket.ticket_id || selectedTicket.id;
     try {
-      const newMsg = await api.support.sendMessage(selectedTicket.ticket_id || selectedTicket.id, {
-        content: replyText.trim(),
+      const newMsg = await api.support.sendMessage(tId, {
+        content: text,
       });
-      setMessages((prev) => [...prev, newMsg]);
+      setMessages((prev) => {
+        if (prev.some(m => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
       setReplyText('');
       success('Reply Sent', 'Your message has been sent to our support team.');
-      loadTickets(); // Refresh status in background
+
+      // Refresh ticket details from server to reflect the new status (e.g. IN_PROGRESS)
+      const refreshedTicket = await api.support.get(tId).catch(() => null);
+      if (refreshedTicket) {
+        setSelectedTicket(refreshedTicket);
+        setTickets(prev => prev.map(t => (t.id === refreshedTicket.id || t.ticket_id === refreshedTicket.ticket_id) ? refreshedTicket : t));
+      } else {
+        loadTickets();
+      }
     } catch (err) {
       error('Failed to Send', err.message || 'Could not send reply. Please try again.');
     } finally {
@@ -136,7 +157,7 @@ export default function Support() {
       case 'IN_PROGRESS':
         return <Badge variant="warning">IN PROGRESS</Badge>;
       case 'WAITING_FOR_USER':
-        return <Badge variant="secondary">ACTION REQUIRED</Badge>;
+        return <Badge variant="secondary">WAITING FOR USER</Badge>;
       case 'RESOLVED':
         return <Badge variant="success">RESOLVED</Badge>;
       case 'CLOSED':
@@ -339,6 +360,13 @@ export default function Support() {
               </div>
             </div>
 
+            {selectedTicket.status === 'WAITING_FOR_USER' && (
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs flex items-center gap-2">
+                <span className="font-bold">⚠️ Action Required:</span>
+                <span>The support team is waiting for your reply. Please respond in the thread below.</span>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto space-y-3 p-1 min-h-[160px] max-h-[300px]">
               <h4 className="text-xs font-bold uppercase tracking-wider text-content-secondary">
                 Conversation Thread
@@ -348,7 +376,7 @@ export default function Support() {
               ) : messages.length === 0 ? (
                 <p className="text-xs text-content-muted italic">No messages yet.</p>
               ) : (
-                messages.map((m) => {
+                Array.from(new Map(messages.map(m => [m.id, m])).values()).map((m) => {
                   const isStaff = m.sender_type === 'INTERNAL_USER';
                   return (
                     <div

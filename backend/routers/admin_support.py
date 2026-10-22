@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from database import get_db
 from models.admin_domain import AdminUser, AdminAuditLog
@@ -162,10 +162,35 @@ async def create_ticket_message(
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
 
+    cleaned_content = payload.content.strip()
+    if not cleaned_content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty.")
+
     msg_type = payload.message_type or MessageType.PUBLIC
+    now_utc = datetime.now(timezone.utc)
+    recent_threshold = now_utc - timedelta(seconds=10)
+
+    # 10-second idempotency check to prevent duplicate messages
+    dup_q = (
+        select(SupportTicketMessage)
+        .where(
+            SupportTicketMessage.ticket_id == ticket.id,
+            SupportTicketMessage.content == cleaned_content,
+            SupportTicketMessage.message_type == msg_type,
+            SupportTicketMessage.sender_type == RequesterType.INTERNAL_USER,
+            SupportTicketMessage.sender_id == admin.id,
+            SupportTicketMessage.created_at >= recent_threshold,
+        )
+        .order_by(SupportTicketMessage.id.desc())
+    )
+    dup_res = await db.execute(dup_q)
+    existing_message = dup_res.scalar_one_or_none()
+    if existing_message:
+        return existing_message
+
     message = SupportTicketMessage(
         ticket_id=ticket.id,
-        content=payload.content,
+        content=cleaned_content,
         message_type=msg_type,
         sender_type=RequesterType.INTERNAL_USER,
         sender_id=admin.id,
