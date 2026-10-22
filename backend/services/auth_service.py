@@ -375,13 +375,15 @@ async def create_forgot_password_request(
     db.add(reset_entry)
     
     from models.support_domain import PasswordResetRequestAdmin, RequesterType
+    requester_type = RequesterType.DRIVER if user.role == UserRole.DRIVER else RequesterType.FLEET_OWNER
     admin_req = PasswordResetRequestAdmin(
-        requester_type=RequesterType.FLEET_OWNER,
+        requester_type=requester_type,
         requester_email_phone=identifier,
         reason="Automated Forgot Password Flow",
         status="PENDING",
     )
     db.add(admin_req)
+    await db.commit()
 
     if settings.DEBUG and settings.PASSWORD_RESET_DEBUG_RETURN_TOKEN:
         return ForgotPasswordResponse(
@@ -441,6 +443,17 @@ async def reset_password_with_token(
         .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=now)
     )
+
+    from models.support_domain import PasswordResetRequestAdmin
+    await db.execute(
+        update(PasswordResetRequestAdmin)
+        .where(
+            PasswordResetRequestAdmin.requester_email_phone == reset_entry.requested_identifier,
+            PasswordResetRequestAdmin.status == "PENDING"
+        )
+        .values(status="APPROVED", updated_at=now)
+    )
+    await db.commit()
 
     logger.info("Password reset completed: user_id=%d company_id=%d", user.id, user.company_id)
     return GenericMessageResponse(message="Password has been reset successfully.")

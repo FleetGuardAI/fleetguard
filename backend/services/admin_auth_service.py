@@ -79,7 +79,8 @@ def require_admin_permission(permission_name: str):
         from sqlalchemy import select
         
         # Super admin has all permissions
-        if admin.role.name == "SUPER_ADMIN":
+        role_name = getattr(admin.role.name, "value", str(admin.role.name))
+        if role_name == "SUPER_ADMIN" or admin.role.name == "SUPER_ADMIN":
             return admin
             
         result = await db.execute(

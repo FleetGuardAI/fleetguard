@@ -119,6 +119,8 @@ const api = {
     },
     get: (id) => request(`/v1/support/tickets/${id}`),
     create: (data) => request('/v1/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
+    getMessages: (id) => request(`/v1/support/tickets/${id}/messages`),
+    sendMessage: (id, data) => request(`/v1/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // ── Drivers (/api/v1/drivers) ─────────────────

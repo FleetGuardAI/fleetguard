@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LifeBuoy, Plus, Mail, Phone, Clock, MessageSquare, ExternalLink, CheckCircle } from 'lucide-react';
+import { LifeBuoy, Plus, Mail, Phone, Clock, MessageSquare, ExternalLink, CheckCircle, Send, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Loader } from '@/components/ui/Loader';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import api from '@/api/client'; // Assuming tickets API is here
+import api from '@/api/client';
 
 export default function Support() {
   const { success, error } = useToast();
@@ -27,12 +27,19 @@ export default function Support() {
   const [category, setCategory] = useState('General Inquiry');
   const [description, setDescription] = useState('');
 
+  // Selected Ticket & Conversation State
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+
   const loadTickets = async () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await api.support.list().catch(() => []);
-      setTickets(data);
+      const data = await api.support.list();
+      setTickets(Array.isArray(data) ? data : []);
     } catch (e) {
       setFetchError(e);
     } finally {
@@ -44,6 +51,47 @@ export default function Support() {
     loadTickets();
   }, []);
 
+  const openTicketDetails = async (ticket) => {
+    setSelectedTicket(ticket);
+    setMessagesLoading(true);
+    setReplyText('');
+    try {
+      const data = await api.support.getMessages(ticket.ticket_id || ticket.id);
+      setMessages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load ticket messages', err);
+      setMessages([]);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const closeTicketDetails = () => {
+    setSelectedTicket(null);
+    setMessages([]);
+    setReplyText('');
+  };
+
+  const handleSendReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim() || !selectedTicket) return;
+
+    setSendingReply(true);
+    try {
+      const newMsg = await api.support.sendMessage(selectedTicket.ticket_id || selectedTicket.id, {
+        content: replyText.trim(),
+      });
+      setMessages((prev) => [...prev, newMsg]);
+      setReplyText('');
+      success('Reply Sent', 'Your message has been sent to our support team.');
+      loadTickets(); // Refresh status in background
+    } catch (err) {
+      error('Failed to Send', err.message || 'Could not send reply. Please try again.');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !description.trim()) {
@@ -53,7 +101,6 @@ export default function Support() {
 
     setSubmitting(true);
     try {
-      // Map frontend category to backend TicketCategory enum
       const categoryMap = {
         'General Inquiry': 'OTHER',
         'Technical Issue': 'APP_BUG',
@@ -74,7 +121,7 @@ export default function Support() {
       setModalOpen(false);
       setSubject('');
       setDescription('');
-      loadTickets(); // Refresh list
+      loadTickets();
     } catch (e) {
       error('Submission Failed', e.message || 'Failed to submit ticket. Please try again.');
     } finally {
@@ -82,36 +129,76 @@ export default function Support() {
     }
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'OPEN':
+        return <Badge variant="info">OPEN</Badge>;
+      case 'IN_PROGRESS':
+        return <Badge variant="warning">IN PROGRESS</Badge>;
+      case 'WAITING_FOR_USER':
+        return <Badge variant="secondary">ACTION REQUIRED</Badge>;
+      case 'RESOLVED':
+        return <Badge variant="success">RESOLVED</Badge>;
+      case 'CLOSED':
+        return <Badge variant="default">CLOSED</Badge>;
+      default:
+        return <Badge variant="warning">{status || 'OPEN'}</Badge>;
+    }
+  };
+
   const columns = [
     {
-      key: 'id',
+      key: 'ticket_id',
       label: 'Ticket ID',
-      render: (t) => <span className="font-medium text-brand-600">{t.id?.toString().startsWith('TICK') ? t.id : `TICK-${t.id}`}</span>
+      render: (t) => (
+        <span className="font-mono font-medium text-brand-600">
+          {t.ticket_id || `TICK-${t.id}`}
+        </span>
+      ),
     },
     {
       key: 'title',
       label: 'Subject',
-      render: (t) => <span className="font-semibold text-content">{t.title}</span>
+      render: (t) => (
+        <div>
+          <span className="font-semibold text-content block">{t.title}</span>
+          <span className="text-xs text-content-muted line-clamp-1">{t.description}</span>
+        </div>
+      ),
     },
     {
       key: 'category',
       label: 'Category',
-      render: (t) => <span className="text-content-secondary">{t.category}</span>
+      render: (t) => <span className="text-content-secondary text-xs">{t.category}</span>,
     },
     {
       key: 'status',
       label: 'Status',
-      render: (t) => (
-        <Badge variant={t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'success' : 'warning'}>
-          {t.status || 'OPEN'}
-        </Badge>
-      )
+      render: (t) => getStatusBadge(t.status),
     },
     {
       key: 'created_at',
       label: 'Date Raised',
-      render: (t) => <span className="text-content-secondary">{new Date(t.created_at || Date.now()).toLocaleDateString()}</span>
-    }
+      render: (t) => (
+        <span className="text-content-secondary text-xs whitespace-nowrap">
+          {new Date(t.created_at || Date.now()).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Action',
+      render: (t) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs py-1 px-2.5 h-auto"
+          onClick={() => openTicketDetails(t)}
+        >
+          View & Reply
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -123,7 +210,9 @@ export default function Support() {
             <LifeBuoy className="h-6 w-6 text-brand-600" />
             Support Center
           </h1>
-          <p className="text-sm text-content-secondary mt-0.5">Need help? Raise a ticket or explore our contact resources below.</p>
+          <p className="text-sm text-content-secondary mt-0.5">
+            Need help? Raise a ticket or track ongoing requests below.
+          </p>
         </div>
         <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setModalOpen(true)}>
           Raise New Ticket
@@ -185,7 +274,7 @@ export default function Support() {
                 <ExternalLink className="h-4 w-4 text-content-muted group-hover:text-brand-600" />
               </a>
               <a href="#" className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-brand-300 hover:bg-brand-50/50 transition-colors group">
-                <span className="text-sm font-medium text-content group-hover:text-brand-700">API Documentation</span>
+                <span className="text-sm font-medium text-content group-hover:text-brand-700">Driver Emergency Center</span>
                 <ExternalLink className="h-4 w-4 text-content-muted group-hover:text-brand-600" />
               </a>
             </div>
@@ -195,8 +284,11 @@ export default function Support() {
         {/* Tickets Table */}
         <div className="lg:col-span-2">
           <Card padding="none" className="h-full min-h-[400px]">
-            <div className="p-4 border-b border-border">
+            <div className="p-4 border-b border-border flex justify-between items-center">
               <CardTitle className="text-base">My Support Tickets</CardTitle>
+              <Button variant="ghost" size="sm" onClick={loadTickets}>
+                Refresh
+              </Button>
             </div>
             {loading ? (
               <div className="p-12 flex justify-center">
@@ -212,12 +304,100 @@ export default function Support() {
               />
             ) : (
               <div className="overflow-x-auto">
-                <Table columns={columns} data={tickets} keyExtractor={(t) => t.id} />
+                <Table columns={columns} data={tickets} keyExtractor={(t) => t.ticket_id || t.id} />
               </div>
             )}
           </Card>
         </div>
       </div>
+
+      {/* Ticket Conversation & Details Modal */}
+      {selectedTicket && (
+        <Modal
+          open={!!selectedTicket}
+          onClose={closeTicketDetails}
+          title={`Ticket: ${selectedTicket.ticket_id || selectedTicket.id}`}
+          description={selectedTicket.title}
+          footer={
+            <Button variant="outline" onClick={closeTicketDetails}>
+              Close
+            </Button>
+          }
+        >
+          <div className="space-y-4 max-h-[70vh] flex flex-col">
+            <div className="p-3 bg-surface rounded-xl border border-border text-sm space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold text-content-muted uppercase">Status / Priority</span>
+                <div className="flex gap-2 items-center">
+                  {getStatusBadge(selectedTicket.status)}
+                  <Badge variant="outline">{selectedTicket.priority}</Badge>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-content-muted font-medium">Original Description:</p>
+                <p className="text-content whitespace-pre-wrap mt-0.5">{selectedTicket.description}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 p-1 min-h-[160px] max-h-[300px]">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-content-secondary">
+                Conversation Thread
+              </h4>
+              {messagesLoading ? (
+                <div className="p-6 text-center"><Loader /></div>
+              ) : messages.length === 0 ? (
+                <p className="text-xs text-content-muted italic">No messages yet.</p>
+              ) : (
+                messages.map((m) => {
+                  const isStaff = m.sender_type === 'INTERNAL_USER';
+                  return (
+                    <div
+                      key={m.id}
+                      className={`p-3 rounded-xl max-w-[85%] text-sm ${
+                        isStaff
+                          ? 'bg-brand-50 border border-brand-200 ml-auto'
+                          : 'bg-surface border border-border mr-auto'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center text-xs text-content-muted mb-1 gap-4">
+                        <span className="font-semibold text-content">
+                          {isStaff ? '⭐ The Vahan Support' : (m.sender_name || 'You')}
+                        </span>
+                        <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-content whitespace-pre-wrap">{m.content}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {selectedTicket.status !== 'CLOSED' ? (
+              <form onSubmit={handleSendReply} className="pt-2 border-t border-border flex gap-2">
+                <Input
+                  placeholder="Type a response to support..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={sendingReply}
+                  disabled={!replyText.trim()}
+                  icon={<Send className="h-4 w-4" />}
+                >
+                  Send
+                </Button>
+              </form>
+            ) : (
+              <p className="text-xs text-content-muted text-center pt-2 border-t border-border">
+                This ticket is closed. If you have questions, please raise a new ticket.
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* Raise Ticket Modal */}
       <Modal
