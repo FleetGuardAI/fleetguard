@@ -17,6 +17,8 @@ from services.driver_service import DriverService
 from models.driver_domain import Driver, DriverStatus
 from models.vehicle_domain import Vehicle
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+from models.driver_fleet_transfer import DriverFleetTransfer, TransferStatus
+from models.notification import Notification, NotificationCategory
 from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
 from services.auth_service import get_current_user
 from models.user import User, UserRole
@@ -49,6 +51,176 @@ async def list_drivers(
         resp.assigned_vehicle = reg
         results.append(resp)
     return results
+
+
+# ==========================================================================
+# Fleet Transfers (Static routes placed before /{driver_id} parameter route)
+# ==========================================================================
+
+class RejectTransferRequest(BaseModel):
+    reason: str = Field(..., min_length=3, description="Rejection reason")
+
+
+class AdminFleetTransferResponse(BaseModel):
+    id: int
+    driver_id: int
+    driver_name: str
+    driver_phone: str
+    from_company_id: int
+    from_company_name: str
+    to_company_id: int
+    to_company_name: str
+    status: str
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+
+@router.get("/drivers/fleet-transfers", response_model=List[AdminFleetTransferResponse])
+async def list_incoming_transfers(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[AdminFleetTransferResponse]:
+    """List pending fleet transfer requests to the current admin's company."""
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can view fleet transfer requests")
+
+    query = (
+        select(DriverFleetTransfer)
+        .where(
+            DriverFleetTransfer.to_company_id == current_user.company_id,
+            DriverFleetTransfer.status == TransferStatus.PENDING_APPROVAL
+        )
+        .order_by(DriverFleetTransfer.created_at.desc())
+    )
+    result = await db.execute(query)
+    transfers = result.scalars().all()
+
+    return [
+        AdminFleetTransferResponse(
+            id=t.id,
+            driver_id=t.driver_id,
+            driver_name=t.driver.name if t.driver else "Unknown",
+            driver_phone=t.driver.phone_number if t.driver else "Unknown",
+            from_company_id=t.from_company_id,
+            from_company_name=t.from_company.company_name if t.from_company else "Unknown",
+            to_company_id=t.to_company_id,
+            to_company_name=t.to_company.company_name if t.to_company else "Unknown",
+            status=t.status.value,
+            rejection_reason=t.rejection_reason,
+            created_at=t.created_at,
+            reviewed_at=t.reviewed_at,
+        )
+        for t in transfers
+    ]
+
+
+@router.post("/drivers/fleet-transfers/{transfer_id}/approve")
+async def approve_fleet_transfer(
+    transfer_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Approve an incoming driver fleet transfer.
+    - Atomically updates transfer to APPROVED
+    - Unassigns driver from previous vehicle in old company
+    - Updates driver company to target company
+    - Activates driver and linked user
+    - Preserves historical records under their original company
+    """
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can approve fleet transfers")
+
+    transfer = await db.get(DriverFleetTransfer, transfer_id)
+    if not transfer or transfer.to_company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Fleet transfer request not found")
+
+    if transfer.status != TransferStatus.PENDING_APPROVAL:
+        raise HTTPException(status_code=400, detail=f"Cannot approve transfer in '{transfer.status.value}' state")
+
+    driver = await db.get(Driver, transfer.driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    # 1. Update transfer record
+    transfer.status = TransferStatus.APPROVED
+    transfer.reviewed_by = current_user.id
+    transfer.reviewed_at = datetime.now(timezone.utc)
+
+    # 2. Unassign from old company vehicle
+    old_veh_res = await db.execute(
+        select(Vehicle).where(Vehicle.assigned_driver_id == driver.id)
+    )
+    for veh in old_veh_res.scalars().all():
+        veh.assigned_driver_id = None
+
+    # 3. Update driver company
+    driver.company_id = transfer.to_company_id
+    from models.driver_domain import VerificationStatus
+    driver.verification_status = VerificationStatus.APPROVED
+    driver.status = DriverStatus.ACTIVE
+
+    # 4. Activate and update linked user
+    if driver.user_id:
+        user = await db.get(User, driver.user_id)
+        if user:
+            user.company_id = transfer.to_company_id
+            user.is_active = True
+
+        # Notification for driver
+        notif = Notification(
+            category=NotificationCategory.SYSTEM,
+            title="Fleet Transfer Approved",
+            description=f"Your fleet transfer to {transfer.to_company.company_name if transfer.to_company else 'new fleet'} has been approved! You are now active.",
+            company_id=transfer.to_company_id,
+            user_id=driver.user_id,
+        )
+        db.add(notif)
+
+    await db.commit()
+    return {"message": "Fleet transfer approved successfully. Driver is now active under your fleet."}
+
+
+@router.post("/drivers/fleet-transfers/{transfer_id}/reject")
+async def reject_fleet_transfer(
+    transfer_id: int,
+    payload: RejectTransferRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reject an incoming driver fleet transfer with reason.
+    Driver remains in their original fleet without interruption.
+    """
+    if current_user.role not in [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Only admins can reject fleet transfers")
+
+    transfer = await db.get(DriverFleetTransfer, transfer_id)
+    if not transfer or transfer.to_company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Fleet transfer request not found")
+
+    if transfer.status != TransferStatus.PENDING_APPROVAL:
+        raise HTTPException(status_code=400, detail=f"Cannot reject transfer in '{transfer.status.value}' state")
+
+    transfer.status = TransferStatus.REJECTED
+    transfer.rejection_reason = payload.reason
+    transfer.reviewed_by = current_user.id
+    transfer.reviewed_at = datetime.now(timezone.utc)
+
+    driver = await db.get(Driver, transfer.driver_id)
+    if driver and driver.user_id:
+        notif = Notification(
+            category=NotificationCategory.SYSTEM,
+            title="Fleet Transfer Rejected",
+            description=f"Your fleet transfer request was rejected. Reason: {payload.reason}",
+            company_id=transfer.from_company_id,
+            user_id=driver.user_id,
+        )
+        db.add(notif)
+
+    await db.commit()
+    return {"message": "Fleet transfer rejected successfully."}
 
 
 @router.get("/drivers/{driver_id}", response_model=DriverResponse)
@@ -294,3 +466,5 @@ async def approve_driver(
     )
     resp.assigned_vehicle = v_result.scalar_one_or_none()
     return resp
+
+

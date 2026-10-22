@@ -49,42 +49,148 @@ class _PhoneVerificationScreenState extends ConsumerState<PhoneVerificationScree
         widget.inviteToken,
       );
 
+      final isMismatch = response['is_fleet_mismatch'] == true;
+      final driverStatus = response['driver_status']?.toString();
+      final verificationStatus = response['verification_status']?.toString();
+      final targetCompName = response['target_company_name']?.toString() ?? widget.companyName;
+      final currentCompName = response['current_company_name']?.toString();
+
       await SecureStorage.setPhoneNumber(_phoneController.text.trim());
-      await SecureStorage.setAccessToken(response['access_token']);
+      if (response['access_token'] != null) {
+        await SecureStorage.setAccessToken(response['access_token']);
+      }
       if (response['driver_id'] != null) {
         await SecureStorage.setDriverId(response['driver_id']);
       }
-      if (response['verification_status'] != null) {
-        await SecureStorage.setVerificationStatus(response['verification_status']);
+      if (verificationStatus != null) {
+        await SecureStorage.setVerificationStatus(verificationStatus);
       }
-      // Store company name for welcome screen
-      if (widget.companyName != null && widget.companyName!.isNotEmpty) {
-        await SecureStorage.setCompanyName(widget.companyName!);
+      if (targetCompName != null && targetCompName.isNotEmpty) {
+        await SecureStorage.setCompanyName(targetCompName);
       }
-      // Store invite token for session persistence
       if (widget.inviteToken != null && widget.inviteToken!.isNotEmpty) {
         await SecureStorage.setInviteToken(widget.inviteToken!);
       }
 
       setState(() => _isLoading = false);
 
-      if (mounted) {
-        if (response['is_new_driver'] == true || response['verification_status'] == 'PENDING_DOCUMENTS') {
-          context.go('/auth/profile');
-        } else if (response['verification_status'] == 'PENDING_APPROVAL') {
-          context.go('/auth/pending-approval');
-        } else {
-          context.go('/dashboard');
-        }
+      if (!mounted) return;
+
+      // Rule: Suspended or rejected driver
+      if (driverStatus == 'SUSPENDED' || driverStatus == 'REJECTED') {
+        _showAccountStatusDialog(
+          status: driverStatus!,
+          reason: response['rejection_reason']?.toString() ?? 'Please contact your fleet manager for assistance.',
+        );
+        return;
+      }
+
+      // Rule: Fleet mismatch detected
+      if (isMismatch) {
+        context.push(
+          '/auth/fleet-mismatch',
+          extra: {
+            'current_company_name': currentCompName ?? 'Current Fleet',
+            'target_company_name': targetCompName ?? 'Target Fleet',
+            'target_company_id': response['target_company_id'] ?? 0,
+            'invite_token': widget.inviteToken ?? '',
+          },
+        );
+        return;
+      }
+
+      // Rule: Registration or pending states
+      if (response['is_new_driver'] == true || verificationStatus == 'PENDING_DOCUMENTS') {
+        context.go('/auth/profile');
+      } else if (verificationStatus == 'PENDING_APPROVAL') {
+        context.go('/auth/pending-approval');
+      } else {
+        context.go('/dashboard');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
+      if (!mounted) return;
+
+      final errStr = e.toString();
+      if (errStr.contains('scan a fleet QR') || errStr.contains('No driver profile found')) {
+        _showNoFleetPromptDialog();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(
+            content: Text('Verification failed: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     }
+  }
+
+  void _showNoFleetPromptDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 28),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('Scan Fleet QR', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: const Text(
+          'No existing driver account was found for this phone number. To join a fleet and start onboarding, please scan the official QR code provided by your fleet manager.',
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.coolGray)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/auth/qr-scan');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Scan QR Code'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAccountStatusDialog({required String status, required String reason}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 28),
+            const SizedBox(width: 10),
+            Text('Account $status', style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Your account has been $status by the fleet administrator.\n\n$reason',
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.go('/auth/login');
+            },
+            child: const Text('Back to Login'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _startCountdown() {
