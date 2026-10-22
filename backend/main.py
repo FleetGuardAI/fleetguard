@@ -365,6 +365,7 @@ API_PREFIX = "/api"
 
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(tickets_router, prefix=API_PREFIX)
+app.include_router(support_router, prefix="/api/v1")
 app.include_router(support_router, prefix=API_PREFIX)
 app.include_router(driver_domain_router, prefix=API_PREFIX)
 app.include_router(trip_domain_router, prefix=API_PREFIX)

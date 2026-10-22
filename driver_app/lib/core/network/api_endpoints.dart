@@ -42,9 +42,10 @@ class ApiEndpoints {
   // --- POD ---
   static String pod(int tripId) => '/api/v1/driver-app/pod/$tripId';
 
-  // --- Emergency ---
+  // --- Emergency & Support ---
   static const String sos = '/api/v1/driver-app/sos';
   static const String activeSos = '/api/v1/driver-app/sos/active';
+  static const String assistance = '/api/v1/driver-app/assistance';
 
   // --- Wallet ---
   static const String wallet = '/api/v1/driver-app/wallet';
