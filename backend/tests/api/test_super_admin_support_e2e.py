@@ -420,6 +420,157 @@ async def test_password_reset_super_admin_workflow(client: TestClient, setup_adm
     assert approved_list.status_code == 200
     assert any(r["id"] == req_id for r in approved_list.json())
 
+    # 5. User submits new password with the issued reset token
+    reset_token = forgot_res.json().get("reset_token")
+    assert reset_token is not None
+
+    # Invalid token rejected
+    bad_res = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": "invalid_token_1234567890_abc",
+            "new_password": "NewPassword123!",
+            "confirm_password": "NewPassword123!"
+        }
+    )
+    assert bad_res.status_code == 400
+
+    # Successful password reset
+    reset_res = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": reset_token,
+            "new_password": "NewPassword123!",
+            "confirm_password": "NewPassword123!"
+        }
+    )
+    assert reset_res.status_code == 200
+
+    # 6. Verify request transitioned to COMPLETED in Super Admin
+    req_status_res = client.get(f"/api/v1/admin/password-resets/{req_id}", headers=admin_headers)
+    assert req_status_res.status_code == 200
+    assert req_status_res.json()["status"] == "COMPLETED"
+
+    # 7. Old password no longer works
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": owner_email, "password": "Password123!"}
+    )
+    assert old_login.status_code == 401
+
+    # 8. New password successfully logs in
+    new_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": owner_email, "password": "NewPassword123!"}
+    )
+    assert new_login.status_code == 200
+
+    # 9. Used token cannot be reused
+    reuse_res = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": reset_token,
+            "new_password": "AnotherPassword123!",
+            "confirm_password": "AnotherPassword123!"
+        }
+    )
+    assert reuse_res.status_code == 400
+    assert "already been used" in reuse_res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_message_deduplication_and_privacy_and_status_sync(client: TestClient, setup_admin):
+    """
+    Test End-to-End Support System Integrity:
+    1. Fleet owner creates ticket.
+    2. Admin sends public reply.
+    3. Admin duplicate click sends identical message within 10s -> Deduplicated (1 persisted).
+    4. Admin sends internal note.
+    5. Fleet owner views conversation -> strictly 1 public reply, 0 internal notes.
+    6. Admin sets status to WAITING_FOR_USER.
+    7. Fleet owner sees WAITING_FOR_USER.
+    8. Fleet owner replies -> status transitions back to IN_PROGRESS.
+    """
+    admin_headers = {"Authorization": f"Bearer {setup_admin['token']}"}
+    owner = _register_owner(client)
+    owner_headers = {"Authorization": f"Bearer {owner['token']}"}
+
+    # 1. Create ticket
+    create_res = client.post(
+        "/api/v1/support/tickets",
+        json={
+            "title": "Payment gateway timeout",
+            "description": "Invoice #4912 failed to capture transaction.",
+            "category": "PAYMENT",
+            "priority": "HIGH"
+        },
+        headers=owner_headers
+    )
+    assert create_res.status_code == 201
+    ticket = create_res.json()
+    ticket_id = ticket["ticket_id"]
+
+    # 2. Admin sends public reply
+    msg1_res = client.post(
+        f"/api/v1/admin/tickets/{ticket_id}/messages",
+        json={"content": "Please share the bank transaction reference number.", "message_type": "PUBLIC"},
+        headers=admin_headers
+    )
+    assert msg1_res.status_code == 200
+    msg1_id = msg1_res.json()["id"]
+
+    # 3. Duplicate submit within 10s -> must return the exact same message record without duplicate insertion
+    msg2_res = client.post(
+        f"/api/v1/admin/tickets/{ticket_id}/messages",
+        json={"content": "Please share the bank transaction reference number.", "message_type": "PUBLIC"},
+        headers=admin_headers
+    )
+    assert msg2_res.status_code == 200
+    assert msg2_res.json()["id"] == msg1_id
+
+    # 4. Admin adds private internal note
+    note_res = client.post(
+        f"/api/v1/admin/tickets/{ticket_id}/messages",
+        json={"content": "Escalated to Razorpay merchant support internally.", "message_type": "INTERNAL_NOTE"},
+        headers=admin_headers
+    )
+    assert note_res.status_code == 200
+
+    # 5. Fleet owner views conversation -> original message + exactly 1 public admin reply, 0 internal notes
+    owner_msgs_res = client.get(f"/api/v1/support/tickets/{ticket_id}/messages", headers=owner_headers)
+    assert owner_msgs_res.status_code == 200
+    owner_msgs = owner_msgs_res.json()
+    assert len(owner_msgs) == 2
+    assert owner_msgs[0]["content"] == "Invoice #4912 failed to capture transaction."
+    assert owner_msgs[1]["content"] == "Please share the bank transaction reference number."
+    assert all(m["message_type"] == "PUBLIC" for m in owner_msgs)
+
+    # 6. Admin sets status to WAITING_FOR_USER
+    status_res = client.patch(
+        f"/api/v1/admin/tickets/{ticket_id}/status",
+        json={"status": "WAITING_FOR_USER", "internal_note": "Awaiting customer bank ref"},
+        headers=admin_headers
+    )
+    assert status_res.status_code == 200
+    assert status_res.json()["status"] == "WAITING_FOR_USER"
+
+    # 7. Fleet owner checks ticket -> sees WAITING_FOR_USER
+    owner_ticket_res = client.get(f"/api/v1/support/tickets/{ticket_id}", headers=owner_headers)
+    assert owner_ticket_res.status_code == 200
+    assert owner_ticket_res.json()["status"] == "WAITING_FOR_USER"
+
+    # 8. Fleet owner replies -> status transitions back to IN_PROGRESS
+    reply_res = client.post(
+        f"/api/v1/support/tickets/{ticket_id}/messages",
+        json={"content": "Here is the bank UTR: 994210948120."},
+        headers=owner_headers
+    )
+    assert reply_res.status_code == 201
+
+    # Verify status transitioned to IN_PROGRESS
+    refreshed_ticket_res = client.get(f"/api/v1/support/tickets/{ticket_id}", headers=owner_headers)
+    assert refreshed_ticket_res.json()["status"] == "IN_PROGRESS"
+
 
 @pytest.mark.asyncio
 async def test_admin_dashboard_metrics(client: TestClient, setup_admin):
@@ -443,3 +594,154 @@ async def test_admin_dashboard_metrics(client: TestClient, setup_admin):
     assert activity_res.status_code == 200
     activities = activity_res.json()
     assert isinstance(activities, list)
+
+
+@pytest.mark.asyncio
+async def test_password_reset_security_and_edge_cases(client: TestClient, db_session: AsyncSession):
+    """
+    Test security guarantees:
+    - Unknown email request does not leak account presence.
+    - Expired token is rejected with explicit 400.
+    - Token for User A cannot be used to modify User B.
+    """
+    # 1. Unknown user identifier
+    unknown_res = client.post(
+        "/api/v1/auth/forgot-password/request",
+        json={"identifier": "nonexistent_user_99999@thevahan.com"}
+    )
+    assert unknown_res.status_code == 200
+    assert "reset_token" not in unknown_res.json() or unknown_res.json()["reset_token"] is None
+    assert "If an account exists" in unknown_res.json()["message"]
+
+    # 2. Expired token rejection
+    owner_a = _register_owner(client)
+    res_a = client.post(
+        "/api/v1/auth/forgot-password/request",
+        json={"identifier": owner_a["user"]["email"]}
+    )
+    assert res_a.status_code == 200
+    token_a = res_a.json()["reset_token"]
+    assert token_a is not None
+
+    # Manually expire token_a in database
+    from models.password_reset_token import PasswordResetToken
+    from services.auth_service import _hash_token
+    from sqlalchemy import update
+
+    tok_hash = _hash_token(token_a)
+    past_time = datetime.now(timezone.utc) - timedelta(hours=2)
+    await db_session.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.token_hash == tok_hash)
+        .values(expires_at=past_time)
+    )
+    await db_session.commit()
+
+    # Attempt reset with expired token
+    expired_attempt = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": token_a,
+            "new_password": "NewExpiredPassword123!",
+            "confirm_password": "NewExpiredPassword123!"
+        }
+    )
+    assert expired_attempt.status_code == 400
+    assert "expired" in expired_attempt.json()["detail"].lower()
+
+    # 3. Account isolation: token for User A only affects User A, never User B
+    owner_b = _register_owner(client)
+    res_b = client.post(
+        "/api/v1/auth/forgot-password/request",
+        json={"identifier": owner_b["user"]["email"]}
+    )
+    token_b = res_b.json()["reset_token"]
+    assert token_b is not None
+
+    # Reset with token_b
+    reset_b = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": token_b,
+            "new_password": "OwnerBNewPassword123!",
+            "confirm_password": "OwnerBNewPassword123!"
+        }
+    )
+    assert reset_b.status_code == 200
+
+    # User B can login with new password
+    login_b = client.post(
+        "/api/v1/auth/login",
+        json={"email": owner_b["user"]["email"], "password": "OwnerBNewPassword123!"}
+    )
+    assert login_b.status_code == 200
+
+    # User A's password remains unchanged
+    login_a = client.post(
+        "/api/v1/auth/login",
+        json={"email": owner_a["user"]["email"], "password": "Password123!"}
+    )
+    assert login_a.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_driver_assistance_messaging_and_deduplication(client: TestClient, setup_driver, setup_admin):
+    """
+    Test driver assistance messaging:
+    - Driver sends message on assistance ticket.
+    - Duplicate send within 10s is deduplicated.
+    - Admin internal notes are not leaked to driver message endpoint.
+    """
+    driver_headers = {"Authorization": f"Bearer {setup_driver['token']}"}
+    admin_headers = {"Authorization": f"Bearer {setup_admin['token']}"}
+
+    # 1. Driver creates assistance request
+    assist_res = client.post(
+        "/api/v1/driver-app/assistance",
+        json={
+            "title": "Tyre pressure warning light on dashboard",
+            "description": "TPMS warning triggered on rear left duals.",
+            "category": "TECHNICAL",
+            "priority": "HIGH"
+        },
+        headers=driver_headers
+    )
+    assert assist_res.status_code == 201
+    ticket = assist_res.json()
+    ticket_id = ticket["ticket_id"]
+
+    # 2. Driver sends reply
+    msg1_res = client.post(
+        f"/api/v1/driver-app/assistance/{ticket_id}/messages",
+        json={"content": "Checked pressure at petrol pump: 90 PSI."},
+        headers=driver_headers
+    )
+    assert msg1_res.status_code == 201
+    msg1_id = msg1_res.json()["id"]
+
+    # 3. Duplicate driver reply within 10s -> deduplicated
+    msg2_res = client.post(
+        f"/api/v1/driver-app/assistance/{ticket_id}/messages",
+        json={"content": "Checked pressure at petrol pump: 90 PSI."},
+        headers=driver_headers
+    )
+    assert msg2_res.status_code == 200 or msg2_res.status_code == 201
+    assert msg2_res.json()["id"] == msg1_id
+
+    # 4. Admin adds internal note
+    client.post(
+        f"/api/v1/admin/tickets/{ticket_id}/messages",
+        json={"content": "Agent note: vehicle is scheduled for maintenance tomorrow.", "message_type": "INTERNAL_NOTE"},
+        headers=admin_headers
+    )
+
+    # 5. Driver fetches messages -> strictly PUBLIC messages (original description + 1 reply, 0 internal notes)
+    driver_msgs_res = client.get(
+        f"/api/v1/driver-app/assistance/{ticket_id}/messages",
+        headers=driver_headers
+    )
+    assert driver_msgs_res.status_code == 200
+    driver_msgs = driver_msgs_res.json()
+    assert len(driver_msgs) == 2
+    assert all(m["message_type"] == "PUBLIC" for m in driver_msgs)
+    assert not any("maintenance tomorrow" in m["content"] for m in driver_msgs)

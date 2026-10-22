@@ -47,7 +47,9 @@ export default function ForgotPassword() {
       success('Request Submitted', res.message);
       if (res.reset_token) {
         setResetToken(res.reset_token);
-        info('Development Token Returned', 'A reset token was returned because backend DEBUG mode is enabled.');
+        info('Reset Token Generated', 'Reset token ready. You can now enter your new password.');
+      } else {
+        info('Notice', 'If email/SMS delivery is unconfigured on this environment, please contact the Super Admin for reset assistance.');
       }
     } catch (err) {
       error('Request Failed', err.message || 'Could not create reset request.');

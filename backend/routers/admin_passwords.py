@@ -94,12 +94,52 @@ async def approve_password_reset(
     )
     db.add(audit)
 
-    # Check if a user matches this identifier to deliver notification
+    # Check if a user matches this identifier to generate reset token and deliver notification
     identifier = req.requester_email_phone.strip()
     user_query = select(User).where(or_(User.email == identifier, User.mobile_number == identifier))
     user_res = await db.execute(user_query)
     matched_user = user_res.scalar_one_or_none()
     if matched_user:
+        import secrets
+        from datetime import timedelta
+        from sqlalchemy import update
+        from config import settings
+        from services.auth_service import _hash_token
+        from models.password_reset_token import PasswordResetToken
+
+        now_utc = datetime.now(timezone.utc)
+        # Check if an active, unexpired, unused token already exists for this user
+        active_tok_q = (
+            select(PasswordResetToken)
+            .where(
+                PasswordResetToken.user_id == matched_user.id,
+                PasswordResetToken.used_at.is_(None),
+            )
+            .order_by(PasswordResetToken.id.desc())
+        )
+        active_tok_res = await db.execute(active_tok_q)
+        tokens = active_tok_res.scalars().all()
+        active_token = None
+        for tok in tokens:
+            exp = tok.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if exp > now_utc:
+                active_token = tok
+                break
+
+        if not active_token:
+            raw_token = secrets.token_urlsafe(36)
+            expires_at = now_utc + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
+            reset_entry = PasswordResetToken(
+                user_id=matched_user.id,
+                company_id=matched_user.company_id,
+                token_hash=_hash_token(raw_token),
+                requested_identifier=identifier,
+                expires_at=expires_at,
+            )
+            db.add(reset_entry)
+
         notif = Notification(
             category=NotificationCategory.SYSTEM,
             title="Password Reset Request Approved",

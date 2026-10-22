@@ -66,6 +66,7 @@ export default function PasswordResets() {
     switch(status) {
       case 'PENDING': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'APPROVED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'COMPLETED': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'REJECTED': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -163,8 +164,14 @@ export default function PasswordResets() {
                           </button>
                         </div>
                       )}
-                      {req.status !== 'PENDING' && (
-                         <span className="text-slate-400 text-xs italic">Processed</span>
+                      {req.status === 'COMPLETED' && (
+                        <span className="text-blue-600 text-xs font-semibold">Reset Completed</span>
+                      )}
+                      {req.status === 'APPROVED' && (
+                        <span className="text-emerald-600 text-xs font-semibold">Approved (Awaiting User Reset)</span>
+                      )}
+                      {req.status === 'REJECTED' && (
+                        <span className="text-red-500 text-xs font-semibold">Rejected</span>
                       )}
                     </td>
                   </tr>

@@ -4,7 +4,7 @@ FleetGuard — Driver Emergency / SOS & Assistance Router
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -24,7 +24,11 @@ from models.support_domain import (
     TicketStatus,
     MessageType,
 )
-from schemas.support_domain import SupportTicketResponse
+from schemas.support_domain import (
+    SupportTicketResponse,
+    SupportTicketMessageResponse,
+    SupportTicketMessageCreate,
+)
 from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.emergency")
@@ -206,6 +210,112 @@ async def list_driver_assistance(
         .order_by(desc(SupportTicket.created_at))
     )
     return result.scalars().all()
+
+
+@router.get("/assistance/{ticket_id}/messages", response_model=List[SupportTicketMessageResponse])
+async def list_driver_ticket_messages(
+    ticket_id: str,
+    driver: Driver = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List messages for a driver assistance ticket.
+    Strictly returns only PUBLIC messages; never exposes internal notes.
+    """
+    ticket_result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == ticket_id,
+            SupportTicket.driver_id == driver.id,
+            SupportTicket.company_id == driver.company_id
+        )
+    )
+    ticket = ticket_result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assistance ticket not found")
+
+    messages_query = (
+        select(SupportTicketMessage)
+        .where(
+            SupportTicketMessage.ticket_id == ticket.id,
+            SupportTicketMessage.message_type == MessageType.PUBLIC
+        )
+        .order_by(SupportTicketMessage.created_at.asc())
+    )
+    res = await db.execute(messages_query)
+    return res.scalars().all()
+
+
+@router.post("/assistance/{ticket_id}/messages", response_model=SupportTicketMessageResponse, status_code=status.HTTP_201_CREATED)
+async def send_driver_ticket_message(
+    ticket_id: str,
+    payload: SupportTicketMessageCreate,
+    driver: Driver = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Driver posts a reply to an assistance ticket.
+    Forces PUBLIC visibility, performs 10-second idempotency check,
+    and transitions status back to IN_PROGRESS if awaiting action.
+    """
+    ticket_result = await db.execute(
+        select(SupportTicket).where(
+            SupportTicket.ticket_id == ticket_id,
+            SupportTicket.driver_id == driver.id,
+            SupportTicket.company_id == driver.company_id
+        )
+    )
+    ticket = ticket_result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assistance ticket not found")
+
+    if ticket.status == TicketStatus.CLOSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This assistance ticket has been closed. Please create a new request."
+        )
+
+    cleaned_content = payload.content.strip()
+    if not cleaned_content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty.")
+
+    now_utc = datetime.now(timezone.utc)
+    recent_threshold = now_utc - timedelta(seconds=10)
+
+    # 10-second deduplication
+    dup_q = (
+        select(SupportTicketMessage)
+        .where(
+            SupportTicketMessage.ticket_id == ticket.id,
+            SupportTicketMessage.content == cleaned_content,
+            SupportTicketMessage.message_type == MessageType.PUBLIC,
+            SupportTicketMessage.sender_type == RequesterType.DRIVER,
+            SupportTicketMessage.sender_id == driver.id,
+            SupportTicketMessage.created_at >= recent_threshold,
+        )
+        .order_by(SupportTicketMessage.id.desc())
+    )
+    dup_res = await db.execute(dup_q)
+    existing = dup_res.scalar_one_or_none()
+    if existing:
+        return existing
+
+    msg = SupportTicketMessage(
+        ticket_id=ticket.id,
+        content=cleaned_content,
+        message_type=MessageType.PUBLIC,
+        sender_type=RequesterType.DRIVER,
+        sender_id=driver.id,
+        sender_name=driver.name,
+    )
+    db.add(msg)
+
+    if ticket.status in [TicketStatus.WAITING_FOR_USER, TicketStatus.RESOLVED]:
+        ticket.status = TicketStatus.IN_PROGRESS
+    ticket.updated_at = now_utc
+
+    await db.commit()
+    await db.refresh(msg)
+    return msg
 
 
 @router.get("/sos/active", response_model=List[SosResponse])

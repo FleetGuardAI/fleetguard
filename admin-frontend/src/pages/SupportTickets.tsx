@@ -44,6 +44,7 @@ export default function SupportTickets() {
   const [newMessage, setNewMessage] = useState('');
   const [messageType, setMessageType] = useState<'PUBLIC' | 'INTERNAL_NOTE'>('PUBLIC');
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -71,8 +72,15 @@ export default function SupportTickets() {
     setSelectedTicket(ticket);
     setMessagesLoading(true);
     try {
-      const response = await api.get(`/tickets/${ticket.id}/messages`);
-      setMessages(response.data);
+      const [tRes, mRes] = await Promise.all([
+        api.get(`/tickets/${ticket.id}`).catch(() => ({ data: ticket })),
+        api.get(`/tickets/${ticket.id}/messages`).catch(() => ({ data: [] }))
+      ]);
+      if (tRes.data) {
+        setSelectedTicket(tRes.data);
+        setTickets(prev => prev.map(t => t.id === tRes.data.id ? tRes.data : t));
+      }
+      setMessages(Array.isArray(mRes.data) ? mRes.data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,23 +97,31 @@ export default function SupportTickets() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedTicket) return;
+    const text = newMessage.trim();
+    if (!text || !selectedTicket || sendingMessage) return;
     
+    setSendingMessage(true);
     try {
       const response = await api.post(`/tickets/${selectedTicket.id}/messages`, {
-        content: newMessage.trim(),
+        content: text,
         message_type: messageType
       });
-      setMessages([...messages, response.data]);
+      setMessages(prev => {
+        if (prev.some(m => m.id === response.data.id)) return prev;
+        return [...prev, response.data];
+      });
       setNewMessage('');
       
-      // If public reply was sent, update ticket status locally if needed
-      if (messageType === 'PUBLIC' && (selectedTicket.status === 'OPEN' || selectedTicket.status === 'IN_PROGRESS')) {
-        setSelectedTicket({ ...selectedTicket, status: 'WAITING_FOR_USER' });
-        setTickets(tickets.map(t => t.id === selectedTicket.id ? { ...t, status: 'WAITING_FOR_USER' } : t));
+      // Refresh authoritative ticket state from server (e.g. status changed to WAITING_FOR_USER)
+      const tRes = await api.get(`/tickets/${selectedTicket.id}`);
+      if (tRes.data) {
+        setSelectedTicket(tRes.data);
+        setTickets(prev => prev.map(t => t.id === tRes.data.id ? tRes.data : t));
       }
     } catch (err) {
       alert('Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -432,9 +448,10 @@ export default function SupportTickets() {
                 <input
                   type="text"
                   value={newMessage}
+                  disabled={sendingMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   placeholder={messageType === 'PUBLIC' ? "Type a reply to the requester..." : "Write a private internal note for agents..."}
-                  className={`flex-1 border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 ${
+                  className={`flex-1 border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 disabled:opacity-60 ${
                     messageType === 'INTERNAL_NOTE'
                       ? 'border-amber-300 bg-amber-50/30 focus:ring-amber-500 focus:border-amber-500'
                       : 'border-slate-300 focus:ring-emerald-500 focus:border-emerald-500'
@@ -442,14 +459,19 @@ export default function SupportTickets() {
                 />
                 <button 
                   type="submit" 
-                  disabled={!newMessage.trim()} 
+                  disabled={!newMessage.trim() || sendingMessage} 
                   className={`px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm text-white disabled:opacity-50 ${
                     messageType === 'INTERNAL_NOTE'
                       ? 'bg-amber-600 hover:bg-amber-700 disabled:hover:bg-amber-600'
                       : 'bg-emerald-600 hover:bg-emerald-700 disabled:hover:bg-emerald-600'
                   }`}
                 >
-                  <Send size={18} /> {messageType === 'INTERNAL_NOTE' ? 'Add Note' : 'Send'}
+                  {sendingMessage ? (
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                  {sendingMessage ? 'Sending...' : messageType === 'INTERNAL_NOTE' ? 'Add Note' : 'Send'}
                 </button>
               </form>
             </div>
