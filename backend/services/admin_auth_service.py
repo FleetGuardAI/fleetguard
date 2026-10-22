@@ -10,9 +10,10 @@ from fastapi.security import OAuth2PasswordBearer
 
 from models.admin_domain import AdminUser, AdminRole, Permission, AdminRolePermission
 from schemas.admin_domain import AdminLogin, Token
+from config import settings
 from database import get_db
 
-SECRET_KEY = os.getenv("ADMIN_JWT_SECRET", "super-secret-admin-key-do-not-use-in-prod")
+SECRET_KEY = os.getenv("ADMIN_JWT_SECRET") or os.getenv("SECRET_KEY") or getattr(settings, "SECRET_KEY", "super-secret-admin-key-do-not-use-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 12 # 12 hours
 
@@ -79,8 +80,8 @@ def require_admin_permission(permission_name: str):
         from sqlalchemy import select
         
         # Super admin has all permissions
-        role_name = getattr(admin.role.name, "value", str(admin.role.name))
-        if role_name == "SUPER_ADMIN" or admin.role.name == "SUPER_ADMIN":
+        role_name = getattr(admin.role.name, "value", str(admin.role.name)) if (admin.role and getattr(admin.role, 'name', None)) else ""
+        if role_name == "SUPER_ADMIN" or (admin.role and getattr(admin.role, 'name', None) == "SUPER_ADMIN"):
             return admin
             
         result = await db.execute(
