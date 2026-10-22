@@ -152,6 +152,7 @@ class OTPResendRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     """Complete reset-password flow with one-time reset token."""
 
+    identifier: Optional[str] = None
     reset_token: str = Field(..., min_length=16)
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
@@ -167,8 +168,11 @@ class ForgotPasswordResponse(BaseModel):
     """Response payload for forgot-password initiation."""
 
     message: str
+    request_id: Optional[int] = None
+    status: Optional[str] = None
     reset_token: Optional[str] = None
     expires_at: Optional[datetime] = None
+
 
 
 class GenericMessageResponse(BaseModel):

@@ -382,24 +382,46 @@ async def test_driver_sos_and_assistance_in_super_admin(client: TestClient, setu
 @pytest.mark.asyncio
 async def test_password_reset_super_admin_workflow(client: TestClient, setup_admin):
     """
-    Test Password Reset Request workflow:
-    - User initiates forgot password
-    - Appears in Super Admin Password Resets inbox
-    - Super Admin approves/rejects
+    Test Admin-Approved Password Reset Request workflow:
+    1. User initiates forgot password -> status PENDING, reset_token is None.
+    2. Repeated submission while pending does not duplicate records.
+    3. Super Admin lists requests, finds pending request.
+    4. Unauthorized user cannot approve.
+    5. Super Admin approves request -> receives unique one-time token.
+    6. Plaintext token is not exposed in standard GET requests.
+    7. Repeated approve fails (already APPROVED).
+    8. User completes reset with approved token.
+    9. Request transitions to COMPLETED.
+    10. Old password fails, new password succeeds.
+    11. Used token cannot be reused.
+    12. Reissue workflow: generates new token, invalidates prior token.
+    13. Rejection workflow: admin rejects request with reason.
     """
     admin_headers = {"Authorization": f"Bearer {setup_admin['token']}"}
 
     owner = _register_owner(client)
     owner_email = owner["user"]["email"]
 
-    # 1. User requests password reset
+    # 1. User requests password reset -> PENDING, NO token returned
     forgot_res = client.post(
         "/api/v1/auth/forgot-password/request",
         json={"identifier": owner_email}
     )
     assert forgot_res.status_code == 200
+    assert forgot_res.json()["status"] == "PENDING"
+    assert forgot_res.json().get("reset_token") is None
+    assert "awaiting Super Admin approval" in forgot_res.json()["message"]
 
-    # 2. Super Admin lists password reset requests (no-trailing-slash and trailing-slash)
+    # 2. Prevent accidental duplicate submissions while request is PENDING
+    dup_res = client.post(
+        "/api/v1/auth/forgot-password/request",
+        json={"identifier": owner_email}
+    )
+    assert dup_res.status_code == 200
+    assert dup_res.json()["status"] == "PENDING"
+    assert "already pending" in dup_res.json()["message"]
+
+    # 3. Super Admin lists password reset requests
     resets_res = client.get("/api/v1/admin/password-resets", headers=admin_headers)
     assert resets_res.status_code == 200
     resets = resets_res.json()
@@ -410,24 +432,34 @@ async def test_password_reset_super_admin_workflow(client: TestClient, setup_adm
     assert target_req["status"] == "PENDING"
     req_id = target_req["id"]
 
-    # 3. Super Admin approves the request
+    # 4. Unauthorized users cannot approve requests
+    unauth_approve = client.post(f"/api/v1/admin/password-resets/{req_id}/approve")
+    assert unauth_approve.status_code in (401, 403)
+
+    # 5. Super Admin approves the request -> unique token generated and returned ONCE
     approve_res = client.post(f"/api/v1/admin/password-resets/{req_id}/approve", headers=admin_headers)
     assert approve_res.status_code == 200
-    assert approve_res.json()["status"] == "APPROVED"
-
-    # 4. Super Admin lists filtered by status=APPROVED
-    approved_list = client.get("/api/v1/admin/password-resets?status=APPROVED", headers=admin_headers)
-    assert approved_list.status_code == 200
-    assert any(r["id"] == req_id for r in approved_list.json())
-
-    # 5. User submits new password with the issued reset token
-    reset_token = forgot_res.json().get("reset_token")
+    approved_data = approve_res.json()
+    assert approved_data["status"] == "APPROVED"
+    reset_token = approved_data.get("reset_token")
     assert reset_token is not None
+    assert len(reset_token) >= 20
+    assert "expires_at" in approved_data
 
-    # Invalid token rejected
+    # 6. Listing and detail GET endpoints NEVER expose plaintext tokens
+    detail_res = client.get(f"/api/v1/admin/password-resets/{req_id}", headers=admin_headers)
+    assert detail_res.status_code == 200
+    assert "reset_token" not in detail_res.json()
+
+    # 7. Repeated approval attempt fails
+    second_approve = client.post(f"/api/v1/admin/password-resets/{req_id}/approve", headers=admin_headers)
+    assert second_approve.status_code == 400
+
+    # 8. Invalid token rejected
     bad_res = client.post(
         "/api/v1/auth/forgot-password/reset",
         json={
+            "identifier": owner_email,
             "reset_token": "invalid_token_1234567890_abc",
             "new_password": "NewPassword123!",
             "confirm_password": "NewPassword123!"
@@ -435,10 +467,11 @@ async def test_password_reset_super_admin_workflow(client: TestClient, setup_adm
     )
     assert bad_res.status_code == 400
 
-    # Successful password reset
+    # 9. Successful password reset with valid approved token
     reset_res = client.post(
         "/api/v1/auth/forgot-password/reset",
         json={
+            "identifier": owner_email,
             "reset_token": reset_token,
             "new_password": "NewPassword123!",
             "confirm_password": "NewPassword123!"
@@ -446,26 +479,26 @@ async def test_password_reset_super_admin_workflow(client: TestClient, setup_adm
     )
     assert reset_res.status_code == 200
 
-    # 6. Verify request transitioned to COMPLETED in Super Admin
+    # 10. Verify request transitioned to COMPLETED in Super Admin
     req_status_res = client.get(f"/api/v1/admin/password-resets/{req_id}", headers=admin_headers)
     assert req_status_res.status_code == 200
     assert req_status_res.json()["status"] == "COMPLETED"
 
-    # 7. Old password no longer works
+    # 11. Old password no longer works
     old_login = client.post(
         "/api/v1/auth/login",
         json={"email": owner_email, "password": "Password123!"}
     )
     assert old_login.status_code == 401
 
-    # 8. New password successfully logs in
+    # 12. New password successfully logs in
     new_login = client.post(
         "/api/v1/auth/login",
         json={"email": owner_email, "password": "NewPassword123!"}
     )
     assert new_login.status_code == 200
 
-    # 9. Used token cannot be reused
+    # 13. Used token cannot be reused
     reuse_res = client.post(
         "/api/v1/auth/forgot-password/reset",
         json={
@@ -476,6 +509,65 @@ async def test_password_reset_super_admin_workflow(client: TestClient, setup_adm
     )
     assert reuse_res.status_code == 400
     assert "already been used" in reuse_res.json()["detail"]
+
+    # 14. Reissue Token Workflow
+    owner2 = _register_owner(client)
+    owner2_email = owner2["user"]["email"]
+
+    client.post("/api/v1/auth/forgot-password/request", json={"identifier": owner2_email})
+    resets2 = client.get("/api/v1/admin/password-resets", headers=admin_headers).json()
+    req2 = next(r for r in resets2 if r["requester_email_phone"] == owner2_email)
+    app2 = client.post(f"/api/v1/admin/password-resets/{req2['id']}/approve", headers=admin_headers)
+    tok1 = app2.json()["reset_token"]
+
+    # Super Admin reissues token (e.g. user lost it)
+    reissue_res = client.post(f"/api/v1/admin/password-resets/{req2['id']}/reissue", headers=admin_headers)
+    assert reissue_res.status_code == 200
+    tok2 = reissue_res.json()["reset_token"]
+    assert tok2 != tok1
+
+    # First token is now invalidated / revoked
+    tok1_fail = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": tok1,
+            "new_password": "NewPassword123!",
+            "confirm_password": "NewPassword123!"
+        }
+    )
+    assert tok1_fail.status_code == 400
+    assert "already been used" in tok1_fail.json()["detail"] or "revoked" in tok1_fail.json()["detail"]
+
+    # Reissued token succeeds
+    tok2_succ = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "reset_token": tok2,
+            "new_password": "ReissuedPassword123!",
+            "confirm_password": "ReissuedPassword123!"
+        }
+    )
+    assert tok2_succ.status_code == 200
+
+    # 15. Rejection Workflow
+    owner3 = _register_owner(client)
+    owner3_email = owner3["user"]["email"]
+    client.post("/api/v1/auth/forgot-password/request", json={"identifier": owner3_email})
+    resets3 = client.get("/api/v1/admin/password-resets", headers=admin_headers).json()
+    req3 = next(r for r in resets3 if r["requester_email_phone"] == owner3_email)
+
+    rej_res = client.post(
+        f"/api/v1/admin/password-resets/{req3['id']}/reject",
+        json={"reason": "Suspicious activity detected"},
+        headers=admin_headers
+    )
+    assert rej_res.status_code == 200
+    assert rej_res.json()["status"] == "REJECTED"
+
+    # Cannot approve a rejected request
+    cant_app = client.post(f"/api/v1/admin/password-resets/{req3['id']}/approve", headers=admin_headers)
+    assert cant_app.status_code == 400
+
 
 
 @pytest.mark.asyncio
@@ -597,13 +689,16 @@ async def test_admin_dashboard_metrics(client: TestClient, setup_admin):
 
 
 @pytest.mark.asyncio
-async def test_password_reset_security_and_edge_cases(client: TestClient, db_session: AsyncSession):
+async def test_password_reset_security_and_edge_cases(client: TestClient, db_session: AsyncSession, setup_admin):
     """
     Test security guarantees:
     - Unknown email request does not leak account presence.
     - Expired token is rejected with explicit 400.
     - Token for User A cannot be used to modify User B.
+    - Mismatched identifier and token rejected.
     """
+    admin_headers = {"Authorization": f"Bearer {setup_admin['token']}"}
+
     # 1. Unknown user identifier
     unknown_res = client.post(
         "/api/v1/auth/forgot-password/request",
@@ -620,7 +715,10 @@ async def test_password_reset_security_and_edge_cases(client: TestClient, db_ses
         json={"identifier": owner_a["user"]["email"]}
     )
     assert res_a.status_code == 200
-    token_a = res_a.json()["reset_token"]
+    resets_a = client.get("/api/v1/admin/password-resets", headers=admin_headers).json()
+    req_a = next(r for r in resets_a if r["requester_email_phone"] == owner_a["user"]["email"])
+    app_a = client.post(f"/api/v1/admin/password-resets/{req_a['id']}/approve", headers=admin_headers)
+    token_a = app_a.json()["reset_token"]
     assert token_a is not None
 
     # Manually expire token_a in database
@@ -649,19 +747,35 @@ async def test_password_reset_security_and_edge_cases(client: TestClient, db_ses
     assert expired_attempt.status_code == 400
     assert "expired" in expired_attempt.json()["detail"].lower()
 
-    # 3. Account isolation: token for User A only affects User A, never User B
+    # 3. Account isolation: token for User B only affects User B, never User A
     owner_b = _register_owner(client)
     res_b = client.post(
         "/api/v1/auth/forgot-password/request",
         json={"identifier": owner_b["user"]["email"]}
     )
-    token_b = res_b.json()["reset_token"]
+    resets_b = client.get("/api/v1/admin/password-resets", headers=admin_headers).json()
+    req_b = next(r for r in resets_b if r["requester_email_phone"] == owner_b["user"]["email"])
+    app_b = client.post(f"/api/v1/admin/password-resets/{req_b['id']}/approve", headers=admin_headers)
+    token_b = app_b.json()["reset_token"]
     assert token_b is not None
 
-    # Reset with token_b
+    # Attempt to reset User A's email using User B's token -> rejected
+    cross_attempt = client.post(
+        "/api/v1/auth/forgot-password/reset",
+        json={
+            "identifier": owner_a["user"]["email"],
+            "reset_token": token_b,
+            "new_password": "HackedPassword123!",
+            "confirm_password": "HackedPassword123!"
+        }
+    )
+    assert cross_attempt.status_code == 400
+
+    # Reset with token_b for User B
     reset_b = client.post(
         "/api/v1/auth/forgot-password/reset",
         json={
+            "identifier": owner_b["user"]["email"],
             "reset_token": token_b,
             "new_password": "OwnerBNewPassword123!",
             "confirm_password": "OwnerBNewPassword123!"
@@ -676,12 +790,13 @@ async def test_password_reset_security_and_edge_cases(client: TestClient, db_ses
     )
     assert login_b.status_code == 200
 
-    # User A's password remains unchanged
+    # User A's password remains completely unchanged
     login_a = client.post(
         "/api/v1/auth/login",
         json={"email": owner_a["user"]["email"], "password": "Password123!"}
     )
     assert login_a.status_code == 200
+
 
 
 @pytest.mark.asyncio

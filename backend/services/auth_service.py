@@ -338,12 +338,13 @@ async def create_forgot_password_request(
     """Create one-time password reset token while preserving account privacy."""
     identifier = payload.identifier.strip()
     now = _utcnow()
+    identifier = payload.identifier.strip()
     generic_message = (
-        "If an account exists for that identifier, password reset instructions were generated."
+        "If an account exists for that identifier, a password reset request has been submitted for Super Admin approval."
     )
 
     if "@" in identifier:
-        result = await db.execute(select(User).where(User.email == identifier))
+        result = await db.execute(select(User).where(User.email.ilike(identifier)))
     else:
         result = await db.execute(select(User).where(User.mobile_number == identifier))
 
@@ -352,130 +353,206 @@ async def create_forgot_password_request(
         dummy_verify()
         return ForgotPasswordResponse(message=generic_message)
 
-    # Invalidate prior active reset tokens for this user
-    await db.execute(
-        update(PasswordResetToken)
-        .where(
-            PasswordResetToken.user_id == user.id,
-            PasswordResetToken.used_at.is_(None),
-            PasswordResetToken.expires_at > now,
-        )
-        .values(used_at=now)
-    )
-
-    raw_token = secrets.token_urlsafe(36)
-    expires_at = now + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
-    reset_entry = PasswordResetToken(
-        user_id=user.id,
-        company_id=user.company_id,
-        token_hash=_hash_token(raw_token),
-        requested_identifier=identifier,
-        expires_at=expires_at,
-    )
-    db.add(reset_entry)
-    
     from models.support_domain import PasswordResetRequestAdmin, RequesterType
+
+    # Check for existing pending request to prevent duplicate submissions
+    existing_q = (
+        select(PasswordResetRequestAdmin)
+        .where(
+            PasswordResetRequestAdmin.requester_email_phone.ilike(identifier),
+            PasswordResetRequestAdmin.status == "PENDING"
+        )
+        .order_by(PasswordResetRequestAdmin.id.desc())
+    )
+    existing_res = await db.execute(existing_q)
+    existing_req = existing_res.scalar_one_or_none()
+    if existing_req:
+        return ForgotPasswordResponse(
+            message="A password reset request for this account is already pending Super Admin approval. Please wait for an administrator to review your request.",
+            request_id=existing_req.id,
+            status="PENDING",
+            reset_token=None,
+            expires_at=None,
+        )
+
     requester_type = RequesterType.DRIVER if user.role == UserRole.DRIVER else RequesterType.FLEET_OWNER
     admin_req = PasswordResetRequestAdmin(
+        user_id=user.id,
         requester_type=requester_type,
         requester_email_phone=identifier,
-        reason="Automated Forgot Password Flow",
+        reason="User requested password reset via Forgot Password portal",
         status="PENDING",
     )
     db.add(admin_req)
     await db.commit()
-
-    if settings.DEBUG and settings.PASSWORD_RESET_DEBUG_RETURN_TOKEN:
-        return ForgotPasswordResponse(
-            message=generic_message,
-            reset_token=raw_token,
-            expires_at=expires_at,
-        )
+    await db.refresh(admin_req)
 
     logger.info(
-        "Password reset requested: user_id=%d company_id=%d",
+        "Password reset request created: id=%d user_id=%d company_id=%d",
+        admin_req.id,
         user.id,
         user.company_id,
     )
-    return ForgotPasswordResponse(message=generic_message)
+
+    # Note: Tokens are generated ONLY upon Super Admin approval. No token is returned here.
+    return ForgotPasswordResponse(
+        message="Your password reset request has been submitted successfully and is awaiting Super Admin approval. Once approved, the Super Admin will securely provide your reset token.",
+        request_id=admin_req.id,
+        status="PENDING",
+        reset_token=None,
+        expires_at=None,
+    )
 
 
 async def reset_password_with_token(
     payload: ResetPasswordRequest,
     db: AsyncSession,
 ) -> GenericMessageResponse:
-    """Reset password using valid one-time token and revoke all active sessions."""
+    """Reset password using valid approved one-time token and revoke all active sessions."""
     now = _utcnow()
     raw_token = payload.reset_token.strip() if payload.reset_token else ""
     token_hash = _hash_token(raw_token)
 
-    # Check token record
+    from models.support_domain import PasswordResetRequestAdmin
+    from models.password_reset_token import PasswordResetToken
+    from sqlalchemy import or_
+
+    # 1. Fetch token record from password_reset_tokens
     result = await db.execute(
         select(PasswordResetToken).where(
             PasswordResetToken.token_hash == token_hash
         )
     )
     reset_entry = result.scalar_one_or_none()
-    if reset_entry is None:
+
+    # 2. Fetch associated admin request record
+    admin_req = None
+    if reset_entry and reset_entry.reset_request_id:
+        admin_req = await db.get(PasswordResetRequestAdmin, reset_entry.reset_request_id)
+    if not admin_req:
+        admin_res = await db.execute(
+            select(PasswordResetRequestAdmin)
+            .where(PasswordResetRequestAdmin.token_hash == token_hash)
+            .order_by(PasswordResetRequestAdmin.id.desc())
+        )
+        admin_req = admin_res.scalar_one_or_none()
+
+    if reset_entry is None and admin_req is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token is invalid or expired.",
         )
 
-    if reset_entry.used_at is not None:
+    # 3. Secure constant-time comparison of token hashes
+    stored_hash = reset_entry.token_hash if reset_entry else admin_req.token_hash
+    if not secrets.compare_digest(stored_hash, token_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token is invalid.",
+        )
+
+    # 4. Check if token has already been used
+    is_used = (
+        (reset_entry and reset_entry.used_at is not None)
+        or (admin_req and admin_req.token_used_at is not None)
+        or (admin_req and admin_req.status == "COMPLETED")
+    )
+    if is_used:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This reset token has already been used.",
         )
 
-    expires_at = reset_entry.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if expires_at <= now:
+    # 5. Check if token or request has been revoked
+    is_revoked = (admin_req and admin_req.token_revoked_at is not None)
+    if is_revoked:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This reset token has expired.",
+            detail="This reset token has been revoked.",
         )
 
-    user_result = await db.execute(
-        select(User).where(
-            User.id == reset_entry.user_id,
-            User.company_id == reset_entry.company_id,
-        )
-    )
-    user = user_result.scalar_one_or_none()
-    if user is None:
+    # 6. Check token expiration
+    expires_at = reset_entry.expires_at if reset_entry else admin_req.token_expires_at
+    if expires_at:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This reset token has expired.",
+            )
+
+    # 7. Check request approval status
+    if not admin_req or admin_req.status != "APPROVED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not resolve account for this reset token.",
+            detail="Password reset request is not approved by administrator.",
         )
 
+    # 8. If user submitted an email/mobile identifier, verify it matches
+    if payload.identifier and payload.identifier.strip():
+        submitted_id = payload.identifier.strip().lower()
+        req_id = admin_req.requester_email_phone.strip().lower()
+        tok_id = reset_entry.requested_identifier.strip().lower() if reset_entry else req_id
+        if submitted_id not in (req_id, tok_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The reset token does not belong to the submitted email or mobile.",
+            )
+
+    # 9. Resolve user account and verify eligibility
+    user_id = admin_req.user_id or (reset_entry.user_id if reset_entry else None)
+    if not user_id:
+        user_q = select(User).where(
+            or_(
+                User.email.ilike(admin_req.requester_email_phone),
+                User.mobile_number == admin_req.requester_email_phone
+            )
+        )
+        user_res = await db.execute(user_q)
+        user = user_res.scalar_one_or_none()
+    else:
+        user = await db.get(User, user_id)
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not resolve eligible account for this reset token.",
+        )
+
+    # 10. Atomically update password, mark token used, complete request, invalidate other tokens & sessions
     user.password_hash = hash_password(payload.new_password)
     user.updated_at = now
-    reset_entry.used_at = now
 
-    # Revoke all active sessions for this account atomically
+    if reset_entry:
+        reset_entry.used_at = now
+
+    admin_req.status = "COMPLETED"
+    admin_req.token_used_at = now
+    admin_req.updated_at = now
+
+    # Invalidate all other active reset tokens for this user
+    await db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None)
+        )
+        .values(used_at=now)
+    )
+
+    # Revoke all active sessions for this account
     await db.execute(
         update(AuthSession)
         .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=now)
     )
 
-    # Transition PasswordResetRequestAdmin to COMPLETED
-    from models.support_domain import PasswordResetRequestAdmin
-    await db.execute(
-        update(PasswordResetRequestAdmin)
-        .where(
-            PasswordResetRequestAdmin.requester_email_phone == reset_entry.requested_identifier,
-            PasswordResetRequestAdmin.status.in_(["PENDING", "APPROVED"])
-        )
-        .values(status="COMPLETED", updated_at=now)
-    )
     await db.commit()
 
-    logger.info("Password reset completed: user_id=%d company_id=%d", user.id, user.company_id)
+    logger.info("Password reset completed successfully: user_id=%d company_id=%d request_id=%d", user.id, user.company_id, admin_req.id)
     return GenericMessageResponse(message="Password has been reset successfully. Please log in with your new password.")
+
 
 
 async def get_current_user(
