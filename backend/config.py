@@ -4,8 +4,8 @@ Loads settings from environment variables / .env file using Pydantic Settings.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
-
+from pydantic import field_validator
+from typing import Optional, Any, List
 
 class Settings(BaseSettings):
     """Central configuration for the FleetGuard backend."""
@@ -53,14 +53,57 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------------
     # --- CORS ---
     CORS_ORIGINS: list[str] = [
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "http://127.0.0.1:5174",
+        "https://super-admin-seven-sepia.vercel.app",
         "https://fleetguard-delta.vercel.app",
         "https://fleetgaurd-delta.vercel.app",
         "https://fleetguard-git-main-rudra810s-projects.vercel.app",
-        "https://super-admin-seven-sepia.vercel.app"
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000",
     ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                import json
+                try:
+                    origins = json.loads(v_stripped)
+                except Exception:
+                    origins = [x.strip() for x in v_stripped.strip("[]").split(",")]
+            else:
+                origins = [x.strip() for x in v_stripped.split(",") if x.strip()]
+        elif isinstance(v, (list, tuple, set)):
+            origins = list(v)
+        else:
+            origins = []
+
+        default_origins = [
+            "https://super-admin-seven-sepia.vercel.app",
+            "https://fleetguard-delta.vercel.app",
+            "https://fleetgaurd-delta.vercel.app",
+            "https://fleetguard-git-main-rudra810s-projects.vercel.app",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:3000",
+        ]
+
+        normalized: list[str] = []
+        for origin in list(origins) + default_origins:
+            if origin:
+                cleaned = str(origin).strip().rstrip("/")
+                if cleaned and cleaned not in normalized:
+                    normalized.append(cleaned)
+        return normalized
+
 
     # --- Fuel Theft & Anomaly Detection Thresholds ---
     FUEL_DROP_THRESHOLD_LITERS: float = 5.0

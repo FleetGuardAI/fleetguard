@@ -46,6 +46,7 @@ export default function PasswordResets() {
   const [requests, setRequests] = useState<PasswordReset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -60,11 +61,14 @@ export default function PasswordResets() {
   const fetchRequests = async () => {
     setLoading(true);
     setError('');
+    setErrorStatus(null);
     try {
       const response = await api.get('/password-resets');
       setRequests(response.data);
     } catch (err: any) {
       console.error("Password resets fetch error", err);
+      const status = err?.response?.status || null;
+      setErrorStatus(status);
       setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
@@ -225,7 +229,15 @@ export default function PasswordResets() {
             <span>Awaiting Approval</span>
             <Clock size={16} className="text-amber-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{counts.pending}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">
+            {loading ? (
+              <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+            ) : error ? (
+              <span className="text-slate-400 font-normal text-xl">—</span>
+            ) : (
+              counts.pending
+            )}
+          </p>
           <span className="text-xs text-amber-600 font-medium">Requires action</span>
         </div>
 
@@ -237,7 +249,15 @@ export default function PasswordResets() {
             <span>Approved (Active)</span>
             <CheckCircle size={16} className="text-emerald-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{counts.approved}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">
+            {loading ? (
+              <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+            ) : error ? (
+              <span className="text-slate-400 font-normal text-xl">—</span>
+            ) : (
+              counts.approved
+            )}
+          </p>
           <span className="text-xs text-emerald-600 font-medium">Awaiting user reset</span>
         </div>
 
@@ -249,7 +269,15 @@ export default function PasswordResets() {
             <span>Completed</span>
             <Check size={16} className="text-blue-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{counts.completed}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">
+            {loading ? (
+              <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+            ) : error ? (
+              <span className="text-slate-400 font-normal text-xl">—</span>
+            ) : (
+              counts.completed
+            )}
+          </p>
           <span className="text-xs text-blue-600 font-medium">Password updated</span>
         </div>
 
@@ -261,7 +289,15 @@ export default function PasswordResets() {
             <span>Total Requests</span>
             <KeyRound size={16} className="text-slate-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{counts.total}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-2">
+            {loading ? (
+              <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+            ) : error ? (
+              <span className="text-slate-400 font-normal text-xl">—</span>
+            ) : (
+              counts.total
+            )}
+          </p>
           <span className="text-xs text-slate-500 font-medium">All recorded requests</span>
         </div>
       </div>
@@ -305,13 +341,72 @@ export default function PasswordResets() {
             <p className="mt-3 text-slate-500 text-sm font-medium">Loading password reset requests...</p>
           </div>
         ) : error ? (
-          <div className="p-16 text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-red-400 mb-3" />
-            <p className="text-red-600 font-semibold text-base">{error}</p>
-            <p className="text-slate-500 text-xs mt-1">Unable to communicate with the Super Admin API.</p>
-            <button onClick={fetchRequests} className="mt-4 text-emerald-600 font-semibold hover:underline text-sm">
-              Try again
-            </button>
+          <div className="p-16 text-center max-w-lg mx-auto">
+            {errorStatus === 401 ? (
+              <>
+                <ShieldAlert className="mx-auto h-12 w-12 text-amber-500 mb-3" />
+                <h3 className="text-slate-900 font-bold text-lg">Authentication Required (401)</h3>
+                <p className="text-slate-600 text-sm mt-1">{error || "Your Super Admin session has expired or is invalid."}</p>
+                <div className="mt-6 flex justify-center gap-3">
+                  <a
+                    href="/login"
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                  >
+                    Sign In Again
+                  </a>
+                  <button
+                    onClick={fetchRequests}
+                    className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 shadow-sm"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </>
+            ) : errorStatus === 403 ? (
+              <>
+                <ShieldAlert className="mx-auto h-12 w-12 text-red-500 mb-3" />
+                <h3 className="text-slate-900 font-bold text-lg">Access Forbidden (403)</h3>
+                <p className="text-slate-600 text-sm mt-1">{error || "You lack required permissions ('support.view') to view password reset requests."}</p>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={fetchRequests}
+                    className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 shadow-sm"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </>
+            ) : errorStatus && errorStatus >= 500 ? (
+              <>
+                <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-3" />
+                <h3 className="text-slate-900 font-bold text-lg">Backend Server Error ({errorStatus})</h3>
+                <p className="text-slate-600 text-sm mt-1">{error}</p>
+                <p className="text-slate-400 text-xs mt-2">The backend encountered an internal error while processing the request.</p>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={fetchRequests}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 shadow-sm"
+                  >
+                    <RefreshCw size={14} /> Retry Request
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="mx-auto h-12 w-12 text-amber-500 mb-3" />
+                <h3 className="text-slate-900 font-bold text-lg">Connection / Network Error</h3>
+                <p className="text-slate-600 text-sm mt-1">{error}</p>
+                <p className="text-slate-400 text-xs mt-2">Unable to reach the Super Admin API backend at {api.defaults.baseURL}.</p>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={fetchRequests}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                  >
+                    <RefreshCw size={14} /> Retry
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : filteredRequests.length === 0 ? (
           <div className="p-16 text-center text-slate-500">
