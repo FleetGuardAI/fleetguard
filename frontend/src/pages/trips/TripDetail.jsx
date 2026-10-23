@@ -233,13 +233,37 @@ export default function TripDetail() {
             </Suspense>
           )}
 
-          {/* Telemetry coordinate map placeholder */}
-          <Card className="flex flex-col items-center justify-center py-16 text-center border border-dashed">
-            <Route className="h-10 w-10 text-content-muted mb-3 animate-pulse" />
-            <h4 className="text-sm font-semibold text-content">GPS Telemetry Coordinates</h4>
-            <p className="text-xs text-content-secondary mt-1 max-w-sm">
-              Active coordinate location match: Lat {trip.current_lat || '22.572'}, Lng {trip.current_lng || '72.977'}.
-            </p>
+          {/* GPS Tracking & Route Playback Action Card */}
+          <Card className="p-6 bg-gradient-to-r from-slate-50 via-white to-brand-50/30 border border-slate-200 shadow-sm rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-600 border border-brand-200">
+                  <Navigation className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">
+                    Historical GPS Route & Timeline Playback
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5 max-w-md">
+                    {trip.current_lat && trip.current_lng
+                      ? `Last observed telemetry ping: ${trip.current_lat.toFixed(5)}, ${trip.current_lng.toFixed(5)}.`
+                      : 'Inspect recorded breadcrumbs, detect stops and GPS gaps, and replay the chronological driver route on an interactive map.'}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                icon={<Navigation className="h-4 w-4" />}
+                onClick={() =>
+                  navigate(
+                    `/dashboard/tracking?driver_id=${trip.driver_id || ''}&trip_id=${trip.trip_id || trip.id}`
+                  )
+                }
+              >
+                Open GPS Tracking Workspace
+              </Button>
+            </div>
           </Card>
         </>
       ) : (
