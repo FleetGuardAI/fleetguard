@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wrench, Plus, Eye, CheckCircle, Calendar, Compass, FileText, Check, Settings, ShieldAlert, Package } from 'lucide-react';
 import { getMaintenanceLogs, scheduleMaintenance } from '@/api/maintenanceApi';
 import { getVehicles } from '@/api/vehicleApi';
+import api from '@/api/client';
 
 import { getAssets } from '@/api/assetApi';
 import { Table } from '@/components/ui/Table';
@@ -16,13 +17,16 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Modal } from '@/components/ui/Modal';
+import { MaintenanceDetailsModal } from './MaintenanceDetailsModal';
 import { Input, Select } from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
 
 export default function Maintenance() {
   const { success, error } = useToast();
 
-  const [activeTab, setActiveTab] = useState('logs'); // logs, inventory
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, logs, inventory
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsDateFilter, setAnalyticsDateFilter] = useState({ start: '', end: '' });
   const [logs, setLogs] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [inventoryParts, setInventoryParts] = useState([]);
@@ -52,13 +56,18 @@ export default function Maintenance() {
     setLoading(true);
     setErr(null);
     try {
-      const [lData, vData, aData] = await Promise.all([
+      const [lData, vData, aData, analData] = await Promise.all([
         getMaintenanceLogs({ search }),
         getVehicles(),
-        getAssets().catch(() => [])
+        getAssets().catch(() => []),
+        api.maintenance.analytics({
+           ...(analyticsDateFilter.start && { start_date: new Date(analyticsDateFilter.start).toISOString() }),
+           ...(analyticsDateFilter.end && { end_date: new Date(analyticsDateFilter.end).toISOString() })
+        }).catch(() => null)
       ]);
       setLogs(lData);
       setVehicles(vData);
+      if (analData) setAnalytics(analData);
 
       const parts = [
         ...aData.map(a => ({
@@ -257,6 +266,17 @@ export default function Maintenance() {
       {/* Tabs */}
       <div className="flex border-b border-border gap-2 overflow-x-auto pb-px">
         <button
+          onClick={() => setActiveTab('dashboard')}
+          className={cn(
+            "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
+            activeTab === 'dashboard'
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-content-secondary hover:text-content"
+          )}
+        >
+          Dashboard
+        </button>
+        <button
           onClick={() => setActiveTab('logs')}
           className={cn(
             "px-4 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap",
@@ -279,6 +299,66 @@ export default function Maintenance() {
           Spare Parts Inventory
         </button>
       </div>
+
+      
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          <div className="flex gap-4 items-end bg-background p-4 rounded border border-border">
+            <Input label="Start Date" type="date" value={analyticsDateFilter.start} onChange={e => setAnalyticsDateFilter(p => ({...p, start: e.target.value}))} />
+            <Input label="End Date" type="date" value={analyticsDateFilter.end} onChange={e => setAnalyticsDateFilter(p => ({...p, end: e.target.value}))} />
+            <Button onClick={loadMaintenanceData} variant="primary">Apply Filter</Button>
+            <Button onClick={() => { setAnalyticsDateFilter({start:'', end:''}); setTimeout(loadMaintenanceData, 100); }} variant="outline">Clear</Button>
+          </div>
+          
+          {analytics ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <p className="text-xs text-content-secondary uppercase font-bold">Total Maintenance Spend</p>
+                <p className="text-2xl font-bold">?{analytics.total_spend?.toLocaleString()}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-xs text-content-secondary uppercase font-bold">Parts Spend</p>
+                <p className="text-xl font-bold">?{analytics.parts_spend?.toLocaleString()}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-xs text-content-secondary uppercase font-bold">Labour Spend</p>
+                <p className="text-xl font-bold">?{analytics.labour_spend?.toLocaleString()}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-xs text-content-secondary uppercase font-bold">Other Spend</p>
+                <p className="text-xl font-bold">?{analytics.other_spend?.toLocaleString()}</p>
+              </Card>
+              
+              <Card className="p-4 bg-brand-50">
+                <p className="text-xs text-brand-700 uppercase font-bold">Completed Events</p>
+                <p className="text-2xl font-bold text-brand-900">{analytics.completed_count}</p>
+              </Card>
+              <Card className="p-4 bg-amber-50">
+                <p className="text-xs text-amber-700 uppercase font-bold">Overdue Vehicles</p>
+                <p className="text-2xl font-bold text-amber-900">{analytics.overdue_count}</p>
+              </Card>
+            </div>
+          ) : (
+            <p>Loading analytics...</p>
+          )}
+          
+          {analytics?.cost_per_km_by_vehicle && (
+            <Card className="p-4">
+               <h4 className="font-bold mb-4">Cost / KM by Vehicle</h4>
+               <div className="space-y-2">
+                 {Object.entries(analytics.cost_per_km_by_vehicle).map(([vid, cost]) => (
+                    <div key={vid} className="flex justify-between border-b border-border pb-1">
+                      <span>Vehicle #{vid}</span>
+                      <span className="font-bold">
+                         {cost !== null ? `₹${cost}/km` : 'No Trips'}
+                      </span>
+                    </div>
+                 ))}
+               </div>
+            </Card>
+          )}
+        </div>
+      )}
 
       {activeTab === 'logs' ? (
         <div className="space-y-6">

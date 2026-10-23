@@ -3,7 +3,7 @@ FleetGuard — Tyre Domain ORM Models
 Represents individual tyre assets and their lifecycle history.
 """
 
-from sqlalchemy import Integer, String, Enum, DateTime, ForeignKey, Text
+from sqlalchemy import Integer, String, Float, Enum, DateTime, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 from typing import Optional, Any, TYPE_CHECKING
@@ -39,6 +39,13 @@ class Tyre(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
+    # --- Multi-tenancy ---
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False, default=1, index=True,
+        comment="Tenant isolation boundary"
+    )
+
     # --- Identity ---
     serial_number: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False,
@@ -51,7 +58,13 @@ class Tyre(Base):
     model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     size: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     
-    purchase_information: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    # --- Purchase & Acquisition Provenance ---
+    purchase_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Known acquisition cost")
+    purchase_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, comment="Procurement acquisition date")
+    purchase_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR", comment="ISO 4217 currency code")
+    purchase_invoice: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="Source invoice or receipt reference")
+    purchase_vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, comment="Supplier or vendor name")
+    purchase_information: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True, comment="Legacy / auxiliary purchase metadata")
 
     # --- Current State ---
     current_vehicle_id: Mapped[Optional[int]] = mapped_column(ForeignKey("vehicles.id"), nullable=True, index=True)
@@ -63,6 +76,13 @@ class Tyre(Base):
         nullable=False, default=TyreStatus.REGISTERED, index=True
     )
 
+    # --- Lifecycle Metrics ---
+    retread_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_lifetime_km: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    current_retread_km: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    current_installation_odometer: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    current_tread_depth_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     # --- Traceability ---
     origin_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     origin_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -70,22 +90,28 @@ class Tyre(Base):
     # --- History ---
     lifecycle_records: Mapped[list["TyreLifecycleRecord"]] = relationship(
         "TyreLifecycleRecord", back_populates="tyre",
-        lazy="selectin", cascade="all, delete-orphan"
+        lazy="selectin", cascade="all, delete-orphan",
+        order_by="TyreLifecycleRecord.id.asc()"
     )
 
     def __repr__(self) -> str:
-        return f"<Tyre(id={self.id}, serial='{self.serial_number}', status='{self.current_status.value}')>"
+        return f"<Tyre(id={self.id}, serial='{self.serial_number}', status='{self.current_status.value}', company_id={self.company_id})>"
 
 
 class TyreLifecycleRecord(Base):
     """
     Materialized history log of significant tyre state changes.
-    Appended by the TyreService when parsing Operational Events.
+    Appended by the TyreService when parsing Operational Events or executing transitions.
     """
     __tablename__ = "tyre_lifecycle_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
+    company_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True, index=True
+    )
+
     tyre_id: Mapped[int] = mapped_column(
         ForeignKey("tyres.id"), nullable=False, index=True
     )
@@ -107,4 +133,5 @@ class TyreLifecycleRecord(Base):
     origin_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:
-        return f"<TyreLifecycleRecord(id={self.id}, event='{self.event_category.value}')>"
+        return f"<TyreLifecycleRecord(id={self.id}, event='{self.event_category.value}', tyre_id={self.tyre_id})>"
+

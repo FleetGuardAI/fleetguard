@@ -8,7 +8,7 @@ import enum
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Integer, Float, String, Enum, DateTime, ForeignKey, func
+from sqlalchemy import Integer, Float, String, Enum, DateTime, ForeignKey, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -118,3 +118,55 @@ class LocationAlert(Base):
 
     def __repr__(self) -> str:
         return f"<LocationAlert(driver={self.driver_id}, type={self.alert_type.value})>"
+
+
+class VehicleCurrentLocation(Base):
+    """
+    Latest real-time GPS state of a vehicle per source (PHONE_GPS, HARDWARE_GPS).
+    """
+    __tablename__ = "vehicle_current_locations"
+
+    vehicle_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), primary_key=True)
+    source: Mapped[LocationSource] = mapped_column(
+        Enum(LocationSource, native_enum=False, length=50),
+        primary_key=True
+    )
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    speed: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    heading: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    accuracy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    last_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    driver_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drivers.id", ondelete="SET NULL"), nullable=True)
+    device_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    source_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+
+class VehicleLocation(Base):
+    """
+    Historical vehicle-centric location records.
+    """
+    __tablename__ = "vehicle_locations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    vehicle_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
+    driver_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drivers.id", ondelete="SET NULL"), nullable=True, index=True)
+    device_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    speed: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    heading: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    accuracy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    source: Mapped[LocationSource] = mapped_column(
+        Enum(LocationSource, native_enum=False, length=50),
+        nullable=False, default=LocationSource.PHONE_GPS
+    )
+    event_fingerprint: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    original_driver_location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

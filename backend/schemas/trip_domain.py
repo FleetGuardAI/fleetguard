@@ -57,8 +57,12 @@ class TripResponse(BaseModel):
     revenue: Optional[float] = None
     planned_cost: Optional[float] = None
     planned_fuel_liters: Optional[float] = None
+    actual_fuel_liters: Optional[float] = None
     cargo_weight: Optional[float] = None
-    
+    cargo_category: Optional[str] = "GENERAL"
+    required_vehicle_class: Optional[str] = None
+    required_driver_qualification: Optional[str] = None
+    cargo_temperature_required: Optional[bool] = False
     # --- Customer / Booking ---
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
@@ -119,7 +123,12 @@ class TripCreate(BaseModel):
     revenue: Optional[float] = None
     planned_cost: Optional[float] = None
     planned_fuel_liters: Optional[float] = None
+    actual_fuel_liters: Optional[float] = None
     cargo_weight: Optional[float] = None
+    cargo_category: Optional[str] = "GENERAL"
+    required_vehicle_class: Optional[str] = None
+    required_driver_qualification: Optional[str] = None
+    cargo_temperature_required: Optional[bool] = False
     # --- Customer / Booking ---
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
@@ -140,6 +149,11 @@ class TripUpdated(BaseModel):
     status: Optional[TripStatus] = None
     vehicle_id: Optional[int] = None
     driver_id: Optional[int] = None
+    cargo_weight: Optional[float] = None
+    cargo_category: Optional[str] = None
+    required_vehicle_class: Optional[str] = None
+    required_driver_qualification: Optional[str] = None
+    cargo_temperature_required: Optional[bool] = None
 
 class TripCreated(BaseModel):
     trip_id: str

@@ -361,9 +361,8 @@ class CopilotService:
             
             result = await self.uow.session.execute(
                 select(Expense.category, func.sum(Expense.amount).label("total_amount"))
-                .join(Driver, Driver.id == Expense.driver_id)
                 .where(
-                    Driver.company_id == int(self.company_id),
+                    Expense.company_id == int(self.company_id),
                     Expense.status == ExpenseStatus.APPROVED
                 )
                 .group_by(Expense.category)

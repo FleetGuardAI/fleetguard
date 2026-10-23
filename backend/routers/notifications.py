@@ -8,7 +8,7 @@ from database import get_db
 from models.user import User
 from models.notification import Notification
 from routers.auth import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,7 @@ class NotificationResponse(BaseModel):
     is_read: bool
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/api/v1/notifications", response_model=List[NotificationResponse])
 async def get_notifications(

@@ -64,7 +64,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_vehicle_locations_original_driver_location_id'), 'vehicle_locations', ['original_driver_location_id'], unique=True)
     op.create_index(op.f('ix_vehicle_locations_timestamp'), 'vehicle_locations', ['timestamp'], unique=False)
     op.create_index(op.f('ix_vehicle_locations_vehicle_id'), 'vehicle_locations', ['vehicle_id'], unique=False)
-    op.create_index(op.f('ix_vehicle_locations_vehicle_id'), 'vehicle_locations', ['vehicle_id'], unique=False)
     op.add_column('vehicles', sa.Column('last_known_lat', sa.Float(), nullable=True))
     op.add_column('vehicles', sa.Column('last_known_lng', sa.Float(), nullable=True))
     op.add_column('vehicles', sa.Column('last_location_at', sa.DateTime(timezone=True), nullable=True))

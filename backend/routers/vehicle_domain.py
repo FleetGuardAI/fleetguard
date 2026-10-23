@@ -16,7 +16,10 @@ from models.vehicle_domain import Vehicle, VehicleStatus
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
 from models.user import User
 from schemas.vehicle_domain import VehicleResponse, VehicleCreate, VehicleUpdated
-from services.auth_service import get_current_user
+from schemas.vehicle_economics import VehicleEconomicsResponse, FleetRollUpResponse
+from services.vehicle_economics_service import VehicleEconomicsService
+from services.auth_service import get_current_user, requires_role
+from models.user import User, UserRole
 
 router = APIRouter(prefix="/v1", tags=["Vehicle Domain"])
 
@@ -276,3 +279,42 @@ async def unassign_driver_from_vehicle(
     await db.commit()
     await db.refresh(vehicle)
     return VehicleResponse.model_validate(vehicle)
+
+
+@router.get("/vehicles/{vehicle_id}/economics", response_model=VehicleEconomicsResponse)
+async def get_vehicle_economics(
+    vehicle_id: int,
+    start_date: Optional[datetime] = Query(None, description="Start of accounting period"),
+    end_date: Optional[datetime] = Query(None, description="End of accounting period"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN, UserRole.ACCOUNTANT))
+) -> VehicleEconomicsResponse:
+    """Fetch authoritative vehicle-level economic metrics."""
+    service = VehicleEconomicsService(db)
+    econ = await service.get_vehicle_economics(
+        vehicle_id=vehicle_id,
+        company_id=current_user.company_id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    if not econ:
+        raise HTTPException(404, f"Vehicle {vehicle_id} not found or unauthorized")
+    return econ
+
+
+@router.get("/fleet/economics", response_model=FleetRollUpResponse)
+async def get_fleet_economics(
+    start_date: Optional[datetime] = Query(None, description="Start of accounting period"),
+    end_date: Optional[datetime] = Query(None, description="End of accounting period"),
+    include_vehicles: bool = Query(True, description="Whether to include per-vehicle breakdown"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN, UserRole.ACCOUNTANT))
+) -> FleetRollUpResponse:
+    """Fetch authoritative fleet-level rolled-up financial and operational economics."""
+    service = VehicleEconomicsService(db)
+    return await service.get_fleet_roll_up(
+        company_id=current_user.company_id,
+        start_date=start_date,
+        end_date=end_date,
+        include_vehicles=include_vehicles
+    )

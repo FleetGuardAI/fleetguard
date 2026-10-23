@@ -120,6 +120,10 @@ class PreTripEvaluateRequest(BaseModel):
     planned_end_time: Optional[datetime] = None
     revenue: Optional[float] = None
     cargo_weight: Optional[float] = None
+    cargo_category: Optional[str] = "GENERAL"
+    required_vehicle_class: Optional[str] = None
+    required_driver_qualification: Optional[str] = None
+    cargo_temperature_required: Optional[bool] = False
     
     # Legacy fields (optional now, mostly auto-derived)
     planned_distance: Optional[float] = None
@@ -168,6 +172,8 @@ class PreTripIntelligenceResponse(BaseModel):
     # --- Suitability ---
     vehicle_suitability: Optional[SuitabilityAssessment] = None
     driver_suitability: Optional[SuitabilityAssessment] = None
+    cargo_suitability: Optional[SuitabilityAssessment] = None
+    qualification_suitability: Optional[SuitabilityAssessment] = None
 
     # --- Transparency ---
     assumptions: List[Assumption] = Field(default_factory=list)

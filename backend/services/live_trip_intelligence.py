@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from models.trip_domain import Trip, TripStatus
-from models.expense_domain import Expense
+from models.expense_domain import Expense, ExpenseStatus
 from schemas.live_trip_intelligence import (
     LiveTripIntelligenceResponse,
     TripHealthStatus,
@@ -48,7 +48,10 @@ class LiveTripIntelligenceService:
             elapsed_hours = elapsed_td.total_seconds() / 3600.0
             
         # Actual cost so far
-        stmt = select(func.sum(Expense.amount)).where(Expense.trip_id == trip.id)
+        stmt = select(func.sum(Expense.amount)).where(
+            Expense.trip_id == trip.id,
+            Expense.status == ExpenseStatus.APPROVED
+        )
         res = await self.db.execute(stmt)
         actual_cost_so_far = res.scalar() or 0.0
         

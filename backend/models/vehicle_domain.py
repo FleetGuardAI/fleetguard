@@ -3,7 +3,7 @@ FleetGuard — Vehicle Domain ORM Models
 Represents a vehicle and its state in the fleet.
 """
 
-from sqlalchemy import Integer, String, Float, Enum, ForeignKey, Date
+from sqlalchemy import Integer, String, Float, Enum, ForeignKey, Date, DateTime, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, TYPE_CHECKING
 import enum
@@ -49,6 +49,46 @@ class Vehicle(Base):
         Float, nullable=False, default=400.0,
         comment="Fuel tank capacity in liters"
     )
+
+    # --- Capability & Cargo Specifications ---
+    vehicle_class: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, index=True,
+        comment="Vehicle class: LIGHT_COMMERCIAL, MEDIUM_DUTY, HEAVY_DUTY, TRAILER, TANKER"
+    )
+    payload_capacity_tonnes: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Maximum permitted cargo payload capacity in metric tonnes"
+    )
+    gross_vehicle_weight_tonnes: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Gross Vehicle Weight (GVW) in metric tonnes"
+    )
+    supported_cargo_categories: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True, default=list,
+        comment="Permitted cargo categories e.g. ['GENERAL', 'PERISHABLE', 'HAZARDOUS', 'LIQUID', 'BULK']"
+    )
+    body_type: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True,
+        comment="Body/trailer type e.g. FLATBED, CONTAINER, REFRIGERATED, TANKER, OPEN"
+    )
+    temperature_controlled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0",
+        comment="Whether vehicle has refrigeration/reefer equipment"
+    )
+    hazardous_certified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0",
+        comment="Whether vehicle has hazardous material transport certification"
+    )
+    
+    current_odometer: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    maintenance_interval_km: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    maintenance_interval_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    maintenance_status: Mapped[str] = mapped_column(String(50), nullable=False, default="NOT_DUE")
+    last_service_date: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_service_odometer: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    last_odometer_update_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # --- Business Status ---
     status: Mapped[VehicleStatus] = mapped_column(

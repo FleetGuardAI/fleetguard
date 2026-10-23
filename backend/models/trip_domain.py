@@ -3,7 +3,7 @@ FleetGuard — Trip Domain ORM Models
 Represents a trip's identity, status, locations, distance, and time.
 """
 
-from sqlalchemy import Integer, String, Enum, DateTime, Float, ForeignKey, Column, Text
+from sqlalchemy import Integer, String, Enum, DateTime, Float, ForeignKey, Column, Text, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, Any, TYPE_CHECKING
@@ -24,6 +24,7 @@ class TripStatus(str, enum.Enum):
     PAUSED = "PAUSED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
 
 
 class Trip(Base):
@@ -99,9 +100,29 @@ class Trip(Base):
         Float, nullable=True,
         comment="Planned fuel consumption in liters"
     )
+    actual_fuel_liters: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Measured or derived actual fuel consumed during the trip in liters"
+    )
     cargo_weight: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True,
         comment="Cargo weight in tonnes"
+    )
+    cargo_category: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default="GENERAL",
+        comment="Cargo category e.g. GENERAL, PERISHABLE, HAZARDOUS, LIQUID, BULK"
+    )
+    required_vehicle_class: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True,
+        comment="Mandatory vehicle class e.g. LIGHT_COMMERCIAL, MEDIUM_DUTY, HEAVY_DUTY, TRAILER, TANKER"
+    )
+    required_driver_qualification: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True,
+        comment="Required qualification e.g. HGV, HMV, HAZMAT, TANKER"
+    )
+    cargo_temperature_required: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, default=False, server_default="0",
+        comment="Whether the cargo requires active temperature control / refrigeration"
     )
 
     # --- Trip Intelligence: Queryable Fields ---

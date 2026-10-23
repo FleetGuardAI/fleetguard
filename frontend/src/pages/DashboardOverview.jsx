@@ -219,22 +219,36 @@ export default function DashboardOverview() {
               </h3>
               
               <div className="space-y-6 flex-1">
-                <div className="flex items-center justify-between py-3 border-b border-border/50">
-                  <span className="text-[13px] text-content-secondary font-medium">{t("Total Revenue")}</span>
-                  <span className="text-sm font-bold text-content">₹0</span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-border/50">
-                  <span className="text-[13px] text-content-secondary font-medium">{t("Total Expenses")}</span>
-                  <span className="text-sm font-bold text-content">₹{(dashboardData.kpis.total_expenses_month || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-border/50">
-                  <span className="text-[13px] text-content-secondary font-medium">{t("Net Profit")}</span>
-                  <span className="text-sm font-bold text-content">₹0</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-[13px] text-content-secondary font-medium">{t("Profit Margin")}</span>
-                  <span className="text-sm font-bold text-content">0%</span>
-                </div>
+                {(() => {
+                  const rev = dashboardData?.kpis?.monthly_revenue || 0;
+                  const exp = dashboardData?.kpis?.monthly_expenses || 0;
+                  const netProfit = rev - exp;
+                  const margin = rev > 0 ? ((netProfit / rev) * 100).toFixed(1) : 0;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between py-3 border-b border-border/50">
+                        <span className="text-[13px] text-content-secondary font-medium">{t("Total Revenue")}</span>
+                        <span className="text-sm font-bold text-content">₹{rev.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-border/50">
+                        <span className="text-[13px] text-content-secondary font-medium">{t("Total Expenses")}</span>
+                        <span className="text-sm font-bold text-content text-red-600">-₹{exp.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-border/50">
+                        <span className="text-[13px] text-content-secondary font-medium">{t("Net Profit")}</span>
+                        <span className={`text-sm font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {netProfit >= 0 ? '+' : ''}₹{netProfit.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-3">
+                        <span className="text-[13px] text-content-secondary font-medium">{t("Profit Margin")}</span>
+                        <span className={`text-sm font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {margin}%
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

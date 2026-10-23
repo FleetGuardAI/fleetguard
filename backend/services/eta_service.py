@@ -5,8 +5,8 @@ from models.trip_domain import Trip, TripStatus
 from models.vehicle_domain import Vehicle
 from services.routing_service import RoutingService
 from services.location_service import LocationService
-from database import AsyncSessionLocal
 import logging
+
 
 logger = logging.getLogger(__name__)
 

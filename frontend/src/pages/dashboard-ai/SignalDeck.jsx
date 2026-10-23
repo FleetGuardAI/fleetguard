@@ -91,7 +91,7 @@ export function SignalDeck({ signals, onResolve }) {
                   <div>
                     <span className="text-[10px] text-content-muted uppercase tracking-widest block mb-1">{t("Monthly Savings")}</span>
                     <p className="text-2xl font-bold text-content">
-                      ₹{(signal.potentialSaving || signal.savings || 475).toLocaleString('en-IN')}
+                      ₹{(signal.potentialSaving || signal.savings || 0).toLocaleString('en-IN')}
                     </p>
                   </div>
                   <div>

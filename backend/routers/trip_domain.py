@@ -16,8 +16,8 @@ from schemas.trip_domain import TripResponse, TripCreate, TripUpdated
 from schemas.trip_intelligence import TripIntelligenceResponse
 from schemas.pre_trip_intelligence import PreTripIntelligenceResponse, PreTripEvaluateRequest
 from schemas.live_trip_intelligence import LiveTripIntelligenceResponse
-from services.auth_service import get_current_user
-from models.user import User
+from services.auth_service import get_current_user, requires_role
+from models.user import User, UserRole
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
@@ -55,22 +55,32 @@ async def create_trip(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> TripResponse:
-    """Create a new trip explicitly (bypass event queue for sync operations)."""
-    from models.vehicle_domain import Vehicle
-    from models.driver_domain import Driver
+    """Create a new trip explicitly with assignment validation and operational event emission."""
+    from models.vehicle_domain import Vehicle, VehicleStatus
+    from models.driver_domain import Driver, DriverStatus
     from models.trip_domain import Trip, TripStatus
+    from services.trip_service import create_trip_operational_event
+    from services.dispatch_suitability_service import DispatchSuitabilityService
+    from models.operational_event import EventType
+    from sqlalchemy import select
 
-    vehicle = None
-    if payload.vehicle_id:
-        vehicle = await db.get(Vehicle, payload.vehicle_id)
-        if not vehicle or vehicle.company_id != current_user.company_id:
-            raise HTTPException(400, "Invalid vehicle_id")
-            
-    driver = None
-    if payload.driver_id:
-        driver = await db.get(Driver, payload.driver_id)
-        if not driver or driver.company_id != current_user.company_id:
-            raise HTTPException(400, "Invalid driver_id")
+    if payload.vehicle_id or payload.driver_id or payload.cargo_weight or payload.required_vehicle_class or payload.required_driver_qualification:
+        suitability_service = DispatchSuitabilityService(db)
+        suit_res = await suitability_service.evaluate_dispatch_suitability(
+            company_id=current_user.company_id,
+            vehicle_id=payload.vehicle_id,
+            driver_id=payload.driver_id,
+            planned_start=payload.planned_start_time,
+            planned_end=payload.planned_end_time,
+            route_distance_km=payload.route_distance_km or payload.planned_distance,
+            cargo_weight=payload.cargo_weight,
+            cargo_category=payload.cargo_category,
+            required_vehicle_class=payload.required_vehicle_class,
+            required_driver_qualification=payload.required_driver_qualification,
+            cargo_temperature_required=payload.cargo_temperature_required,
+        )
+        if suit_res.hard_failures:
+            raise HTTPException(400, "; ".join(suit_res.hard_failures))
             
     # Validate required receiver fields if any receiver info is provided
     has_receiver_info = any([
@@ -123,6 +133,10 @@ async def create_trip(
         planned_cost=payload.planned_cost,
         planned_fuel_liters=payload.planned_fuel_liters,
         cargo_weight=payload.cargo_weight,
+        cargo_category=payload.cargo_category or "GENERAL",
+        required_vehicle_class=payload.required_vehicle_class,
+        required_driver_qualification=payload.required_driver_qualification,
+        cargo_temperature_required=payload.cargo_temperature_required or False,
         customer_name=payload.customer_name,
         customer_phone=payload.customer_phone,
         customer_contact_person=payload.customer_contact_person,
@@ -160,7 +174,11 @@ async def create_trip(
             revenue=payload.revenue,
             planned_cost=payload.planned_cost,
             planned_fuel_liters=payload.planned_fuel_liters,
-            cargo_weight=payload.cargo_weight
+            cargo_weight=payload.cargo_weight,
+            cargo_category=payload.cargo_category,
+            required_vehicle_class=payload.required_vehicle_class,
+            required_driver_qualification=payload.required_driver_qualification,
+            cargo_temperature_required=payload.cargo_temperature_required
         )
         
         pre_service = PreTripIntelligenceService(db)
@@ -182,6 +200,44 @@ async def create_trip(
         
     db.add(trip)
     
+    # Authoritative OperationalEvent emissions
+    event_created = create_trip_operational_event(
+        company_id=current_user.company_id,
+        event_type=EventType.TRIP_CREATED,
+        trip_business_id=trip.trip_id,
+        payload={
+            "origin_location": trip.origin_location,
+            "destination_location": trip.destination_location,
+            "vehicle_id": trip.vehicle_id,
+            "driver_id": trip.driver_id,
+            "planned_distance": trip.planned_distance,
+            "revenue": trip.revenue,
+            "planned_cost": trip.planned_cost,
+        },
+        created_by=str(current_user.id)
+    )
+    db.add(event_created)
+
+    if payload.driver_id:
+        event_driver = create_trip_operational_event(
+            company_id=current_user.company_id,
+            event_type=EventType.TRIP_DRIVER_ASSIGNED,
+            trip_business_id=trip.trip_id,
+            payload={"driver_id": payload.driver_id},
+            created_by=str(current_user.id)
+        )
+        db.add(event_driver)
+
+    if payload.vehicle_id:
+        event_vehicle = create_trip_operational_event(
+            company_id=current_user.company_id,
+            event_type=EventType.TRIP_VEHICLE_ASSIGNED,
+            trip_business_id=trip.trip_id,
+            payload={"vehicle_id": payload.vehicle_id},
+            created_by=str(current_user.id)
+        )
+        db.add(event_vehicle)
+    
     if payload.driver_id:
         from models.driver_domain import Driver
         from models.notification import Notification, NotificationCategory
@@ -200,6 +256,7 @@ async def create_trip(
     await db.refresh(trip)
 
     return TripResponse.model_validate(trip)
+
 
 
 @router.get("/trips/search", response_model=List[TripResponse])
@@ -246,21 +303,218 @@ async def update_trip(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> TripResponse:
-    from models.trip_domain import Trip
-    trip = await db.get(Trip, trip_id)
-    if not trip or trip.company_id != current_user.company_id:
+    from models.trip_domain import Trip, TripStatus
+    from models.vehicle_domain import Vehicle, VehicleStatus
+    from models.driver_domain import Driver, DriverStatus
+    from services.trip_service import validate_state_transition, create_trip_operational_event
+    from models.operational_event import EventType
+    from sqlalchemy import select
+    from datetime import datetime, timezone
+
+    # Lock trip row for update to ensure concurrency safety
+    stmt = select(Trip).where(Trip.id == trip_id, Trip.company_id == current_user.company_id).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if not trip:
         raise HTTPException(404, f"Trip {trip_id} not found")
-    
-    if payload.status is not None:
+
+    # Terminal state protection
+    if trip.status in (TripStatus.COMPLETED, TripStatus.CANCELLED):
+        raise HTTPException(400, f"Cannot update a trip in terminal state '{trip.status.value}'")
+
+    # State transition check
+    if payload.status is not None and payload.status != trip.status:
+        if not validate_state_transition(trip.status, payload.status):
+            raise HTTPException(400, f"Invalid trip state transition from {trip.status.value} to {payload.status.value}")
+        old_status = trip.status
         trip.status = payload.status
-    if payload.vehicle_id is not None:
-        trip.vehicle_id = payload.vehicle_id
-    if payload.driver_id is not None:
+        if trip.status == TripStatus.IN_PROGRESS and not trip.actual_start_time:
+            trip.actual_start_time = datetime.now(timezone.utc)
+        elif trip.status == TripStatus.COMPLETED and not trip.actual_end_time:
+            trip.actual_end_time = datetime.now(timezone.utc)
+
+        # Emit corresponding event
+        status_event_map = {
+            TripStatus.IN_PROGRESS: EventType.TRIP_STARTED if old_status == TripStatus.CREATED else EventType.TRIP_RESUMED,
+            TripStatus.PAUSED: EventType.TRIP_PAUSED,
+            TripStatus.COMPLETED: EventType.TRIP_COMPLETED,
+            TripStatus.CANCELLED: EventType.TRIP_CANCELLED,
+        }
+        event_type = status_event_map.get(payload.status)
+        if event_type:
+            event = create_trip_operational_event(
+                company_id=current_user.company_id,
+                event_type=event_type,
+                trip_business_id=trip.trip_id,
+                payload={"from_status": old_status.value, "to_status": payload.status.value},
+                created_by=str(current_user.id)
+            )
+            db.add(event)
+
+    # State checks for driver / vehicle reassignment while trip is active
+    if payload.driver_id is not None and payload.driver_id != trip.driver_id:
+        if trip.status in (TripStatus.IN_PROGRESS, TripStatus.PAUSED):
+            raise HTTPException(400, "Cannot reassign driver while trip is active")
+
+    if payload.vehicle_id is not None and payload.vehicle_id != trip.vehicle_id:
+        if trip.status in (TripStatus.IN_PROGRESS, TripStatus.PAUSED):
+            raise HTTPException(400, "Cannot reassign vehicle while trip is active")
+
+    # Candidate values for assignment / cargo evaluation
+    target_vehicle_id = payload.vehicle_id if payload.vehicle_id is not None else trip.vehicle_id
+    target_driver_id = payload.driver_id if payload.driver_id is not None else trip.driver_id
+    target_cargo_weight = payload.cargo_weight if payload.cargo_weight is not None else trip.cargo_weight
+    target_cargo_category = payload.cargo_category if payload.cargo_category is not None else trip.cargo_category
+    target_req_vc = payload.required_vehicle_class if payload.required_vehicle_class is not None else trip.required_vehicle_class
+    target_req_dq = payload.required_driver_qualification if payload.required_driver_qualification is not None else trip.required_driver_qualification
+    target_temp_req = payload.cargo_temperature_required if payload.cargo_temperature_required is not None else trip.cargo_temperature_required
+
+    has_assignment_or_cargo_change = any([
+        payload.vehicle_id is not None and payload.vehicle_id != trip.vehicle_id,
+        payload.driver_id is not None and payload.driver_id != trip.driver_id,
+        payload.cargo_weight is not None,
+        payload.cargo_category is not None,
+        payload.required_vehicle_class is not None,
+        payload.required_driver_qualification is not None,
+        payload.cargo_temperature_required is not None
+    ])
+
+    if has_assignment_or_cargo_change:
+        from services.dispatch_suitability_service import DispatchSuitabilityService
+        suitability_service = DispatchSuitabilityService(db)
+        suit_res = await suitability_service.evaluate_dispatch_suitability(
+            company_id=current_user.company_id,
+            vehicle_id=target_vehicle_id,
+            driver_id=target_driver_id,
+            planned_start=trip.planned_start_time,
+            planned_end=trip.planned_end_time,
+            route_distance_km=trip.route_distance_km or trip.planned_distance,
+            cargo_weight=target_cargo_weight,
+            cargo_category=target_cargo_category,
+            required_vehicle_class=target_req_vc,
+            required_driver_qualification=target_req_dq,
+            cargo_temperature_required=target_temp_req,
+            exclude_trip_id=trip.id,
+        )
+        if suit_res.hard_failures:
+            raise HTTPException(400, "; ".join(suit_res.hard_failures))
+
+        if payload.cargo_weight is not None:
+            trip.cargo_weight = payload.cargo_weight
+        if payload.cargo_category is not None:
+            trip.cargo_category = payload.cargo_category
+        if payload.required_vehicle_class is not None:
+            trip.required_vehicle_class = payload.required_vehicle_class
+        if payload.required_driver_qualification is not None:
+            trip.required_driver_qualification = payload.required_driver_qualification
+        if payload.cargo_temperature_required is not None:
+            trip.cargo_temperature_required = payload.cargo_temperature_required
+
+    # Driver assignment / reassignment
+    if payload.driver_id is not None and payload.driver_id != trip.driver_id:
+        if trip.status in (TripStatus.IN_PROGRESS, TripStatus.PAUSED):
+            raise HTTPException(400, "Cannot reassign driver while trip is active")
+
+        driver = await db.get(Driver, payload.driver_id)
+        if not driver or driver.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid driver_id")
+        if driver.status != DriverStatus.ACTIVE:
+            raise HTTPException(400, f"Driver is not active (status is {driver.status.value})")
+
+        stmt_d = select(Trip).where(
+            Trip.driver_id == payload.driver_id,
+            Trip.status.in_([TripStatus.IN_PROGRESS, TripStatus.PAUSED]),
+            Trip.id != trip.id
+        )
+        if (await db.execute(stmt_d)).scalar_one_or_none():
+            raise HTTPException(400, "Assigned driver already has an active trip in progress")
+
         trip.driver_id = payload.driver_id
-        
+        event = create_trip_operational_event(
+            company_id=current_user.company_id,
+            event_type=EventType.TRIP_DRIVER_ASSIGNED,
+            trip_business_id=trip.trip_id,
+            payload={"driver_id": payload.driver_id},
+            created_by=str(current_user.id)
+        )
+        db.add(event)
+
+    # Vehicle assignment / reassignment
+    if payload.vehicle_id is not None and payload.vehicle_id != trip.vehicle_id:
+        if trip.status in (TripStatus.IN_PROGRESS, TripStatus.PAUSED):
+            raise HTTPException(400, "Cannot reassign vehicle while trip is active")
+
+        vehicle = await db.get(Vehicle, payload.vehicle_id)
+        if not vehicle or vehicle.company_id != current_user.company_id:
+            raise HTTPException(400, "Invalid vehicle_id")
+        if vehicle.status != VehicleStatus.ACTIVE:
+            raise HTTPException(400, f"Vehicle is not eligible for dispatch (status is {vehicle.status.value})")
+
+        stmt_v = select(Trip).where(
+            Trip.vehicle_id == payload.vehicle_id,
+            Trip.status.in_([TripStatus.IN_PROGRESS, TripStatus.PAUSED]),
+            Trip.id != trip.id
+        )
+        if (await db.execute(stmt_v)).scalar_one_or_none():
+            raise HTTPException(400, "Assigned vehicle already has an active trip in progress")
+
+        trip.vehicle_id = payload.vehicle_id
+        event = create_trip_operational_event(
+            company_id=current_user.company_id,
+            event_type=EventType.TRIP_VEHICLE_ASSIGNED,
+            trip_business_id=trip.trip_id,
+            payload={"vehicle_id": payload.vehicle_id},
+            created_by=str(current_user.id)
+        )
+        db.add(event)
+
     await db.commit()
     await db.refresh(trip)
     return TripResponse.model_validate(trip)
+
+
+@router.post("/trips/{trip_id}/cancel", response_model=TripResponse)
+async def cancel_trip(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> TripResponse:
+    """
+    Cancel an active or planned trip.
+    Validates company ownership, state machine, releases resources,
+    and records an authoritative TRIP_CANCELLED operational event.
+    """
+    from models.trip_domain import Trip, TripStatus
+    from services.trip_service import create_trip_operational_event
+    from models.operational_event import EventType
+    from sqlalchemy import select
+
+    stmt = select(Trip).where(Trip.id == trip_id, Trip.company_id == current_user.company_id).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if not trip:
+        raise HTTPException(404, f"Trip {trip_id} not found")
+
+    if trip.status == TripStatus.COMPLETED:
+        raise HTTPException(400, "Cannot cancel an already completed trip")
+
+    if trip.status == TripStatus.CANCELLED:
+        return TripResponse.model_validate(trip)
+
+    trip.status = TripStatus.CANCELLED
+
+    event = create_trip_operational_event(
+        company_id=current_user.company_id,
+        event_type=EventType.TRIP_CANCELLED,
+        trip_business_id=trip.trip_id,
+        payload={"reason": "Cancelled by dispatcher/admin"},
+        created_by=str(current_user.id)
+    )
+    db.add(event)
+    await db.commit()
+    await db.refresh(trip)
+    return TripResponse.model_validate(trip)
+
 
 
 @router.post("/trips/intelligence/evaluate", response_model=PreTripIntelligenceResponse)
@@ -362,3 +616,29 @@ async def get_trips_by_driver(
     service = TripService(uow)
     trips = await service.get_trips_by_driver(driver_id, limit=limit, offset=offset, company_id=current_user.company_id)
     return [TripResponse.model_validate(t) for t in trips]
+
+
+@router.post("/trips/{trip_id}/retry-telemetry", response_model=TripResponse)
+async def retry_trip_telemetry(
+    trip_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN, UserRole.DISPATCHER))
+) -> TripResponse:
+    """Manually trigger telemetry finalization for a completed trip.
+    This is an idempotent operation that recalculates canonical GPS and fuel distances if missing.
+    """
+    from models.trip_domain import Trip
+    from services.trip_completion_service import TripCompletionService
+    
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+        
+    if trip.status != TripStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Only completed trips can have telemetry finalized.")
+        
+    svc = TripCompletionService(db)
+    await svc.finalize_trip_telemetry(trip.id)
+    await db.refresh(trip)
+    
+    return TripResponse.model_validate(trip)

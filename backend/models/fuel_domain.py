@@ -82,37 +82,53 @@ class FuelState(Base):
 class FuelTransaction(Base):
     """
     Historical ledger of fuel changes (fills, adjustments).
+    Acts as the canonical record for manual fuel fills and sensor adjustments.
     """
     __tablename__ = "fuel_transactions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    vehicle_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("vehicles.id"), nullable=False, index=True
-    )
+    
+    # Multi-tenancy
+    company_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    
+    # Links
+    vehicle_id: Mapped[int] = mapped_column(Integer, ForeignKey("vehicles.id"), nullable=False, index=True)
+    driver_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    trip_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    expense_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, unique=True, index=True, comment="Linked financial expense")
+
     transaction_type: Mapped[FuelTransactionType] = mapped_column(
         Enum(FuelTransactionType, native_enum=False, length=50),
         nullable=False, index=True
     )
+    
+    # Fuel specific details
     amount_liters: Mapped[float] = mapped_column(
         Float, nullable=False,
         comment="Amount of fuel changed in liters (can be positive or negative for adjustments)"
     )
+    fuel_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="DIESEL")
+    price_per_liter: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    odometer: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    station: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    receipt_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    
+    # Reconciliation
+    reconciliation_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="UNMATCHED")
+    reconciled_sensor_liters: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    variance_liters: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Traceability
-    origin_type: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True
-    )
-    origin_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True
-    )
+    origin_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    origin_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True,
         comment="When the transaction occurred"
     )
-    description: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True
-    )
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -122,4 +138,4 @@ class FuelTransaction(Base):
     vehicle: Mapped["Vehicle"] = relationship("Vehicle")
 
     def __repr__(self) -> str:
-        return f"<FuelTransaction(id={self.id}, vehicle={self.vehicle_id}, type={self.transaction_type.value}, amount={self.amount_liters}L)>"
+        return f"<FuelTransaction(id={self.id}, vehicle={self.vehicle_id}, type={self.transaction_type.value}, amount={self.amount_liters}L, cost={self.total_cost})>"

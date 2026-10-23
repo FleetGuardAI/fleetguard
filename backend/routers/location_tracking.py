@@ -57,7 +57,7 @@ class LocationResponse(BaseModel):
     timestamp: datetime
     battery_percent: Optional[int] = None
     activity_state: Optional[str] = None
-    source: str
+    source: str = "driver_app"
 
     model_config = {"from_attributes": True}
 
@@ -187,7 +187,10 @@ async def get_driver_location_history(
     if driver is None or driver.company_id != current_user.company_id:
         raise HTTPException(404, "Driver not found")
 
-    query = select(DriverLocation).where(DriverLocation.driver_id == driver_id)
+    query = select(DriverLocation).where(
+        DriverLocation.driver_id == driver_id,
+        DriverLocation.company_id == current_user.company_id
+    )
     
     if start_time:
         query = query.where(DriverLocation.timestamp >= start_time)
@@ -224,12 +227,14 @@ async def get_trip_route_history(
         select(DriverLocation)
         .where(
             DriverLocation.driver_id == trip.driver_id,
+            DriverLocation.company_id == trip.company_id,
             DriverLocation.timestamp >= start_time,
             DriverLocation.timestamp <= end_time
         )
         .order_by(DriverLocation.timestamp.asc())
         .limit(2000)
     )
+
     result = await db.execute(query)
     locations = result.scalars().all()
 

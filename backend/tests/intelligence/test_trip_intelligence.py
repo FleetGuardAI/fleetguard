@@ -65,9 +65,9 @@ class TestTripIntelligenceService(unittest.TestCase):
         )
 
         expenses = [
-            Expense(id=1, trip_id=1, category=ExpenseCategory.FUEL, amount=30000.0, status=ExpenseStatus.RECORDED, business_id="EXP-1", origin_type="test", origin_id="1"),
-            Expense(id=2, trip_id=1, category=ExpenseCategory.TOLL, amount=5000.0, status=ExpenseStatus.RECORDED, business_id="EXP-2", origin_type="test", origin_id="2"),
-            Expense(id=3, trip_id=1, category=ExpenseCategory.SALARY, amount=10000.0, status=ExpenseStatus.RECORDED, business_id="EXP-3", origin_type="test", origin_id="3"),
+            Expense(id=1, trip_id=1, category=ExpenseCategory.FUEL, amount=30000.0, status=ExpenseStatus.APPROVED, business_id="EXP-1", origin_type="test", origin_id="1"),
+            Expense(id=2, trip_id=1, category=ExpenseCategory.TOLL, amount=5000.0, status=ExpenseStatus.APPROVED, business_id="EXP-2", origin_type="test", origin_id="2"),
+            Expense(id=3, trip_id=1, category=ExpenseCategory.SALARY, amount=10000.0, status=ExpenseStatus.APPROVED, business_id="EXP-3", origin_type="test", origin_id="3"),
         ]
 
         fuel_txns = [
@@ -105,9 +105,9 @@ class TestTripIntelligenceService(unittest.TestCase):
         )
 
         expenses = [
-            Expense(id=4, trip_id=2, category=ExpenseCategory.FUEL, amount=35000.0, status=ExpenseStatus.RECORDED, business_id="EXP-4", origin_type="test", origin_id="4"),
-            Expense(id=5, trip_id=2, category=ExpenseCategory.DETENTION, amount=12000.0, status=ExpenseStatus.RECORDED, business_id="EXP-5", origin_type="test", origin_id="5"),
-            Expense(id=6, trip_id=2, category=ExpenseCategory.MAINTENANCE, amount=15000.0, status=ExpenseStatus.RECORDED, business_id="EXP-6", origin_type="test", origin_id="6"),
+            Expense(id=4, trip_id=2, category=ExpenseCategory.FUEL, amount=35000.0, status=ExpenseStatus.APPROVED, business_id="EXP-4", origin_type="test", origin_id="4"),
+            Expense(id=5, trip_id=2, category=ExpenseCategory.DETENTION, amount=12000.0, status=ExpenseStatus.APPROVED, business_id="EXP-5", origin_type="test", origin_id="5"),
+            Expense(id=6, trip_id=2, category=ExpenseCategory.MAINTENANCE, amount=15000.0, status=ExpenseStatus.APPROVED, business_id="EXP-6", origin_type="test", origin_id="6"),
         ]
 
         uow = MockUnitOfWork(expenses=expenses, fuel=[], trips=[trip])
@@ -159,6 +159,7 @@ class TestTripIntelligenceService(unittest.TestCase):
             revenue=80000.0,
             planned_cost=30000.0,
             planned_fuel_liters=100.0,
+            actual_fuel_liters=135.0,
         )
 
         # Actual fuel = 135L (+35% fuel variance)
@@ -194,7 +195,7 @@ class TestTripIntelligenceService(unittest.TestCase):
         )
 
         expenses = [
-            Expense(id=7, trip_id=5, category=ExpenseCategory.DETENTION, amount=8000.0, status=ExpenseStatus.RECORDED, business_id="EXP-7", origin_type="test", origin_id="7")
+            Expense(id=7, trip_id=5, category=ExpenseCategory.DETENTION, amount=8000.0, status=ExpenseStatus.APPROVED, business_id="EXP-7", origin_type="test", origin_id="7")
         ]
 
         uow = MockUnitOfWork(expenses=expenses, fuel=[], trips=[trip])

@@ -34,11 +34,40 @@ class FuelAdjustment(BaseModel):
 # Response Schemas (Read Models)
 # ===========================================================================
 
+class FuelTransactionCreate(BaseModel):
+    vehicle_id: int
+    driver_id: Optional[int] = None
+    trip_id: Optional[int] = None
+    fuel_type: Optional[str] = "DIESEL"
+    quantity_liters: float = Field(..., gt=0)
+    price_per_liter: float = Field(..., ge=0)
+    odometer: Optional[float] = Field(None, ge=0)
+    station: Optional[str] = None
+    receipt_url: Optional[str] = None
+    occurred_at: Optional[datetime] = None
+    description: Optional[str] = None
+
 class FuelTransactionResponse(BaseModel):
     id: int
+    company_id: int
     vehicle_id: int
+    driver_id: Optional[int] = None
+    trip_id: Optional[int] = None
+    expense_id: Optional[int] = None
     transaction_type: FuelTransactionType
     amount_liters: float
+    fuel_type: Optional[str] = None
+    price_per_liter: Optional[float] = None
+    total_cost: Optional[float] = None
+    odometer: Optional[float] = None
+    station: Optional[str] = None
+    receipt_url: Optional[str] = None
+    
+    # Reconciliation
+    reconciliation_status: Optional[str] = None
+    reconciled_sensor_liters: Optional[float] = None
+    variance_liters: Optional[float] = None
+    
     origin_type: Optional[str] = None
     origin_id: Optional[str] = None
     timestamp: datetime

@@ -13,7 +13,7 @@ from models.vehicle_domain import Vehicle, VehicleStatus
 from models.driver_domain import Driver, DriverStatus
 from models.expense_domain import Expense, ExpenseStatus
 from models.trip_domain import Trip, TripStatus
-from models.user import User
+from models.user import User, UserRole
 from services.auth_service import get_current_user
 from schemas.trip_domain import TripResponse
 from typing import List
@@ -27,6 +27,7 @@ class OwnerDashboardKPIs(BaseModel):
     total_active_drivers: int
     active_trips: int
     monthly_expenses: float
+    monthly_revenue: float
     attention_required: int
 
 
@@ -76,14 +77,24 @@ async def get_owner_dashboard_kpis(
     # Monthly Expenses (via Driver)
     expenses_month_result = await db.execute(
         select(func.coalesce(func.sum(Expense.amount), 0.0))
-        .join(Driver, Driver.id == Expense.driver_id)
         .where(
             Expense.status == ExpenseStatus.APPROVED,
-            Expense.updated_at >= month_start,
-            Driver.company_id == current_user.company_id
+            Expense.expense_date >= month_start,
+            Expense.company_id == current_user.company_id
         )
     )
     monthly_expenses = float(expenses_month_result.scalar() or 0)
+
+    # Monthly Revenue (from completed trips)
+    revenue_month_result = await db.execute(
+        select(func.coalesce(func.sum(Trip.revenue), 0.0))
+        .where(
+            Trip.status == TripStatus.COMPLETED,
+            Trip.actual_end_time >= month_start,
+            Trip.company_id == current_user.company_id
+        )
+    )
+    monthly_revenue = float(revenue_month_result.scalar() or 0)
 
     from models.ticket import Ticket, TicketStatus
     # Attention Required (Pending Tickets)
@@ -102,6 +113,7 @@ async def get_owner_dashboard_kpis(
         total_active_drivers=active_drivers,
         active_trips=active_trips,
         monthly_expenses=monthly_expenses,
+        monthly_revenue=monthly_revenue,
         attention_required=attention_required,
     )
 
@@ -119,11 +131,10 @@ async def get_expense_analytics(
     # We need fuel, maintenance, and other
     result = await db.execute(
         select(Expense.category, func.sum(Expense.amount))
-        .join(Driver, Driver.id == Expense.driver_id)
         .where(
             Expense.status == ExpenseStatus.APPROVED,
-            Expense.updated_at >= month_start,
-            Driver.company_id == current_user.company_id
+            Expense.expense_date >= month_start,
+            Expense.company_id == current_user.company_id
         )
         .group_by(Expense.category)
     )
@@ -225,15 +236,21 @@ async def approve_expense(
     current_user: User = Depends(get_current_user),
 ):
     from fastapi import HTTPException
+    
+    REVIEWER_ROLES = {UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN}
+    if current_user.role not in REVIEWER_ROLES:
+        raise HTTPException(403, "You do not have permission to approve expenses")
+        
     expense = await db.get(Expense, expense_id)
     if not expense:
         raise HTTPException(404, "Expense not found")
         
-    driver = await db.get(Driver, expense.driver_id)
-    if not driver or driver.company_id != current_user.company_id:
+    if expense.company_id != current_user.company_id:
         raise HTTPException(400, "Unauthorized: Expense belongs to another company")
         
     expense.status = ExpenseStatus.APPROVED
+    expense.reviewed_by = str(current_user.id)
+    expense.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     return {"message": "Expense approved", "status": expense.status.value}
 
@@ -244,15 +261,21 @@ async def reject_expense(
     current_user: User = Depends(get_current_user),
 ):
     from fastapi import HTTPException
+    
+    REVIEWER_ROLES = {UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN}
+    if current_user.role not in REVIEWER_ROLES:
+        raise HTTPException(403, "You do not have permission to reject expenses")
+        
     expense = await db.get(Expense, expense_id)
     if not expense:
         raise HTTPException(404, "Expense not found")
         
-    driver = await db.get(Driver, expense.driver_id)
-    if not driver or driver.company_id != current_user.company_id:
+    if expense.company_id != current_user.company_id:
         raise HTTPException(400, "Unauthorized: Expense belongs to another company")
         
     expense.status = ExpenseStatus.REJECTED
+    expense.reviewed_by = str(current_user.id)
+    expense.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     return {"message": "Expense rejected", "status": expense.status.value}
 
@@ -270,7 +293,10 @@ async def get_owner_trip_pod(
         raise HTTPException(404, "Trip not found or unauthorized")
         
     result = await db.execute(
-        select(ProofOfDelivery).where(ProofOfDelivery.trip_id == trip_id)
+        select(ProofOfDelivery).where(
+            ProofOfDelivery.trip_id == trip_id,
+            ProofOfDelivery.company_id == current_user.company_id
+        )
     )
     pod = result.scalar_one_or_none()
     
@@ -317,6 +343,8 @@ async def get_vehicle_insights(
     current_user: User = Depends(get_current_user),
 ):
     from fastapi import HTTPException
+    from services.vehicle_economics_service import VehicleEconomicsService
+    from models.location_tracking import DriverLocation
     
     vehicle = await db.get(Vehicle, vehicle_id)
     if not vehicle or vehicle.company_id != current_user.company_id:
@@ -326,42 +354,61 @@ async def get_vehicle_insights(
     trip_result = await db.execute(
         select(Trip).where(
             Trip.vehicle_id == vehicle_id,
+            Trip.company_id == current_user.company_id,
             Trip.status == TripStatus.IN_PROGRESS
         ).order_by(Trip.id.desc()).limit(1)
     )
     active_trip = trip_result.scalar_one_or_none()
     
-    # Get total expenses
-    expense_result = await db.execute(
-        select(func.coalesce(func.sum(Expense.amount), 0.0)).where(
-            Expense.vehicle_id == vehicle_id,
-            Expense.status == ExpenseStatus.APPROVED
-        )
-    )
-    total_expenses = float(expense_result.scalar() or 0.0)
+    # Authoritative canonical economics
+    econ_svc = VehicleEconomicsService(db)
+    econ = await econ_svc.get_vehicle_economics(vehicle_id=vehicle_id, company_id=current_user.company_id)
     
-    # Get utilization (count of trips completed)
-    completed_trips_result = await db.execute(
-        select(func.count(Trip.id)).where(
-            Trip.vehicle_id == vehicle_id,
-            Trip.status == TripStatus.COMPLETED
+    # Get last known location if available
+    loc_stmt = (
+        select(DriverLocation)
+        .where(
+            DriverLocation.company_id == current_user.company_id,
+            DriverLocation.driver_id == vehicle.assigned_driver_id
         )
-    )
-    completed_trips = completed_trips_result.scalar() or 0
+        .order_by(DriverLocation.timestamp.desc())
+        .limit(1)
+    ) if vehicle.assigned_driver_id else None
     
+    last_loc = None
+    if loc_stmt is not None:
+        loc_res = await db.execute(loc_stmt)
+        loc_row = loc_res.scalar_one_or_none()
+        if loc_row:
+            last_loc = {
+                "latitude": loc_row.latitude,
+                "longitude": loc_row.longitude,
+                "timestamp": loc_row.timestamp.isoformat() if loc_row.timestamp else None
+            }
+
     return {
         "vehicle_id": vehicle.id,
+        "registration_number": vehicle.registration_number,
         "active_trip": {
             "id": active_trip.id,
             "origin": active_trip.origin_location,
             "destination": active_trip.destination_location,
             "status": active_trip.status.value,
         } if active_trip else None,
-        "total_expenses": total_expenses,
-        "completed_trips": completed_trips,
-        "utilization_percentage": None, 
-        "maintenance_status": None,
-        "last_known_location": None
+        "total_expenses": econ.total_operating_costs if econ else 0.0,
+        "trip_linked_costs": econ.trip_linked_costs if econ else 0.0,
+        "vehicle_only_costs": econ.vehicle_only_costs if econ else 0.0,
+        "realized_revenue": econ.realized_revenue if econ else 0.0,
+        "operating_profit": econ.operating_profit if econ else 0.0,
+        "operating_margin_pct": econ.operating_margin_pct if econ else None,
+        "completed_trips": econ.completed_trips_count if econ else 0,
+        "utilization_percentage": econ.utilization_rate_pct if econ else None,
+        "activity_score": econ.activity_score if econ else None,
+        "maintenance_status": econ.maintenance_status if econ else (vehicle.maintenance_status or "NOT_DUE"),
+        "last_known_location": last_loc,
+        "cost_per_km": econ.cost_per_km if econ else None,
+        "revenue_per_km": econ.revenue_per_km if econ else None,
+        "fuel_efficiency_kmpl": econ.fuel_efficiency_kmpl if econ else None
     }
 
 @router.get("/wallet-transactions")

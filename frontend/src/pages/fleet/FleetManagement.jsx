@@ -209,57 +209,79 @@ export default function FleetManagement() {
               </div>
 
               {/* ─── EMI DETAILS CARD ─── */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border shadow-sm">
-                <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
-                      <CreditCard className="w-5 h-5" />
+              {selectedTruck.emi ? (
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border shadow-sm">
+                  <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-content text-base">Truck EMI & Loan Breakdown</h3>
+                        <p className="text-xs text-content-muted">{selectedTruck.emi.bank}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-content text-base">Truck EMI & Loan Breakdown</h3>
-                      <p className="text-xs text-content-muted">{selectedTruck.emi?.bank || 'HDFC Bank Commercial Auto'}</p>
+                    <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                      {selectedTruck.emi.status || 'Active EMI'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+                    <div className="bg-surface-secondary p-3 rounded-xl border border-border">
+                      <span className="text-[11px] font-semibold text-content-muted block mb-0.5">Total Loan Amount</span>
+                      <p className="text-base font-bold text-content">{formatCurrency(selectedTruck.emi.total_loan || 0)}</p>
+                    </div>
+                    <div className="bg-surface-secondary p-3 rounded-xl border border-border">
+                      <span className="text-[11px] font-semibold text-content-muted block mb-0.5">Monthly EMI</span>
+                      <p className="text-base font-bold text-brand-600">{formatCurrency(selectedTruck.emi.monthly_emi || 0)}/mo</p>
+                    </div>
+                    <div className="bg-surface-secondary p-3 rounded-xl border border-border">
+                      <span className="text-[11px] font-semibold text-content-muted block mb-0.5">EMI Paid till date</span>
+                      <p className="text-base font-bold text-emerald-600">{formatCurrency(selectedTruck.emi.emi_paid_amount || 0)}</p>
+                    </div>
+                    <div className="bg-surface-secondary p-3 rounded-xl border border-border">
+                      <span className="text-[11px] font-semibold text-content-muted block mb-0.5">EMI Left (Remaining)</span>
+                      <p className="text-base font-bold text-red-600 dark:text-red-400">{formatCurrency(selectedTruck.emi.emi_remaining_amount || 0)}</p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 text-xs font-bold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                    {selectedTruck.emi?.status || 'Active EMI'}
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-                  <div className="bg-surface-secondary p-3 rounded-xl border border-border">
-                    <span className="text-[11px] font-semibold text-content-muted block mb-0.5">Total Loan Amount</span>
-                    <p className="text-base font-bold text-content">{formatCurrency(selectedTruck.emi?.total_loan || 0)}</p>
-                  </div>
-                  <div className="bg-surface-secondary p-3 rounded-xl border border-border">
-                    <span className="text-[11px] font-semibold text-content-muted block mb-0.5">Monthly EMI</span>
-                    <p className="text-base font-bold text-brand-600">{formatCurrency(selectedTruck.emi?.monthly_emi || 0)}/mo</p>
-                  </div>
-                  <div className="bg-surface-secondary p-3 rounded-xl border border-border">
-                    <span className="text-[11px] font-semibold text-content-muted block mb-0.5">EMI Paid till date</span>
-                    <p className="text-base font-bold text-emerald-600">{formatCurrency(selectedTruck.emi?.emi_paid_amount || 0)}</p>
-                  </div>
-                  <div className="bg-surface-secondary p-3 rounded-xl border border-border">
-                    <span className="text-[11px] font-semibold text-content-muted block mb-0.5">EMI Left (Remaining)</span>
-                    <p className="text-base font-bold text-red-600 dark:text-red-400">{formatCurrency(selectedTruck.emi?.emi_remaining_amount || 0)}</p>
+                  {/* EMI Progress Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1 text-content-muted">
+                      <span>Tenure Paid: {selectedTruck.emi.emi_paid_months || 0} / {selectedTruck.emi.total_months || 0} Months</span>
+                      <span>Next Due: {selectedTruck.emi.next_due_date || 'N/A'}</span>
+                    </div>
+                    <div className="w-full bg-surface-secondary rounded-full h-3 overflow-hidden border border-border">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.round(((selectedTruck.emi.emi_paid_months || 0) / (selectedTruck.emi.total_months || 1)) * 100)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-
-                {/* EMI Progress Bar */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1 text-content-muted">
-                    <span>Tenure Paid: {selectedTruck.emi?.emi_paid_months || 0} / {selectedTruck.emi?.total_months || 0} Months</span>
-                    <span>Next Due: {selectedTruck.emi?.next_due_date || 'N/A'}</span>
+              ) : (
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border shadow-sm">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-content text-base">Ownership & Finance</h3>
+                        <p className="text-xs text-content-muted">{selectedTruck.ownership_info || 'Company Owned'}</p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      No Active EMI
+                    </span>
                   </div>
-                  <div className="w-full bg-surface-secondary rounded-full h-3 overflow-hidden border border-border">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: selectedTruck.emi ? `${Math.round(((selectedTruck.emi?.emi_paid_months || 0) / (selectedTruck.emi?.total_months || 1)) * 100)}%` : '0%',
-                      }}
-                    />
-                  </div>
+                  <p className="text-xs text-content-secondary mt-3">
+                    No active loan or third-party financing record is linked to this vehicle.
+                  </p>
                 </div>
-              </div>
+              )}
 
               {/* ─── MAINTENANCE WORK STATUS ─── */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border shadow-sm">

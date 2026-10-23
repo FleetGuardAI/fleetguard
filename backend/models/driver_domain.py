@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from models.ticket import Ticket
     from models.company import Company
     from models.user import User
+    from models.driver_qualification import DriverQualification
+
 
 
 class DriverStatus(str, enum.Enum):
@@ -133,6 +135,10 @@ class Driver(Base):
     company: Mapped[Optional["Company"]] = relationship("Company", lazy="selectin")
     user: Mapped[Optional["User"]] = relationship("User", lazy="selectin")
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="driver")
+    qualifications: Mapped[list["DriverQualification"]] = relationship(
+        "DriverQualification", back_populates="driver", lazy="selectin", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
+
         return f"<Driver(id={self.id}, name='{self.name}', status='{self.status.value}')>"

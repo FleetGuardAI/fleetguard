@@ -8,7 +8,7 @@ from database import get_db
 from models.admin_domain import AdminUser, AdminAuditLog
 from models.support_domain import PasswordResetRequestAdmin, RequesterType
 from services.admin_auth_service import require_admin_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 router = APIRouter(prefix="/api/v1/admin/password-resets", tags=["Admin Password Resets"])
 
@@ -23,8 +23,7 @@ class PasswordResetResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/", response_model=List[PasswordResetResponse])
 async def list_password_resets(
