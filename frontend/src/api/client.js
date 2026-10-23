@@ -5,7 +5,12 @@
  */
 
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').trim();
+const trimmedBase = rawApiUrl.replace(/\/+$/, '');
+const API_BASE = (trimmedBase && !trimmedBase.endsWith('/api'))
+  ? `${trimmedBase}/api`
+  : (trimmedBase || '/api');
+
 
 function getApiErrorMessage(error) {
   if (error?.detail) {
@@ -35,7 +40,11 @@ function getApiErrorMessage(error) {
  * @returns {Promise<any>}
  */
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (API_BASE.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.substring(4);
+  }
+  const url = `${API_BASE}${cleanEndpoint}`;
   
   const localToken = localStorage.getItem('fleetguard_token');
   const sessionToken = sessionStorage.getItem('fleetguard_token');
@@ -388,11 +397,11 @@ const api = {
   // (duplicate fleet block removed — see fleet definition above)
   
   // ── Generic REST Methods ───────────────────────────────
-  get: (url) => request(url),
-  post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
-  put: (url, body) => request(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
-  patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: (url) => request(url, { method: 'DELETE' }),
+  get: (url, options = {}) => request(url, { ...options, method: 'GET' }),
+  post: (url, body, options = {}) => request(url, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  put: (url, body, options = {}) => request(url, { ...options, method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+  patch: (url, body, options = {}) => request(url, { ...options, method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  delete: (url, options = {}) => request(url, { ...options, method: 'DELETE' }),
 };
 
 export default api;

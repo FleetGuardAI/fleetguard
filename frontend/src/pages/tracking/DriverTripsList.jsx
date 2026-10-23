@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Route, Clock, Navigation, AlertTriangle, CheckCircle, Play, ChevronRight, Calendar, ArrowUpDown, Filter } from 'lucide-react';
+import {
+  Route, Clock, Navigation, AlertTriangle, CheckCircle,
+  Play, ChevronRight, Calendar, ArrowUpDown, Filter, AlertCircle, RefreshCw
+} from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatDateTime, formatDurationMinutes } from '@/utils/dateTime';
 
@@ -14,13 +17,16 @@ export function DriverTripsList({
   onSelectTrip,
   onClearTrip,
   isLoading = false,
+  error = null,
+  onRetry = null,
   driverName = ''
 }) {
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, distance, duration
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, COMPLETED, IN_PROGRESS, SCHEDULED, CANCELLED
 
   // Filter trips
-  const filteredTrips = trips.filter((trip) => {
+  const filteredTrips = (trips || []).filter((trip) => {
+    if (!trip) return false;
     if (statusFilter === 'ALL') return true;
     const status = (trip.status || '').toUpperCase();
     if (statusFilter === 'IN_PROGRESS') return status === 'IN_PROGRESS' || status === 'ON-TRIP';
@@ -29,13 +35,13 @@ export function DriverTripsList({
 
   // Sort trips
   const sortedTrips = [...filteredTrips].sort((a, b) => {
-    const timeA = new Date(a.start_time || a.start_date || a.created_at || 0).getTime();
-    const timeB = new Date(b.start_time || b.start_date || b.created_at || 0).getTime();
+    const timeA = new Date(a.actual_start_time || a.planned_start_time || a.start_time || a.created_at || 0).getTime();
+    const timeB = new Date(b.actual_start_time || b.planned_start_time || b.start_time || b.created_at || 0).getTime();
 
     if (sortBy === 'newest') return timeB - timeA;
     if (sortBy === 'oldest') return timeA - timeB;
-    if (sortBy === 'distance') return (b.distance_km || 0) - (a.distance_km || 0);
-    if (sortBy === 'duration') return (b.duration_minutes || 0) - (a.duration_minutes || 0);
+    if (sortBy === 'distance') return ((b.actual_distance || b.route_distance_km || b.distance_km || 0) - (a.actual_distance || a.route_distance_km || a.distance_km || 0));
+    if (sortBy === 'duration') return ((b.duration_minutes || 0) - (a.duration_minutes || 0));
     return 0;
   });
 
@@ -77,12 +83,15 @@ export function DriverTripsList({
           <div className="flex items-center gap-1.5">
             <Route className="w-4 h-4 text-brand-600" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              Driver Trips ({trips.length})
+              Driver Trips ({error ? '0' : (trips || []).length})
             </h3>
           </div>
           {selectedTrip && (
             <button
-              onClick={onClearTrip}
+              type="button"
+              onClick={() => {
+                if (typeof onClearTrip === 'function') onClearTrip();
+              }}
               className="text-[11px] font-semibold text-brand-600 hover:text-brand-800 underline transition-colors"
             >
               View Full History
@@ -98,7 +107,7 @@ export function DriverTripsList({
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full text-[11px] py-1 pl-2 pr-6 bg-white border border-slate-200 rounded-md text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500"
             >
-              <option value="ALL">All Statuses ({trips.length})</option>
+              <option value="ALL">All Statuses ({(trips || []).length})</option>
               <option value="IN_PROGRESS">Active / In Progress</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
@@ -122,7 +131,29 @@ export function DriverTripsList({
 
       {/* Trips list */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-        {isLoading ? (
+        {error && (trips || []).length === 0 ? (
+          <div className="p-6 text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-rose-700">Failed to load trips</p>
+              <p className="text-[11px] text-content-muted mt-1 max-w-[200px] mx-auto leading-relaxed">
+                {typeof error === 'string' ? error : 'Unable to retrieve historical trip records.'}
+              </p>
+            </div>
+            {typeof onRetry === 'function' && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-xs transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            )}
+          </div>
+        ) : isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((n) => (
               <div key={n} className="animate-pulse space-y-2 p-2 rounded-lg bg-slate-50">
@@ -145,18 +176,25 @@ export function DriverTripsList({
         ) : (
           sortedTrips.map((trip) => {
             const isSelected = selectedTrip && (selectedTrip.id === trip.id || selectedTrip.trip_id === trip.trip_id);
-            const startTime = trip.start_time || trip.start_date || trip.created_at;
-            const endTime = trip.end_time || trip.end_date;
-            const distance = typeof trip.distance_km === 'number' ? `${trip.distance_km.toFixed(1)} km` : 'Not available';
+            const startTime = trip.actual_start_time || trip.planned_start_time || trip.start_time || trip.created_at;
+            const distNum = trip.actual_distance || trip.route_distance_km || trip.distance_km;
+            const distance = typeof distNum === 'number' ? `${distNum.toFixed(1)} km` : 'Not recorded';
             const duration = trip.duration_minutes
               ? formatDurationMinutes(trip.duration_minutes)
-              : 'Not available';
+              : 'Not recorded';
+            const pointCount = trip.gps_point_count ?? trip.gps_points_count ?? 0;
+            const origin = trip.origin_location || trip.start_point;
+            const dest = trip.destination_location || trip.end_point;
 
             return (
               <button
                 key={trip.id || trip.trip_id}
                 type="button"
-                onClick={() => onSelectTrip(trip)}
+                onClick={() => {
+                  if (typeof onSelectTrip === 'function') {
+                    onSelectTrip(trip);
+                  }
+                }}
                 className={cn(
                   "w-full text-left p-3 transition-all flex flex-col gap-1.5 relative border-l-4",
                   isSelected
@@ -170,9 +208,9 @@ export function DriverTripsList({
                     <span className="font-mono text-[11px] font-bold text-slate-800 truncate">
                       {trip.trip_id || `TRP-${trip.id}`}
                     </span>
-                    {trip.gps_points_count > 0 && (
+                    {pointCount > 0 && (
                       <span className="inline-flex items-center text-[9px] font-bold text-brand-700 bg-brand-100/80 px-1.5 py-0.2 rounded">
-                        {trip.gps_points_count} pts
+                        {pointCount.toLocaleString()} pts
                       </span>
                     )}
                   </div>
@@ -181,12 +219,14 @@ export function DriverTripsList({
 
                 {/* Route Names */}
                 <div className="text-[11px] font-medium text-slate-700 leading-snug">
-                  {trip.start_point && trip.end_point ? (
+                  {origin && dest ? (
                     <div className="flex items-center gap-1">
-                      <span className="truncate">{trip.start_point}</span>
+                      <span className="truncate">{origin}</span>
                       <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span className="truncate">{trip.end_point}</span>
+                      <span className="truncate">{dest}</span>
                     </div>
+                  ) : origin || dest ? (
+                    <span className="truncate">{origin || dest}</span>
                   ) : (
                     <span className="text-slate-500 italic">Route endpoints not specified</span>
                   )}
@@ -206,7 +246,7 @@ export function DriverTripsList({
                 </div>
 
                 {/* Warning if 0 points recorded */}
-                {trip.gps_points_count === 0 && (
+                {pointCount === 0 && (
                   <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded mt-0.5">
                     <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
                     <span>No GPS breadcrumbs persisted for this trip</span>

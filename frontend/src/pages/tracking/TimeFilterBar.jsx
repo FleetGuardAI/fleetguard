@@ -44,11 +44,13 @@ export function TimeFilterBar({
     setIsCustomOpen(false);
     setValidationError('');
     const range = calculatePresetRange(presetKey);
-    onApplyRange({
-      preset: presetKey,
-      startTime: range.startTime,
-      endTime: range.endTime,
-    });
+    if (typeof onApplyRange === 'function') {
+      onApplyRange({
+        preset: presetKey,
+        startTime: range.startTime,
+        endTime: range.endTime,
+      });
+    }
   };
 
   const handleApplyCustom = (e) => {
@@ -73,18 +75,22 @@ export function TimeFilterBar({
       return;
     }
 
-    onApplyRange({
-      preset: 'custom',
-      startTime: startIso,
-      endTime: endIso,
-    });
+    if (typeof onApplyRange === 'function') {
+      onApplyRange({
+        preset: 'custom',
+        startTime: startIso,
+        endTime: endIso,
+      });
+    }
     setIsCustomOpen(false);
   };
 
   const handleResetFilters = () => {
     setValidationError('');
     setIsCustomOpen(false);
-    onReset();
+    if (typeof onReset === 'function') {
+      onReset();
+    }
   };
 
   return (
@@ -168,7 +174,9 @@ export function TimeFilterBar({
 
           <button
             type="button"
-            onClick={onClearTrip}
+            onClick={() => {
+              if (typeof onClearTrip === 'function') onClearTrip();
+            }}
             className="text-[11px] font-semibold text-brand-700 hover:text-brand-900 underline ml-3"
           >
             View Full Driver History

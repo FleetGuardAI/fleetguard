@@ -256,6 +256,14 @@ export function FleetMap({
   const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [driversError, setDriversError] = useState(null);
+  const [tripsError, setTripsError] = useState(null);
+
+  // Driver Sidebar filter controls
+  const [driverSearchTerm, setDriverSearchTerm] = useState('');
+  const [driverDutyStatus, setDriverDutyStatus] = useState('all');
+  const [driverSortBy, setDriverSortBy] = useState('latest_activity');
+  const [driverHasTripsFilter, setDriverHasTripsFilter] = useState(false);
 
   // ── Playback State ─────────────────────────────────────────────────────────
   const [playbackIndex, setPlaybackIndex] = useState(0);
@@ -308,6 +316,7 @@ export function FleetMap({
   // ── Fetch Drivers when expanded or URL specifies ───────────────────────────
   const loadDriversList = useCallback(async () => {
     setIsLoadingDrivers(true);
+    setDriversError(null);
     setErrorMessage(null);
     try {
       const data = await getTrackingDrivers();
@@ -315,7 +324,7 @@ export function FleetMap({
 
       const driverIdParam = searchParams.get('driver_id');
       if (driverIdParam) {
-        const found = data.find((d) => String(d.id) === String(driverIdParam));
+        const found = (data || []).find((d) => String(d.id) === String(driverIdParam));
         if (found) {
           setSelectedDriver(found);
           return;
@@ -327,7 +336,9 @@ export function FleetMap({
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setErrorMessage(err.message || 'Failed to load fleet drivers.');
+        const msg = err.message || 'Failed to load fleet drivers.';
+        setDriversError(msg);
+        setErrorMessage(msg);
       }
     } finally {
       setIsLoadingDrivers(false);
@@ -352,6 +363,7 @@ export function FleetMap({
 
     setIsLoadingTrips(true);
     setIsLoadingLocations(true);
+    setTripsError(null);
     setErrorMessage(null);
     setIsPlaying(false);
 
@@ -401,7 +413,9 @@ export function FleetMap({
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Error loading driver telemetry:', err);
-        setErrorMessage(err.message || 'Failed to retrieve GPS telemetry.');
+        const msg = err.message || 'Failed to retrieve GPS telemetry.';
+        setTripsError(msg);
+        setErrorMessage(msg);
       }
     } finally {
       setIsLoadingTrips(false);
@@ -694,7 +708,17 @@ export function FleetMap({
                 drivers={drivers}
                 selectedDriver={selectedDriver}
                 onSelectDriver={handleSelectDriver}
-                isLoading={isLoadingDrivers}
+                loading={isLoadingDrivers}
+                error={driversError}
+                onRetry={loadDriversList}
+                searchTerm={driverSearchTerm}
+                onSearchChange={setDriverSearchTerm}
+                dutyStatusFilter={driverDutyStatus}
+                onDutyStatusChange={setDriverDutyStatus}
+                sortBy={driverSortBy}
+                onSortByChange={setDriverSortBy}
+                hasTripsFilter={driverHasTripsFilter}
+                onHasTripsFilterToggle={setDriverHasTripsFilter}
               />
             </div>
 
@@ -706,6 +730,8 @@ export function FleetMap({
                 onSelectTrip={handleSelectTrip}
                 onClearTrip={handleClearTrip}
                 isLoading={isLoadingTrips}
+                error={tripsError}
+                onRetry={loadHistoricalTelemetry}
                 driverName={selectedDriver?.name}
               />
             </div>
@@ -1088,6 +1114,43 @@ export function FleetMap({
                     <span>Maps</span>
                   </a>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXPANDED MODE: GPS Telemetry Unavailable Notice ────────────── */}
+          {isExpanded && locations.length === 0 && !isLoadingLocations && selectedDriver && !driversError && (
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 max-w-md bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200 shadow-xl text-center space-y-1.5 animate-fade-in pointer-events-auto">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-800">
+                <Navigation className="w-4 h-4 text-slate-400" />
+                <span>GPS Telemetry Unavailable</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                No historical GPS breadcrumbs recorded for {selectedDriver.name || 'this driver'} during the selected window.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimePreset('30d');
+                    setActiveDateRange(getTimeFilterRange('30d'));
+                  }}
+                  className="text-[11px] font-semibold text-brand-600 hover:text-brand-800 underline"
+                >
+                  Expand to Last 30 Days
+                </button>
+                {selectedTrip && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={handleClearTrip}
+                      className="text-[11px] font-semibold text-brand-600 hover:text-brand-800 underline"
+                    >
+                      Clear Trip Filter
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
