@@ -163,7 +163,7 @@ export default function TripList() {
             size="sm"
             title="GPS Tracking & Route Playback"
             icon={<Navigation className="h-4 w-4 text-brand-600" />}
-            onClick={() => navigate(`/dashboard/tracking?driver_id=${t.driver_id || ''}&trip_id=${t.trip_id || t.id}`)}
+            onClick={() => navigate(`/dashboard?driver_id=${t.driver_id || ''}&trip_id=${t.trip_id || t.id}&expand=true`)}
           />
           <Button
             variant="ghost"
@@ -205,7 +205,7 @@ export default function TripList() {
           <Button
             variant="outline"
             icon={<Navigation className="h-4 w-4 text-brand-600" />}
-            onClick={() => navigate('/dashboard/tracking')}
+            onClick={() => navigate('/dashboard?expand=true')}
           >
             GPS Tracking & Playback
           </Button>

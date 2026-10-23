@@ -12,7 +12,6 @@ const Fuel = lazy(() => import('./fuel/Fuel'));
 const Expenses = lazy(() => import('./expenses/Expenses'));
 const Payments = lazy(() => import('./payments/Payments'));
 const Maintenance = lazy(() => import('./maintenance/Maintenance'));
-const TripHistoryWorkspace = lazy(() => import('./tracking/TripHistoryWorkspace'));
 
 const Assets = lazy(() => import('./assets/Assets'));
 const Documents = lazy(() => import('./documents/Documents'));
@@ -47,7 +46,6 @@ export default function Dashboard() {
           <Route path="vehicles/*" element={<Vehicles />} />
           <Route path="drivers/*" element={<Drivers />} />
           <Route path="trips/*" element={<Trips />} />
-          <Route path="tracking/*" element={<TripHistoryWorkspace />} />
           <Route path="fuel/*" element={<Fuel />} />
           <Route path="expenses/*" element={<Expenses />} />
           <Route path="payments/*" element={<Payments />} />
