@@ -1,13 +1,31 @@
-import api from './client';
+import api, { resolveAbortSignal } from './client';
+
+/**
+ * Normalizes options or raw AbortSignal into a valid fetch options object.
+ * Guarantees that options.signal is only set if it is an actual instance of AbortSignal.
+ */
+function toFetchOptions(optionsOrSignal) {
+  if (!optionsOrSignal) return {};
+  const validSignal = resolveAbortSignal(optionsOrSignal);
+  const baseOptions = (typeof optionsOrSignal === 'object' && optionsOrSignal !== null && !(optionsOrSignal instanceof AbortSignal))
+    ? { ...optionsOrSignal }
+    : {};
+
+  delete baseOptions.signal;
+  if (validSignal) {
+    baseOptions.signal = validSignal;
+  }
+  return baseOptions;
+}
 
 /**
  * Fetch live telematics locations for all fleet trucks.
  * 
  * @returns {Promise<Array>}
  */
-export async function getLiveTracking() {
+export async function getLiveTracking(optionsOrSignal = null) {
   try {
-    const liveLocations = await api.telematics.getLiveFleet();
+    const liveLocations = await api.telematics.getLiveFleet(toFetchOptions(optionsOrSignal));
     return (liveLocations || []).map(loc => ({
       id: loc.driver_id,
       driver_name: loc.driver_name,
@@ -25,7 +43,9 @@ export async function getLiveTracking() {
       lastUpdate: loc.last_updated,
     }));
   } catch (err) {
-    console.error("Failed to fetch live telematics data", err);
+    if (err.name !== 'AbortError') {
+      console.error("Failed to fetch live telematics data", err);
+    }
     return [];
   }
 }
@@ -34,7 +54,7 @@ export async function getLiveTracking() {
  * Fetch drivers list enriched with assigned vehicle, trip counts, and GPS status.
  * Company-scoped.
  */
-export async function getTrackingDrivers(params = {}, signal = null) {
+export async function getTrackingDrivers(params = {}, optionsOrSignal = null) {
   const query = new URLSearchParams();
   if (params.search) query.append('search', params.search);
   if (params.duty_status) query.append('duty_status', params.duty_status);
@@ -45,13 +65,13 @@ export async function getTrackingDrivers(params = {}, signal = null) {
 
   const qs = query.toString();
   const url = `/v1/tracking/drivers${qs ? `?${qs}` : ''}`;
-  return await api.get(url, { signal });
+  return await api.get(url, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Fetch trips for a specific driver with GPS point counts.
  */
-export async function getDriverTrips(driverId, params = {}, signal = null) {
+export async function getDriverTrips(driverId, params = {}, optionsOrSignal = null) {
   const query = new URLSearchParams();
   if (params.start_time) {
     const st = params.start_time instanceof Date ? params.start_time.toISOString() : params.start_time;
@@ -67,13 +87,13 @@ export async function getDriverTrips(driverId, params = {}, signal = null) {
 
   const qs = query.toString();
   const url = `/v1/tracking/driver/${driverId}/trips${qs ? `?${qs}` : ''}`;
-  return await api.get(url, { signal });
+  return await api.get(url, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Fetch paginated, chronological GPS points with gaps, stops, and bounding box.
  */
-export async function getDriverLocations(driverId, params = {}, signal = null) {
+export async function getDriverLocations(driverId, params = {}, optionsOrSignal = null) {
   const query = new URLSearchParams();
   if (params.start_time) {
     const st = params.start_time instanceof Date ? params.start_time.toISOString() : params.start_time;
@@ -90,13 +110,13 @@ export async function getDriverLocations(driverId, params = {}, signal = null) {
 
   const qs = query.toString();
   const url = `/v1/tracking/driver/${driverId}/locations${qs ? `?${qs}` : ''}`;
-  return await api.get(url, { signal });
+  return await api.get(url, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Fetch deterministic operational analytics for a driver's GPS track.
  */
-export async function getDriverAnalytics(driverId, params = {}, signal = null) {
+export async function getDriverAnalytics(driverId, params = {}, optionsOrSignal = null) {
   const query = new URLSearchParams();
   if (params.start_time) {
     const st = params.start_time instanceof Date ? params.start_time.toISOString() : params.start_time;
@@ -110,27 +130,27 @@ export async function getDriverAnalytics(driverId, params = {}, signal = null) {
 
   const qs = query.toString();
   const url = `/v1/tracking/driver/${driverId}/analytics${qs ? `?${qs}` : ''}`;
-  return await api.get(url, { signal });
+  return await api.get(url, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Fetch a driver's latest live known location.
  */
-export async function getDriverLiveLocation(driverId, signal = null) {
-  return await api.get(`/v1/tracking/driver/${driverId}/live`, { signal });
+export async function getDriverLiveLocation(driverId, optionsOrSignal = null) {
+  return await api.get(`/v1/tracking/driver/${driverId}/live`, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Fetch route history for a specific trip by ID or business identifier.
  */
-export async function getTripRoute(tripId, signal = null) {
-  return await api.get(`/v1/tracking/trip/${tripId}/route`, { signal });
+export async function getTripRoute(tripId, optionsOrSignal = null) {
+  return await api.get(`/v1/tracking/trip/${tripId}/route`, toFetchOptions(optionsOrSignal));
 }
 
 /**
  * Legacy driver history helper.
  */
-export async function getDriverHistory(driverId, startTime = null, endTime = null, signal = null) {
+export async function getDriverHistory(driverId, startTime = null, endTime = null, optionsOrSignal = null) {
   let url = `/v1/tracking/driver/${driverId}/history`;
   const params = new URLSearchParams();
   if (startTime) {
@@ -145,5 +165,5 @@ export async function getDriverHistory(driverId, startTime = null, endTime = nul
   if (params.toString()) {
     url += `?${params.toString()}`;
   }
-  return await api.get(url, { signal });
+  return await api.get(url, toFetchOptions(optionsOrSignal));
 }

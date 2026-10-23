@@ -34,6 +34,17 @@ function getApiErrorMessage(error) {
   return 'An unexpected error occurred.';
 }
 
+export function resolveAbortSignal(candidate) {
+  if (!candidate) return undefined;
+  if (typeof AbortSignal !== 'undefined' && candidate instanceof AbortSignal) {
+    return candidate;
+  }
+  if (typeof candidate === 'object' && candidate !== null && 'signal' in candidate) {
+    return resolveAbortSignal(candidate.signal);
+  }
+  return undefined;
+}
+
 /**
  * @param {string} endpoint - API path (e.g. '/dashboard/kpis')
  * @param {RequestInit} [options] - Fetch options
@@ -61,10 +72,17 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `${tokenType} ${token}`;
   }
 
+  // Safely extract signal: only attach if candidate resolves to a valid native AbortSignal
+  const { signal: rawSignal, ...safeOptions } = options;
   const config = {
-    ...options,
+    ...safeOptions,
     headers,
   };
+
+  const validSignal = resolveAbortSignal(rawSignal);
+  if (validSignal) {
+    config.signal = validSignal;
+  }
 
   try {
     const response = await fetch(url, config);
@@ -90,7 +108,9 @@ async function request(endpoint, options = {}) {
     const data = await response.json();
     return data;
   } catch (err) {
-    console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
+    if (err.name !== 'AbortError') {
+      console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
+    }
     throw err;
   }
 }
@@ -234,7 +254,7 @@ const api = {
 
   // ── Telematics / Tracking ─────────
   telematics: {
-    getLiveFleet: () => request('/v1/tracking/fleet/live'),
+    getLiveFleet: (options = {}) => request('/v1/tracking/fleet/live', options),
     getDrivers: (params = {}, options = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/tracking/drivers${query ? `?${query}` : ''}`, options);
