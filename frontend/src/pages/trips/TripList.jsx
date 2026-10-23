@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Route, MapPin, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Plus, Eye, Route, MapPin, Calendar, Clock, CheckCircle, Navigation } from 'lucide-react';
 import { getTrips } from '@/api/tripApi';
 import { Table } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -157,7 +157,14 @@ export default function TripList() {
       label: 'Actions',
       className: 'text-right',
       render: (t) => (
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-end items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="GPS Tracking & Route Playback"
+            icon={<Navigation className="h-4 w-4 text-brand-600" />}
+            onClick={() => navigate(`/dashboard/tracking?driver_id=${t.driver_id || ''}&trip_id=${t.trip_id || t.id}`)}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -194,13 +201,22 @@ export default function TripList() {
           <h1 className="text-2xl font-bold text-content">Dispatch Trips</h1>
           <p className="text-sm text-content-secondary mt-0.5">Plan, dispatch, and track cargo routes across the country.</p>
         </div>
-        <Button
-          variant="primary"
-          icon={<Plus className="h-4 w-4" />}
-          onClick={() => navigate('/dashboard/trips/new')}
-        >
-          Dispatch Cargo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            icon={<Navigation className="h-4 w-4 text-brand-600" />}
+            onClick={() => navigate('/dashboard/tracking')}
+          >
+            GPS Tracking & Playback
+          </Button>
+          <Button
+            variant="primary"
+            icon={<Plus className="h-4 w-4" />}
+            onClick={() => navigate('/dashboard/trips/new')}
+          >
+            Dispatch Cargo
+          </Button>
+        </div>
       </div>
 
       {/* Tabs Menu */}

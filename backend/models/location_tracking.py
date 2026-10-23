@@ -72,6 +72,11 @@ class DriverLocation(Base):
         nullable=False, default=LocationSource.PHONE_GPS,
     )
 
+    trip_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True,
+        comment="Associated trip ID if known"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

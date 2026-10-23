@@ -284,8 +284,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_revoked_at TIMESTAMPTZ;"))
             await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;"))
             await session.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS reset_request_id INTEGER REFERENCES admin_password_reset_requests(id) ON DELETE SET NULL;"))
+            await session.execute(text("ALTER TABLE driver_locations ADD COLUMN IF NOT EXISTS trip_id VARCHAR(255);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_driver_locations_trip_id ON driver_locations (trip_id);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
             await session.commit()
-            logger.info("✅ Verified admin_password_reset_requests and password_reset_tokens schema columns.")
+            logger.info("✅ Verified admin_password_reset_requests, password_reset_tokens, and driver_locations tracking schema columns and indexes.")
     except Exception as e:
         logger.warning(f"⚠️ Startup schema self-check notice: {e}")
 
