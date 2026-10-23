@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Search, Users, Truck, Navigation, Clock,
-  CheckCircle, ArrowUpDown, Shield, AlertCircle
+  CheckCircle, ArrowUpDown, Shield, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatRelativeTime } from '@/utils/dateTime';
@@ -11,21 +11,82 @@ export function DriverSidebar({
   selectedDriver = null,
   onSelectDriver,
   loading = false,
-  searchTerm = '',
+  isLoading = false,
+  error = null,
+  onRetry = null,
+  searchTerm: controlledSearchTerm,
   onSearchChange,
-  dutyStatusFilter = 'all',
+  dutyStatusFilter: controlledDutyStatus,
   onDutyStatusChange,
-  hasTripsFilter = false,
+  hasTripsFilter: controlledHasTrips,
   onHasTripsFilterToggle,
-  sortBy = 'latest_activity',
+  sortBy: controlledSortBy,
   onSortByChange,
 }) {
-  // Filter and sort drivers locally if already loaded, but also controlled
-  const filteredDrivers = drivers.filter(d => {
+  const isActualLoading = Boolean(loading || isLoading);
+
+  // Local fallback states if parent does not control them
+  const [internalSearch, setInternalSearch] = useState('');
+  const [internalDuty, setInternalDuty] = useState('all');
+  const [internalSort, setInternalSort] = useState('latest_activity');
+  const [internalHasTrips, setInternalHasTrips] = useState(false);
+
+  const searchTerm = controlledSearchTerm !== undefined ? controlledSearchTerm : internalSearch;
+  const dutyStatusFilter = controlledDutyStatus !== undefined ? controlledDutyStatus : internalDuty;
+  const sortBy = controlledSortBy !== undefined ? controlledSortBy : internalSort;
+  const hasTripsFilter = controlledHasTrips !== undefined ? controlledHasTrips : internalHasTrips;
+
+  const handleSearchChange = (val) => {
+    setInternalSearch(val);
+    if (typeof onSearchChange === 'function') {
+      try {
+        onSearchChange(val);
+      } catch (err) {
+        console.error('Error in onSearchChange callback:', err);
+      }
+    }
+  };
+
+  const handleDutyStatusChange = (val) => {
+    setInternalDuty(val);
+    if (typeof onDutyStatusChange === 'function') {
+      try {
+        onDutyStatusChange(val);
+      } catch (err) {
+        console.error('Error in onDutyStatusChange callback:', err);
+      }
+    }
+  };
+
+  const handleSortByChange = (val) => {
+    setInternalSort(val);
+    if (typeof onSortByChange === 'function') {
+      try {
+        onSortByChange(val);
+      } catch (err) {
+        console.error('Error in onSortByChange callback:', err);
+      }
+    }
+  };
+
+  const handleHasTripsToggle = (val) => {
+    setInternalHasTrips(val);
+    if (typeof onHasTripsFilterToggle === 'function') {
+      try {
+        onHasTripsFilterToggle(val);
+      } catch (err) {
+        console.error('Error in onHasTripsFilterToggle callback:', err);
+      }
+    }
+  };
+
+  // Filter drivers locally
+  const filteredDrivers = (drivers || []).filter(d => {
+    if (!d) return false;
     if (dutyStatusFilter !== 'all' && d.duty_status !== dutyStatusFilter) return false;
-    if (hasTripsFilter && d.total_trips === 0) return false;
+    if (hasTripsFilter && (d.total_trips || 0) === 0) return false;
     if (searchTerm) {
-      const q = searchTerm.toLowerCase();
+      const q = String(searchTerm).toLowerCase().trim();
       const matchName = d.name?.toLowerCase().includes(q);
       const matchPhone = d.phone_number?.includes(q);
       const matchVeh = d.vehicle_registration?.toLowerCase().includes(q);
@@ -33,6 +94,23 @@ export function DriverSidebar({
       if (!matchName && !matchPhone && !matchVeh && !matchEmp) return false;
     }
     return true;
+  });
+
+  // Sort drivers
+  const sortedDrivers = [...filteredDrivers].sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    if (sortBy === 'trips_count') {
+      return (b.total_trips || 0) - (a.total_trips || 0);
+    }
+    if (sortBy === 'gps_points') {
+      return (b.gps_point_count || 0) - (a.gps_point_count || 0);
+    }
+    // latest_activity default: most recent timestamp first
+    const timeA = new Date(a.last_location_at || a.updated_at || a.created_at || 0).getTime();
+    const timeB = new Date(b.last_location_at || b.updated_at || b.created_at || 0).getTime();
+    return timeB - timeA;
   });
 
   return (
@@ -45,7 +123,7 @@ export function DriverSidebar({
             <h2 className="text-sm font-semibold text-content tracking-tight">Fleet Drivers</h2>
           </div>
           <span className="text-[11px] font-medium text-content-muted bg-white px-2 py-0.5 rounded-full border border-border shadow-xs">
-            {filteredDrivers.length} of {drivers.length}
+            {error ? '0 of 0' : `${sortedDrivers.length} of ${(drivers || []).length}`}
           </span>
         </div>
 
@@ -55,8 +133,8 @@ export function DriverSidebar({
           <input
             type="text"
             placeholder="Search driver, vehicle plate, phone..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={searchTerm || ''}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-border rounded-lg placeholder:text-content-muted focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500 transition-all shadow-xs"
           />
         </div>
@@ -64,8 +142,8 @@ export function DriverSidebar({
         {/* Filter bar */}
         <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
           <select
-            value={dutyStatusFilter}
-            onChange={(e) => onDutyStatusChange(e.target.value)}
+            value={dutyStatusFilter || 'all'}
+            onChange={(e) => handleDutyStatusChange(e.target.value)}
             className="text-[11px] py-1 px-2 bg-white border border-border rounded-md text-content font-medium focus:outline-none focus:ring-1 focus:ring-brand-500"
           >
             <option value="all">All Statuses</option>
@@ -75,8 +153,8 @@ export function DriverSidebar({
           </select>
 
           <select
-            value={sortBy}
-            onChange={(e) => onSortByChange(e.target.value)}
+            value={sortBy || 'latest_activity'}
+            onChange={(e) => handleSortByChange(e.target.value)}
             className="text-[11px] py-1 px-2 bg-white border border-border rounded-md text-content font-medium focus:outline-none focus:ring-1 focus:ring-brand-500"
           >
             <option value="latest_activity">Latest Activity</option>
@@ -87,7 +165,7 @@ export function DriverSidebar({
 
           <button
             type="button"
-            onClick={() => onHasTripsFilterToggle(!hasTripsFilter)}
+            onClick={() => handleHasTripsToggle(!hasTripsFilter)}
             className={cn(
               "text-[10px] font-semibold px-2 py-1 rounded-md border transition-all",
               hasTripsFilter
@@ -102,27 +180,53 @@ export function DriverSidebar({
 
       {/* Driver List */}
       <div className="flex-1 overflow-y-auto divide-y divide-border/60 p-1.5 space-y-1">
-        {loading && drivers.length === 0 ? (
+        {error && (drivers || []).length === 0 ? (
+          <div className="p-6 text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-rose-700">Failed to load drivers</p>
+              <p className="text-[11px] text-content-muted mt-1 max-w-[200px] mx-auto leading-relaxed">
+                {typeof error === 'string' ? error : 'Unable to connect to the tracking service.'}
+              </p>
+            </div>
+            {typeof onRetry === 'function' && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-xs transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            )}
+          </div>
+        ) : isActualLoading && (drivers || []).length === 0 ? (
           <div className="p-8 text-center space-y-3">
             <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin mx-auto" />
             <p className="text-xs text-content-secondary font-medium">Loading fleet drivers...</p>
           </div>
-        ) : filteredDrivers.length === 0 ? (
+        ) : sortedDrivers.length === 0 ? (
           <div className="p-8 text-center space-y-2">
             <AlertCircle className="w-8 h-8 text-content-muted mx-auto" />
             <p className="text-xs font-semibold text-content">No drivers match your filter</p>
             <p className="text-[11px] text-content-muted">Try clearing the search or status filters</p>
           </div>
         ) : (
-          filteredDrivers.map((driver) => {
+          sortedDrivers.map((driver) => {
             const isSelected = selectedDriver?.id === driver.id;
             const isOnline = driver.duty_status === 'ON_DUTY';
-            const hasGps = driver.gps_point_count > 0;
+            const hasGps = (driver.gps_point_count || 0) > 0;
 
             return (
               <div
                 key={driver.id}
-                onClick={() => onSelectDriver(driver)}
+                onClick={() => {
+                  if (typeof onSelectDriver === 'function') {
+                    onSelectDriver(driver);
+                  }
+                }}
                 className={cn(
                   "p-3 rounded-xl cursor-pointer transition-all border text-left",
                   isSelected
@@ -142,7 +246,7 @@ export function DriverSidebar({
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
-                          driver.name.slice(0, 2).toUpperCase()
+                          (driver.name || 'DR').slice(0, 2).toUpperCase()
                         )}
                       </div>
                       <span
@@ -198,7 +302,7 @@ export function DriverSidebar({
                 <div className="mt-2 flex items-center justify-between text-[10px] text-content-muted">
                   <span className="flex items-center gap-1 font-medium text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200/60">
                     <Navigation className="w-2.5 h-2.5" />
-                    {driver.total_trips} {driver.total_trips === 1 ? 'trip' : 'trips'}
+                    {driver.total_trips || 0} {(driver.total_trips || 0) === 1 ? 'trip' : 'trips'}
                   </span>
 
                   <span className={cn(
@@ -207,7 +311,7 @@ export function DriverSidebar({
                       ? "bg-surface-secondary text-content font-medium border-border"
                       : "bg-neutral-50 text-neutral-400 border-neutral-100"
                   )}>
-                    {driver.gps_point_count.toLocaleString()} pts
+                    {(driver.gps_point_count || 0).toLocaleString()} pts
                   </span>
                 </div>
               </div>

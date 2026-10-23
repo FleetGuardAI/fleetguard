@@ -155,7 +155,46 @@ async def test_tracking_endpoints_end_to_end(client, db_session, mock_owner_user
     assert res_route_str.status_code == 200
     assert len(res_route_str.json()) == 5
 
-    # --- Test 7: Tenant Isolation: user from another company must get 404 ---
+    # --- Test 7: Verify Route Aliases (/v1/tracking/* and /api/tracking/*) ---
+    res_v1 = client.get("/v1/tracking/drivers")
+    assert res_v1.status_code == 200
+    assert len(res_v1.json()) >= 1
+
+    res_api_alias = client.get("/api/tracking/drivers")
+    assert res_api_alias.status_code == 200
+
+    res_v1_trips = client.get(f"/v1/tracking/driver/501/trips")
+    assert res_v1_trips.status_code == 200
+    assert len(res_v1_trips.json()) == 1
+
+    res_v1_locs = client.get(f"/v1/tracking/driver/501/locations")
+    assert res_v1_locs.status_code == 200
+    assert res_v1_locs.json()["total_points"] == 5
+
+    # --- Test 8: Driver with NO trips ---
+    driver_empty = Driver(
+        id=502,
+        name="Sunil Kumar",
+        phone_number="+919876543299",
+        company_id=10,
+        status=DriverStatus.ACTIVE,
+        duty_status=DutyStatus.OFF_DUTY
+    )
+    db_session.add(driver_empty)
+    await db_session.commit()
+
+    res_empty_trips = client.get("/v1/tracking/driver/502/trips")
+    assert res_empty_trips.status_code == 200
+    assert res_empty_trips.json() == []
+
+    # --- Test 9: GPS Range with NO records (future date) ---
+    res_future_locs = client.get("/v1/tracking/driver/501/locations?start_time=2030-01-01T00:00:00Z&end_time=2030-01-02T00:00:00Z")
+    assert res_future_locs.status_code == 200
+    future_data = res_future_locs.json()
+    assert future_data["total_points"] == 0
+    assert future_data["points"] == []
+
+    # --- Test 10: Tenant Isolation: user from another company must get 404 ---
     app.dependency_overrides[get_current_user] = lambda: User(
         id=999,
         email="other@test.com",
@@ -168,3 +207,12 @@ async def test_tracking_endpoints_end_to_end(client, db_session, mock_owner_user
 
     res_forbidden_trips = client.get(f"/api/v1/tracking/driver/501/trips")
     assert res_forbidden_trips.status_code == 404
+
+    res_forbidden_v1 = client.get(f"/v1/tracking/driver/501/locations")
+    assert res_forbidden_v1.status_code == 404
+
+    # --- Test 11: Missing/Invalid Authentication returns 401 ---
+    app.dependency_overrides.pop(get_current_user, None)
+    res_unauth = client.get("/v1/tracking/drivers")
+    assert res_unauth.status_code == 401
+
