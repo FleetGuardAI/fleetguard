@@ -14,6 +14,64 @@ class AuthRepository {
   AuthRepository(this._dio);
   final Dio _dio;
 
+  Future<Map<String, dynamic>> resolveQr(String qrData, [String? phoneNumber]) async {
+    try {
+      final response = await _dio.post('/api/v1/driver-app/qr/resolve', data: {
+        'qr_data': qrData,
+        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
+      });
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return Map<String, dynamic>.from(data as Map);
+    } on DioException catch (e) {
+      final err = e.response?.data;
+      final msg = err is Map ? (err['detail'] ?? err['message']) : e.message;
+      throw Exception(msg ?? 'Failed to resolve QR credential');
+    } catch (e) {
+      throw Exception('Failed to resolve QR: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> requestFleetTransfer(String inviteToken, int targetCompanyId) async {
+    try {
+      final response = await _dio.post('/api/v1/driver-app/fleet-transfer', data: {
+        'invite_token': inviteToken,
+        'target_company_id': targetCompanyId,
+      });
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return Map<String, dynamic>.from(data as Map);
+    } on DioException catch (e) {
+      final err = e.response?.data;
+      final msg = err is Map ? (err['detail'] ?? err['message']) : e.message;
+      throw Exception(msg ?? 'Failed to request fleet transfer');
+    } catch (e) {
+      throw Exception('Failed to request fleet transfer: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelFleetTransfer(int transferId) async {
+    try {
+      final response = await _dio.post('/api/v1/driver-app/fleet-transfer/$transferId/cancel');
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return Map<String, dynamic>.from(data as Map);
+    } catch (e) {
+      throw Exception('Failed to cancel fleet transfer: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getMe() async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/me');
+      final data = response.data;
+      if (data is Map<String, dynamic>) return data;
+      return Map<String, dynamic>.from(data as Map);
+    } catch (e) {
+      throw Exception('Failed to get driver details: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> verifyInvite(String token) async {
     try {
       final response = await _dio.post('/api/v1/driver-app/verify-invite', data: {

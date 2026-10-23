@@ -12,7 +12,8 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -272,6 +273,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
 
+    # Safe startup schema verification to ensure critical columns exist
+    try:
+        from sqlalchemy import text
+        async with async_session_factory() as session:
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_hash VARCHAR(128);"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_issued_at TIMESTAMPTZ;"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_used_at TIMESTAMPTZ;"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_revoked_at TIMESTAMPTZ;"))
+            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;"))
+            await session.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS reset_request_id INTEGER REFERENCES admin_password_reset_requests(id) ON DELETE SET NULL;"))
+            await session.execute(text("ALTER TABLE driver_locations ADD COLUMN IF NOT EXISTS trip_id VARCHAR(255);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_driver_locations_trip_id ON driver_locations (trip_id);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
+            await session.commit()
+            logger.info("✅ Verified admin_password_reset_requests, password_reset_tokens, and driver_locations tracking schema columns and indexes.")
+    except Exception as e:
+        logger.warning(f"⚠️ Startup schema self-check notice: {e}")
+
     # Database Migrations (Alembic) are now handled exclusively by the CI/CD pipeline
     # (see .github/workflows/backend-migrations.yml) to ensure safe, controlled schema updates.
 
@@ -328,9 +351,23 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
+
+# --- Global Exception Handler (Ensures CORS headers are attached even on 500 errors) ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled server error on {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An internal server error occurred.",
+            "error_type": type(exc).__name__,
+        },
+    )
 
 
 # --- Health Check ---
@@ -366,6 +403,7 @@ API_PREFIX = "/api"
 
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(tickets_router, prefix=API_PREFIX)
+app.include_router(support_router, prefix="/api/v1")
 app.include_router(support_router, prefix=API_PREFIX)
 app.include_router(driver_domain_router, prefix=API_PREFIX)
 app.include_router(driver_qualification_router, prefix=API_PREFIX)

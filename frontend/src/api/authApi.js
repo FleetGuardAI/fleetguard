@@ -432,3 +432,4 @@ export async function resendOtp(req_id, channel = 'SMS') {
 
   return response.json();
 }
+

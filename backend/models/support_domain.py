@@ -119,10 +119,18 @@ class PasswordResetRequestAdmin(Base):
     requester_email_phone: Mapped[str] = mapped_column(String(255), nullable=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING") # PENDING, APPROVED, REJECTED
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING") # PENDING, APPROVED, REJECTED, COMPLETED
     ticket_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("support_tickets.id", ondelete="SET NULL"), nullable=True)
     
     resolved_by_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    token_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    token_issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+

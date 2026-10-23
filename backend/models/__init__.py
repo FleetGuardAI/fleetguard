@@ -45,6 +45,7 @@ from models.fuel_root_cause import FuelRootCauseAnalysis, FuelRootCauseEvidence
 
 # --- Driver App Models ---
 from models.fleet_invite import FleetInvite
+from models.driver_fleet_transfer import DriverFleetTransfer, TransferStatus
 from models.location_tracking import DriverLocation, LocationAlert
 from models.vehicle_inspection import VehicleInspection
 from models.proof_of_delivery import ProofOfDelivery
@@ -103,6 +104,8 @@ __all__ = [
     "FuelRootCauseEvidence",
     # Driver App
     "FleetInvite",
+    "DriverFleetTransfer",
+    "TransferStatus",
     "DriverLocation",
     "LocationAlert",
     "VehicleInspection",

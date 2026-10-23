@@ -253,15 +253,7 @@ export default function DashboardOverview() {
             </div>
           </div>
           <div className="lg:col-span-7 h-[540px] relative">
-             <button
-               onClick={refreshMap}
-               disabled={mapRefreshing}
-               className="absolute top-4 right-4 z-10 p-2.5 bg-white border border-border rounded-xl shadow-elevated text-content-secondary hover:text-brand-500 hover:border-brand-300 transition-all focus:outline-none disabled:opacity-50"
-               title="Refresh Driver Locations"
-             >
-               <RefreshCw className={cn("w-4 h-4", mapRefreshing && "animate-spin")} />
-             </button>
-             <FleetMap trucks={liveTrucks} />
+             <FleetMap trucks={liveTrucks} onRefresh={refreshMap} isRefreshing={mapRefreshing} />
           </div>
         </div>
 
