@@ -257,7 +257,7 @@ export default function TripDetail() {
                 icon={<Navigation className="h-4 w-4" />}
                 onClick={() =>
                   navigate(
-                    `/dashboard/tracking?driver_id=${trip.driver_id || ''}&trip_id=${trip.trip_id || trip.id}`
+                    `/dashboard?driver_id=${trip.driver_id || ''}&trip_id=${trip.trip_id || trip.id}&expand=true`
                   )
                 }
               >

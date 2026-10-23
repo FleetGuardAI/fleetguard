@@ -55,7 +55,6 @@ const navSections = [
     section: 'OPERATIONS',
     items: [
       { label: 'Trips', path: '/dashboard/trips', icon: 'Route' },
-      { label: 'GPS Trip Tracking', path: '/dashboard/tracking', icon: 'Navigation' },
       { label: 'Fuel Management', path: '/dashboard/fuel', icon: 'Fuel' },
       { label: 'Expense Management', path: '/dashboard/expenses', icon: 'Receipt' },
       { label: 'Payments', path: '/dashboard/payments', icon: 'CreditCard' },
