@@ -119,6 +119,8 @@ const api = {
     },
     get: (id) => request(`/v1/support/tickets/${id}`),
     create: (data) => request('/v1/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
+    getMessages: (id) => request(`/v1/support/tickets/${id}/messages`),
+    sendMessage: (id, data) => request(`/v1/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // ── Drivers (/api/v1/drivers) ─────────────────
@@ -229,6 +231,23 @@ const api = {
   // ── Telematics / Tracking ─────────
   telematics: {
     getLiveFleet: () => request('/v1/tracking/fleet/live'),
+    getDrivers: (params = {}, options = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/tracking/drivers${query ? `?${query}` : ''}`, options);
+    },
+    getDriverTrips: (driverId, params = {}, options = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/tracking/driver/${driverId}/trips${query ? `?${query}` : ''}`, options);
+    },
+    getLocations: (driverId, params = {}, options = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/tracking/driver/${driverId}/locations${query ? `?${query}` : ''}`, options);
+    },
+    getAnalytics: (driverId, params = {}, options = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/tracking/driver/${driverId}/analytics${query ? `?${query}` : ''}`, options);
+    },
+    getTripRoute: (tripId, options = {}) => request(`/v1/tracking/trip/${tripId}/route`, options),
   },
 
   maintenance: {

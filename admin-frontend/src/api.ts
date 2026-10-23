@@ -1,25 +1,33 @@
 import axios from 'axios';
 
-const API_ROOT =
-  import.meta.env.PROD
-    ? "https://fleetguard-hpip.onrender.com/api/v1"
-    : (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1");
+function resolveAdminBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (envUrl) {
+    const cleaned = envUrl.replace(/\/+$/, '');
+    if (cleaned.endsWith('/admin')) {
+      return cleaned;
+    }
+    if (cleaned.endsWith('/api/v1')) {
+      return `${cleaned}/admin`;
+    }
+    if (cleaned.endsWith('/api')) {
+      return `${cleaned}/v1/admin`;
+    }
+    return `${cleaned}/api/v1/admin`;
+  }
+  return import.meta.env.PROD
+    ? "https://fleetguard-hpip.onrender.com/api/v1/admin"
+    : "http://localhost:8000/api/v1/admin";
+}
 
 const api = axios.create({
-  baseURL: `${API_ROOT}/admin`,
+  baseURL: resolveAdminBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use((config) => {
-  console.log("[SUPER ADMIN API]", {
-    method: config.method,
-    baseURL: config.baseURL,
-    url: config.url,
-    fullURL: `${config.baseURL}${config.url || ""}`,
-  });
-
   const token = localStorage.getItem('admin_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -36,10 +44,6 @@ api.interceptors.response.use(
       url: error.config?.url,
       baseURL: error.config?.baseURL,
     });
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('admin_token');
-      window.location.href = '/login';
-    }
     return Promise.reject(error);
   }
 );

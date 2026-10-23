@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Truck, Users, Route, Fuel, Receipt, Bell, Settings,
   LogOut, CreditCard, Wrench, FileText, AlertTriangle, BarChart3, User,
-  Cpu, MessageSquare, X, QrCode
+  Cpu, MessageSquare, X, QrCode, Navigation
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
@@ -21,6 +21,7 @@ const iconMap = {
   Users: <Users className="h-[18px] w-[18px]" />,
   Cpu: <Cpu className="h-[18px] w-[18px]" />,
   Route: <Route className="h-[18px] w-[18px]" />,
+  Navigation: <Navigation className="h-[18px] w-[18px]" />,
   Fuel: <Fuel className="h-[18px] w-[18px]" />,
   Receipt: <Receipt className="h-[18px] w-[18px]" />,
   CreditCard: <CreditCard className="h-[18px] w-[18px]" />,
@@ -76,9 +77,14 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
 
   useEffect(() => {
     const handleUserUpdate = () => {
-      const cached = localStorage.getItem('fleetguard_user') || sessionStorage.getItem('fleetguard_user');
-      if (cached) {
-        setUser(JSON.parse(cached));
+      try {
+        const cached = (typeof localStorage !== 'undefined' && typeof localStorage?.getItem === 'function' ? localStorage.getItem('fleetguard_user') : null) ||
+                       (typeof sessionStorage !== 'undefined' && typeof sessionStorage?.getItem === 'function' ? sessionStorage.getItem('fleetguard_user') : null);
+        if (cached) {
+          setUser(JSON.parse(cached));
+        }
+      } catch (err) {
+        // Safe fallback in test or restricted environments
       }
     };
     handleUserUpdate();
