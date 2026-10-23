@@ -7,7 +7,7 @@ from datetime import datetime
 from database import get_db
 from models.admin_domain import AdminUser, AdminAuditLog
 from services.admin_auth_service import require_admin_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 router = APIRouter(prefix="/api/v1/admin/audit-logs", tags=["Admin Audit Logs"])
 
@@ -24,8 +24,7 @@ class AuditLogResponse(BaseModel):
     created_at: datetime
     actor_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/", response_model=List[AuditLogResponse])
 async def list_audit_logs(

@@ -50,7 +50,7 @@ class FleetIntelligenceService:
         """
         # 1. Fetch active vehicles via the existing repository
         vehicles = await self.uow.repositories.vehicle.search_vehicles(
-            is_active=True, limit=200, offset=0
+            company_id=company_id, is_active=True, limit=200, offset=0
         )
 
         vehicle_contexts: List[VehicleIntelligenceContext] = []

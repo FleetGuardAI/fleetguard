@@ -156,139 +156,128 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_index('ix_vehicle_locations_company_id', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_device_id', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_driver_id', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_event_fingerprint', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_original_driver_location_id', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_timestamp', table_name='vehicle_locations')
-    op.drop_index('ix_vehicle_locations_vehicle_id', table_name='vehicle_locations')
-    op.drop_table('vehicle_locations')
-    op.drop_index('ix_intelligence_conditions_alert_id', table_name='intelligence_conditions')
-    op.drop_index('ix_intelligence_conditions_company_id', table_name='intelligence_conditions')
-    op.drop_index('ix_intelligence_conditions_driver_id', table_name='intelligence_conditions')
-    op.drop_index('ix_intelligence_conditions_status', table_name='intelligence_conditions')
-    op.drop_index('ix_intelligence_conditions_trip_id', table_name='intelligence_conditions')
-    op.drop_index('ix_intelligence_conditions_vehicle_id', table_name='intelligence_conditions')
-    op.drop_index('uq_active_condition_per_vehicle', table_name='intelligence_conditions', postgresql_where="((status)::text = 'ACTIVE'::text)")
-    op.drop_table('intelligence_conditions')
-    op.drop_table('vehicle_current_locations')
-    op.alter_column('documents', 'verification_status',
-               existing_type=sa.VARCHAR(length=50),
-               server_default=None,
-               existing_nullable=False)
-    op.drop_column('documents', 'name_encrypted')
-    op.drop_column('driver_locations', 'latitude_encrypted')
-    op.drop_column('driver_locations', 'longitude_encrypted')
-    op.drop_index('uq_drivers_phone_number_blind', table_name='drivers')
-    op.drop_column('drivers', 'phone_number_encrypted')
-    op.drop_column('drivers', 'phone_number_blind')
-    op.alter_column('expenses', 'reviewed_by',
-               existing_type=sa.VARCHAR(length=255),
-               comment='User ID of the admin who approved/rejected',
-               existing_nullable=True)
-    op.alter_column('expenses', 'reviewed_at',
-               existing_type=postgresql.TIMESTAMP(timezone=True),
-               comment='Timestamp of approval/rejection',
-               existing_nullable=True)
-    op.alter_column('expenses', 'rejection_reason',
-               existing_type=sa.TEXT(),
-               comment='Reason for rejection, required when rejecting',
-               existing_nullable=True)
-    op.drop_column('expenses', 'amount_encrypted')
-    op.alter_column('location_alerts', 'details',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.String(length=500),
-               existing_nullable=True)
-    op.alter_column('operational_events', 'company_id',
-               existing_type=sa.INTEGER(),
-               comment='Tenant isolation boundary.',
-               existing_nullable=False)
-    op.add_column('trips', sa.Column('receiver_name', sa.String(length=255), nullable=True))
-    op.add_column('trips', sa.Column('receiver_phone', sa.String(length=50), nullable=True))
-    op.add_column('trips', sa.Column('receiver_company', sa.String(length=255), nullable=True))
-    op.add_column('trips', sa.Column('receiver_address', sa.Text(), nullable=True))
-    op.add_column('trips', sa.Column('receiver_city', sa.String(length=100), nullable=True))
-    op.add_column('trips', sa.Column('receiver_state', sa.String(length=100), nullable=True))
-    op.add_column('trips', sa.Column('receiver_pincode', sa.String(length=20), nullable=True))
-    op.add_column('trips', sa.Column('receiver_notes', sa.Text(), nullable=True))
-    op.alter_column('trips', 'expected_revenue',
-               existing_type=sa.DOUBLE_PRECISION(precision=53),
-               comment='Expected revenue at time of intelligence evaluation',
-               existing_nullable=True)
-    op.alter_column('trips', 'expected_cost',
-               existing_type=sa.DOUBLE_PRECISION(precision=53),
-               comment='Expected total cost at time of intelligence evaluation',
-               existing_nullable=True)
-    op.alter_column('trips', 'expected_profit',
-               existing_type=sa.DOUBLE_PRECISION(precision=53),
-               comment='Expected profit at time of intelligence evaluation',
-               existing_nullable=True)
-    op.alter_column('trips', 'expected_margin',
-               existing_type=sa.DOUBLE_PRECISION(precision=53),
-               comment='Expected profit margin percentage at dispatch',
-               existing_nullable=True)
-    op.alter_column('trips', 'recommendation_decision',
-               existing_type=sa.VARCHAR(length=20),
-               comment='TAKE, REVIEW, or AVOID',
-               existing_nullable=True)
-    op.alter_column('trips', 'recommendation_at',
-               existing_type=postgresql.TIMESTAMP(timezone=True),
-               comment='When the intelligence evaluation was computed',
-               existing_nullable=True)
-    op.alter_column('trips', 'intelligence_version',
-               existing_type=sa.VARCHAR(length=50),
-               server_default=None,
-               comment='Version of the calculation engine that produced this prediction',
-               existing_nullable=True)
-    op.alter_column('trips', 'confidence_level',
-               existing_type=sa.VARCHAR(length=20),
-               comment='HIGH, MEDIUM, LOW, INSUFFICIENT',
-               existing_nullable=True)
-    op.alter_column('trips', 'risk_level',
-               existing_type=sa.VARCHAR(length=20),
-               comment='LOW, MEDIUM, HIGH',
-               existing_nullable=True)
-    op.alter_column('trips', 'recommendation_outcome',
-               existing_type=sa.VARCHAR(length=30),
-               comment='OUTPERFORMED, MET_EXPECTATION, UNDERPERFORMED, LOSS, INSUFFICIENT_DATA',
-               existing_nullable=True)
-    op.alter_column('trips', 'intelligence_snapshot',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               comment='Immutable pre-trip intelligence calculation preserved at dispatch',
-               existing_nullable=True)
-    op.alter_column('trips', 'customer_name',
-               existing_type=sa.VARCHAR(length=255),
-               comment='Customer/company name for this trip',
-               existing_nullable=True)
-    op.alter_column('trips', 'customer_phone',
-               existing_type=sa.VARCHAR(length=50),
-               comment='Customer contact phone number',
-               existing_nullable=True)
-    op.alter_column('trips', 'customer_contact_person',
-               existing_type=sa.VARCHAR(length=255),
-               comment='Contact person at customer site',
-               existing_nullable=True)
-    op.alter_column('trips', 'instructions',
-               existing_type=sa.TEXT(),
-               comment='Delivery/handling instructions for the driver',
-               existing_nullable=True)
-    op.drop_index('ix_trips_confidence_level', table_name='trips')
-    op.drop_index('ix_trips_risk_level', table_name='trips')
-    op.drop_column('trips', 'destination_lng_encrypted')
-    op.drop_column('trips', 'revenue_encrypted')
-    op.drop_column('trips', 'origin_lng_encrypted')
-    op.drop_column('trips', 'origin_lat_encrypted')
-    op.drop_column('trips', 'expected_revenue_encrypted')
-    op.drop_column('trips', 'destination_lat_encrypted')
-    op.alter_column('vehicles', 'rc_url',
-               existing_type=sa.VARCHAR(length=500),
-               type_=sa.String(length=255),
-               existing_nullable=True)
-    op.drop_column('vehicles', 'last_known_lng')
-    op.drop_column('vehicles', 'last_location_at')
-    op.drop_column('vehicles', 'last_location_source')
-    op.drop_column('vehicles', 'last_known_lat')
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    existing_tables = set(insp.get_table_names())
+
+    if 'vehicle_locations' in existing_tables:
+        op.drop_table('vehicle_locations')
+    if 'intelligence_conditions' in existing_tables:
+        op.drop_table('intelligence_conditions')
+    if 'vehicle_current_locations' in existing_tables:
+        op.drop_table('vehicle_current_locations')
+
+    if 'documents' in existing_tables:
+        op.alter_column('documents', 'verification_status',
+                   existing_type=sa.VARCHAR(length=50),
+                   server_default=None,
+                   existing_nullable=False)
+        doc_cols = {c['name'] for c in insp.get_columns('documents')}
+        if 'name_encrypted' in doc_cols:
+            op.drop_column('documents', 'name_encrypted')
+
+    if 'driver_locations' in existing_tables:
+        dl_cols = {c['name'] for c in insp.get_columns('driver_locations')}
+        if 'latitude_encrypted' in dl_cols:
+            op.drop_column('driver_locations', 'latitude_encrypted')
+        if 'longitude_encrypted' in dl_cols:
+            op.drop_column('driver_locations', 'longitude_encrypted')
+
+    if 'drivers' in existing_tables:
+        indexes = {ix['name'] for ix in insp.get_indexes('drivers')}
+        if 'uq_drivers_phone_number_blind' in indexes:
+            op.drop_index('uq_drivers_phone_number_blind', table_name='drivers')
+        drv_cols = {c['name'] for c in insp.get_columns('drivers')}
+        if 'phone_number_encrypted' in drv_cols:
+            op.drop_column('drivers', 'phone_number_encrypted')
+        if 'phone_number_blind' in drv_cols:
+            op.drop_column('drivers', 'phone_number_blind')
+
+    if 'expenses' in existing_tables:
+        exp_cols = {c['name'] for c in insp.get_columns('expenses')}
+        if 'reviewed_by' not in exp_cols:
+            op.add_column('expenses', sa.Column('reviewed_by', sa.String(length=255), nullable=True, comment='User ID of the admin who approved/rejected'))
+        if 'reviewed_at' not in exp_cols:
+            op.add_column('expenses', sa.Column('reviewed_at', postgresql.TIMESTAMP(timezone=True), nullable=True, comment='Timestamp of approval/rejection'))
+        if 'rejection_reason' not in exp_cols:
+            op.add_column('expenses', sa.Column('rejection_reason', sa.Text(), nullable=True, comment='Reason for rejection, required when rejecting'))
+        if 'amount_encrypted' in exp_cols:
+            op.drop_column('expenses', 'amount_encrypted')
+
+    if 'location_alerts' in existing_tables:
+        op.alter_column('location_alerts', 'details',
+                   existing_type=postgresql.JSONB(astext_type=sa.Text()),
+                   type_=sa.String(length=500),
+                   existing_nullable=True)
+
+    if 'operational_events' in existing_tables:
+        op.alter_column('operational_events', 'company_id',
+                   existing_type=sa.INTEGER(),
+                   comment='Tenant isolation boundary.',
+                   existing_nullable=False)
+
+    if 'trips' in existing_tables:
+        trip_cols = {c['name'] for c in insp.get_columns('trips')}
+        for col_name, col_type in [
+            ('receiver_name', sa.String(length=255)),
+            ('receiver_phone', sa.String(length=50)),
+            ('receiver_company', sa.String(length=255)),
+            ('receiver_address', sa.Text()),
+            ('receiver_city', sa.String(length=100)),
+            ('receiver_state', sa.String(length=100)),
+            ('receiver_pincode', sa.String(length=20)),
+            ('receiver_notes', sa.Text()),
+        ]:
+            if col_name not in trip_cols:
+                op.add_column('trips', sa.Column(col_name, col_type, nullable=True))
+        
+        for col_name, col_type, col_comment in [
+            ('customer_name', sa.String(length=255), 'Customer/company name for this trip'),
+            ('customer_phone', sa.String(length=50), 'Customer contact phone number'),
+            ('customer_contact_person', sa.String(length=255), 'Contact person at customer site'),
+            ('instructions', sa.Text(), 'Delivery/handling instructions for the driver'),
+        ]:
+            if col_name not in trip_cols:
+                op.add_column('trips', sa.Column(col_name, col_type, nullable=True, comment=col_comment))
+            else:
+                op.alter_column('trips', col_name, existing_type=col_type, comment=col_comment, existing_nullable=True)
+
+        for col_name, col_type, col_comment in [
+            ('expected_revenue', sa.DOUBLE_PRECISION(precision=53), 'Expected revenue at time of intelligence evaluation'),
+            ('expected_cost', sa.DOUBLE_PRECISION(precision=53), 'Expected total cost at time of intelligence evaluation'),
+            ('expected_profit', sa.DOUBLE_PRECISION(precision=53), 'Expected profit at time of intelligence evaluation'),
+            ('expected_margin', sa.DOUBLE_PRECISION(precision=53), 'Expected profit margin percentage at dispatch'),
+            ('recommendation_decision', sa.VARCHAR(length=20), 'TAKE, REVIEW, or AVOID'),
+            ('recommendation_at', postgresql.TIMESTAMP(timezone=True), 'When the intelligence evaluation was computed'),
+            ('intelligence_version', sa.VARCHAR(length=50), 'Version of the calculation engine that produced this prediction'),
+            ('confidence_level', sa.VARCHAR(length=20), 'HIGH, MEDIUM, LOW, INSUFFICIENT'),
+            ('risk_level', sa.VARCHAR(length=20), 'LOW, MEDIUM, HIGH'),
+            ('recommendation_outcome', sa.VARCHAR(length=30), 'OUTPERFORMED, MET_EXPECTATION, UNDERPERFORMED, LOSS, INSUFFICIENT_DATA'),
+            ('intelligence_snapshot', postgresql.JSONB(astext_type=sa.Text()), 'Immutable pre-trip intelligence calculation preserved at dispatch'),
+        ]:
+            if col_name in trip_cols:
+                op.alter_column('trips', col_name, existing_type=col_type, comment=col_comment, existing_nullable=True)
+
+        trip_indexes = {idx['name'] for idx in insp.get_indexes('trips')}
+        if 'ix_trips_confidence_level' in trip_indexes:
+            op.drop_index('ix_trips_confidence_level', table_name='trips')
+        if 'ix_trips_risk_level' in trip_indexes:
+            op.drop_index('ix_trips_risk_level', table_name='trips')
+
+        for enc_col in ['destination_lng_encrypted', 'revenue_encrypted', 'origin_lng_encrypted', 'origin_lat_encrypted', 'expected_revenue_encrypted', 'destination_lat_encrypted']:
+            if enc_col in trip_cols:
+                op.drop_column('trips', enc_col)
+
+    if 'vehicles' in existing_tables:
+        veh_cols = {c['name'] for c in insp.get_columns('vehicles')}
+        if 'rc_url' in veh_cols:
+            op.alter_column('vehicles', 'rc_url',
+                       existing_type=sa.VARCHAR(length=500),
+                       type_=sa.String(length=255),
+                       existing_nullable=True)
+        for v_col in ['last_known_lng', 'last_location_at', 'last_location_source', 'last_known_lat']:
+            if v_col in veh_cols:
+                op.drop_column('vehicles', v_col)
     # ### end Alembic commands ###
 
 

@@ -141,6 +141,16 @@ export default function FuelDashboard() {
       render: (item) => <span className="font-mono text-xs text-content">{item.quantity_liters != null ? `${item.quantity_liters} L` : 'N/A'}</span>
     },
     {
+      key: 'odometer',
+      label: 'Odometer (km)',
+      sortable: true,
+      render: (item) => (
+        <span className="font-mono text-xs text-content-secondary">
+          {item.odometer != null ? `${item.odometer.toLocaleString('en-IN')}` : '—'}
+        </span>
+      )
+    },
+    {
       key: 'total_amount',
       label: 'Total Amount',
       sortable: true,

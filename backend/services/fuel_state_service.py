@@ -42,17 +42,9 @@ class FuelStateService:
         )
         await self.uow.repositories.fuel_state.upsert_fuel_state(new_state)
 
-        # 2. Record Transaction
-        tx = FuelTransaction(
-            vehicle_id=fill.vehicle_id,
-            transaction_type=FuelTransactionType.FILL,
-            amount_liters=fill.amount_liters,
-            origin_type="verified_event",
-            origin_id=origin_event_id,
-            timestamp=fill.timestamp,
-            description=fill.description
-        )
-        await self.uow.repositories.fuel_state.create_transaction(tx)
+        # 2. FuelTransaction is now created synchronously by the API endpoint to ensure immediate 
+        # financial consistency and UI responsiveness. We only manage FuelState here.
+        pass
 
     async def get_fuel_history(self, vehicle_id: int) -> Sequence[FuelTransaction]:
         """Fetch history of fuel transactions for a vehicle."""

@@ -144,10 +144,24 @@ async def create_expense(
         if not driver or driver.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid driver_id or unauthorized")
             
+    trip = None
     if payload.get("trip_id"):
         trip = await db.get(Trip, payload.get("trip_id"))
         if not trip or trip.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid trip_id or unauthorized")
+
+    resolved_vehicle_id = payload.get("vehicle_id") or (trip.vehicle_id if trip else None)
+    
+    # Parse expense date if provided, otherwise default to current UTC time
+    exp_date_raw = payload.get("expense_date")
+    if exp_date_raw:
+        if isinstance(exp_date_raw, str):
+            from dateutil import parser
+            expense_date = parser.isoparse(exp_date_raw)
+        else:
+            expense_date = exp_date_raw
+    else:
+        expense_date = datetime.now(timezone.utc)
 
     expense = Expense(
         business_id=f"EXP-{str(uuid.uuid4())[:8].upper()}",
@@ -155,9 +169,9 @@ async def create_expense(
         category=payload.get("category", "MISCELLANEOUS"),
         amount=payload.get("amount", 0.0),
         status="PENDING",
-        expense_date=datetime.now(),
+        expense_date=expense_date,
         description=payload.get("description", ""),
-        vehicle_id=payload.get("vehicle_id"),
+        vehicle_id=resolved_vehicle_id,
         driver_id=payload.get("driver_id"),
         trip_id=payload.get("trip_id"),
         origin_type="rest_api",
@@ -180,6 +194,13 @@ async def update_expense(
     expense = await db.get(Expense, expense_id)
     if not expense or expense.company_id != current_user.company_id:
         raise HTTPException(404, f"Expense {expense_id} not found")
+
+    # Financial Immutability
+    if expense.status in [ExpenseStatus.APPROVED, ExpenseStatus.REJECTED]:
+        raise HTTPException(
+            400,
+            f"Cannot modify an expense with status '{expense.status.value}'. Only PENDING or RECORDED expenses can be edited."
+        )
 
     # Block direct status changes via PATCH — use approve/reject endpoints instead
     if "status" in payload:

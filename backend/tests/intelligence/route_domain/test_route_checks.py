@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from infrastructure.intelligence.evidence.package import EvidencePackage
@@ -16,7 +16,7 @@ from infrastructure.intelligence.checks.models import CheckStatus
 
 class TestRouteChecks(unittest.TestCase):
     def setUp(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.planned_evidence = PlannedRouteEvidence(
             source="planner", origin="api", collected_at=now, reliability=Reliability.HIGH,
             trip_id="trip-1", planned_route_id="route-1", vehicle_id="v-1",
@@ -49,9 +49,9 @@ class TestRouteChecks(unittest.TestCase):
         check = RouteDeviationCheck()
         # Create an execution with a large deviation (lat 0.5, lon 0.5 is far from the route)
         bad_exec = TripExecutionEvidence(
-            source="gps", origin="device", collected_at=datetime.utcnow(), reliability=Reliability.HIGH,
-            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.utcnow(), actual_end_time=datetime.utcnow(),
-            gps_track=[{"lat": 0.5, "lon": 0.5, "timestamp": datetime.utcnow(), "speed": 50}]
+            source="gps", origin="device", collected_at=datetime.now(timezone.utc), reliability=Reliability.HIGH,
+            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.now(timezone.utc), actual_end_time=datetime.now(timezone.utc),
+            gps_track=[{"lat": 0.5, "lon": 0.5, "timestamp": datetime.now(timezone.utc), "speed": 50}]
         )
         package = EvidencePackage([self.planned_evidence, bad_exec])
         res = check.execute(package)
@@ -65,8 +65,8 @@ class TestRouteChecks(unittest.TestCase):
     def test_trip_delay_fail(self):
         check = TripDelayCheck()
         bad_exec = TripExecutionEvidence(
-            source="gps", origin="device", collected_at=datetime.utcnow(), reliability=Reliability.HIGH,
-            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.utcnow(), actual_end_time=datetime.utcnow() + timedelta(hours=3),
+            source="gps", origin="device", collected_at=datetime.now(timezone.utc), reliability=Reliability.HIGH,
+            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.now(timezone.utc), actual_end_time=datetime.now(timezone.utc) + timedelta(hours=3),
             gps_track=[]
         )
         package = EvidencePackage([self.planned_evidence, bad_exec])
@@ -81,10 +81,10 @@ class TestRouteChecks(unittest.TestCase):
     def test_unauthorized_stop_fail(self):
         check = UnauthorizedStopCheck()
         bad_exec = TripExecutionEvidence(
-            source="gps", origin="device", collected_at=datetime.utcnow(), reliability=Reliability.HIGH,
-            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.utcnow(), actual_end_time=datetime.utcnow(),
+            source="gps", origin="device", collected_at=datetime.now(timezone.utc), reliability=Reliability.HIGH,
+            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.now(timezone.utc), actual_end_time=datetime.now(timezone.utc),
             gps_track=[],
-            stop_locations=[{"lat": 0.9, "lon": 0.9, "duration_minutes": 60, "start_time": datetime.utcnow()}]
+            stop_locations=[{"lat": 0.9, "lon": 0.9, "duration_minutes": 60, "start_time": datetime.now(timezone.utc)}]
         )
         package = EvidencePackage([bad_exec, self.approved_stops])
         res = check.execute(package)
@@ -104,8 +104,8 @@ class TestRouteChecks(unittest.TestCase):
     def test_excessive_detour_fail(self):
         check = ExcessiveDetourCheck()
         bad_exec = TripExecutionEvidence(
-            source="gps", origin="device", collected_at=datetime.utcnow(), reliability=Reliability.HIGH,
-            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.utcnow(), actual_end_time=datetime.utcnow(),
+            source="gps", origin="device", collected_at=datetime.now(timezone.utc), reliability=Reliability.HIGH,
+            trip_id="trip-1", vehicle_id="v-1", actual_start_time=datetime.now(timezone.utc), actual_end_time=datetime.now(timezone.utc),
             gps_track=[{"lat": 0.0, "lon": 0.0}, {"lat": 0.0, "lon": 1.0}, {"lat": 1.0, "lon": 1.0}, {"lat": 0.1, "lon": 0.1}]
         )
         package = EvidencePackage([self.planned_evidence, bad_exec])

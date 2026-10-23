@@ -104,7 +104,7 @@ class TripIntelligenceService:
             data_sources.append("driver_trip_history")
 
         # ── Compute sections ─────────────────────────────────────
-        active_expenses = [e for e in expenses if e.status == ExpenseStatus.RECORDED]
+        active_expenses = [e for e in expenses if e.status == ExpenseStatus.APPROVED]
 
         financial_summary = self._compute_financial_summary(trip, active_expenses)
         cost_breakdown = self._compute_cost_breakdown(active_expenses, trip.revenue)
@@ -164,18 +164,22 @@ class TripIntelligenceService:
             has_data=True
         )
 
-    def _compute_recommendation_outcome(self, trip: Trip, actual_profit: Optional[float]) -> str:
-        if trip.expected_profit is None or actual_profit is None:
-            return "INSUFFICIENT_DATA"
-        
+    @staticmethod
+    def _compute_recommendation_outcome(trip: Trip, actual_profit: Optional[float]) -> Optional[str]:
         expected = trip.expected_profit
+        if expected is None and trip.intelligence_snapshot:
+            expected = trip.intelligence_snapshot.get("expected_profit")
+
+        if expected is None or actual_profit is None:
+            return None
+        
         actual = actual_profit
         
         if actual < 0:
             return "LOSS"
         if actual >= expected * 1.1:
             return "OUTPERFORMED"
-        if actual >= expected * 0.8:
+        if actual >= expected * 0.9:
             return "MET_EXPECTATION"
         return "UNDERPERFORMED"
 
@@ -186,7 +190,8 @@ class TripIntelligenceService:
 
     async def _get_trip_expenses(self, trip: Trip) -> Sequence[Expense]:
         try:
-            return await self.uow.repositories.expense.get_expenses_by_trip(trip.id)
+            expenses = await self.uow.repositories.expense.get_expenses_by_trip(trip.id)
+            return [e for e in expenses if e.status == ExpenseStatus.APPROVED]
         except Exception:
             logger.warning(f"Failed to load expenses for trip {trip.id}")
             return []
@@ -269,7 +274,7 @@ class TripIntelligenceService:
     ) -> FinancialSummary:
         revenue = trip.revenue
         total_cost = sum(e.amount for e in expenses) if expenses else None
-        distance = trip.actual_distance or trip.planned_distance
+        distance = trip.actual_distance
 
         net_profit = None
         profit_margin_pct = None
@@ -373,7 +378,7 @@ class TripIntelligenceService:
             ))
 
         # Fuel (liters)
-        actual_fuel = sum(t.amount_liters for t in fuel_transactions) if fuel_transactions else None
+        actual_fuel = trip.actual_fuel_liters
         if trip.planned_fuel_liters is not None or actual_fuel is not None:
             variance, variance_pct, severity = self._calc_variance(
                 trip.planned_fuel_liters, actual_fuel,
@@ -429,7 +434,7 @@ class TripIntelligenceService:
         insights = []
 
         # ── Fuel anomaly ──
-        actual_fuel = sum(t.amount_liters for t in fuel_transactions) if fuel_transactions else None
+        actual_fuel = trip.actual_fuel_liters
         if trip.planned_fuel_liters and actual_fuel:
             variance_pct = ((actual_fuel - trip.planned_fuel_liters) / trip.planned_fuel_liters) * 100
             if variance_pct > FUEL_VARIANCE_WARNING_PCT:
@@ -621,7 +626,7 @@ class TripIntelligenceService:
         available_scores = []
 
         # Fuel efficiency (100 = on target, penalty for excess)
-        fuel_score = self._score_fuel_efficiency(trip, fuel_transactions)
+        fuel_score = self._score_fuel_efficiency(trip)
         sub_scores.append(EfficiencySubScore(
             name="fuel_efficiency", label="Fuel Efficiency",
             score=fuel_score, has_data=fuel_score is not None,
@@ -689,10 +694,10 @@ class TripIntelligenceService:
                 has_sufficient_data=False,
             )
 
-    def _score_fuel_efficiency(self, trip: Trip, fuel_txns: Sequence[FuelTransaction]) -> Optional[float]:
-        if not trip.planned_fuel_liters or not fuel_txns:
+    def _score_fuel_efficiency(self, trip: Trip) -> Optional[float]:
+        if not trip.planned_fuel_liters or not trip.actual_fuel_liters:
             return None
-        actual = sum(t.amount_liters for t in fuel_txns)
+        actual = trip.actual_fuel_liters
         if actual <= 0:
             return None
         ratio = actual / trip.planned_fuel_liters
@@ -777,7 +782,7 @@ class TripIntelligenceService:
     ) -> List[HistoricalComparison]:
         comparisons = []
         current_cost = sum(e.amount for e in expenses) if expenses else None
-        distance = trip.actual_distance or trip.planned_distance
+        distance = trip.actual_distance
         actual_duration = self._calc_duration_hours(trip.actual_start_time, trip.actual_end_time)
 
         # ── vs Same Vehicle ──
@@ -850,7 +855,7 @@ class TripIntelligenceService:
         """Load actual expenses for a historical trip. Used sparingly."""
         try:
             expenses = await self.uow.repositories.expense.get_expenses_by_trip(trip_id)
-            return sum(e.amount for e in expenses if e.status == ExpenseStatus.RECORDED)
+            return sum(e.amount for e in expenses if e.status == ExpenseStatus.APPROVED)
         except Exception:
             return 0
 

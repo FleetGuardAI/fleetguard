@@ -153,6 +153,11 @@ const api = {
   // ── Fuel Monitoring (existing) ─────────────────────────────
   fuel: {
     getLogs: (truckId, hours = 24) => request(`/fuel/logs/${truckId}?hours=${hours}`),
+    getTransactions: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/fuel/transactions${query ? `?${query}` : ''}`);
+    },
+    createTransaction: (data) => request('/fuel/transactions', { method: 'POST', body: JSON.stringify(data) }),
     getChartData: (truckId, hours = 24) => request(`/fuel/chart/${truckId}?hours=${hours}`),
     getAlerts: (params = {}) => {
       const query = new URLSearchParams(params).toString();
@@ -232,6 +237,7 @@ const api = {
       return request(`/v1/maintenance${query ? `?${query}` : ''}`);
     },
     get: (id) => request(`/v1/maintenance/${id}`),
+    create: (data) => request('/v1/maintenance', { method: 'POST', body: data }),
     search: (params = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/maintenance/search${query ? `?${query}` : ''}`);
@@ -240,6 +246,17 @@ const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/vehicles/${vehicleId}/maintenance${query ? `?${query}` : ''}`);
     },
+    analytics: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/maintenance/analytics${query ? `?${query}` : ''}`);
+    },
+    addPart: (id, data) => request(`/v1/maintenance/${id}/parts`, { method: 'POST', body: data }),
+    removePart: (id, partId) => request(`/v1/maintenance/${id}/parts/${partId}`, { method: 'DELETE' }),
+    addLabour: (id, data) => request(`/v1/maintenance/${id}/labour`, { method: 'POST', body: data }),
+    removeLabour: (id, labourId) => request(`/v1/maintenance/${id}/labour/${labourId}`, { method: 'DELETE' }),
+    addDocument: (id, data) => request(`/v1/maintenance/${id}/documents`, { method: 'POST', body: data }),
+    getDocuments: (id) => request(`/v1/maintenance/${id}/documents`),
+    removeDocument: (id, docId) => request(`/v1/maintenance/${id}/documents/${docId}`, { method: 'DELETE' }),
   },
 
   // (duplicate expenses block removed — see expenses definition above)
@@ -251,6 +268,14 @@ const api = {
       return request(`/v1/vehicles${query ? `?${query}` : ''}`);
     },
     get: (id) => request(`/v1/vehicles/${id}`),
+    economics: (id, params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/vehicles/${id}/economics${query ? `?${query}` : ''}`);
+    },
+    fleetEconomics: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/v1/fleet/economics${query ? `?${query}` : ''}`);
+    },
   },
 
   // ── Driver Domain (NEW - /api/v1/drivers) ──────────────────
@@ -287,7 +312,17 @@ const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/vehicles/${vehicleId}/tyres${query ? `?${query}` : ''}`);
     },
+    inventorySummary: () => request('/v1/tyres/inventory/summary'),
+    inventoryValuation: () => request('/v1/tyres/inventory/valuation'),
+    register: (data) => request('/v1/tyres', { method: 'POST', body: JSON.stringify(data) }),
+    install: (serial, data) => request(`/v1/tyres/${serial}/install`, { method: 'POST', body: JSON.stringify(data) }),
+    remove: (serial, data) => request(`/v1/tyres/${serial}/remove`, { method: 'POST', body: JSON.stringify(data) }),
+    rotate: (serial, data) => request(`/v1/tyres/${serial}/rotate`, { method: 'POST', body: JSON.stringify(data) }),
+    retread: (serial, data) => request(`/v1/tyres/${serial}/retread`, { method: 'POST', body: JSON.stringify(data) }),
+    repair: (serial, data) => request(`/v1/tyres/${serial}/repair`, { method: 'POST', body: JSON.stringify(data) }),
+    retire: (serial, data) => request(`/v1/tyres/${serial}/retire`, { method: 'POST', body: JSON.stringify(data) }),
   },
+
 
   // ── Documents (NEW - /api/v1/documents) ────────────────────
   documents: {

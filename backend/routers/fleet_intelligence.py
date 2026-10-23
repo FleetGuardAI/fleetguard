@@ -12,7 +12,7 @@ from models.user import User
 from services.auth_service import get_current_user
 from pydantic import BaseModel
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 
 from infrastructure.intelligence.fuel_domain.financial.summary_service import FleetFinancialIntelligenceService
@@ -52,6 +52,14 @@ async def get_owner_scores(
     service = FleetIntelligenceService(uow)
     health = await service.get_fleet_health(company_id=current_user.company_id)
     
+    if health.vehicle_count == 0:
+        return OwnerScores(
+            fleet_score=0,
+            driver_score=0,
+            truck_score=0,
+            maintenance_score=0
+        )
+
     # Calculate simple 0-100 scores from risk counts
     # The more medium/high/critical counts, the lower the score.
     def calculate_domain_score(domain_stats):
@@ -103,7 +111,7 @@ async def get_operations_insights(
     
     # 1. Fuel Intelligence (Efficiency / Leakage)
     fuel_service = FleetFinancialIntelligenceService()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     try:
         fuel_summary = await fuel_service.get_fleet_summary(
             uow=uow,

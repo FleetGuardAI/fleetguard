@@ -34,7 +34,9 @@ class VehicleIntelligence:
                 and_(
                     Trip.vehicle_id == vehicle_id,
                     Trip.status == TripStatus.COMPLETED,
+                    Trip.actual_distance.isnot(None),
                     Trip.actual_distance > 0,
+                    Trip.actual_fuel_liters.isnot(None),
                     Trip.actual_fuel_liters > 0
                 )
             )
@@ -47,7 +49,9 @@ class VehicleIntelligence:
                     and_(
                         Trip.vehicle_id == vehicle_id,
                         Trip.status == TripStatus.COMPLETED,
+                        Trip.actual_distance.isnot(None),
                         Trip.actual_distance > 0,
+                        Trip.actual_fuel_liters.isnot(None),
                         Trip.actual_fuel_liters > 0
                     )
                 )
@@ -123,6 +127,15 @@ class VehicleIntelligence:
                     status = SuitabilityStatus.MARGINAL if status != SuitabilityStatus.UNSUITABLE else status
                     if "Vehicle has scheduled maintenance" not in reasons:
                         reasons.append("Vehicle has scheduled maintenance.")
+
+        # Check vehicle maintenance due state
+        if vehicle.maintenance_status == "OVERDUE":
+            status = SuitabilityStatus.UNSUITABLE
+            reasons.append("Vehicle is overdue for maintenance.")
+        elif vehicle.maintenance_status in ["DUE", "DUE_SOON"]:
+            if status != SuitabilityStatus.UNSUITABLE:
+                status = SuitabilityStatus.MARGINAL
+            reasons.append(f"Vehicle maintenance is {vehicle.maintenance_status.lower().replace('_', ' ')}.")
 
         # Check basic properties
         if vehicle.status.lower() != "active":

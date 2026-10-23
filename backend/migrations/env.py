@@ -46,11 +46,14 @@ from database import Base  # noqa: E402
 # ---------------------------------------------------------------------------
 config = context.config
 
-# Override sqlalchemy.url from pydantic-settings so credentials never
+import os
+
+# Override sqlalchemy.url from environment or pydantic-settings so credentials never
 # live in alembic.ini.
+target_url = os.environ.get("OVERRIDE_DATABASE_URL") or settings.DATABASE_URL
 config.set_main_option(
     "sqlalchemy.url",
-    settings.DATABASE_URL.replace("%", "%%")
+    target_url.replace("%", "%%")
 )
 
 # Interpret the config file for Python logging.
@@ -96,12 +99,13 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Execute migrations on an active synchronous connection."""
+    schema = os.environ.get("DB_SCHEMA")
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
-        transaction_per_migration=True,
+        version_table_schema=schema,
     )
 
     with context.begin_transaction():
@@ -123,7 +127,11 @@ async def run_async_migrations() -> None:
 
     async with connectable.connect() as connection:
         await connection.execute(text("SET statement_timeout = 0"))
+        schema = os.environ.get("DB_SCHEMA")
+        if schema:
+            await connection.execute(text(f"SET search_path = {schema}, public"))
         await connection.run_sync(do_run_migrations)
+        await connection.commit()
 
     await connectable.dispose()
 

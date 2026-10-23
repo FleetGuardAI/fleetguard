@@ -216,11 +216,12 @@ export async function getDashboardTrends() {
       });
       maintenanceTrend.push({ day: dayName, value: dayMaint.reduce((sum, m) => sum + (m.cost || 0), 0) });
 
-      // Ticket amounts on this day
-      const dayTickets = (tickets || []).filter(t => {
-        return t.created_at && new Date(t.created_at).toISOString().split('T')[0] === dateStr;
+      // Realized revenue on this day from completed trips
+      const dayCompletedTrips = (trips || []).filter(t => {
+        const isCompleted = (t.status === 'COMPLETED' || t.status === 'completed');
+        return isCompleted && t.actual_end_time && new Date(t.actual_end_time).toISOString().split('T')[0] === dateStr;
       });
-      revenueTrend.push({ day: dayName, value: dayTickets.reduce((sum, t) => sum + (t.amount || 0), 0) });
+      revenueTrend.push({ day: dayName, value: dayCompletedTrips.reduce((sum, t) => sum + (t.revenue || 0), 0) });
 
       // Fuel efficiency — aggregate from fuel data if available
       fuelTrend.push({ day: dayName, value: null });

@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from models.vehicle_domain import Vehicle
 from models.trip_start_selfie import TripStartSelfie
 from routers.driver_mobile import get_current_driver
 from services.file_upload_service import storage_service
+from services.trip_completion_service import TripCompletionService
 
 logger = logging.getLogger("fleetguard.driver_trips")
 
@@ -190,19 +191,76 @@ async def start_trip(
     db: AsyncSession = Depends(get_db),
 ):
     """Start an assigned trip, requiring prior selfie verification."""
-    trip = await db.get(Trip, trip_id)
-    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+    stmt = select(Trip).where(
+        Trip.id == trip_id, 
+        Trip.driver_id == driver.id, 
+        Trip.company_id == driver.company_id
+    ).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if trip is None:
         raise HTTPException(404, "Trip not found")
 
-    # Check for active trips
+    # Idempotent return if already IN_PROGRESS
+    if trip.status == TripStatus.IN_PROGRESS:
+        return DriverTripResponse.model_validate(trip)
+
+    # Can only start from CREATED
+    if trip.status != TripStatus.CREATED:
+        raise HTTPException(400, f"Cannot start trip with status '{trip.status.value}'")
+
+    # Check for active trips for this driver
     active_result = await db.execute(
         select(Trip).where(
             Trip.driver_id == driver.id, 
-            Trip.status == TripStatus.IN_PROGRESS
+            Trip.status.in_([TripStatus.IN_PROGRESS, TripStatus.PAUSED]),
+            Trip.id != trip.id
         )
     )
     if active_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Another trip is currently in progress")
+
+    # Check assigned vehicle and vehicle suitability/availability
+    if not trip.vehicle_id:
+        raise HTTPException(status_code=400, detail="No vehicle assigned to this trip")
+
+    from models.vehicle_domain import Vehicle, VehicleStatus
+    vehicle = await db.get(Vehicle, trip.vehicle_id)
+    if not vehicle or vehicle.company_id != driver.company_id:
+        raise HTTPException(status_code=400, detail="Assigned vehicle not found")
+    if vehicle.status != VehicleStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail=f"Assigned vehicle is not available for dispatch (status is {vehicle.status.value})")
+
+    # Check active trips for this vehicle
+    active_v_result = await db.execute(
+        select(Trip).where(
+            Trip.vehicle_id == trip.vehicle_id,
+            Trip.status.in_([TripStatus.IN_PROGRESS, TripStatus.PAUSED]),
+            Trip.id != trip.id
+        )
+    )
+    if active_v_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Assigned vehicle is currently in use on another active trip")
+
+    # Ensure canonical dispatch suitability (qualifications, vehicle capability, cargo compatibility, maintenance)
+    from services.dispatch_suitability_service import DispatchSuitabilityService
+    suitability_service = DispatchSuitabilityService(db)
+    suit_res = await suitability_service.evaluate_dispatch_suitability(
+        company_id=driver.company_id,
+        vehicle_id=trip.vehicle_id,
+        driver_id=driver.id,
+        planned_start=trip.planned_start_time or datetime.now(timezone.utc),
+        planned_end=trip.planned_end_time,
+        route_distance_km=trip.route_distance_km or trip.planned_distance,
+        cargo_weight=trip.cargo_weight,
+        cargo_category=trip.cargo_category,
+        required_vehicle_class=trip.required_vehicle_class,
+        required_driver_qualification=trip.required_driver_qualification,
+        cargo_temperature_required=trip.cargo_temperature_required,
+        exclude_trip_id=trip.id,
+    )
+    if suit_res.hard_failures:
+        raise HTTPException(status_code=400, detail="; ".join(suit_res.hard_failures))
 
     # Ensure selfie verification is complete
     if not trip.start_selfie_url:
@@ -210,6 +268,17 @@ async def start_trip(
 
     trip.status = TripStatus.IN_PROGRESS
     trip.actual_start_time = datetime.now(timezone.utc)
+
+    from services.trip_service import create_trip_operational_event
+    from models.operational_event import EventType
+    event = create_trip_operational_event(
+        company_id=driver.company_id,
+        event_type=EventType.TRIP_STARTED,
+        trip_business_id=trip.trip_id,
+        payload={"actual_start_time": trip.actual_start_time.isoformat()},
+        created_by=f"driver:{driver.id}"
+    )
+    db.add(event)
 
     await db.commit()
     await db.refresh(trip)
@@ -225,11 +294,35 @@ async def pause_trip(
     db: AsyncSession = Depends(get_db),
 ):
     """Pause an ongoing trip."""
-    trip = await db.get(Trip, trip_id)
-    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+    stmt = select(Trip).where(
+        Trip.id == trip_id, 
+        Trip.driver_id == driver.id, 
+        Trip.company_id == driver.company_id
+    ).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if trip is None:
         raise HTTPException(404, "Trip not found")
 
+    if trip.status == TripStatus.PAUSED:
+        return DriverTripResponse.model_validate(trip)
+
+    if trip.status != TripStatus.IN_PROGRESS:
+        raise HTTPException(400, f"Cannot pause trip in status '{trip.status.value}'")
+
     trip.status = TripStatus.PAUSED
+
+    from services.trip_service import create_trip_operational_event
+    from models.operational_event import EventType
+    event = create_trip_operational_event(
+        company_id=driver.company_id,
+        event_type=EventType.TRIP_PAUSED,
+        trip_business_id=trip.trip_id,
+        payload={},
+        created_by=f"driver:{driver.id}"
+    )
+    db.add(event)
+
     await db.commit()
     await db.refresh(trip)
 
@@ -243,11 +336,35 @@ async def resume_trip(
     db: AsyncSession = Depends(get_db),
 ):
     """Resume a paused trip."""
-    trip = await db.get(Trip, trip_id)
-    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+    stmt = select(Trip).where(
+        Trip.id == trip_id, 
+        Trip.driver_id == driver.id, 
+        Trip.company_id == driver.company_id
+    ).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if trip is None:
         raise HTTPException(404, "Trip not found")
 
+    if trip.status == TripStatus.IN_PROGRESS:
+        return DriverTripResponse.model_validate(trip)
+
+    if trip.status != TripStatus.PAUSED:
+        raise HTTPException(400, f"Cannot resume trip in status '{trip.status.value}'")
+
     trip.status = TripStatus.IN_PROGRESS
+
+    from services.trip_service import create_trip_operational_event
+    from models.operational_event import EventType
+    event = create_trip_operational_event(
+        company_id=driver.company_id,
+        event_type=EventType.TRIP_RESUMED,
+        trip_business_id=trip.trip_id,
+        payload={},
+        created_by=f"driver:{driver.id}"
+    )
+    db.add(event)
+
     await db.commit()
     await db.refresh(trip)
 
@@ -257,25 +374,57 @@ async def resume_trip(
 @router.post("/trips/{trip_id}/complete", response_model=DriverTripResponse)
 async def complete_trip(
     trip_id: int,
+    background_tasks: BackgroundTasks,
     actual_distance: Optional[float] = Query(None),
     driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
 ):
     """Complete a trip."""
-    trip = await db.get(Trip, trip_id)
-    if trip is None or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+    stmt = select(Trip).where(
+        Trip.id == trip_id, 
+        Trip.driver_id == driver.id, 
+        Trip.company_id == driver.company_id
+    ).with_for_update()
+    result = await db.execute(stmt)
+    trip = result.scalar_one_or_none()
+    if trip is None:
         raise HTTPException(404, "Trip not found")
+
+    # Idempotent return if already COMPLETED (no duplicate side-effects)
+    if trip.status == TripStatus.COMPLETED:
+        return DriverTripResponse.model_validate(trip)
+
+    if trip.status not in (TripStatus.IN_PROGRESS, TripStatus.PAUSED):
+        raise HTTPException(400, f"Cannot complete trip in status '{trip.status.value}'")
 
     trip.status = TripStatus.COMPLETED
     trip.actual_end_time = datetime.now(timezone.utc)
-    if actual_distance:
+    if actual_distance is not None:
         trip.actual_distance = actual_distance
+
+    from services.trip_service import create_trip_operational_event
+    from models.operational_event import EventType
+    event = create_trip_operational_event(
+        company_id=driver.company_id,
+        event_type=EventType.TRIP_COMPLETED,
+        trip_business_id=trip.trip_id,
+        payload={
+            "actual_end_time": trip.actual_end_time.isoformat(),
+            "actual_distance": trip.actual_distance,
+        },
+        created_by=f"driver:{driver.id}"
+    )
+    db.add(event)
 
     await db.commit()
     await db.refresh(trip)
+    
+    # Run canonical telemetry calculation in background
+    background_tasks.add_task(TripCompletionService.run_telemetry_finalization_task, trip.id)
 
     logger.info(f"Trip {trip_id} completed by driver {driver.id}")
     return DriverTripResponse.model_validate(trip)
+
 
 
 @router.get("/vehicle", response_model=VehicleDetailResponse)

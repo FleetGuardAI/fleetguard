@@ -205,6 +205,7 @@ from routers.tickets import router as tickets_router
 from routers.support import router as support_router
 # from routers.assignment_domain import router as assignment_domain_router
 from routers.driver_domain import router as driver_domain_router
+from routers.driver_qualification import router as driver_qualification_router
 from routers.trip_domain import router as trip_domain_router
 from domain.fuel.api import router as fuel_domain_router
 from routers.maintenance_domain import router as maintenance_domain_router
@@ -367,6 +368,7 @@ app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(tickets_router, prefix=API_PREFIX)
 app.include_router(support_router, prefix=API_PREFIX)
 app.include_router(driver_domain_router, prefix=API_PREFIX)
+app.include_router(driver_qualification_router, prefix=API_PREFIX)
 app.include_router(trip_domain_router, prefix=API_PREFIX)
 app.include_router(maintenance_domain_router, prefix=API_PREFIX)
 app.include_router(tyre_domain_router, prefix=API_PREFIX)

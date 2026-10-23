@@ -31,6 +31,7 @@ from services.trip_intelligence_config import intelligence_config
 from services.routing_service import RoutingService
 from services.vehicle_intelligence import VehicleIntelligence
 from services.driver_intelligence import DriverIntelligence
+from services.dispatch_suitability_service import DispatchSuitabilityService
 
 import logging
 
@@ -43,6 +44,7 @@ class PreTripIntelligenceService:
         self.routing_service = RoutingService()
         self.vehicle_intelligence = VehicleIntelligence(db, intelligence_config)
         self.driver_intelligence = DriverIntelligence(db, intelligence_config)
+        self.dispatch_suitability = DispatchSuitabilityService(db)
 
     async def evaluate_trip(self, request: PreTripEvaluateRequest, company_id: int) -> PreTripIntelligenceResponse:
         # Track components
@@ -99,22 +101,52 @@ class PreTripIntelligenceService:
         # 3. Suitability Checks
         v_suit = None
         d_suit = None
+        c_suit = None
+        q_suit = None
         
+        suit_res = await self.dispatch_suitability.evaluate_dispatch_suitability(
+            company_id=company_id,
+            vehicle_id=request.vehicle_id,
+            driver_id=request.driver_id,
+            planned_start=request.planned_start_time,
+            planned_end=request.planned_end_time,
+            route_distance_km=distance_km,
+            cargo_weight=request.cargo_weight,
+            cargo_category=request.cargo_category,
+            required_vehicle_class=request.required_vehicle_class,
+            required_driver_qualification=request.required_driver_qualification,
+            cargo_temperature_required=request.cargo_temperature_required,
+        )
+
+        for w in suit_res.warnings:
+            if w not in warnings:
+                warnings.append(w)
+
         if vehicle:
-            v_suit = await self.vehicle_intelligence.evaluate_suitability(
-                vehicle, request.planned_start_time, request.planned_end_time, distance_km
-            )
+            v_suit = suit_res.vehicle_suitability
             if v_suit.status != SuitabilityStatus.SUITABLE:
-                risk_factors.append(RiskFactor(factor="Vehicle Suitability", severity="HIGH", description=" ".join(v_suit.reasons)))
+                severity = "HIGH" if v_suit.status == SuitabilityStatus.UNSUITABLE else "MEDIUM"
+                risk_factors.append(RiskFactor(factor="Vehicle Suitability", severity=severity, description=" ".join(v_suit.reasons)))
                 reasons.append(RecommendationReason(factor_type="negative", description=" ".join(v_suit.reasons)))
-        
+
+            c_suit = suit_res.cargo_suitability
+            if c_suit.status != SuitabilityStatus.SUITABLE:
+                severity = "HIGH" if c_suit.status == SuitabilityStatus.UNSUITABLE else "MEDIUM"
+                risk_factors.append(RiskFactor(factor="Cargo Capability", severity=severity, description=" ".join(c_suit.reasons)))
+                reasons.append(RecommendationReason(factor_type="negative", description=" ".join(c_suit.reasons)))
+
         if driver:
-            d_suit = await self.driver_intelligence.evaluate_suitability(
-                driver, request.planned_start_time, request.planned_end_time, distance_km
-            )
+            d_suit = suit_res.driver_suitability
             if d_suit.status != SuitabilityStatus.SUITABLE:
-                risk_factors.append(RiskFactor(factor="Driver Suitability", severity="HIGH", description=" ".join(d_suit.reasons)))
+                severity = "HIGH" if d_suit.status == SuitabilityStatus.UNSUITABLE else "MEDIUM"
+                risk_factors.append(RiskFactor(factor="Driver Suitability", severity=severity, description=" ".join(d_suit.reasons)))
                 reasons.append(RecommendationReason(factor_type="negative", description=" ".join(d_suit.reasons)))
+
+            q_suit = suit_res.qualification_suitability
+            if q_suit.status != SuitabilityStatus.SUITABLE:
+                severity = "HIGH" if q_suit.status == SuitabilityStatus.UNSUITABLE else "MEDIUM"
+                risk_factors.append(RiskFactor(factor="Driver Qualification", severity=severity, description=" ".join(q_suit.reasons)))
+                reasons.append(RecommendationReason(factor_type="negative", description=" ".join(q_suit.reasons)))
 
         # 4. Economics Calculation
         expected_fuel_liters = 0.0
@@ -247,7 +279,12 @@ class PreTripIntelligenceService:
         # Hard overrides
         if expected_margin_pct is not None and expected_margin_pct < 0:
             rec = RecommendationDecision.AVOID
-            
+
+        if suit_res.hard_failures or not suit_res.is_dispatchable:
+            if vehicle or driver:
+                rec = RecommendationDecision.AVOID
+                overall_risk = RiskLevel.HIGH
+
         if not vehicle and rec == RecommendationDecision.TAKE:
             rec = RecommendationDecision.REVIEW # Can't blindly take without seeing the vehicle assigned
 
@@ -285,6 +322,8 @@ class PreTripIntelligenceService:
             confidence_reasons=conf_reasons,
             vehicle_suitability=v_suit,
             driver_suitability=d_suit,
+            cargo_suitability=c_suit,
+            qualification_suitability=q_suit,
             assumptions=assumptions,
             data_sources=list(data_sources),
             warnings=warnings,

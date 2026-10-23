@@ -9,7 +9,7 @@ from models.admin_domain import AdminUser, AdminAuditLog
 from models.document import Document, DocumentVerificationStatus, DocumentStorageStatus
 from models.notification import Notification, NotificationCategory
 from services.admin_auth_service import require_admin_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 router = APIRouter(prefix="/api/v1/admin/documents", tags=["Admin Documents"])
@@ -27,8 +27,7 @@ class DocumentResponse(BaseModel):
     rejection_reason: Optional[str] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class VerificationRequest(BaseModel):
     reason: Optional[str] = None

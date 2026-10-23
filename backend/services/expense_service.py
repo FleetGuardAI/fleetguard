@@ -5,7 +5,7 @@ Domain service orchestrating business rules for Expense Management.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.uow import AbstractUnitOfWork
-from datetime import datetime
+from datetime import datetime, timezone
 
 from models.operational_event import OperationalEvent, EventType, EntityType
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
@@ -61,9 +61,9 @@ class ExpenseService:
             try:
                 expense.expense_date = datetime.fromisoformat(payload["expense_date"])
             except (ValueError, TypeError):
-                expense.expense_date = datetime.utcnow()
+                expense.expense_date = datetime.now(timezone.utc)
         else:
-            expense.expense_date = datetime.utcnow()
+            expense.expense_date = datetime.now(timezone.utc)
             
         expense.description = payload.get("description")
         expense.receipt_reference = payload.get("receipt_reference")

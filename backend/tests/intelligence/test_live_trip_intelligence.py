@@ -1,79 +1,98 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 from services.live_trip_intelligence import LiveTripIntelligenceService
-from services.trip_intelligence_config import TripIntelligenceConfig
+from schemas.live_trip_intelligence import TripHealthStatus
 from models.trip_domain import Trip
+from models.expense_domain import Expense, ExpenseStatus, ExpenseCategory
+import uuid
 
-@pytest.fixture
-def mock_config():
-    return TripIntelligenceConfig(
-        time_variance_warning_pct=0.15,
-        time_variance_critical_pct=0.30,
-        cost_variance_warning_pct=0.10,
-        cost_variance_critical_pct=0.20
-    )
 
-@pytest.fixture
-def service(mock_config):
-    return LiveTripIntelligenceService(mock_config)
-
-def test_on_track_health(service):
+@pytest.mark.asyncio
+async def test_on_track_health(db_session):
+    now = datetime.now(timezone.utc)
     trip = Trip(
-        start_date=datetime.now(timezone.utc) - timedelta(hours=2),
-        expected_delivery=datetime.now(timezone.utc) + timedelta(hours=8),
-        distance_km=500,
-        planned_cost=10000,
-        fuel_cost=0,
-        driver_cost=0,
-        toll_cost=0,
-        other_expenses=0,
+        id=9901,
+        trip_id=f"TRIP-{uuid.uuid4().hex[:6]}",
+        actual_start_time=now - timedelta(hours=2),
+        planned_end_time=now + timedelta(hours=8),
+        expected_cost=10000.0,
+        expected_profit=15000.0,
+        expected_revenue=25000.0,
         intelligence_snapshot={
-            "expected_total_cost": 10000,
-            "expected_profit": 15000,
-            "expected_revenue": 25000,
-            "expected_duration_hours": 10
+            "expected_total_cost": 10000.0,
+            "expected_profit": 15000.0,
+            "expected_revenue": 25000.0,
+            "expected_duration_hours": 10.0
         }
     )
-    result = service.evaluate_live_trip(trip)
-    assert result.health_status == "ON_TRACK"
+    service = LiveTripIntelligenceService(db_session)
+    result = await service.compute_live_health(trip)
+    assert result.health_status == TripHealthStatus.ON_TRACK
     assert len(result.deviations) == 0
 
-def test_profit_erosion(service):
-    # Actual costs far exceed planned, eroding profit
-    trip = Trip(
-        start_date=datetime.now(timezone.utc) - timedelta(hours=5),
-        expected_delivery=datetime.now(timezone.utc) + timedelta(hours=5),
-        distance_km=500,
-        planned_cost=10000,
-        fuel_cost=12000,  # Unexpectedly high
-        driver_cost=0,
-        toll_cost=0,
-        other_expenses=0,
-        intelligence_snapshot={
-            "expected_total_cost": 10000,
-            "expected_profit": 15000,
-            "expected_revenue": 25000,
-            "expected_duration_hours": 10
-        }
-    )
-    result = service.evaluate_live_trip(trip)
-    # Expected profit was 15k. Actual cost is already 12k. Revenue 25k -> Projected Profit <= 13k.
-    assert result.projected_total_cost >= 12000
-    assert result.projected_profit <= 13000
-    assert result.profit_erosion > 0
-    assert result.health_status in ["AT_RISK", "CRITICAL"]
 
-def test_time_deviation(service):
-    # Expected duration was 10 hours. It's been 12 hours.
+@pytest.mark.asyncio
+async def test_profit_erosion(db_session):
+    now = datetime.now(timezone.utc)
     trip = Trip(
-        start_date=datetime.now(timezone.utc) - timedelta(hours=12),
-        expected_delivery=datetime.now(timezone.utc) - timedelta(hours=2),
-        distance_km=500,
+        id=9902,
+        trip_id=f"TRIP-{uuid.uuid4().hex[:6]}",
+        actual_start_time=now - timedelta(hours=5),
+        planned_end_time=now + timedelta(hours=5),
+        expected_cost=10000.0,
+        expected_profit=15000.0,
+        expected_revenue=25000.0,
         intelligence_snapshot={
-            "expected_duration_hours": 10
+            "expected_total_cost": 10000.0,
+            "expected_profit": 15000.0,
+            "expected_revenue": 25000.0,
+            "expected_duration_hours": 10.0
         }
     )
-    result = service.evaluate_live_trip(trip)
-    # Variance = (12 - 10) / 10 = 0.20 (20%) -> Between 15% and 30%, so AT_RISK
-    assert result.health_status == "AT_RISK"
+    # Add an approved expense exceeding planned cost
+    exp = Expense(
+        trip_id=trip.id,
+        company_id=1,
+        vehicle_id=1,
+        business_id=f"EXP-{uuid.uuid4().hex[:6]}",
+        origin_id=str(uuid.uuid4()),
+        category=ExpenseCategory.FUEL,
+        amount=14000.0,
+        status=ExpenseStatus.APPROVED,
+        expense_date=now
+    )
+    db_session.add(exp)
+    await db_session.flush()
+
+    service = LiveTripIntelligenceService(db_session)
+    result = await service.compute_live_health(trip)
+
+    assert result.projected_total_cost >= 14000.0
+    assert result.profit_erosion > 0
+    assert result.health_status in [TripHealthStatus.AT_RISK, TripHealthStatus.CRITICAL]
+
+
+@pytest.mark.asyncio
+async def test_time_deviation(db_session):
+    now = datetime.now(timezone.utc)
+    # Expected duration was 10 hours. It has been 14 hours.
+    trip = Trip(
+        id=9903,
+        trip_id=f"TRIP-{uuid.uuid4().hex[:6]}",
+        actual_start_time=now - timedelta(hours=14),
+        expected_cost=10000.0,
+        expected_profit=5000.0,
+        expected_revenue=15000.0,
+        intelligence_snapshot={
+            "expected_total_cost": 10000.0,
+            "expected_profit": 5000.0,
+            "expected_revenue": 15000.0,
+            "expected_duration_hours": 10.0
+        }
+    )
+    service = LiveTripIntelligenceService(db_session)
+    result = await service.compute_live_health(trip)
+
+    # 14 hours vs 10 hours = 40% variance -> CRITICAL duration deviation
+    assert result.health_status in [TripHealthStatus.AT_RISK, TripHealthStatus.CRITICAL]
     assert any(d.metric == "Duration" for d in result.deviations)

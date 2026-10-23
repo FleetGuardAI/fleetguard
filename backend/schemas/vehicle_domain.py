@@ -27,6 +27,15 @@ class VehicleResponse(BaseModel):
     origin_id: Optional[str] = None
     assigned_driver_id: Optional[int] = None
 
+    # --- Capability & Cargo Specifications ---
+    vehicle_class: Optional[str] = None
+    payload_capacity_tonnes: Optional[float] = None
+    gross_vehicle_weight_tonnes: Optional[float] = None
+    supported_cargo_categories: Optional[list[str]] = None
+    body_type: Optional[str] = None
+    temperature_controlled: Optional[bool] = False
+    hazardous_certified: Optional[bool] = False
+
     # --- Vehicle Documents ---
     rc_url: Optional[str] = None
     insurance_url: Optional[str] = None
@@ -56,6 +65,13 @@ class VehicleCreate(BaseModel):
     vin: Optional[str] = None
     engine_number: Optional[str] = None
     tank_capacity: Optional[float] = 400.0
+    vehicle_class: Optional[str] = None
+    payload_capacity_tonnes: Optional[float] = None
+    gross_vehicle_weight_tonnes: Optional[float] = None
+    supported_cargo_categories: Optional[list[str]] = None
+    body_type: Optional[str] = None
+    temperature_controlled: Optional[bool] = False
+    hazardous_certified: Optional[bool] = False
 
 
 class VehicleRegistered(BaseModel):
@@ -73,6 +89,13 @@ class VehicleUpdated(BaseModel):
     tank_capacity: Optional[float] = None
     ownership_info: Optional[str] = None
     driver_id: Optional[int] = None
+    vehicle_class: Optional[str] = None
+    payload_capacity_tonnes: Optional[float] = None
+    gross_vehicle_weight_tonnes: Optional[float] = None
+    supported_cargo_categories: Optional[list[str]] = None
+    body_type: Optional[str] = None
+    temperature_controlled: Optional[bool] = None
+    hazardous_certified: Optional[bool] = None
 
 
 class VehicleStatusChanged(BaseModel):

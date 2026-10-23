@@ -23,6 +23,7 @@ from services.auth_service import get_current_user
 from models.user import User
 from models.vehicle_domain import Vehicle
 from models.trip_domain import Trip
+from models.fuel_domain import FuelTransaction, FuelTransactionType
 from models.user import User
 from schemas.operational_event import OperationalEventCreate
 from services.operational_event_service import OperationalEventService
@@ -308,6 +309,30 @@ async def create_expense(
     )
 
     db.add(expense)
+    await db.flush()
+
+    if cat_enum == ExpenseCategory.FUEL and payload.fuel_quantity_liters is not None:
+        fuel_tx = FuelTransaction(
+            company_id=driver.company_id,
+            vehicle_id=payload.vehicle_id,
+            driver_id=driver.id,
+            trip_id=payload.trip_id,
+            expense_id=expense.id,
+            transaction_type=FuelTransactionType.FILL,
+            amount_liters=payload.fuel_quantity_liters,
+            fuel_type="DIESEL",
+            price_per_liter=payload.amount / payload.fuel_quantity_liters if payload.fuel_quantity_liters > 0 else 0,
+            total_cost=payload.amount,
+            odometer=payload.odometer_reading,
+            station=payload.description,
+            receipt_url=payload.receipt_url,
+            origin_type="driver_app",
+            origin_id=f"driver_{driver.id}",
+            timestamp=datetime.now(timezone.utc),
+            description=payload.description
+        )
+        db.add(fuel_tx)
+
     await db.commit()
     await db.refresh(expense)
 

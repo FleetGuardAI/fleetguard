@@ -17,6 +17,7 @@ from models.owner_pairing_token import OwnerPairingToken
 # --- Fleet Models ---
 from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver, VerificationStatus, DutyStatus
+from models.driver_qualification import DriverQualification, QualificationType, LicenseClass, QualificationVerificationStatus
 from models.trip_domain import Trip
 from models.maintenance_domain import MaintenanceRecord, MaintenanceTask
 from models.tyre_domain import Tyre, TyreLifecycleRecord
@@ -70,6 +71,10 @@ __all__ = [
     "Driver",
     "VerificationStatus",
     "DutyStatus",
+    "DriverQualification",
+    "QualificationType",
+    "LicenseClass",
+    "QualificationVerificationStatus",
     "Trip",
     "MaintenanceRecord",
     "MaintenanceTask",

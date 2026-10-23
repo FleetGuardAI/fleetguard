@@ -70,6 +70,7 @@ class VehicleDetailScreen extends ConsumerWidget {
               final totalExpenses = insights['total_expenses'];
               final completedTrips = insights['completed_trips'] ?? 0;
               final utilization = insights['utilization_percentage'];
+              final activityScore = insights['activity_score'];
               final maintenance = insights['maintenance_status'];
               final location = insights['last_known_location'];
 
@@ -86,7 +87,12 @@ class VehicleDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         InfoRow(label: 'Current Trip', value: activeTrip != null ? '${activeTrip['origin']} → ${activeTrip['destination']}' : 'No active trip'),
                         InfoRow(label: 'Completed Trips', value: completedTrips.toString()),
-                        InfoRow(label: 'Utilization', value: utilization != null ? '$utilization%' : 'Unavailable'),
+                        InfoRow(
+                          label: utilization != null ? 'Utilization' : 'Activity Score',
+                          value: utilization != null
+                              ? '$utilization%'
+                              : (activityScore != null ? '$activityScore / 100' : 'Unavailable'),
+                        ),
                       ],
                     ),
                   ),

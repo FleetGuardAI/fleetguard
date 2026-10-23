@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 class AdminRoleBase(BaseModel):
     name: str
@@ -8,8 +8,7 @@ class AdminRoleBase(BaseModel):
 
 class AdminRoleResponse(AdminRoleBase):
     id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AdminUserBase(BaseModel):
     full_name: str
@@ -32,8 +31,7 @@ class AdminUserResponse(AdminUserBase):
     created_at: datetime
     last_login: Optional[datetime] = None
     role: Optional[AdminRoleResponse] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AdminLogin(BaseModel):
     email: EmailStr
@@ -49,5 +47,4 @@ class PermissionBase(BaseModel):
 
 class PermissionResponse(PermissionBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
