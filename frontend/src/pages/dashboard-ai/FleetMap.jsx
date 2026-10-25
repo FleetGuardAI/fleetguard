@@ -256,13 +256,25 @@ export function FleetMap({
   const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [driversError, setDriversError] = useState(null);
+  const [tripsError, setTripsError] = useState(null);
+  const [telemetryError, setTelemetryError] = useState(null);
 
-  // ── Playback State ─────────────────────────────────────────────────────────
+  // Driver Sidebar filter controls
+  const [driverSearchTerm, setDriverSearchTerm] = useState('');
+  const [driverDutyStatus, setDriverDutyStatus] = useState('all');
+  const [driverSortBy, setDriverSortBy] = useState('latest_activity');
+  const [driverHasTripsFilter, setDriverHasTripsFilter] = useState(false);
+
+  // ── Playback State & Request Cancellation Refs ─────────────────────────────
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const playbackTimerRef = useRef(null);
-  const abortControllerRef = useRef(null);
+  const tripsAbortRef = useRef(null);
+  const telemetryAbortRef = useRef(null);
+  const tripsRequestIdRef = useRef(0);
+  const telemetryRequestIdRef = useRef(0);
 
   // Coordinates copy feedback
   const [copiedCoords, setCopiedCoords] = useState(false);
@@ -274,6 +286,15 @@ export function FleetMap({
     }
     return [30.3165, 78.0322]; // Dehradun / India
   }, [trucks]);
+
+  // Clean up timers and in-flight requests on component unmount
+  useEffect(() => {
+    return () => {
+      if (tripsAbortRef.current) tripsAbortRef.current.abort();
+      if (telemetryAbortRef.current) telemetryAbortRef.current.abort();
+      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    };
+  }, []);
 
   // ── Escape Key Handler to exit expanded mode ──────────────────────────────
   useEffect(() => {
@@ -308,6 +329,7 @@ export function FleetMap({
   // ── Fetch Drivers when expanded or URL specifies ───────────────────────────
   const loadDriversList = useCallback(async () => {
     setIsLoadingDrivers(true);
+    setDriversError(null);
     setErrorMessage(null);
     try {
       const data = await getTrackingDrivers();
@@ -315,7 +337,7 @@ export function FleetMap({
 
       const driverIdParam = searchParams.get('driver_id');
       if (driverIdParam) {
-        const found = data.find((d) => String(d.id) === String(driverIdParam));
+        const found = (data || []).find((d) => String(d.id) === String(driverIdParam));
         if (found) {
           setSelectedDriver(found);
           return;
@@ -327,7 +349,9 @@ export function FleetMap({
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setErrorMessage(err.message || 'Failed to load fleet drivers.');
+        const msg = err.message || 'Failed to load fleet drivers.';
+        setDriversError(msg);
+        setErrorMessage(msg);
       }
     } finally {
       setIsLoadingDrivers(false);
@@ -340,54 +364,104 @@ export function FleetMap({
     }
   }, [isExpanded]);
 
-  // ── Load Telemetry when Driver or Time Filter Changes ──────────────────────
-  const loadHistoricalTelemetry = useCallback(async () => {
-    if (!selectedDriver) return;
+  // ── Load Driver Trips Independently ────────────────────────────────────────
+  const loadDriverTripsData = useCallback(async (driverId, targetTripId = null) => {
+    if (!driverId) return;
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    if (tripsAbortRef.current) {
+      tripsAbortRef.current.abort();
     }
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
+    const controller = new AbortController();
+    tripsAbortRef.current = controller;
+    const signal = controller.signal;
+    const currentReqId = ++tripsRequestIdRef.current;
 
     setIsLoadingTrips(true);
+    setTripsError(null);
+
+    try {
+      const tripsData = await getDriverTrips(driverId, {}, signal);
+      if (signal.aborted || currentReqId !== tripsRequestIdRef.current) return;
+
+      const safeTrips = Array.isArray(tripsData) ? tripsData : [];
+      setDriverTrips(safeTrips);
+
+      const tripIdToFind = targetTripId || searchParams.get('trip_id');
+      if (tripIdToFind) {
+        const found = safeTrips.find(
+          (t) => String(t.id) === String(tripIdToFind) || String(t.trip_id) === String(tripIdToFind)
+        );
+        if (found) {
+          setSelectedTrip(found);
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError' || signal.aborted) return;
+      console.error('Error loading driver trips:', err);
+      if (currentReqId === tripsRequestIdRef.current) {
+        setTripsError(err.message || 'Failed to retrieve trip history.');
+      }
+    } finally {
+      if (!signal.aborted && currentReqId === tripsRequestIdRef.current) {
+        setIsLoadingTrips(false);
+      }
+    }
+  }, [searchParams]);
+
+  // ── Load Driver GPS Telemetry Independently ────────────────────────────────
+  const loadDriverTelemetryData = useCallback(async (driverId, trip = null, dateRange = null) => {
+    if (!driverId) return;
+
+    if (telemetryAbortRef.current) {
+      telemetryAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    telemetryAbortRef.current = controller;
+    const signal = controller.signal;
+    const currentReqId = ++telemetryRequestIdRef.current;
+
     setIsLoadingLocations(true);
-    setErrorMessage(null);
+    setTelemetryError(null);
     setIsPlaying(false);
 
     try {
-      const tripsData = await getDriverTrips(selectedDriver.id, {}, { signal });
-      setDriverTrips(tripsData || []);
+      let locData = null;
+      let anData = null;
 
-      const tripIdParam = searchParams.get('trip_id');
-      let targetTrip = null;
-      if (tripIdParam) {
-        targetTrip = tripsData.find(
-          (t) => String(t.id) === String(tripIdParam) || String(t.trip_id) === String(tripIdParam)
-        );
-        if (targetTrip) setSelectedTrip(targetTrip);
-      }
-
-      let locData;
-      let anData;
-
-      if (targetTrip) {
-        const tripPoints = await getTripRoute(targetTrip.id || targetTrip.trip_id, { signal });
+      if (trip) {
+        const tripPoints = await getTripRoute(trip.id || trip.trip_id, signal);
+        if (signal.aborted || currentReqId !== telemetryRequestIdRef.current) return;
         locData = { points: tripPoints || [], gaps: [], stops: [], total_points: (tripPoints || []).length };
-        anData = await getDriverAnalytics(selectedDriver.id, {}, { signal });
+        try {
+          anData = await getDriverAnalytics(driverId, { trip_id: trip.trip_id || trip.id }, signal);
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+          console.warn('Trip analytics unavailable:', e.message);
+        }
       } else {
         const params = {
-          start_time: activeDateRange?.startTime ? activeDateRange.startTime.toISOString() : undefined,
-          end_time: activeDateRange?.endTime ? activeDateRange.endTime.toISOString() : undefined,
+          start_time: dateRange?.startTime ? dateRange.startTime.toISOString() : undefined,
+          end_time: dateRange?.endTime ? dateRange.endTime.toISOString() : undefined,
           downsample: 600,
         };
         const [locRes, anRes] = await Promise.all([
-          getDriverLocations(selectedDriver.id, params, { signal }),
-          getDriverAnalytics(selectedDriver.id, params, { signal }),
+          getDriverLocations(driverId, params, signal).catch(e => {
+            if (e.name === 'AbortError') throw e;
+            console.warn('Historical locations request failed:', e.message);
+            return { points: [], gaps: [], stops: [], total_points: 0 };
+          }),
+          getDriverAnalytics(driverId, params, signal).catch(e => {
+            if (e.name === 'AbortError') throw e;
+            console.warn('Driver analytics request failed:', e.message);
+            return null;
+          }),
         ]);
+        if (signal.aborted || currentReqId !== telemetryRequestIdRef.current) return;
         locData = locRes;
         anData = anRes;
       }
+
+      if (signal.aborted || currentReqId !== telemetryRequestIdRef.current) return;
 
       const points = locData?.points || [];
       setLocations(points);
@@ -399,21 +473,32 @@ export function FleetMap({
       setSelectedPoint(points[0] || null);
       setFitTrigger((prev) => prev + 1);
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('Error loading driver telemetry:', err);
-        setErrorMessage(err.message || 'Failed to retrieve GPS telemetry.');
+      if (err.name === 'AbortError' || signal.aborted) return;
+      console.error('Error loading driver telemetry:', err);
+      if (currentReqId === telemetryRequestIdRef.current) {
+        setTelemetryError(err.message || 'Failed to retrieve GPS telemetry.');
       }
     } finally {
-      setIsLoadingTrips(false);
-      setIsLoadingLocations(false);
+      if (!signal.aborted && currentReqId === telemetryRequestIdRef.current) {
+        setIsLoadingLocations(false);
+      }
     }
-  }, [selectedDriver, activeDateRange, searchParams]);
+  }, []);
 
+  // Sync state when driver changes
   useEffect(() => {
-    if (isExpanded && selectedDriver) {
-      loadHistoricalTelemetry();
+    if (isExpanded && selectedDriver?.id) {
+      loadDriverTripsData(selectedDriver.id);
+      loadDriverTelemetryData(selectedDriver.id, selectedTrip, activeDateRange);
     }
-  }, [isExpanded, selectedDriver, activeDateRange]);
+  }, [isExpanded, selectedDriver?.id]);
+
+  // Sync telemetry when active date range changes (only if no specific trip is isolated)
+  useEffect(() => {
+    if (isExpanded && selectedDriver?.id && !selectedTrip) {
+      loadDriverTelemetryData(selectedDriver.id, null, activeDateRange);
+    }
+  }, [activeDateRange]);
 
   // ── Driver & Trip Switch Handlers ──────────────────────────────────────────
   const handleSelectDriver = (driver) => {
@@ -421,43 +506,28 @@ export function FleetMap({
     setIsPlaying(false);
     setSelectedTrip(null);
     setSelectedPoint(null);
+    setLocations([]);
+    setGaps([]);
+    setStops([]);
+    setAnalytics(null);
     setSelectedDriver(driver);
     setSearchParams((params) => {
       params.set('driver_id', driver.id);
       params.delete('trip_id');
       return params;
     });
+    loadDriverTripsData(driver.id);
+    loadDriverTelemetryData(driver.id, null, activeDateRange);
   };
 
-  const handleSelectTrip = async (trip) => {
+  const handleSelectTrip = (trip) => {
     setSelectedTrip(trip);
-    setIsPlaying(false);
-    setIsLoadingLocations(true);
-    setErrorMessage(null);
-
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
-
-    try {
-      const tripPoints = await getTripRoute(trip.id || trip.trip_id, { signal });
-      setLocations(tripPoints || []);
-      setGaps([]);
-      setStops([]);
-      setPlaybackIndex(0);
-      setSelectedPoint(tripPoints && tripPoints.length > 0 ? tripPoints[0] : null);
-      setFitTrigger((prev) => prev + 1);
-
-      setSearchParams((params) => {
-        params.set('trip_id', trip.trip_id || trip.id);
-        return params;
-      });
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        setErrorMessage(err.message || 'Failed to load route for selected trip.');
-      }
-    } finally {
-      setIsLoadingLocations(false);
+    setSearchParams((params) => {
+      params.set('trip_id', trip.trip_id || trip.id);
+      return params;
+    });
+    if (selectedDriver) {
+      loadDriverTelemetryData(selectedDriver.id, trip, null);
     }
   };
 
@@ -467,7 +537,9 @@ export function FleetMap({
       params.delete('trip_id');
       return params;
     });
-    loadHistoricalTelemetry();
+    if (selectedDriver) {
+      loadDriverTelemetryData(selectedDriver.id, null, activeDateRange);
+    }
   };
 
   // ── Split locations by GPS gaps for multi-segment polyline ────────────────
@@ -694,7 +766,17 @@ export function FleetMap({
                 drivers={drivers}
                 selectedDriver={selectedDriver}
                 onSelectDriver={handleSelectDriver}
-                isLoading={isLoadingDrivers}
+                loading={isLoadingDrivers}
+                error={driversError}
+                onRetry={loadDriversList}
+                searchTerm={driverSearchTerm}
+                onSearchChange={setDriverSearchTerm}
+                dutyStatusFilter={driverDutyStatus}
+                onDutyStatusChange={setDriverDutyStatus}
+                sortBy={driverSortBy}
+                onSortByChange={setDriverSortBy}
+                hasTripsFilter={driverHasTripsFilter}
+                onHasTripsFilterToggle={setDriverHasTripsFilter}
               />
             </div>
 
@@ -706,6 +788,8 @@ export function FleetMap({
                 onSelectTrip={handleSelectTrip}
                 onClearTrip={handleClearTrip}
                 isLoading={isLoadingTrips}
+                error={tripsError}
+                onRetry={loadHistoricalTelemetry}
                 driverName={selectedDriver?.name}
               />
             </div>
@@ -1088,6 +1172,43 @@ export function FleetMap({
                     <span>Maps</span>
                   </a>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXPANDED MODE: GPS Telemetry Unavailable Notice ────────────── */}
+          {isExpanded && locations.length === 0 && !isLoadingLocations && selectedDriver && !driversError && (
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 max-w-md bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200 shadow-xl text-center space-y-1.5 animate-fade-in pointer-events-auto">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-800">
+                <Navigation className="w-4 h-4 text-slate-400" />
+                <span>GPS Telemetry Unavailable</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                No historical GPS breadcrumbs recorded for {selectedDriver.name || 'this driver'} during the selected window.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimePreset('30d');
+                    setActiveDateRange(getTimeFilterRange('30d'));
+                  }}
+                  className="text-[11px] font-semibold text-brand-600 hover:text-brand-800 underline"
+                >
+                  Expand to Last 30 Days
+                </button>
+                {selectedTrip && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={handleClearTrip}
+                      className="text-[11px] font-semibold text-brand-600 hover:text-brand-800 underline"
+                    >
+                      Clear Trip Filter
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}

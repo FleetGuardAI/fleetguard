@@ -5,7 +5,12 @@
  */
 
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').trim();
+const trimmedBase = rawApiUrl.replace(/\/+$/, '');
+const API_BASE = (trimmedBase && !trimmedBase.endsWith('/api'))
+  ? `${trimmedBase}/api`
+  : (trimmedBase || '/api');
+
 
 function getApiErrorMessage(error) {
   if (error?.detail) {
@@ -29,13 +34,28 @@ function getApiErrorMessage(error) {
   return 'An unexpected error occurred.';
 }
 
+export function resolveAbortSignal(candidate) {
+  if (!candidate) return undefined;
+  if (typeof AbortSignal !== 'undefined' && candidate instanceof AbortSignal) {
+    return candidate;
+  }
+  if (typeof candidate === 'object' && candidate !== null && 'signal' in candidate) {
+    return resolveAbortSignal(candidate.signal);
+  }
+  return undefined;
+}
+
 /**
  * @param {string} endpoint - API path (e.g. '/dashboard/kpis')
  * @param {RequestInit} [options] - Fetch options
  * @returns {Promise<any>}
  */
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (API_BASE.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.substring(4);
+  }
+  const url = `${API_BASE}${cleanEndpoint}`;
   
   const localToken = localStorage.getItem('fleetguard_token');
   const sessionToken = sessionStorage.getItem('fleetguard_token');
@@ -52,10 +72,17 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `${tokenType} ${token}`;
   }
 
+  // Safely extract signal: only attach if candidate resolves to a valid native AbortSignal
+  const { signal: rawSignal, ...safeOptions } = options;
   const config = {
-    ...options,
+    ...safeOptions,
     headers,
   };
+
+  const validSignal = resolveAbortSignal(rawSignal);
+  if (validSignal) {
+    config.signal = validSignal;
+  }
 
   try {
     const response = await fetch(url, config);
@@ -81,7 +108,9 @@ async function request(endpoint, options = {}) {
     const data = await response.json();
     return data;
   } catch (err) {
-    console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
+    if (err.name !== 'AbortError') {
+      console.warn(`[the vahan API] ${endpoint} failed:`, err.message);
+    }
     throw err;
   }
 }
@@ -230,7 +259,7 @@ const api = {
 
   // ── Telematics / Tracking ─────────
   telematics: {
-    getLiveFleet: () => request('/v1/tracking/fleet/live'),
+    getLiveFleet: (options = {}) => request('/v1/tracking/fleet/live', options),
     getDrivers: (params = {}, options = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/v1/tracking/drivers${query ? `?${query}` : ''}`, options);
@@ -423,11 +452,11 @@ const api = {
   // (duplicate fleet block removed — see fleet definition above)
   
   // ── Generic REST Methods ───────────────────────────────
-  get: (url) => request(url),
-  post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
-  put: (url, body) => request(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
-  patch: (url, body) => request(url, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: (url) => request(url, { method: 'DELETE' }),
+  get: (url, options = {}) => request(url, { ...options, method: 'GET' }),
+  post: (url, body, options = {}) => request(url, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  put: (url, body, options = {}) => request(url, { ...options, method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+  patch: (url, body, options = {}) => request(url, { ...options, method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  delete: (url, options = {}) => request(url, { ...options, method: 'DELETE' }),
 };
 
 export default api;
