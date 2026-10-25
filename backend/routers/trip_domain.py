@@ -38,13 +38,17 @@ async def list_trips(
     service = TripService(uow)
     trips = await service.search_trips(status=status, limit=limit, offset=offset, company_id=current_user.company_id, search=search)
     
-    eta_service = EtaService(uow.session)
+    eta_session = getattr(uow, "session", getattr(uow, "_session", None))
+    eta_service = EtaService(eta_session) if eta_session else None
     response_list = []
     for t in trips:
         trip_resp = TripResponse.model_validate(t)
-        if t.status == TripStatus.IN_PROGRESS:
-            enrichment = await eta_service.enrich_trip_response(t)
-            trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+        if t.status == TripStatus.IN_PROGRESS and eta_service:
+            try:
+                enrichment = await eta_service.enrich_trip_response(t)
+                trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+            except Exception as e:
+                pass
         response_list.append(trip_resp)
         
     return response_list
@@ -289,9 +293,14 @@ async def get_trip(
         
     trip_resp = TripResponse.model_validate(trip)
     if trip.status == TripStatus.IN_PROGRESS:
-        eta_service = EtaService(uow.session)
-        enrichment = await eta_service.enrich_trip_response(trip)
-        trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+        eta_session = getattr(uow, "session", getattr(uow, "_session", None))
+        if eta_session:
+            try:
+                eta_service = EtaService(eta_session)
+                enrichment = await eta_service.enrich_trip_response(trip)
+                trip_resp.estimated_arrival_time = enrichment.get("estimated_arrival_time")
+            except Exception as e:
+                pass
         
     return trip_resp
 
