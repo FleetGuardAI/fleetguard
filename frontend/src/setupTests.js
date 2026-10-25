@@ -54,3 +54,34 @@ window.ResizeObserver = ResizeObserverMock;
 
 // Mock HTMLElement.scrollTo
 window.HTMLElement.prototype.scrollTo = vi.fn();
+
+// Mock IntersectionObserver
+class IntersectionObserverMock {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+window.IntersectionObserver = IntersectionObserverMock;
+global.IntersectionObserver = IntersectionObserverMock;
+
+// Mock document.elementsFromPoint for jsdom
+if (typeof document !== 'undefined' && !document.elementsFromPoint) {
+  document.elementsFromPoint = vi.fn(() => []);
+}
+
+// Ensure localStorage is fully functional in jsdom environment
+if (typeof window !== 'undefined') {
+  const storage = {};
+  const localStorageMock = {
+    getItem: vi.fn((key) => storage[key] !== undefined ? storage[key] : null),
+    setItem: vi.fn((key, value) => { storage[key] = String(value); }),
+    removeItem: vi.fn((key) => { delete storage[key]; }),
+    clear: vi.fn(() => { Object.keys(storage).forEach(k => delete storage[k]); }),
+    key: vi.fn((idx) => Object.keys(storage)[idx] || null),
+    get length() { return Object.keys(storage).length; }
+  };
+  Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
+}

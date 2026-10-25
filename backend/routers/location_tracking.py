@@ -203,6 +203,8 @@ class DriverTrackingAnalytics(BaseModel):
 # ==========================================================================
 
 @router.post("/api/v1/driver-app/location/batch", status_code=201)
+@router.post("/v1/driver-app/location/batch", status_code=201, include_in_schema=False)
+@router.post("/driver-app/location/batch", status_code=201, include_in_schema=False)
 async def batch_upload_locations(
     payload: LocationBatchRequest,
     driver: Driver = Depends(get_current_driver),
@@ -284,6 +286,8 @@ async def batch_upload_locations(
 # ==========================================================================
 
 @router.get("/api/v1/tracking/drivers", response_model=List[DriverSummaryResponse])
+@router.get("/v1/tracking/drivers", response_model=List[DriverSummaryResponse], include_in_schema=False)
+@router.get("/api/tracking/drivers", response_model=List[DriverSummaryResponse], include_in_schema=False)
 async def list_tracking_drivers(
     search: Optional[str] = Query(None, description="Search by name, phone, employee ID, or vehicle registration"),
     duty_status: Optional[str] = Query(None, description="Filter by duty status: ON_DUTY, OFF_DUTY, ON_BREAK"),
@@ -438,6 +442,8 @@ async def list_tracking_drivers(
 
 
 @router.get("/api/v1/tracking/driver/{driver_id}/trips", response_model=List[DriverTripSummary])
+@router.get("/v1/tracking/driver/{driver_id}/trips", response_model=List[DriverTripSummary], include_in_schema=False)
+@router.get("/api/tracking/driver/{driver_id}/trips", response_model=List[DriverTripSummary], include_in_schema=False)
 async def list_driver_trips(
     driver_id: int,
     start_time: Optional[datetime] = Query(None),
@@ -543,6 +549,8 @@ async def list_driver_trips(
 
 
 @router.get("/api/v1/tracking/driver/{driver_id}/locations", response_model=PaginatedLocationResponse)
+@router.get("/v1/tracking/driver/{driver_id}/locations", response_model=PaginatedLocationResponse, include_in_schema=False)
+@router.get("/api/tracking/driver/{driver_id}/locations", response_model=PaginatedLocationResponse, include_in_schema=False)
 async def get_driver_locations_paginated(
     driver_id: int,
     start_time: Optional[datetime] = Query(None, description="Start time (UTC)"),
@@ -730,6 +738,8 @@ async def get_driver_locations_paginated(
 
 
 @router.get("/api/v1/tracking/driver/{driver_id}/analytics", response_model=DriverTrackingAnalytics)
+@router.get("/v1/tracking/driver/{driver_id}/analytics", response_model=DriverTrackingAnalytics, include_in_schema=False)
+@router.get("/api/tracking/driver/{driver_id}/analytics", response_model=DriverTrackingAnalytics, include_in_schema=False)
 async def get_driver_tracking_analytics(
     driver_id: int,
     start_time: Optional[datetime] = Query(None),
@@ -854,6 +864,8 @@ async def get_driver_tracking_analytics(
 # ==========================================================================
 
 @router.get("/api/v1/tracking/driver/{driver_id}/live", response_model=LiveDriverLocation)
+@router.get("/v1/tracking/driver/{driver_id}/live", response_model=LiveDriverLocation, include_in_schema=False)
+@router.get("/api/tracking/driver/{driver_id}/live", response_model=LiveDriverLocation, include_in_schema=False)
 async def get_driver_live_location(
     driver_id: int,
     db: AsyncSession = Depends(get_db),
@@ -910,6 +922,8 @@ async def get_driver_live_location(
 
 
 @router.get("/api/v1/tracking/driver/{driver_id}/history", response_model=List[LocationResponse])
+@router.get("/v1/tracking/driver/{driver_id}/history", response_model=List[LocationResponse], include_in_schema=False)
+@router.get("/api/tracking/driver/{driver_id}/history", response_model=List[LocationResponse], include_in_schema=False)
 async def get_driver_location_history(
     driver_id: int,
     start_time: Optional[datetime] = Query(None),
@@ -954,6 +968,8 @@ async def get_driver_location_history(
 
 
 @router.get("/api/v1/tracking/trip/{trip_id}/route", response_model=List[LocationResponse])
+@router.get("/v1/tracking/trip/{trip_id}/route", response_model=List[LocationResponse], include_in_schema=False)
+@router.get("/api/tracking/trip/{trip_id}/route", response_model=List[LocationResponse], include_in_schema=False)
 async def get_trip_route_history(
     trip_id: str,
     db: AsyncSession = Depends(get_db),
@@ -1017,6 +1033,8 @@ async def get_trip_route_history(
 
 
 @router.get("/api/v1/tracking/fleet/live", response_model=List[LiveDriverLocation])
+@router.get("/v1/tracking/fleet/live", response_model=List[LiveDriverLocation], include_in_schema=False)
+@router.get("/api/tracking/fleet/live", response_model=List[LiveDriverLocation], include_in_schema=False)
 async def get_fleet_live_locations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1079,6 +1097,8 @@ async def get_fleet_live_locations(
 
 
 @router.post("/api/v1/tracking/compare-gps")
+@router.post("/v1/tracking/compare-gps", include_in_schema=False)
+@router.post("/api/tracking/compare-gps", include_in_schema=False)
 async def compare_gps_sources(
     driver_id: int,
     truck_lat: float,
