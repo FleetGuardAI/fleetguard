@@ -63,6 +63,7 @@ class AbstractUnitOfWork(ABC):
     Services depend on this abstraction, never on SQLAlchemy directly.
     """
     repositories: RepositoryRegistry
+    session: AsyncSession = None
 
     async def __aenter__(self):
         return self

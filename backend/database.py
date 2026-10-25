@@ -87,6 +87,7 @@ async def get_read_uow() -> AsyncGenerator[Any, None]:
         """Lightweight UoW wrapping a single session for read-only API endpoints."""
         def __init__(self, session: AsyncSession):
             self._session = session
+            self.session = session
             self.repositories = RepositoryRegistry(session)
 
         async def commit(self):
