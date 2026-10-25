@@ -27,6 +27,10 @@ class PodRepository {
       final response = await _dio.post(
         '/api/v1/driver-app/upload-document',
         data: formData,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 60),
+          sendTimeout: const Duration(seconds: 60),
+        ),
       );
       return response.data['url'] ?? '';
     } catch (e) {
@@ -81,6 +85,10 @@ class PodRepository {
           'remarks': remarks,
           'receiver_name': receiverName,
         },
+        options: Options(
+          receiveTimeout: const Duration(seconds: 60),
+          sendTimeout: const Duration(seconds: 60),
+        ),
       );
     } catch (e) {
       throw Exception('Failed to submit POD: $e');

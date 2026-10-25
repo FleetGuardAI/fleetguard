@@ -20,6 +20,7 @@ This prevents IDOR (Insecure Direct Object Reference) by not accepting `driver_i
 import logging
 import secrets
 import json
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from urllib.parse import urlparse, parse_qs
@@ -869,6 +870,50 @@ async def upload_document(
         valid_types = kyc_types + pod_types
         if document_type not in valid_types:
             raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
+
+        if document_type in pod_types:
+            logger.info(f"[POD UPLOAD] Fast-track direct storage starting for {document_type} (driver {driver.id})")
+            import os
+            ext = os.path.splitext(file.filename or "")[1].lower() or ".png"
+            if ext == ".jpeg":
+                ext = ".jpg"
+            storage_filename = f"{uuid.uuid4().hex}{ext}"
+            storage_path = await storage_service.upload_file(
+                file=file,
+                folder="pod",
+                filename=storage_filename
+            )
+            signed_url = await storage_service.create_signed_url_async(storage_path) or storage_path
+
+            # Lightweight Document record creation
+            try:
+                from models.document import Document, DocumentStorageStatus, DocumentVerificationStatus
+                doc_record = Document(
+                    id=uuid.uuid4(),
+                    original_filename=file.filename or f"{document_type}{ext}",
+                    mime_type=file.content_type or ("image/jpeg" if ext == ".jpg" else "image/png"),
+                    storage_path=storage_path,
+                    status=DocumentStorageStatus.AVAILABLE,
+                    verification_status=DocumentVerificationStatus.APPROVED,
+                    uploaded_by=f"driver_{driver.id}",
+                    company_id=driver.company_id,
+                    category=document_type,
+                    target_id=str(driver.id),
+                    target_type="DRIVER",
+                )
+                db.add(doc_record)
+                await db.commit()
+            except Exception as e:
+                logger.warning(f"[POD UPLOAD] Notice saving doc record: {e}")
+
+            logger.info(f"[POD UPLOAD] Fast-track finished for {document_type} -> {storage_path}")
+            return {
+                "message": f"{document_type} uploaded successfully",
+                "url": signed_url,
+                "raw_path": storage_path,
+                "verification_status": driver.verification_status.value if driver.verification_status else None,
+                "extracted_fields": None
+            }
 
         from services.unified_pipeline_service import UnifiedPipelineService
         from models.operational_event import EntityType
