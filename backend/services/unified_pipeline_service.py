@@ -77,19 +77,23 @@ class UnifiedPipelineService:
         ocr_error = None
         ocr_result = None
 
-        try:
-            ocr_result = await provider.extract_text(
-                file_data=file_content,
-                mime_type=file_content_type,
-                document_type=document_type
-            )
-            extracted_fields = ocr_result.extracted_fields
-        except Exception as e:
-            logger.error(f"OCR processing failed for {url}: {e}")
-            ocr_failed = True
-            ocr_error = str(e)
-            # DO NOT fail the upload. Mark Document as FAILED OCR but keep it.
-            await self.document_service.update_document_status(doc_id, DocumentStorageStatus.FAILED, company_id)
+        if document_type in ("signature", "pod_photo"):
+            # Visual POD documents (signature, photo) do not require OCR extraction
+            await self.document_service.update_document_status(doc_id, DocumentStorageStatus.AVAILABLE, company_id)
+        else:
+            try:
+                ocr_result = await provider.extract_text(
+                    file_data=file_content,
+                    mime_type=file_content_type,
+                    document_type=document_type
+                )
+                extracted_fields = ocr_result.extracted_fields
+            except Exception as e:
+                logger.error(f"OCR processing failed for {url}: {e}")
+                ocr_failed = True
+                ocr_error = str(e)
+                # DO NOT fail the upload. Mark Document as FAILED OCR but keep it.
+                await self.document_service.update_document_status(doc_id, DocumentStorageStatus.FAILED, company_id)
 
         # Step 4: Save Evidence and OperationalEvent
         event = OperationalEvent(

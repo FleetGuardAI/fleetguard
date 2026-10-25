@@ -16,7 +16,7 @@ from models.trip_domain import Trip, TripStatus
 from models.user import User, UserRole
 from services.auth_service import get_current_user
 from schemas.trip_domain import TripResponse
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/owner/dashboard", tags=["Owner Dashboard"])
@@ -302,14 +302,23 @@ async def get_owner_trip_pod(
     
     if not pod:
         raise HTTPException(404, "POD not found")
-        
+
+    from services.file_upload_service import storage_service
+
+    def resolve_url(val: Optional[str]) -> Optional[str]:
+        if not val:
+            return None
+        if not val.startswith("http://") and not val.startswith("https://"):
+            return storage_service.create_signed_url(val) or val
+        return val
+
     return {
         "id": pod.id,
         "trip_id": pod.trip_id,
         "driver_id": pod.driver_id,
-        "signature_url": pod.signature_url,
-        "photos": pod.photos or [],
-        "invoice_url": pod.invoice_url,
+        "signature_url": resolve_url(pod.signature_url),
+        "photos": [resolve_url(p) for p in (pod.photos or []) if p],
+        "invoice_url": resolve_url(pod.invoice_url),
         "remarks": pod.remarks,
         "receiver_name": pod.receiver_name,
         "created_at": pod.created_at
