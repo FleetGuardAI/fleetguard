@@ -19,7 +19,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('trips', sa.Column('actual_fuel_liters', sa.Float(), nullable=True))
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    target_schema = op.get_context().version_table_schema
+    existing_tables = set(insp.get_table_names(schema=target_schema))
+    if 'trips' in existing_tables:
+        cols = {c['name'] for c in insp.get_columns('trips', schema=target_schema)}
+        if 'actual_fuel_liters' not in cols:
+            op.add_column('trips', sa.Column('actual_fuel_liters', sa.Float(), nullable=True))
 
 
 def downgrade() -> None:
