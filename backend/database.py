@@ -16,20 +16,37 @@ from config import settings
 
 from sqlalchemy.pool import NullPool
 import os
+import uuid
 
 # --- Engine ---
-connect_args = {}
+connect_args = {
+    "statement_cache_size": 0,
+    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+}
 
-poolclass = None
+# Automatically use Supabase pooler transaction mode (port 6543) if session mode (port 5432) is configured
+db_url = settings.DATABASE_URL
+if ".pooler.supabase.com:5432" in db_url:
+    db_url = db_url.replace(".pooler.supabase.com:5432", ".pooler.supabase.com:6543")
+
+engine_kwargs = {
+    "echo": settings.DEBUG,
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+}
+
 if os.environ.get("OTP_MOCK_MODE") == "True":
-    poolclass = NullPool
+    engine_kwargs["poolclass"] = NullPool
+else:
+    # Cap connection pool to avoid exhausting Supabase limits under burst traffic
+    engine_kwargs["pool_size"] = 5
+    engine_kwargs["max_overflow"] = 4
+    engine_kwargs["pool_timeout"] = 30
+    engine_kwargs["pool_recycle"] = 1800
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-    poolclass=poolclass,
+    db_url,
+    **engine_kwargs
 )
 
 # --- Session Factory ---

@@ -13,7 +13,7 @@ import {
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Info,
   DollarSign, Fuel, Clock, MapPin, Target, BarChart3, History,
-  Lightbulb, ChevronDown, ChevronUp, FileText,
+  Lightbulb, ChevronDown, ChevronUp, FileText, Brain,
 } from 'lucide-react';
 import './TripIntelligence.css';
 
