@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import DashboardOverview from './DashboardOverview';
 import { Loader } from '@/components/ui/Loader';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 const Reports = lazy(() => import('./reports/Reports'));
 const Vehicles = lazy(() => import('./vehicles/Vehicles'));
@@ -36,33 +37,35 @@ function RouteLoader() {
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={<RouteLoader />}>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route index element={<DashboardOverview />} />
-          <Route path="chatbox" element={<ChatBox />} />
-          <Route path="opportunities" element={<OpportunityFeedPage />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="vehicles/*" element={<Vehicles />} />
-          <Route path="drivers/*" element={<Drivers />} />
-          <Route path="trips/*" element={<Trips />} />
-          <Route path="fuel/*" element={<Fuel />} />
-          <Route path="expenses/*" element={<Expenses />} />
-          <Route path="payments/*" element={<Payments />} />
-          <Route path="maintenance/*" element={<Maintenance />} />
+    <ErrorBoundary title="Dashboard Navigation Error">
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardOverview />} />
+            <Route path="chatbox" element={<ChatBox />} />
+            <Route path="opportunities" element={<OpportunityFeedPage />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="vehicles/*" element={<Vehicles />} />
+            <Route path="drivers/*" element={<Drivers />} />
+            <Route path="trips/*" element={<Trips />} />
+            <Route path="fuel/*" element={<Fuel />} />
+            <Route path="expenses/*" element={<Expenses />} />
+            <Route path="payments/*" element={<Payments />} />
+            <Route path="maintenance/*" element={<Maintenance />} />
 
-          <Route path="assets/*" element={<Assets />} />
-          <Route path="documents/*" element={<Documents />} />
-          <Route path="alerts/*" element={<Alerts />} />
-          <Route path="notifications/*" element={<Notifications />} />
-          <Route path="profile/*" element={<Profile />} />
-          <Route path="support" element={<Support />} />
-          <Route path="settings/*" element={<Settings />} />
-          <Route path="admin/users/*" element={<UserManagement />} />
-          <Route path="admin/roles/*" element={<RolesPermissions />} />
-          <Route path="admin/audit/*" element={<AuditLogs />} />
-        </Route>
-      </Routes>
-    </Suspense>
+            <Route path="assets/*" element={<Assets />} />
+            <Route path="documents/*" element={<Documents />} />
+            <Route path="alerts/*" element={<Alerts />} />
+            <Route path="notifications/*" element={<Notifications />} />
+            <Route path="profile/*" element={<Profile />} />
+            <Route path="support" element={<Support />} />
+            <Route path="settings/*" element={<Settings />} />
+            <Route path="admin/users/*" element={<UserManagement />} />
+            <Route path="admin/roles/*" element={<RolesPermissions />} />
+            <Route path="admin/audit/*" element={<AuditLogs />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

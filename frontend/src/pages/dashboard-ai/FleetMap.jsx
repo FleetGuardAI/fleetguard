@@ -341,6 +341,9 @@ export function FleetMap({
         if (found) {
           setSelectedDriver(found);
           return;
+        } else {
+          setSelectedDriver({ id: Number(driverIdParam) || driverIdParam, name: `Driver #${driverIdParam}` });
+          return;
         }
       }
 
@@ -393,6 +396,11 @@ export function FleetMap({
         );
         if (found) {
           setSelectedTrip(found);
+          loadDriverTelemetryData(driverId, found, null);
+        } else {
+          const fallbackTrip = { id: tripIdToFind, trip_id: tripIdToFind };
+          setSelectedTrip(fallbackTrip);
+          loadDriverTelemetryData(driverId, fallbackTrip, null);
         }
       }
     } catch (err) {
@@ -484,6 +492,16 @@ export function FleetMap({
       }
     }
   }, []);
+
+  // ── Unified historical refresh ─────────────────────────────────────────────
+  const loadHistoricalTelemetry = useCallback(() => {
+    if (selectedDriver?.id) {
+      loadDriverTripsData(selectedDriver.id, selectedTrip?.trip_id || selectedTrip?.id);
+      loadDriverTelemetryData(selectedDriver.id, selectedTrip, activeDateRange);
+    } else {
+      loadDriversList();
+    }
+  }, [selectedDriver?.id, selectedTrip, activeDateRange, loadDriverTripsData, loadDriverTelemetryData, loadDriversList]);
 
   // Sync state when driver changes
   useEffect(() => {
