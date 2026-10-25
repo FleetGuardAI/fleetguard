@@ -118,7 +118,9 @@ class StorageService:
         object_path = f"{folder}/{final_name}"
 
         try:
-            self.supabase.storage.from_(self.bucket).upload(
+            import asyncio
+            await asyncio.to_thread(
+                self.supabase.storage.from_(self.bucket).upload,
                 file=content,
                 path=object_path,
                 file_options={"content-type": content_type}
@@ -141,7 +143,9 @@ class StorageService:
 
         object_path = f"{folder}/{filename}"
         try:
-            self.supabase.storage.from_(self.bucket).upload(
+            import asyncio
+            await asyncio.to_thread(
+                self.supabase.storage.from_(self.bucket).upload,
                 file=data,
                 path=object_path,
                 file_options={"content-type": content_type}
@@ -152,10 +156,10 @@ class StorageService:
             logger.error(f"Failed to upload bytes to Supabase: {e}")
             raise HTTPException(status_code=500, detail="Failed to upload data to storage")
 
-    def create_signed_url(self, object_path: str, expires_in: int = 3600) -> Optional[str]:
+    def create_signed_url(self, object_path: str, expires_in: int = 86400 * 7) -> Optional[str]:
         """
         Generate a temporary signed URL for a given object path.
-        Expires in 3600 seconds by default.
+        Expires in 7 days by default.
         """
         if not object_path:
             return None
@@ -165,10 +169,15 @@ class StorageService:
                 path=object_path,
                 expires_in=expires_in
             )
-            return res.get("signedURL")
+            return res.get("signedURL") or res.get("signedUrl")
         except Exception as e:
             logger.error(f"Failed to generate signed URL for {object_path}: {e}")
             return None
+
+    async def create_signed_url_async(self, object_path: str, expires_in: int = 86400 * 7) -> Optional[str]:
+        """Generate a temporary signed URL in a worker thread."""
+        import asyncio
+        return await asyncio.to_thread(self.create_signed_url, object_path, expires_in)
 
     async def delete_file(self, object_path: str) -> bool:
         """Delete an object by its path."""
