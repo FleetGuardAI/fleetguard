@@ -864,7 +864,9 @@ async def upload_document(
         logger.info("[UPLOAD DEBUG] database lookup completed")
 
         # Validate document type
-        valid_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+        kyc_types = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+        pod_types = ["signature", "pod_photo", "invoice", "receipt"]
+        valid_types = kyc_types + pod_types
         if document_type not in valid_types:
             raise HTTPException(400, f"Invalid document type. Must be one of: {valid_types}")
 
@@ -885,59 +887,62 @@ async def upload_document(
         )
         logger.info("[UPLOAD DEBUG] storage upload completed")
 
-        logger.info("[UPLOAD DEBUG] database insert/update started")
-        # Update driver record
-        setattr(driver, f"{document_type}_url", url)
+        if document_type in kyc_types:
+            logger.info("[UPLOAD DEBUG] database insert/update started for KYC document")
+            # Update driver record
+            setattr(driver, f"{document_type}_url", url)
 
-        # Check driver verification status by looking at the latest document in each category
-        from models.document import Document, DocumentVerificationStatus
-        
-        all_docs_result = await db.execute(
-            select(Document)
-            .where(Document.target_id == str(driver.id))
-            .where(Document.target_type == "DRIVER")
-            .order_by(desc(Document.created_at))
-        )
-        all_docs = all_docs_result.scalars().all()
-        
-        latest_by_category = {}
-        for d in all_docs:
-            if d.category and d.category not in latest_by_category:
-                latest_by_category[d.category] = d
-                
-        required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
-        
-        all_required_approved = True
-        any_latest_rejected = False
-        has_all_required = True
-        
-        for cat in required_categories:
-            latest_doc = latest_by_category.get(cat)
-            if not latest_doc:
-                has_all_required = False
-                all_required_approved = False
-                continue
-            if latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
-                all_required_approved = False
-            if latest_doc.verification_status == DocumentVerificationStatus.REJECTED:
-                any_latest_rejected = True
-                
-        if has_all_required and all_required_approved:
-            driver.verification_status = VerificationStatus.PENDING_APPROVAL
-        elif any_latest_rejected:
-            driver.verification_status = VerificationStatus.REJECTED
-        elif has_all_required:
-            driver.verification_status = VerificationStatus.PENDING_APPROVAL
-        else:
-            driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
+            # Check driver verification status by looking at the latest document in each category
+            from models.document import Document, DocumentVerificationStatus
+            
+            all_docs_result = await db.execute(
+                select(Document)
+                .where(Document.target_id == str(driver.id))
+                .where(Document.target_type == "DRIVER")
+                .order_by(desc(Document.created_at))
+            )
+            all_docs = all_docs_result.scalars().all()
+            
+            latest_by_category = {}
+            for d in all_docs:
+                if d.category and d.category not in latest_by_category:
+                    latest_by_category[d.category] = d
+                    
+            required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+            
+            all_required_approved = True
+            any_latest_rejected = False
+            has_all_required = True
+            
+            for cat in required_categories:
+                latest_doc = latest_by_category.get(cat)
+                if not latest_doc:
+                    has_all_required = False
+                    all_required_approved = False
+                    continue
+                if latest_doc.verification_status != DocumentVerificationStatus.APPROVED:
+                    all_required_approved = False
+                if latest_doc.verification_status == DocumentVerificationStatus.REJECTED:
+                    any_latest_rejected = True
+                    
+            if has_all_required and all_required_approved:
+                driver.verification_status = VerificationStatus.PENDING_APPROVAL
+            elif any_latest_rejected:
+                driver.verification_status = VerificationStatus.REJECTED
+            elif has_all_required:
+                driver.verification_status = VerificationStatus.PENDING_APPROVAL
+            else:
+                driver.verification_status = VerificationStatus.PENDING_DOCUMENTS
 
-        await db.commit()
-        await db.refresh(driver)
-        logger.info("[UPLOAD DEBUG] database insert/update completed")
+            await db.commit()
+            await db.refresh(driver)
+            logger.info("[UPLOAD DEBUG] database insert/update completed")
+
+        signed_url = storage_service.create_signed_url(url) or url
 
         result = {
             "message": f"{document_type} uploaded successfully",
-            "url": storage_service.create_signed_url(url),
+            "url": signed_url,
             "verification_status": driver.verification_status.value if driver.verification_status else None,
             "extracted_fields": extracted_fields
         }

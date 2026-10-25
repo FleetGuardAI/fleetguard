@@ -91,7 +91,22 @@ class StorageService:
         Returns a path formatted as `{folder}/{uuid}.{ext}`.
         """
         content = await file.read()
-        content_type = file.content_type or "application/octet-stream"
+        content_type = file.content_type
+        if not content_type or content_type == "application/octet-stream":
+            import mimetypes
+            guessed, _ = mimetypes.guess_type(file.filename or "")
+            if guessed:
+                content_type = guessed
+            elif content.startswith(b"\x89PNG"):
+                content_type = "image/png"
+            elif content.startswith(b"\xff\xd8\xff"):
+                content_type = "image/jpeg"
+            elif content.startswith(b"%PDF"):
+                content_type = "application/pdf"
+            elif content.startswith(b"RIFF") and b"WEBP" in content[:12]:
+                content_type = "image/webp"
+            else:
+                content_type = "application/octet-stream"
 
         self._validate_file(content, content_type)
 
