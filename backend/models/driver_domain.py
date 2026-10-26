@@ -140,5 +140,5 @@ class Driver(Base):
     )
 
     def __repr__(self) -> str:
-
-        return f"<Driver(id={self.id}, name='{self.name}', status='{self.status.value}')>"
+        st = self.status.value if (self.status and hasattr(self.status, "value")) else str(self.status or "")
+        return f"<Driver(id={self.id}, name='{self.name}', status='{st}')>"
