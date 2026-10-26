@@ -1,9 +1,9 @@
 """
-Tests for Copilot API
+Tests for Copilot API Endpoint
 """
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 import uuid
 
 from infrastructure.llm.provider import LLMMessage, LLMResponse
@@ -11,15 +11,11 @@ from models.user import User
 from main import app
 
 # Mock data
-MOCK_COMPANY_ID = uuid.uuid4()
+MOCK_COMPANY_ID = 1001
 MOCK_USER_ID = uuid.uuid4()
 MOCK_TRIP_ID = 101
 MOCK_VEHICLE_ID = 201
 
-@pytest.fixture
-def client():
-    with TestClient(app) as c:
-        yield c
 
 @pytest.fixture
 def mock_openai(monkeypatch):
@@ -48,7 +44,7 @@ def mock_openai(monkeypatch):
                             "id": "call_123",
                             "type": "function",
                             "function": {
-                                "name": "get_fleet_health",
+                                "name": "get_fleet_summary",
                                 "arguments": "{}"
                             }
                         }]
@@ -64,7 +60,7 @@ def mock_openai(monkeypatch):
                             "id": "call_124",
                             "type": "function",
                             "function": {
-                                "name": "get_trip_intelligence",
+                                "name": "get_trip_details",
                                 "arguments": '{"trip_id": 101}'
                             }
                         }]
@@ -82,8 +78,9 @@ def mock_openai(monkeypatch):
 
     monkeypatch.setattr("services.copilot_service.OpenAIProvider", MockOpenAIProvider)
 
+
 @pytest.fixture
-def mock_dependencies(monkeypatch):
+def mock_dependencies():
     from services.auth_service import get_current_user
     
     def override_get_current_user():
@@ -101,47 +98,59 @@ def mock_dependencies(monkeypatch):
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     yield
-    app.dependency_overrides = {}
+    app.dependency_overrides.pop(get_current_user, None)
 
 
-def test_copilot_basic_chat(client, mock_openai, mock_dependencies):
-    response = client.post(
-        "/api/v1/copilot/chat",
-        json={"message": "Hello"}
-    )
+@pytest.mark.asyncio
+async def test_copilot_basic_chat(mock_openai, mock_dependencies, db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "Hello"}
+        )
     assert response.status_code == 200
     data = response.json()
     assert data["message"] == "Hello! How can I help?"
     assert "conversation_id" in data
 
 
-def test_copilot_tool_call_fleet_health(client, mock_openai, mock_dependencies):
-    response = client.post(
-        "/api/v1/copilot/chat",
-        json={"message": "How is my fleet doing?"}
-    )
+@pytest.mark.asyncio
+async def test_copilot_tool_call_fleet_summary(mock_openai, mock_dependencies, db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "How is my fleet doing?"}
+        )
     assert response.status_code == 200
     data = response.json()
     assert "grounded response" in data["message"].lower()
-    assert "get_fleet_health" in data["metadata"]["tools_used"]
+    assert "get_fleet_summary" in data["metadata"]["tools_used"]
 
 
-def test_copilot_tool_call_trip(client, mock_openai, mock_dependencies):
-    response = client.post(
-        "/api/v1/copilot/chat",
-        json={"message": "Why did this trip lose money?"}
-    )
+@pytest.mark.asyncio
+async def test_copilot_tool_call_trip(mock_openai, mock_dependencies, db_session):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "Why did this trip lose money?"}
+        )
     assert response.status_code == 200
     data = response.json()
-    print("DATA RESPONSE:", data)
     assert "grounded response" in data["message"].lower()
-    assert "get_trip_intelligence" in data["metadata"]["tools_used"]
+    assert "get_trip_details" in data["metadata"]["tools_used"]
 
 
-def test_copilot_unauthenticated(client):
-    app.dependency_overrides = {}
-    response = client.post(
-        "/api/v1/copilot/chat",
-        json={"message": "Hello"}
-    )
+@pytest.mark.asyncio
+async def test_copilot_unauthenticated(db_session):
+    from services.auth_service import get_current_user
+    app.dependency_overrides.pop(get_current_user, None)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "Hello"}
+        )
     assert response.status_code == 401

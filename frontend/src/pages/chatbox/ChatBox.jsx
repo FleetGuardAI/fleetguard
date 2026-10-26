@@ -5,6 +5,7 @@ import {
   Paperclip, Mic, Send, Globe, Bell, User,
   Sparkles, MessageSquare, ArrowRight, AlertTriangle,
   Table2, List, BarChart3, ChevronRight,
+  Truck, MapPin, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Navigation
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -13,21 +14,26 @@ import api from '@/api/client';
 
 const SUGGESTED_PROMPTS = [
   "Show me the fleet health overview",
+  "Where are both my trucks?",
+  "Schedule a trip for Truck 02 tomorrow",
   "Which vehicles need maintenance?",
-  "Are there any pending approvals?",
   "Show me yesterday's fuel anomalies"
 ];
 
 // ── Message Types ──
-function ChatMessageBubble({ message }) {
+function ChatMessageBubble({ message, onAction }) {
   const isUser = message.role === 'user';
+  const metadata = message.metadata || {};
+  const proposals = metadata.proposals || [];
+  const locations = metadata.locations || [];
+  const verifiedTrip = metadata.verified_trip;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-      className={cn('flex gap-3 max-w-[85%]', isUser ? 'ml-auto flex-row-reverse' : '')}
+      className={cn('flex gap-3 max-w-[88%]', isUser ? 'ml-auto flex-row-reverse' : '')}
     >
       {/* Avatar */}
       {!isUser && (
@@ -38,15 +44,146 @@ function ChatMessageBubble({ message }) {
 
       {/* Bubble */}
       <div className={cn(
-        'px-4 py-3 max-w-full rounded-2xl shadow-sm border backdrop-blur-md',
+        'px-4 py-3 max-w-full rounded-2xl shadow-sm border backdrop-blur-md space-y-2.5',
         isUser
           ? 'bg-fg-green/10 border-fg-green/20 text-content rounded-br-sm'
           : 'bg-surface/50 border-border text-content rounded-bl-sm'
       )}>
-        {/* Text content - just raw text rendered pre-wrap to support basic markdown spacing */}
+        {/* Text content with pre-wrap */}
         {message.content?.text && (
           <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
             {message.content.text}
+          </div>
+        )}
+
+        {/* ── Interactive GPS Location Cards ── */}
+        {locations.length > 0 && (
+          <div className="space-y-2 pt-1">
+            {locations.map((loc, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-xl border border-border/80 bg-white shadow-xs text-content"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="w-4 h-4 text-brand-500" />
+                    <span className="text-xs font-bold font-mono text-content">{loc.registration_number}</span>
+                    {loc.make_model && (
+                      <span className="text-[11px] text-content-secondary">({loc.make_model})</span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                    loc.freshness === "FRESH"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : loc.freshness === "STALE"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200"
+                  )}>
+                    <span className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      loc.freshness === "FRESH" ? "bg-emerald-500 animate-pulse" :
+                      loc.freshness === "STALE" ? "bg-amber-500" : "bg-slate-400"
+                    )} />
+                    {loc.freshness_label || loc.freshness}
+                  </span>
+                </div>
+
+                {loc.has_location ? (
+                  <div className="space-y-1 text-xs text-content-secondary">
+                    <div className="flex items-center gap-1.5 text-content">
+                      <MapPin className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
+                      <span className="font-mono text-[11px] font-medium">{loc.latitude?.toFixed(4)}, {loc.longitude?.toFixed(4)}</span>
+                    </div>
+                    {loc.timestamp && (
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <Clock className="w-3 h-3 text-content-muted" />
+                        <span>Recorded: {new Date(loc.timestamp).toLocaleTimeString()} ({loc.source})</span>
+                      </div>
+                    )}
+                    {loc.assigned_driver && (
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <User className="w-3 h-3 text-content-muted" />
+                        <span>Driver: {loc.assigned_driver}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-content-muted italic">
+                    {loc.message || "No telemetry available for this truck."}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Structured Trip Proposal Card (Pending Confirmation) ── */}
+        {proposals.map((prop, idx) => (
+          <div
+            key={idx}
+            className="p-3.5 rounded-xl border border-brand-200 bg-brand-50/40 text-content space-y-2.5 mt-2"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-brand-100">
+              <span className="text-xs font-semibold text-brand-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-brand-600" /> Trip Proposal
+              </span>
+              <span className="text-[10px] font-mono bg-brand-100 text-brand-800 px-2 py-0.5 rounded font-bold">
+                {prop.proposal_id}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-[10px] text-content-secondary uppercase block">Route</span>
+                <span className="font-medium text-content">{prop.summary?.origin} → {prop.summary?.destination}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-content-secondary uppercase block">Vehicle</span>
+                <span className="font-medium text-content">{prop.summary?.vehicle}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-content-secondary uppercase block">Driver</span>
+                <span className="font-medium text-content">{prop.summary?.driver || 'Unassigned'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-content-secondary uppercase block">Departure</span>
+                <span className="font-medium text-content">
+                  {prop.summary?.planned_departure ? new Date(prop.summary.planned_departure).toLocaleString() : 'Pending'}
+                </span>
+              </div>
+            </div>
+
+            {/* Explicit Confirmation / Cancellation Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t border-brand-100">
+              <button
+                onClick={() => onAction && onAction(`Confirm trip ${prop.proposal_id}`)}
+                className="flex-1 py-1.5 px-3 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Confirm & Schedule Trip
+              </button>
+              <button
+                onClick={() => onAction && onAction(`Cancel trip proposal ${prop.proposal_id}`)}
+                className="py-1.5 px-3 bg-white hover:bg-surface-secondary border border-border text-content-secondary rounded-lg text-xs font-medium transition-colors cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5" /> Cancel
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {/* ── Verified Action State ── */}
+        {verifiedTrip && (
+          <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/50 text-content space-y-1.5 mt-2">
+            <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Verified Database Trip Scheduled: {verifiedTrip.business_id}
+            </div>
+            <div className="text-xs text-emerald-950/80 space-y-0.5">
+              <p><span className="font-medium">Route:</span> {verifiedTrip.origin} → {verifiedTrip.destination}</p>
+              <p><span className="font-medium">Vehicle:</span> {verifiedTrip.vehicle}</p>
+              <p><span className="font-medium">Status:</span> <span className="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">{verifiedTrip.operational_status}</span></p>
+            </div>
           </div>
         )}
       </div>
@@ -128,6 +265,7 @@ export default function ChatBox() {
         id: Date.now() + 1,
         role: 'assistant',
         content: { text: response.message },
+        metadata: response.metadata || {},
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -158,10 +296,9 @@ export default function ChatBox() {
     if (location.state?.initialMessage && !initialMessageSent.current) {
       initialMessageSent.current = true;
       handleSend(location.state.initialMessage);
-      // Clean up navigation state
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, handleSend]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -178,85 +315,47 @@ export default function ChatBox() {
 
   const handlePromptClick = (prompt) => {
     setInput(prompt);
-    // Auto-send after brief visual feedback
     setTimeout(() => handleSend(prompt), 150);
   };
 
-  const userName = user?.name || 'Dev1';
+  const userName = user?.name || 'Owner';
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] max-w-[1200px] mx-auto animate-fade-in">
-
+    <div className="flex flex-col h-[calc(100vh-80px)] max-w-5xl mx-auto relative px-4">
       {/* ═══════════ HEADER ═══════════ */}
-      <div className="flex items-center justify-between py-3 flex-shrink-0">
+      <div className="flex items-center justify-between pb-4 border-b border-border/40 flex-shrink-0 relative z-10 bg-transparent">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-fg-green-deep flex items-center justify-center border border-fg-green/20">
-            <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-5 h-5 object-contain" />
+          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center border border-brand-100">
+            <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-6 h-6 object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold text-fg-text">{t("AI Co-Pilot")}</h1>
-              <span className="text-[10px] text-fg-text-sec bg-fg-green-deep/50 border border-fg-green/20 px-2 py-0.5 rounded-lg font-medium">
-                the vahan AI
+              <h1 className="text-lg font-semibold text-content">{t("AI Co-Pilot")}</h1>
+              <span className="text-[10px] text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-lg font-medium">
+                the vahan Intelligence
               </span>
             </div>
-            <p className="text-[11px] text-fg-text-sec">{t("Your intelligent operations assistant")}</p>
+            <p className="text-xs text-content-secondary">{t("Data-grounded fleet operations and safe operational execution assistant")}</p>
           </div>
         </div>
       </div>
 
       {/* ═══════════ MESSAGES AREA ═══════════ */}
-      <div className="flex-1 overflow-y-auto fg-scrollbar relative">
+      <div className="flex-1 overflow-y-auto fg-scrollbar relative py-4">
         {isEmpty ? (
           /* ── Empty State ── */
           <div className="flex flex-col items-center justify-center h-full relative">
-            {/* Atmospheric background */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {/* Subtle radial green glow */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-fg-green/[0.03] blur-[120px]" />
-              
-              {/* Faint grid */}
-              <div 
-                className="absolute inset-0 opacity-[0.02]"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(to right, rgba(25,184,106,0.3) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(25,184,106,0.3) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '48px 48px',
-                }}
-              />
-
-              {/* Abstract route lines */}
-              <svg className="absolute inset-0 w-full h-full opacity-[0.03]" viewBox="0 0 800 600">
-                <path d="M100,300 C200,200 350,400 500,250 S700,350 800,200" stroke="#19B86A" strokeWidth="1" fill="none" />
-                <path d="M0,400 C150,350 300,500 450,300 S650,450 800,350" stroke="#19B86A" strokeWidth="0.5" fill="none" />
-                <path d="M200,100 C300,200 400,150 500,250 S650,200 750,300" stroke="#19B86A" strokeWidth="0.5" fill="none" />
-                {/* Data particles */}
-                <circle cx="250" cy="250" r="2" fill="#19B86A" opacity="0.3">
-                  <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="500" cy="280" r="1.5" fill="#19B86A" opacity="0.2">
-                  <animate attributeName="opacity" values="0.1;0.3;0.1" dur="4s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="650" cy="320" r="2" fill="#19B86A" opacity="0.25">
-                  <animate attributeName="opacity" values="0.15;0.35;0.15" dur="3.5s" repeatCount="indefinite" />
-                </circle>
-              </svg>
-            </div>
-
             <div className="relative z-10 text-center space-y-4 max-w-lg">
-              <h2 className="text-2xl font-light text-fg-text">
-                {t("How can I help you today,")}{' '}
+              <h2 className="text-2xl font-light text-content">
+                {t("How can I assist your fleet today,")}{' '}
                 <span className="font-semibold">{userName}</span>?
               </h2>
-              <p className="text-sm text-fg-text-sec font-light">
-                {t("Ask me anything about your fleet, drivers, loads, fuel, or reports.")}
+              <p className="text-sm text-content-secondary font-light">
+                {t("Ask about vehicle locations, driver status, trips, fuel metrics, or schedule a verified trip.")}
               </p>
             </div>
 
-            {/* Suggested Prompt Pills */}
             <div className="relative z-10 flex flex-wrap gap-2.5 justify-center mt-10 max-w-2xl px-4">
               {SUGGESTED_PROMPTS.map((prompt, i) => (
                 <motion.button
@@ -265,9 +364,9 @@ export default function ChatBox() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 + i * 0.08 }}
                   onClick={() => handlePromptClick(prompt)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface/40 backdrop-blur-md border border-border text-sm text-content-secondary hover:text-content hover:bg-surface-secondary/80 hover:shadow-fg-glow hover:-translate-y-0.5 transition-all duration-300"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface/40 backdrop-blur-md border border-border text-sm text-content-secondary hover:text-content hover:bg-surface-secondary/80 hover:shadow-fg-glow hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-fg-green" />
+                  <Sparkles className="w-3.5 h-3.5 text-brand-500" />
                   {prompt}
                 </motion.button>
               ))}
@@ -275,9 +374,9 @@ export default function ChatBox() {
           </div>
         ) : (
           /* ── Chat Messages ── */
-          <div className="space-y-5 py-6 px-2">
+          <div className="space-y-5 py-2 px-2">
             {messages.map((msg) => (
-              <ChatMessageBubble key={msg.id} message={msg} />
+              <ChatMessageBubble key={msg.id} message={msg} onAction={handleSend} />
             ))}
             <AnimatePresence>
               {isTyping && <TypingIndicator />}
@@ -290,7 +389,7 @@ export default function ChatBox() {
       {/* ═══════════ INPUT BAR ═══════════ */}
       <div className="flex-shrink-0 pt-3 pb-4 space-y-2 relative z-10">
         <div className="flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-border rounded-2xl px-4 py-3
-          focus-within:border-fg-green/40 focus-within:shadow-[0_0_20px_rgba(25,184,106,0.15)] transition-all duration-300">
+          focus-within:border-brand-400 focus-within:shadow-[0_0_20px_rgba(34,197,94,0.15)] transition-all duration-300">
           <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
             <Paperclip className="w-4.5 h-4.5" />
           </button>
@@ -299,12 +398,12 @@ export default function ChatBox() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t("Ask anything...")}
+            placeholder={t("Ask where trucks are, request fleet status, or schedule a trip...")}
             rows={1}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-fg-text placeholder:text-fg-text-sec/50 font-light resize-none leading-relaxed max-h-24 overflow-y-auto"
+            className="flex-1 bg-transparent border-none outline-none text-sm text-content placeholder:text-content-muted font-light resize-none leading-relaxed max-h-24 overflow-y-auto"
             style={{ minHeight: '20px' }}
           />
-          <button className="p-1.5 rounded-lg hover:bg-white/[0.05] text-fg-text-sec transition-colors flex-shrink-0">
+          <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
             <Mic className="w-4.5 h-4.5" />
           </button>
           <button
@@ -313,15 +412,15 @@ export default function ChatBox() {
             className={cn(
               'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
               input.trim()
-                ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-green'
-                : 'bg-surface-tertiary text-content-muted cursor-not-allowed'
+                ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm'
+                : 'bg-surface-secondary text-content-muted cursor-not-allowed'
             )}
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[11px] text-fg-text-sec/40 text-center font-light">
-          {t("the vahan AI may make mistakes. Please verify important information.")}
+        <p className="text-[10px] text-content-muted text-center font-light">
+          {t("Fleetguard AI retrieves authoritative fleet records and requires explicit confirmation for operational actions.")}
         </p>
       </div>
     </div>
