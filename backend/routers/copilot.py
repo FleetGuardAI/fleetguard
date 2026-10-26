@@ -34,7 +34,12 @@ async def chat_with_copilot(
         )
 
     try:
-        service = CopilotService(uow=uow, company_id=current_user.company_id)
+        service = CopilotService(
+            uow=uow,
+            company_id=current_user.company_id,
+            user_id=str(current_user.id),
+            user_name=current_user.full_name or "Fleet Manager"
+        )
         response = await service.chat(request)
         return response
     except RuntimeError as re:
