@@ -22,6 +22,7 @@ Show current revision:
 """
 
 import asyncio
+import uuid
 from logging.config import fileConfig
 
 from sqlalchemy import pool, text
@@ -119,10 +120,15 @@ async def run_async_migrations() -> None:
     Creates a transient sync connection from the async engine so that
     Alembic (which is synchronous) can execute DDL statements.
     """
+    connect_args = {
+        "statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+    }
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
