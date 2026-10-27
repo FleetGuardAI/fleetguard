@@ -58,9 +58,13 @@ from models.notification import Notification, NotificationCategory
 
 # --- Admin & Support (Internal) ---
 from models.admin_domain import AdminRole, Permission, AdminRolePermission, AdminUser, AdminAuditLog, AdminNotification
-from models.support_domain import SupportTicket, SupportTicketMessage, SupportTicketAttachment, PasswordResetRequestAdmin
+# --- Copilot History & Memory ---
+from models.conversation import Conversation, ConversationMessage
 
 __all__ = [
+    # Copilot
+    "Conversation",
+    "ConversationMessage",
     # Auth
     "Company",
     "User",
