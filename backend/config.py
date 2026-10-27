@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
     LLM_BASE_URL: Optional[str] = None
     OCR_PROVIDER: str = "ocr_space"
-    OCR_SPACE_API_KEY: str | None = "helloworld"
+    # --- AI Co-Pilot ---
+    COPILOT_MAX_CONTEXT_MESSAGES: int = 20
+    COPILOT_ENABLE_SUMMARIZATION: bool = True
+    COPILOT_MAX_SUMMARY_TOKENS: int = 250
 
     # --- Maps & Routing ---
     GOOGLE_MAPS_API_KEY: Optional[str] = None

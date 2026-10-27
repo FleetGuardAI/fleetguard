@@ -290,8 +290,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
             await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
             await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
+            # AI Copilot persistent conversation and message tables
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS copilot_conversations (
+                    id VARCHAR(50) PRIMARY KEY,
+                    company_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    summary TEXT,
+                    summary_updated_at TIMESTAMPTZ,
+                    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+                    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_company_id ON copilot_conversations (company_id);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_user_id ON copilot_conversations (user_id);"))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS copilot_messages (
+                    id SERIAL PRIMARY KEY,
+                    conversation_id VARCHAR(50) NOT NULL REFERENCES copilot_conversations(id) ON DELETE CASCADE,
+                    sequence_number INTEGER NOT NULL,
+                    role VARCHAR(20) NOT NULL,
+                    content TEXT NOT NULL,
+                    name VARCHAR(100),
+                    tool_call_id VARCHAR(100),
+                    tool_calls JSONB,
+                    message_metadata JSONB,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_conversation_id ON copilot_messages (conversation_id);"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_sequence ON copilot_messages (conversation_id, sequence_number ASC);"))
             await session.commit()
-            logger.info("✅ Verified admin_password_reset_requests, password_reset_tokens, and driver_locations tracking schema columns and indexes.")
+            logger.info("✅ Verified admin_password_reset_requests, driver_locations, and copilot schema tables and indexes.")
     except Exception as e:
         logger.warning(f"⚠️ Startup schema self-check notice: {e}")
 
