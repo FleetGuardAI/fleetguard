@@ -8,6 +8,7 @@ FastAPI app with:
 - Health check endpoint
 """
 
+import os
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -18,6 +19,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import create_all_tables, async_session_factory
+
+# --- Logging ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("fleetguard")
 from infrastructure.events.kafka_bus import KafkaEventBus
 from infrastructure.events.kafka_consumer import KafkaConsumerRunner
 # from processing import ProcessingEngineSubscriber - REMOVED
@@ -141,9 +149,12 @@ elif settings.OCR_PROVIDER.lower() == "google":
     ocr_base_provider = GoogleDocumentAIProvider()
 elif settings.OCR_PROVIDER.lower() == "ocr_space":
     from infrastructure.ocr.provider import OCRSpaceProvider
-    if not settings.OCR_SPACE_API_KEY:
-        raise ValueError("OCR_SPACE_API_KEY must be set when OCR_PROVIDER is ocr_space.")
-    ocr_base_provider = OCRSpaceProvider(api_key=settings.OCR_SPACE_API_KEY)
+    ocr_key = getattr(settings, "OCR_SPACE_API_KEY", None) or os.environ.get("OCR_SPACE_API_KEY")
+    if not ocr_key:
+        logger.warning("⚠️ OCR_SPACE_API_KEY is not set. OCR will return 503 errors.")
+        ocr_base_provider = UnconfiguredOCRProvider()
+    else:
+        ocr_base_provider = OCRSpaceProvider(api_key=ocr_key)
 else:
     raise ValueError(f"Unknown OCR_PROVIDER: {settings.OCR_PROVIDER}")
 
@@ -247,12 +258,7 @@ from routers.admin_documents import router as admin_documents_router
 from routers.admin_audit import router as admin_audit_router
 from routers.admin_passwords import router as admin_passwords_router
 
-# --- Logging ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-)
-logger = logging.getLogger("fleetguard")
+
 
 
 # --- Lifespan ---
