@@ -179,6 +179,15 @@ const api = {
   // ── Copilot (/api/v1/copilot) ─────────────────
   copilot: {
     chat: (data) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(data) }),
+    getConversations: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return request(`/v1/copilot/conversations${q ? `?${q}` : ''}`);
+    },
+    getConversation: (id) => request(`/v1/copilot/conversations/${id}`),
+    createConversation: (data = {}) => request('/v1/copilot/conversations', { method: 'POST', body: JSON.stringify(data) }),
+    updateConversationTitle: (id, data) => request(`/v1/copilot/conversations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteConversation: (id) => request(`/v1/copilot/conversations/${id}`, { method: 'DELETE' }),
+    clearConversations: () => request('/v1/copilot/conversations', { method: 'DELETE' }),
   },
 
   // ── Fuel Monitoring (existing) ─────────────────────────────
@@ -444,10 +453,6 @@ const api = {
     getInsights: () => request('/v1/intelligence/operations/insights'),
   },
 
-  // ── Copilot Domain (NEW - /api/v1/copilot) ─────────────────
-  copilot: {
-    chat: (payload) => request('/v1/copilot/chat', { method: 'POST', body: JSON.stringify(payload) }),
-  },
 
   // (duplicate fleet block removed — see fleet definition above)
   

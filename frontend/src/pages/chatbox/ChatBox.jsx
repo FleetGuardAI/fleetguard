@@ -2,16 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Paperclip, Mic, Send, Globe, Bell, User,
-  Sparkles, MessageSquare, ArrowRight, AlertTriangle,
-  Table2, List, BarChart3, ChevronRight,
-  Truck, MapPin, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Navigation
+  Paperclip, Mic, Send, Sparkles, MessageSquare, Plus, Trash2,
+  History, PanelLeftClose, PanelLeft, Clock, Calendar,
+  CheckCircle2, XCircle, Truck, MapPin, User, ChevronRight,
+  X, AlertTriangle, Loader2
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { getInitials } from '@/utils/formatters';
 import MarkdownMessage from '@/components/shared/MarkdownMessage';
-import api from '@/api/client';
+import { useCopilotConversation } from '@/hooks/useCopilotConversation';
 
 const SUGGESTED_PROMPTS = [
   "Show me the fleet health overview",
@@ -21,6 +20,24 @@ const SUGGESTED_PROMPTS = [
   "Show me yesterday's fuel anomalies"
 ];
 
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay === 1) return 'Yesterday';
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 // ── Message Types ──
 function ChatMessageBubble({ message, onAction }) {
   const isUser = message.role === 'user';
@@ -28,6 +45,8 @@ function ChatMessageBubble({ message, onAction }) {
   const proposals = metadata.proposals || [];
   const locations = metadata.locations || [];
   const verifiedTrip = metadata.verified_trip;
+
+  const textContent = typeof message.content === 'object' ? message.content?.text : message.content;
 
   return (
     <motion.div
@@ -51,13 +70,13 @@ function ChatMessageBubble({ message, onAction }) {
           : 'bg-surface/50 border-border text-content rounded-bl-sm'
       )}>
         {/* Message content */}
-        {message.content?.text && (
+        {textContent && (
           isUser ? (
             <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
-              {message.content.text}
+              {textContent}
             </div>
           ) : (
-            <MarkdownMessage content={message.content.text} />
+            <MarkdownMessage content={textContent} />
           )
         )}
 
@@ -238,10 +257,25 @@ function TypingIndicator() {
 export default function ChatBox() {
   const { t } = useLanguage();
   const location = useLocation();
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [convToDelete, setConvToDelete] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const {
+    conversations,
+    activeConversationId,
+    messages,
+    isLoading,
+    isLoadingHistory,
+    isTyping,
+    selectConversation,
+    startNewChat,
+    sendMessage,
+    deleteConversation,
+    clearAllConversations,
+  } = useCopilotConversation();
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -255,62 +289,10 @@ export default function ChatBox() {
     const messageText = text || input.trim();
     if (!messageText) return;
 
-    // Add user message
-    const userMsg = {
-      id: Date.now(),
-      role: 'user',
-      content: { text: messageText },
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setIsTyping(true);
-
-    try {
-      const payload = {
-        message: messageText,
-      };
-      if (conversationId) {
-        payload.conversation_id = conversationId;
-      }
-      if (location.state?.context) {
-        payload.context = location.state.context;
-      }
-
-      const response = await api.copilot.chat(payload);
-      
-      if (response.conversation_id && !conversationId) {
-        setConversationId(response.conversation_id);
-      }
-
-      const aiMsg = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: { text: response.message },
-        metadata: response.metadata || {},
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch (err) {
-      console.error("Copilot chat error:", err);
-      let errorMessage = "I'm sorry, I encountered an error while processing your request. Please try again later.";
-      if (err.response && err.response.data && err.response.data.detail) {
-        errorMessage = `Error: ${err.response.data.detail}`;
-      } else if (err.message) {
-        errorMessage = `Error: ${err.message}`;
-      }
-
-      const errorMsg = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: { text: errorMessage },
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setIsTyping(false);
-    }
-  }, [input, conversationId, location.state]);
+    const context = location.state?.context || null;
+    await sendMessage(messageText, context);
+  }, [input, location.state, sendMessage]);
 
   // Handle initial message from search bar navigation
   const initialMessageSent = useRef(false);
@@ -326,7 +308,9 @@ export default function ChatBox() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [messages, isTyping, scrollToBottom]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping, scrollToBottom]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -340,111 +324,348 @@ export default function ChatBox() {
     setTimeout(() => handleSend(prompt), 150);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!convToDelete) return;
+    try {
+      await deleteConversation(convToDelete.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setConvToDelete(null);
+    }
+  };
+
+  const handleClearAllConfirm = async () => {
+    try {
+      await clearAllConversations();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setShowClearConfirm(false);
+    }
+  };
+
   const userName = user?.name || 'Owner';
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] max-w-5xl mx-auto relative px-4">
-      {/* ═══════════ HEADER ═══════════ */}
-      <div className="flex items-center justify-between pb-4 border-b border-border/40 flex-shrink-0 relative z-10 bg-transparent">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center border border-brand-100">
-            <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-6 h-6 object-contain" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-content">{t("AI Co-Pilot")}</h1>
-              <span className="text-[10px] text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-lg font-medium">
-                the vahan Intelligence
-              </span>
+    <div className="flex h-[calc(100vh-80px)] w-full max-w-7xl mx-auto overflow-hidden rounded-2xl border border-border/50 shadow-sm bg-surface/20 backdrop-blur-md">
+      {/* ═══════════ HISTORY SIDEBAR ═══════════ */}
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="h-full flex flex-col border-r border-border/60 bg-surface/60 backdrop-blur-xl flex-shrink-0 overflow-hidden"
+          >
+            {/* Sidebar Header */}
+            <div className="p-3.5 border-b border-border/40 flex items-center justify-between gap-2">
+              <button
+                onClick={startNewChat}
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                {t("New Chat")}
+              </button>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                title="Collapse History"
+                className="p-2 rounded-xl text-content-secondary hover:bg-surface-secondary hover:text-content transition-colors cursor-pointer"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-xs text-content-secondary">{t("Data-grounded fleet operations and safe operational execution assistant")}</p>
+
+            {/* Conversations List */}
+            <div className="flex-1 overflow-y-auto fg-scrollbar p-2 space-y-1">
+              <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5" />
+                {t("Past Conversations")}
+              </div>
+
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-8 text-content-muted text-xs gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
+                  <span>Loading history...</span>
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="text-center py-8 px-3 text-content-muted text-xs space-y-1">
+                  <MessageSquare className="w-6 h-6 mx-auto opacity-30" />
+                  <p>No past conversations</p>
+                  <p className="text-[10px]">Start a conversation to see it saved here.</p>
+                </div>
+              ) : (
+                conversations.map((conv) => {
+                  const isActive = conv.id === activeConversationId;
+                  return (
+                    <div
+                      key={conv.id}
+                      className={cn(
+                        "group relative flex items-center justify-between rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer",
+                        isActive
+                          ? "bg-brand-500/10 border border-brand-500/30 text-brand-700 font-medium shadow-xs"
+                          : "hover:bg-surface-secondary/80 text-content border border-transparent"
+                      )}
+                      onClick={() => selectConversation(conv.id)}
+                    >
+                      <div className="flex items-center gap-2 truncate pr-6">
+                        <MessageSquare className={cn("w-3.5 h-3.5 flex-shrink-0", isActive ? "text-brand-600" : "text-content-muted")} />
+                        <div className="truncate">
+                          <span className="truncate block font-medium">
+                            {conv.title || "Untitled Conversation"}
+                          </span>
+                          <span className="text-[10px] text-content-muted block font-normal">
+                            {formatRelativeTime(conv.updated_at || conv.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Delete Action */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConvToDelete(conv);
+                        }}
+                        title="Delete conversation"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-content-muted hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Sidebar Footer */}
+            {conversations.length > 0 && (
+              <div className="p-2 border-t border-border/40">
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-content-muted hover:text-rose-600 hover:bg-rose-50/50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  {t("Clear All History")}
+                </button>
+              </div>
+            )}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════ MAIN CHAT CONTAINER ═══════════ */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
+        {/* ── Top Header ── */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 flex-shrink-0 bg-surface/30 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                title="Open History"
+                className="p-2 rounded-xl text-content-secondary hover:bg-surface-secondary hover:text-content transition-colors cursor-pointer mr-1"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
+
+            <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center border border-brand-100">
+              <img src="/assets/the_vahan_logo.png" alt="the vahan" className="w-5 h-5 object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-semibold text-content">{t("AI Co-Pilot")}</h1>
+                <span className="text-[10px] text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-lg font-medium">
+                  the vahan Intelligence
+                </span>
+              </div>
+              <p className="text-[11px] text-content-secondary">{t("Data-grounded fleet operations and safe operational execution assistant")}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={startNewChat}
+            className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-brand-600 py-1.5 px-3 rounded-lg border border-border/60 hover:border-brand-300 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t("New Chat")}</span>
+          </button>
+        </div>
+
+        {/* ── Messages Scroll Area ── */}
+        <div className="flex-1 overflow-y-auto fg-scrollbar relative px-6 py-4">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-content-muted gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+              <p className="text-xs">Restoring conversation messages...</p>
+            </div>
+          ) : isEmpty ? (
+            /* ── Empty State ── */
+            <div className="flex flex-col items-center justify-center h-full relative">
+              <div className="relative z-10 text-center space-y-3 max-w-lg">
+                <h2 className="text-2xl font-light text-content">
+                  {t("How can I assist your fleet today,")}{' '}
+                  <span className="font-semibold">{userName}</span>?
+                </h2>
+                <p className="text-xs text-content-secondary font-light">
+                  {t("Ask about vehicle locations, driver status, trips, fuel metrics, or schedule a verified trip.")}
+                </p>
+              </div>
+
+              <div className="relative z-10 flex flex-wrap gap-2.5 justify-center mt-8 max-w-2xl px-4">
+                {SUGGESTED_PROMPTS.map((prompt, i) => (
+                  <motion.button
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.08 }}
+                    onClick={() => handlePromptClick(prompt)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surface/50 backdrop-blur-md border border-border text-xs text-content-secondary hover:text-content hover:bg-surface-secondary/80 hover:shadow-fg-glow transition-all duration-300 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3 text-brand-500" />
+                    {prompt}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ── Chat Messages ── */
+            <div className="space-y-5 max-w-4xl mx-auto py-2">
+              {messages.map((msg) => (
+                <ChatMessageBubble key={msg.id} message={msg} onAction={handleSend} />
+              ))}
+              <AnimatePresence>
+                {isTyping && <TypingIndicator />}
+              </AnimatePresence>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* ── Input Bar ── */}
+        <div className="flex-shrink-0 px-6 pt-3 pb-4 space-y-2 border-t border-border/40 bg-surface/40 backdrop-blur-md">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 bg-surface/80 backdrop-blur-xl border border-border rounded-2xl px-4 py-3
+              focus-within:border-brand-400 focus-within:shadow-[0_0_20px_rgba(34,197,94,0.15)] transition-all duration-300">
+              <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
+                <Paperclip className="w-4 h-4" />
+              </button>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t("Ask where trucks are, request fleet status, or schedule a trip...")}
+                rows={1}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-content placeholder:text-content-muted font-light resize-none leading-relaxed max-h-24 overflow-y-auto"
+                style={{ minHeight: '20px' }}
+              />
+              <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
+                <Mic className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleSend()}
+                disabled={!input.trim() && !isTyping}
+                className={cn(
+                  'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
+                  input.trim()
+                    ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm'
+                    : 'bg-surface-secondary text-content-muted cursor-not-allowed'
+                )}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-content-muted text-center font-light mt-1.5">
+              {t("Fleetguard AI retrieves authoritative fleet records and requires explicit confirmation for operational actions.")}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ═══════════ MESSAGES AREA ═══════════ */}
-      <div className="flex-1 overflow-y-auto fg-scrollbar relative py-4">
-        {isEmpty ? (
-          /* ── Empty State ── */
-          <div className="flex flex-col items-center justify-center h-full relative">
-            <div className="relative z-10 text-center space-y-4 max-w-lg">
-              <h2 className="text-2xl font-light text-content">
-                {t("How can I assist your fleet today,")}{' '}
-                <span className="font-semibold">{userName}</span>?
-              </h2>
-              <p className="text-sm text-content-secondary font-light">
-                {t("Ask about vehicle locations, driver status, trips, fuel metrics, or schedule a verified trip.")}
+      {/* ═══════════ CONFIRMATION MODALS ═══════════ */}
+      {/* Delete Single Conversation */}
+      <AnimatePresence>
+        {convToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-border space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-content">Delete Conversation</h3>
+                  <p className="text-xs text-content-muted">This cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-xs text-content-secondary">
+                Are you sure you want to delete <span className="font-semibold text-content">"{convToDelete.title || 'Untitled'}"</span>? All messages in this conversation will be permanently removed.
               </p>
-            </div>
-
-            <div className="relative z-10 flex flex-wrap gap-2.5 justify-center mt-10 max-w-2xl px-4">
-              {SUGGESTED_PROMPTS.map((prompt, i) => (
-                <motion.button
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.08 }}
-                  onClick={() => handlePromptClick(prompt)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface/40 backdrop-blur-md border border-border text-sm text-content-secondary hover:text-content hover:bg-surface-secondary/80 hover:shadow-fg-glow hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setConvToDelete(null)}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-content hover:bg-surface-secondary transition-colors cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-brand-500" />
-                  {prompt}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* ── Chat Messages ── */
-          <div className="space-y-5 py-2 px-2">
-            {messages.map((msg) => (
-              <ChatMessageBubble key={msg.id} message={msg} onAction={handleSend} />
-            ))}
-            <AnimatePresence>
-              {isTyping && <TypingIndicator />}
-            </AnimatePresence>
-            <div ref={messagesEndRef} />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {/* ═══════════ INPUT BAR ═══════════ */}
-      <div className="flex-shrink-0 pt-3 pb-4 space-y-2 relative z-10">
-        <div className="flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-border rounded-2xl px-4 py-3
-          focus-within:border-brand-400 focus-within:shadow-[0_0_20px_rgba(34,197,94,0.15)] transition-all duration-300">
-          <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
-            <Paperclip className="w-4.5 h-4.5" />
-          </button>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("Ask where trucks are, request fleet status, or schedule a trip...")}
-            rows={1}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-content placeholder:text-content-muted font-light resize-none leading-relaxed max-h-24 overflow-y-auto"
-            style={{ minHeight: '20px' }}
-          />
-          <button className="p-1.5 rounded-lg hover:bg-surface-secondary text-content-secondary transition-colors flex-shrink-0">
-            <Mic className="w-4.5 h-4.5" />
-          </button>
-          <button
-            onClick={() => handleSend()}
-            disabled={!input.trim() && !isTyping}
-            className={cn(
-              'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
-              input.trim()
-                ? 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm'
-                : 'bg-surface-secondary text-content-muted cursor-not-allowed'
-            )}
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-[10px] text-content-muted text-center font-light">
-          {t("Fleetguard AI retrieves authoritative fleet records and requires explicit confirmation for operational actions.")}
-        </p>
-      </div>
+      {/* Clear All History Modal */}
+      <AnimatePresence>
+        {showClearConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-border space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-content">Clear All Conversations</h3>
+                  <p className="text-xs text-content-muted">Permanent action</p>
+                </div>
+              </div>
+              <p className="text-xs text-content-secondary">
+                Are you sure you want to clear all your past AI Co-Pilot conversations? This will delete all saved transcripts for your account.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-content hover:bg-surface-secondary transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearAllConfirm}
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

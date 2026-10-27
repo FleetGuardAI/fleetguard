@@ -80,9 +80,11 @@ def mock_openai(monkeypatch):
 
 
 @pytest.fixture
-def mock_dependencies():
+def mock_dependencies(db_session):
     from services.auth_service import get_current_user
-    
+    from database import get_read_uow, get_uow
+    from infrastructure.uow import AbstractUnitOfWork, RepositoryRegistry
+
     def override_get_current_user():
         u = User(
             email="test@fleetguard.com",
@@ -96,9 +98,28 @@ def mock_dependencies():
         u.company_id = MOCK_COMPANY_ID
         return u
 
+    class _TestSessionUoW(AbstractUnitOfWork):
+        def __init__(self):
+            self._session = db_session
+            self.session = db_session
+            self.repositories = RepositoryRegistry(db_session)
+
+        async def commit(self):
+            await self._session.commit()
+
+        async def rollback(self):
+            await self._session.rollback()
+
+    async def override_get_read_uow():
+        yield _TestSessionUoW()
+
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_read_uow] = override_get_read_uow
+    app.dependency_overrides[get_uow] = override_get_read_uow
     yield
     app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(get_read_uow, None)
+    app.dependency_overrides.pop(get_uow, None)
 
 
 @pytest.mark.asyncio
@@ -154,3 +175,32 @@ async def test_copilot_unauthenticated(db_session):
             json={"message": "Hello"}
         )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_copilot_upstream_provider_error_sanitized(monkeypatch, mock_dependencies, db_session):
+    """
+    Test that if the upstream provider throws a raw validation or syntax error with internal details,
+    the copilot endpoint returns HTTP 503 with a concise, safe user-facing message and does NOT
+    expose the raw exception or JSON to the client.
+    """
+    class FailingOpenAIProvider:
+        async def chat(self, messages, tools=None, temperature=0.0):
+            # Simulate raw provider failure with JSON body
+            raise RuntimeError("AI service error: Error code: 400 - {'error': {'message': 'Tool call validation failed: parameters for tool list_drivers did not match schema', 'failed_generation': '{\"name\": \"list_drivers\"}'}}")
+
+    monkeypatch.setattr("services.copilot_service.OpenAIProvider", FailingOpenAIProvider)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "Which drivers are available?"}
+        )
+    assert response.status_code == 503
+    data = response.json()
+    detail = data.get("detail", "")
+    assert "{" not in detail
+    assert "failed_generation" not in detail
+    assert "Error code: 400" not in detail
+    assert "The AI service encountered an issue processing tool arguments" in detail
+
