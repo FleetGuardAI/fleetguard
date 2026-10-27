@@ -27,6 +27,7 @@ from repositories.entity_baseline_repository import EntityBaselineRepository
 from repositories.fuel_anomaly_repository import FuelAnomalyRepository
 from repositories.fuel_financial_impact_repository import FuelFinancialImpactRepository
 from repositories.fuel_root_cause_repository import FuelRootCauseRepository
+from repositories.conversation_repository import ConversationRepository
 from infrastructure.idempotency.repository import IdempotencyRepository
 
 
@@ -54,6 +55,7 @@ class RepositoryRegistry:
         self.fuel_anomaly = FuelAnomalyRepository(db)
         self.fuel_financial_impact = FuelFinancialImpactRepository(db)
         self.fuel_root_cause = FuelRootCauseRepository(db)
+        self.conversation = ConversationRepository(db)
         self.idempotency = IdempotencyRepository(db)
 
 

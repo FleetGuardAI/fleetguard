@@ -91,6 +91,9 @@ class OpenAIProvider(LLMProvider):
                 message=llm_message,
                 finish_reason=choice.finish_reason,
             )
+        except openai.BadRequestError as e:
+            logger.error("OpenAI chat completion bad request (e.g. tool schema/argument mismatch): %s", e)
+            raise RuntimeError("The AI service could not process the request with the specified parameters. Please try rephrasing your inquiry.") from e
         except openai.APIConnectionError as e:
             logger.error("OpenAI API connection error: %s", e)
             raise RuntimeError("AI service temporarily unavailable (connection error).") from e
@@ -99,4 +102,4 @@ class OpenAIProvider(LLMProvider):
             raise RuntimeError("AI service temporarily unavailable (timeout).") from e
         except Exception as e:
             logger.error("OpenAI chat completion failed: %s", e)
-            raise RuntimeError(f"AI service error: {str(e)}") from e
+            raise RuntimeError("AI service temporarily unavailable. Please try again later.") from e
