@@ -322,7 +322,7 @@ class _FleetMismatchScreenState extends ConsumerState<FleetMismatchScreen> {
                 onPressed: _isSubmitting ? null : _handleCancel,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: Border.all(color: AppColors.lightBorder, width: 1.5),
+                  side: BorderSide(color: AppColors.lightBorder, width: 1.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
