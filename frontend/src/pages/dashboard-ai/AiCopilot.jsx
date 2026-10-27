@@ -10,6 +10,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getInitials } from '@/utils/formatters';
+import MarkdownMessage from '@/components/shared/MarkdownMessage';
 import api from '@/api/client';
 
 const SUGGESTED_PROMPTS = [
@@ -49,9 +50,13 @@ function ChatMessageBubble({ message, onAction }) {
           : 'bg-surface/50 border-border text-content rounded-bl-sm'
       )}>
         {message.content?.text && (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
-            {message.content.text}
-          </div>
+          isUser ? (
+            <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
+              {message.content.text}
+            </div>
+          ) : (
+            <MarkdownMessage content={message.content.text} />
+          )
         )}
 
         {/* GPS Telemetry Cards */}
@@ -68,31 +73,46 @@ function ChatMessageBubble({ message, onAction }) {
                     "text-[9px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
                     loc.freshness === "FRESH" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                     loc.freshness === "STALE" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    loc.freshness === "VERY_STALE" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                    loc.freshness === "FUTURE_TIMESTAMP" ? "bg-purple-50 text-purple-700 border-purple-200" :
                     "bg-slate-100 text-slate-600 border-slate-200"
                   )}>
                     <span className={cn(
                       "w-1 h-1 rounded-full",
                       loc.freshness === "FRESH" ? "bg-emerald-500 animate-pulse" :
-                      loc.freshness === "STALE" ? "bg-amber-500" : "bg-slate-400"
+                      loc.freshness === "STALE" ? "bg-amber-500" :
+                      loc.freshness === "VERY_STALE" ? "bg-rose-500" :
+                      loc.freshness === "FUTURE_TIMESTAMP" ? "bg-purple-500" : "bg-slate-400"
                     )} />
-                    {loc.freshness_label || loc.freshness}
+                    {loc.freshness_label || (
+                      loc.freshness === "FRESH" ? "Live GPS" :
+                      loc.freshness === "STALE" ? "Last-Known (Stale)" :
+                      loc.freshness === "VERY_STALE" ? "Last-Known (Very Stale)" :
+                      loc.freshness === "FUTURE_TIMESTAMP" ? "Invalid Timestamp" : "Unavailable"
+                    )}
                   </span>
                 </div>
                 {loc.has_location ? (
                   <div className="space-y-0.5 text-[11px] text-content-secondary">
                     <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-brand-500" />
+                      <MapPin className={cn(
+                        "w-3 h-3",
+                        loc.freshness === "FRESH" ? "text-emerald-500" : "text-amber-500"
+                      )} />
+                      <span className="text-[10px] text-content-secondary font-medium">
+                        {loc.freshness === "FRESH" ? "Current GPS:" : "Last-Known Position:"}
+                      </span>
                       <span>{loc.latitude?.toFixed(4)}, {loc.longitude?.toFixed(4)}</span>
                     </div>
                     {loc.timestamp && (
                       <div className="flex items-center gap-1 text-[10px] text-content-muted">
                         <Clock className="w-2.5 h-2.5" />
-                        <span>{new Date(loc.timestamp).toLocaleTimeString()} ({loc.source})</span>
+                        <span>Recorded: {new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({loc.source})</span>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-content-muted italic">{loc.message || "No telemetry available."}</p>
+                  <p className="text-[11px] text-content-muted italic">{loc.message || "Location Unavailable: No GPS telemetry recorded."}</p>
                 )}
               </div>
             ))}
