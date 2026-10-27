@@ -10,6 +10,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getInitials } from '@/utils/formatters';
+import MarkdownMessage from '@/components/shared/MarkdownMessage';
 import api from '@/api/client';
 
 const SUGGESTED_PROMPTS = [
@@ -49,11 +50,15 @@ function ChatMessageBubble({ message, onAction }) {
           ? 'bg-fg-green/10 border-fg-green/20 text-content rounded-br-sm'
           : 'bg-surface/50 border-border text-content rounded-bl-sm'
       )}>
-        {/* Text content with pre-wrap */}
+        {/* Message content */}
         {message.content?.text && (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
-            {message.content.text}
-          </div>
+          isUser ? (
+            <div className="text-sm leading-relaxed whitespace-pre-wrap font-light">
+              {message.content.text}
+            </div>
+          ) : (
+            <MarkdownMessage content={message.content.text} />
+          )
         )}
 
         {/* ── Interactive GPS Location Cards ── */}
@@ -78,27 +83,44 @@ function ChatMessageBubble({ message, onAction }) {
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : loc.freshness === "STALE"
                       ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : loc.freshness === "VERY_STALE"
+                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      : loc.freshness === "FUTURE_TIMESTAMP"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
                       : "bg-slate-100 text-slate-600 border-slate-200"
                   )}>
                     <span className={cn(
                       "w-1.5 h-1.5 rounded-full",
                       loc.freshness === "FRESH" ? "bg-emerald-500 animate-pulse" :
-                      loc.freshness === "STALE" ? "bg-amber-500" : "bg-slate-400"
+                      loc.freshness === "STALE" ? "bg-amber-500" :
+                      loc.freshness === "VERY_STALE" ? "bg-rose-500" :
+                      loc.freshness === "FUTURE_TIMESTAMP" ? "bg-purple-500" : "bg-slate-400"
                     )} />
-                    {loc.freshness_label || loc.freshness}
+                    {loc.freshness_label || (
+                      loc.freshness === "FRESH" ? "Live GPS" :
+                      loc.freshness === "STALE" ? "Last-Known (Stale)" :
+                      loc.freshness === "VERY_STALE" ? "Last-Known (Very Stale)" :
+                      loc.freshness === "FUTURE_TIMESTAMP" ? "Invalid Timestamp" : "Unavailable"
+                    )}
                   </span>
                 </div>
 
                 {loc.has_location ? (
                   <div className="space-y-1 text-xs text-content-secondary">
                     <div className="flex items-center gap-1.5 text-content">
-                      <MapPin className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
+                      <MapPin className={cn(
+                        "w-3.5 h-3.5 flex-shrink-0",
+                        loc.freshness === "FRESH" ? "text-emerald-500" : "text-amber-500"
+                      )} />
+                      <span className="text-[11px] font-medium text-content-secondary">
+                        {loc.freshness === "FRESH" ? "Current Position:" : "Last-Known Position:"}
+                      </span>
                       <span className="font-mono text-[11px] font-medium">{loc.latitude?.toFixed(4)}, {loc.longitude?.toFixed(4)}</span>
                     </div>
                     {loc.timestamp && (
                       <div className="flex items-center gap-1.5 text-[11px]">
                         <Clock className="w-3 h-3 text-content-muted" />
-                        <span>Recorded: {new Date(loc.timestamp).toLocaleTimeString()} ({loc.source})</span>
+                        <span>Recorded: {new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({loc.source})</span>
                       </div>
                     )}
                     {loc.assigned_driver && (
@@ -110,7 +132,7 @@ function ChatMessageBubble({ message, onAction }) {
                   </div>
                 ) : (
                   <p className="text-xs text-content-muted italic">
-                    {loc.message || "No telemetry available for this truck."}
+                    {loc.message || "Location Unavailable: No GPS telemetry recorded for this vehicle."}
                   </p>
                 )}
               </div>

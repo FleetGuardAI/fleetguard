@@ -18,7 +18,7 @@ from models.maintenance_domain import MaintenanceRecord, MaintenanceStatus, Main
 from models.ticket import Ticket
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from models.operational_event import OperationalEvent, EntityType, EventType, CaptureMethod
-from services.copilot_tools import CopilotToolExecutor, CopilotEntityResolver
+from services.copilot_tools import CopilotToolExecutor, CopilotEntityResolver, COPILOT_TOOLS_DEFINITION
 from services.copilot_proposal import TripProposalManager
 from services.copilot_service import CopilotService
 from schemas.copilot import CopilotChatRequest
@@ -1297,3 +1297,252 @@ async def test_gps_freshness_boundaries_and_clock_skew(db_session):
     assert res_notime["freshness"] == "STALE"
     assert res_notime["is_stale"] is True
     assert "Timestamp missing" in res_notime["freshness_label"]
+
+
+@pytest.mark.asyncio
+async def test_list_drivers_omitted_and_null_optional_parameters(db_session):
+    """Test 22: list_drivers handles omitted, null, and model-generated optional parameters gracefully."""
+    company_id = 901
+
+    d1 = Driver(name="Driver Alpha", phone_number="+919811000001", status=DriverStatus.ACTIVE, company_id=company_id)
+    d2 = Driver(name="Driver Beta", phone_number="+919811000002", status=DriverStatus.ACTIVE, company_id=company_id)
+    d3 = Driver(name="Driver Gamma", phone_number="+919811000003", status=DriverStatus.INACTIVE, company_id=company_id)
+    db_session.add_all([d1, d2, d3])
+    await db_session.commit()
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    executor = CopilotToolExecutor(uow=MockUoW(db_session), company_id=company_id, user_id="u_901")
+
+    # 1. Omitted search and is_active
+    res_omitted = json.loads(await executor.execute("list_drivers", {}))
+    assert res_omitted["total_count"] == 3
+    assert len(res_omitted["drivers"]) == 3
+
+    # 2. Supplied as null (None in Python)
+    res_null = json.loads(await executor.execute("list_drivers", {
+        "search": None,
+        "is_active": None,
+        "available_only": None,
+        "limit": None
+    }))
+    assert res_null["total_count"] == 3
+    assert len(res_null["drivers"]) == 3
+
+    # 3. Model-generated exact argument payload from production UI error:
+    # {"available_only": false, "is_active": null, "limit": 20, "search": null}
+    model_payload = {
+        "available_only": False,
+        "is_active": None,
+        "limit": 20,
+        "search": None
+    }
+    res_model = json.loads(await executor.execute("list_drivers", model_payload))
+    assert res_model["total_count"] == 3
+    assert "drivers" in res_model
+    assert res_model["available_count"] == 2  # 2 active, 0 busy
+
+
+@pytest.mark.asyncio
+async def test_list_drivers_filtering_and_availability_options(db_session):
+    """Test 23: list_drivers applies search, active filtering, and availability options correctly."""
+    company_id = 902
+
+    d_avail = Driver(name="Suresh Kumar", phone_number="+919822000001", status=DriverStatus.ACTIVE, company_id=company_id)
+    d_busy = Driver(name="Ramesh Sharma", phone_number="+919822000002", status=DriverStatus.ACTIVE, company_id=company_id)
+    d_inact = Driver(name="Dinesh Verma", phone_number="+919822000003", status=DriverStatus.INACTIVE, company_id=company_id)
+    db_session.add_all([d_avail, d_busy, d_inact])
+    await db_session.flush()
+
+    active_trip = Trip(
+        trip_id="TRP-BUSY-902",
+        status=TripStatus.IN_PROGRESS,
+        origin_location="Noida",
+        destination_location="Agra",
+        driver_id=d_busy.id,
+        company_id=company_id
+    )
+    db_session.add(active_trip)
+    await db_session.commit()
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    executor = CopilotToolExecutor(uow=MockUoW(db_session), company_id=company_id, user_id="u_902")
+
+    # 1. Valid search string
+    res_search = json.loads(await executor.execute("list_drivers", {"search": "Suresh"}))
+    assert res_search["total_count"] == 1
+    assert res_search["drivers"][0]["name"] == "Suresh Kumar"
+
+    # 2. is_active boolean filter (true)
+    res_active = json.loads(await executor.execute("list_drivers", {"is_active": True}))
+    assert res_active["total_count"] == 2
+    names = [d["name"] for d in res_active["drivers"]]
+    assert "Suresh Kumar" in names
+    assert "Ramesh Sharma" in names
+    assert "Dinesh Verma" not in names
+
+    # 3. is_active boolean filter (false)
+    res_inactive = json.loads(await executor.execute("list_drivers", {"is_active": False}))
+    assert res_inactive["total_count"] == 1
+    assert res_inactive["drivers"][0]["name"] == "Dinesh Verma"
+
+    # 4. available_only = True -> only active AND not on trip
+    res_avail = json.loads(await executor.execute("list_drivers", {"available_only": True}))
+    assert res_avail["total_count"] == 1
+    assert res_avail["drivers"][0]["name"] == "Suresh Kumar"
+    assert res_avail["drivers"][0]["availability_status"] == "AVAILABLE"
+
+    # 5. available_only = False -> all returned
+    res_not_avail_only = json.loads(await executor.execute("list_drivers", {"available_only": False}))
+    assert res_not_avail_only["total_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_list_drivers_malformed_arguments_and_recovery(db_session):
+    """Test 24: list_drivers handles malformed arguments safely without unhandled crashes."""
+    company_id = 903
+
+    d1 = Driver(name="Test Driver", phone_number="+919833000001", status=DriverStatus.ACTIVE, company_id=company_id)
+    db_session.add(d1)
+    await db_session.commit()
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    executor = CopilotToolExecutor(uow=MockUoW(db_session), company_id=company_id, user_id="u_903")
+
+    # Malformed is_active string
+    res_bad_active = json.loads(await executor.execute("list_drivers", {"is_active": "maybe"}))
+    assert res_bad_active.get("error") == "Validation Error"
+    assert "is_active" in res_bad_active.get("message", "")
+
+    # Malformed limit string
+    res_bad_limit = json.loads(await executor.execute("list_drivers", {"limit": "not_an_int"}))
+    assert res_bad_limit.get("error") == "Validation Error"
+    assert "limit" in res_bad_limit.get("message", "")
+
+    # Malformed available_only
+    res_bad_avail = json.loads(await executor.execute("list_drivers", {"available_only": "invalid_val"}))
+    assert res_bad_avail.get("error") == "Validation Error"
+
+    # String representation of booleans and numbers should parse safely
+    res_string_bool = json.loads(await executor.execute("list_drivers", {
+        "is_active": "true",
+        "available_only": "false",
+        "limit": "10"
+    }))
+    assert res_string_bool["total_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_driver_availability_privacy_and_data_minimization(db_session):
+    """Test 25: Driver phone numbers are not returned in default availability responses."""
+    company_id = 904
+
+    d1 = Driver(name="Secret Driver", phone_number="+919999888877", employee_id="EMP-904", status=DriverStatus.ACTIVE, company_id=company_id)
+    db_session.add(d1)
+    await db_session.commit()
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    executor = CopilotToolExecutor(uow=MockUoW(db_session), company_id=company_id, user_id="u_904")
+
+    # Default availability response
+    res = json.loads(await executor.execute("list_drivers", {"available_only": True}))
+    assert res["total_count"] == 1
+    driver_record = res["drivers"][0]
+    assert driver_record["name"] == "Secret Driver"
+    assert driver_record["employee_id"] == "EMP-904"
+    assert driver_record["availability_status"] == "AVAILABLE"
+    # Must NOT expose phone_number in default response
+    assert "phone_number" not in driver_record
+
+    # Phone number query: searching specifically by phone number digits DOES return phone_number
+    res_phone_search = json.loads(await executor.execute("list_drivers", {"search": "99998888"}))
+    assert res_phone_search["total_count"] == 1
+    assert res_phone_search["drivers"][0]["phone_number"] == "+919999888877"
+
+
+@pytest.mark.asyncio
+async def test_copilot_tool_definitions_nullable_schema(db_session):
+    """Test 26: Tool definitions declare nullable: True for all optional parameters."""
+    for tool in COPILOT_TOOLS_DEFINITION:
+        func = tool["function"]
+        props = func.get("parameters", {}).get("properties", {})
+        required = func.get("parameters", {}).get("required", [])
+
+        for prop_name, prop_def in props.items():
+            if prop_name not in required:
+                # Optional parameters must be marked nullable: True so LLM provider validators accept null
+                assert prop_def.get("nullable") is True, f"Tool '{func['name']}' parameter '{prop_name}' missing nullable: True"
+
+
+@pytest.mark.asyncio
+async def test_gps_last_known_location_and_location_type_messaging(db_session):
+    """Test 27: Telemetry classifies last-known positions and location_type explicitly."""
+    company_id = 905
+
+    v_fresh = Vehicle(registration_number="MH12LIVE01", make="Tata", model="Prima", status=VehicleStatus.ACTIVE, company_id=company_id)
+    v_stale = Vehicle(registration_number="MH12STALE1", make="Eicher", model="Pro", status=VehicleStatus.ACTIVE, company_id=company_id)
+    db_session.add_all([v_fresh, v_stale])
+    await db_session.flush()
+
+    now = datetime.now(timezone.utc)
+    d_fresh = Driver(name="Driver Live", phone_number="+919876543210", status=DriverStatus.ACTIVE, company_id=company_id)
+    d_stale = Driver(name="Driver Stale", phone_number="+919876543211", status=DriverStatus.ACTIVE, company_id=company_id)
+    db_session.add_all([d_fresh, d_stale])
+    await db_session.flush()
+
+    v_fresh.assigned_driver_id = d_fresh.id
+    v_stale.assigned_driver_id = d_stale.id
+
+    # Fresh point (5 min ago)
+    loc_fresh = DriverLocation(
+        driver_id=d_fresh.id,
+        company_id=company_id,
+        latitude=18.5204,
+        longitude=73.8567,
+        timestamp=now - timedelta(minutes=5),
+        source=LocationSource.PHONE_GPS,
+        speed=10.0
+    )
+    # Stale point (2 hours ago)
+    loc_stale = DriverLocation(
+        driver_id=d_stale.id,
+        company_id=company_id,
+        latitude=19.0760,
+        longitude=72.8777,
+        timestamp=now - timedelta(hours=2),
+        source=LocationSource.PHONE_GPS,
+        speed=0.0
+    )
+    db_session.add_all([loc_fresh, loc_stale])
+    await db_session.commit()
+
+    from infrastructure.uow import RepositoryRegistry
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    uow = MockUoW(db_session)
+    uow.repositories = RepositoryRegistry(db_session)
+    executor = CopilotToolExecutor(uow=uow, company_id=company_id, user_id="u_905")
+
+    res_fresh = json.loads(await executor.execute("get_vehicle_location", {"vehicle_id": v_fresh.id}))
+    assert res_fresh["freshness"] == "FRESH"
+    assert res_fresh["is_last_known"] is False
+    assert res_fresh["location_type"] == "CURRENT_POSITION"
+
+    res_stale = json.loads(await executor.execute("get_vehicle_location", {"vehicle_id": v_stale.id}))
+    assert res_stale["freshness"] == "STALE"
+    assert res_stale["is_last_known"] is True
+    assert res_stale["location_type"] == "LAST_KNOWN_LOCATION"
+    assert "Last-Known Location" in res_stale["freshness_label"]
