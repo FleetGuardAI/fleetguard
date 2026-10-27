@@ -292,15 +292,18 @@ COPILOT_TOOLS_DEFINITION = [
                     "status": {
                         "type": "string",
                         "enum": ["ACTIVE", "INACTIVE", "MAINTENANCE", "ALL"],
-                        "description": "Optional operational status filter."
+                        "nullable": True,
+                        "description": "Optional operational status filter (or null for all)."
                     },
                     "search": {
                         "type": "string",
-                        "description": "Optional text search for registration or make/model."
+                        "nullable": True,
+                        "description": "Optional text search for registration or make/model (or null)."
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of vehicles to retrieve (default 20)."
+                        "nullable": True,
+                        "description": "Maximum number of vehicles to retrieve (default 20, max 100)."
                     }
                 },
                 "required": []
@@ -317,11 +320,13 @@ COPILOT_TOOLS_DEFINITION = [
                 "properties": {
                     "vehicle_id": {
                         "type": "integer",
-                        "description": "Exact database ID of the vehicle (if known)."
+                        "nullable": True,
+                        "description": "Exact database ID of the vehicle (if known, or null)."
                     },
                     "query": {
                         "type": "string",
-                        "description": "Informal vehicle name, label, or partial registration number (e.g. 'Truck 02', 'RJ14UF0089')."
+                        "nullable": True,
+                        "description": "Informal vehicle name, label, or partial registration number (e.g. 'Truck 02', 'RJ14UF0089') (or null)."
                     }
                 },
                 "required": []
@@ -338,11 +343,13 @@ COPILOT_TOOLS_DEFINITION = [
                 "properties": {
                     "vehicle_id": {
                         "type": "integer",
-                        "description": "Exact database ID of the vehicle (if known)."
+                        "nullable": True,
+                        "description": "Exact database ID of the vehicle (if known, or null)."
                     },
                     "query": {
                         "type": "string",
-                        "description": "Informal vehicle name, label, partial registration (e.g. 'Truck 02', '0089'), or 'all'/'both' for all fleet vehicles."
+                        "nullable": True,
+                        "description": "Informal vehicle name, label, partial registration (e.g. 'Truck 02', '0089'), or 'all'/'both' for all fleet vehicles (or null)."
                     }
                 },
                 "required": []
@@ -353,25 +360,29 @@ COPILOT_TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "list_drivers",
-            "description": "Retrieves the list of drivers registered to the fleet, their contact details, duty status, active trip status, and current availability.",
+            "description": "Retrieves the list of drivers registered to the fleet, their duty status, active trip status, and current availability.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "is_active": {
                         "type": "boolean",
-                        "description": "Filter by active status in fleet."
+                        "nullable": True,
+                        "description": "Filter by active status in fleet (true for active only, false for inactive, or null for all)."
                     },
                     "available_only": {
                         "type": "boolean",
-                        "description": "Filter to only drivers who are ACTIVE and NOT currently on an in-progress trip."
+                        "nullable": True,
+                        "description": "Filter to only drivers who are ACTIVE and NOT currently on an in-progress trip (default false)."
                     },
                     "search": {
                         "type": "string",
-                        "description": "Optional name, phone, or employee ID search."
+                        "nullable": True,
+                        "description": "Optional name, phone, or employee ID search (or null if not filtering)."
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum drivers to return (default 20)."
+                        "nullable": True,
+                        "description": "Maximum drivers to return (default 20, max 100)."
                     }
                 },
                 "required": []
@@ -389,15 +400,18 @@ COPILOT_TOOLS_DEFINITION = [
                     "status": {
                         "type": "string",
                         "enum": ["CREATED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ALL"],
-                        "description": "Filter trips by operational status."
+                        "nullable": True,
+                        "description": "Filter trips by operational status (or null)."
                     },
                     "search": {
                         "type": "string",
-                        "description": "Search by city, trip ID, or location."
+                        "nullable": True,
+                        "description": "Search by city, trip ID, or location (or null)."
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum trips to return (default 20)."
+                        "nullable": True,
+                        "description": "Maximum trips to return (default 20, max 100)."
                     }
                 },
                 "required": []
@@ -414,11 +428,13 @@ COPILOT_TOOLS_DEFINITION = [
                 "properties": {
                     "trip_id": {
                         "type": "integer",
-                        "description": "Primary key ID of the trip."
+                        "nullable": True,
+                        "description": "Primary key ID of the trip (or null)."
                     },
                     "trip_business_id": {
                         "type": "string",
-                        "description": "Trip business ID (e.g., 'TRP-101', 'TRP-A1B2C3D4')."
+                        "nullable": True,
+                        "description": "Trip business ID (e.g., 'TRP-101', 'TRP-A1B2C3D4') (or null)."
                     }
                 },
                 "required": []
@@ -451,15 +467,18 @@ COPILOT_TOOLS_DEFINITION = [
                     },
                     "driver_query": {
                         "type": "string",
-                        "description": "Optional driver name, phone, or ID to assign."
+                        "nullable": True,
+                        "description": "Optional driver name, phone, or ID to assign (or null for auto-select or unassigned)."
                     },
                     "planned_distance_km": {
                         "type": "number",
-                        "description": "Optional estimated route distance in km."
+                        "nullable": True,
+                        "description": "Optional estimated route distance in km (or null)."
                     },
                     "revenue": {
                         "type": "number",
-                        "description": "Optional expected freight revenue in rupees."
+                        "nullable": True,
+                        "description": "Optional expected freight revenue in rupees (or null)."
                     }
                 },
                 "required": ["vehicle_query", "origin", "destination", "planned_start_time"]
@@ -603,15 +622,18 @@ COPILOT_TOOLS_DEFINITION = [
                     "category": {
                         "type": "string",
                         "enum": ["FUEL", "MAINTENANCE", "TYRE", "TOLL", "PARKING", "SALARY", "ALLOWANCE", "PENALTY", "ALL"],
-                        "description": "Optional category filter (e.g. 'FUEL')."
+                        "nullable": True,
+                        "description": "Optional category filter (e.g. 'FUEL', or null)."
                     },
                     "vehicle_id": {
                         "type": "integer",
-                        "description": "Optional vehicle ID filter."
+                        "nullable": True,
+                        "description": "Optional vehicle ID filter (or null)."
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of expense records to retrieve (default 10)."
+                        "nullable": True,
+                        "description": "Maximum number of expense records to retrieve (default 10, max 100)."
                     }
                 },
                 "required": []
@@ -648,60 +670,139 @@ class CopilotToolExecutor:
             return self.uow.repositories.vehicle.db
         raise RuntimeError("No database session available in Unit of Work.")
 
+    @staticmethod
+    def _parse_bool(val: Any, default: Optional[bool] = None, param_name: str = "parameter") -> Optional[bool]:
+        """
+        Parses boolean inputs safely, converting string representations ('true', 'false', '1', '0')
+        and treating None / empty values as the default.
+        Raises ValueError on malformed inputs.
+        """
+        if val is None or val == "":
+            return default
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            if val == 1:
+                return True
+            if val == 0:
+                return False
+            raise ValueError(f"Invalid boolean value for '{param_name}': expected 0 or 1, got {val}")
+        if isinstance(val, str):
+            s = val.strip().lower()
+            if s in ("true", "1", "yes", "t", "y"):
+                return True
+            if s in ("false", "0", "no", "f", "n"):
+                return False
+            if s in ("none", "null"):
+                return default
+            raise ValueError(f"Invalid boolean value for '{param_name}': expected true/false, got '{val}'")
+        raise ValueError(f"Invalid type for boolean parameter '{param_name}': expected boolean, got {type(val).__name__}")
+
+    @staticmethod
+    def _parse_int(
+        val: Any,
+        default: Optional[int] = None,
+        min_val: Optional[int] = None,
+        max_val: Optional[int] = None,
+        param_name: str = "parameter"
+    ) -> Optional[int]:
+        """
+        Parses integer inputs safely, converting string representations and validating bounds.
+        Treats None / empty values as default.
+        Raises ValueError on malformed inputs.
+        """
+        if val is None or val == "":
+            return default
+        try:
+            if isinstance(val, bool):
+                raise ValueError("Boolean passed for integer")
+            if isinstance(val, float):
+                if not val.is_integer():
+                    raise ValueError("Float with decimal passed for integer")
+                parsed = int(val)
+            else:
+                parsed = int(str(val).strip())
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid integer value for '{param_name}': expected integer, got '{val}'")
+
+        if min_val is not None and parsed < min_val:
+            parsed = min_val
+        if max_val is not None and parsed > max_val:
+            parsed = max_val
+        return parsed
+
+    @staticmethod
+    def _parse_str(val: Any, default: Optional[str] = None, param_name: str = "parameter") -> Optional[str]:
+        """
+        Parses string inputs safely, stripping whitespace and converting None / empty to default.
+        """
+        if val is None:
+            return default
+        if isinstance(val, str):
+            s = val.strip()
+            if not s or s.lower() in ("null", "none"):
+                return default
+            return s
+        s = str(val).strip()
+        return s if s else default
+
     async def execute(self, tool_name: str, args: Dict[str, Any]) -> str:
-        """Central tool dispatcher."""
+        """Central tool dispatcher with robust input validation and defensive error recovery."""
+        if not isinstance(args, dict):
+            args = {}
         try:
             if tool_name == "get_fleet_summary":
                 return await self._get_fleet_summary()
 
             elif tool_name == "list_vehicles":
-                return await self._list_vehicles(
-                    status=args.get("status"),
-                    search=args.get("search"),
-                    limit=args.get("limit", 20)
-                )
+                status = self._parse_str(args.get("status"), default=None, param_name="status")
+                search = self._parse_str(args.get("search"), default=None, param_name="search")
+                limit = self._parse_int(args.get("limit"), default=20, min_val=1, max_val=100, param_name="limit")
+                return await self._list_vehicles(status=status, search=search, limit=limit)
 
             elif tool_name == "get_vehicle_details":
-                return await self._get_vehicle_details(
-                    vehicle_id=args.get("vehicle_id"),
-                    query=args.get("query")
-                )
+                vehicle_id = self._parse_int(args.get("vehicle_id"), default=None, min_val=1, param_name="vehicle_id")
+                query = self._parse_str(args.get("query"), default=None, param_name="query")
+                return await self._get_vehicle_details(vehicle_id=vehicle_id, query=query)
 
             elif tool_name == "get_vehicle_location":
-                return await self._get_vehicle_location(
-                    vehicle_id=args.get("vehicle_id"),
-                    query=args.get("query")
-                )
+                vehicle_id = self._parse_int(args.get("vehicle_id"), default=None, min_val=1, param_name="vehicle_id")
+                query = self._parse_str(args.get("query"), default=None, param_name="query")
+                return await self._get_vehicle_location(vehicle_id=vehicle_id, query=query)
 
             elif tool_name == "list_drivers":
+                is_active = self._parse_bool(args.get("is_active"), default=None, param_name="is_active")
+                available_only = self._parse_bool(args.get("available_only"), default=False, param_name="available_only")
+                search = self._parse_str(args.get("search"), default=None, param_name="search")
+                limit = self._parse_int(args.get("limit"), default=20, min_val=1, max_val=100, param_name="limit")
                 return await self._list_drivers(
-                    is_active=args.get("is_active"),
-                    available_only=args.get("available_only"),
-                    search=args.get("search"),
-                    limit=args.get("limit", 20)
+                    is_active=is_active,
+                    available_only=available_only,
+                    search=search,
+                    limit=limit
                 )
 
             elif tool_name == "list_trips":
-                return await self._list_trips(
-                    status=args.get("status"),
-                    search=args.get("search"),
-                    limit=args.get("limit", 20)
-                )
+                status = self._parse_str(args.get("status"), default=None, param_name="status")
+                search = self._parse_str(args.get("search"), default=None, param_name="search")
+                limit = self._parse_int(args.get("limit"), default=20, min_val=1, max_val=100, param_name="limit")
+                return await self._list_trips(status=status, search=search, limit=limit)
 
             elif tool_name == "get_trip_details":
-                return await self._get_trip_details(
-                    trip_id=args.get("trip_id"),
-                    trip_business_id=args.get("trip_business_id")
-                )
+                trip_id = self._parse_int(args.get("trip_id"), default=None, min_val=1, param_name="trip_id")
+                trip_business_id = self._parse_str(args.get("trip_business_id"), default=None, param_name="trip_business_id")
+                return await self._get_trip_details(trip_id=trip_id, trip_business_id=trip_business_id)
 
             elif tool_name == "prepare_trip_proposal":
                 return await self._prepare_trip_proposal(args)
 
             elif tool_name == "confirm_trip_execution":
-                return await self._confirm_trip_execution(proposal_id=args.get("proposal_id"))
+                proposal_id = self._parse_str(args.get("proposal_id"), default=None, param_name="proposal_id")
+                return await self._confirm_trip_execution(proposal_id=proposal_id)
 
             elif tool_name == "cancel_trip_proposal":
-                return await self._cancel_trip_proposal(proposal_id=args.get("proposal_id"))
+                proposal_id = self._parse_str(args.get("proposal_id"), default=None, param_name="proposal_id")
+                return await self._cancel_trip_proposal(proposal_id=proposal_id)
 
             elif tool_name == "get_fleet_health":
                 from services.fleet_intelligence_service import FleetIntelligenceService
@@ -710,13 +811,17 @@ class CopilotToolExecutor:
                 return report.model_dump_json()
 
             elif tool_name == "get_trip_intelligence":
-                return await self._get_trip_intelligence(args.get("trip_id"))
+                trip_id = self._parse_int(args.get("trip_id"), default=None, min_val=1, param_name="trip_id")
+                return await self._get_trip_intelligence(trip_id)
 
             elif tool_name == "get_vehicle_summary":
-                return await self._get_vehicle_summary(args.get("vehicle_id"))
+                vehicle_id = self._parse_int(args.get("vehicle_id"), default=None, min_val=1, param_name="vehicle_id")
+                return await self._get_vehicle_summary(vehicle_id)
 
             elif tool_name == "get_related_evidence":
-                return await self._get_related_evidence(args.get("entity_type"), args.get("entity_id"))
+                entity_type = self._parse_str(args.get("entity_type"), default=None, param_name="entity_type")
+                entity_id = self._parse_str(args.get("entity_id"), default=None, param_name="entity_id")
+                return await self._get_related_evidence(entity_type, entity_id)
 
             elif tool_name == "get_expiring_documents":
                 return await self._get_expiring_documents()
@@ -725,15 +830,20 @@ class CopilotToolExecutor:
                 return await self._get_expense_analytics()
 
             elif tool_name == "list_expenses":
-                return await self._list_expenses(
-                    category=args.get("category"),
-                    vehicle_id=args.get("vehicle_id"),
-                    limit=args.get("limit", 10)
-                )
+                category = self._parse_str(args.get("category"), default=None, param_name="category")
+                vehicle_id = self._parse_int(args.get("vehicle_id"), default=None, min_val=1, param_name="vehicle_id")
+                limit = self._parse_int(args.get("limit"), default=10, min_val=1, max_val=100, param_name="limit")
+                return await self._list_expenses(category=category, vehicle_id=vehicle_id, limit=limit)
 
             else:
                 return json.dumps({"error": f"Unknown tool: '{tool_name}'"})
 
+        except ValueError as ve:
+            logger.warning(f"Parameter validation error in tool '{tool_name}': {ve}")
+            return json.dumps({
+                "error": "Validation Error",
+                "message": f"Parameters for tool '{tool_name}' were invalid: {str(ve)}. Please provide valid arguments."
+            })
         except PermissionError as pe:
             logger.warning(f"Security boundary violation in tool {tool_name}: {pe}")
             return json.dumps({"error": "Permission Denied", "detail": str(pe)})
@@ -1079,20 +1189,21 @@ class CopilotToolExecutor:
                 freshness = "STALE"
                 is_stale = True
                 minutes_ago = round(raw_age / 60.0, 1)
-                freshness_label = f"Stale GPS ({minutes_ago} minutes ago)"
+                freshness_label = f"Stale GPS (Last-Known Location: {minutes_ago} minutes ago)"
             else:  # > 24 hours
                 age_seconds = raw_age
                 freshness = "VERY_STALE"
                 is_stale = True
                 hours_ago = round(raw_age / 3600.0, 1)
-                freshness_label = f"Very Stale ({hours_ago} hours ago)"
+                freshness_label = f"Very Stale GPS (Last-Known Location: {hours_ago} hours ago)"
         else:
             age_seconds = None
             freshness = "STALE"
             is_stale = True
-            freshness_label = "Stale GPS (Timestamp missing)"
+            freshness_label = "Stale GPS (Timestamp missing - Last-Known Location)"
 
         address_str = f"Coordinates: {lat:.5f}, {lng:.5f}"
+        location_type = "CURRENT_POSITION" if freshness == "FRESH" else "LAST_KNOWN_LOCATION"
 
         return {
             "vehicle_id": vehicle.id,
@@ -1107,6 +1218,8 @@ class CopilotToolExecutor:
             "freshness": freshness,
             "freshness_label": freshness_label,
             "is_stale": is_stale,
+            "is_last_known": freshness != "FRESH",
+            "location_type": location_type,
             "source": source,
             "speed_kmh": round(speed * 3.6, 1) if speed else None,
             "accuracy_meters": accuracy,
@@ -1237,17 +1350,22 @@ class CopilotToolExecutor:
                     "route": f"{bt.origin_location} -> {bt.destination_location}"
                 }
 
-            records.append({
+            rec = {
                 "driver_id": d.id,
                 "name": d.name,
-                "phone_number": d.phone_number,
                 "employee_id": d.employee_id,
                 "status": st,
                 "duty_status": duty,
                 "is_available": is_available,
                 "availability_status": "AVAILABLE" if is_available else ("BUSY_ON_TRIP" if is_busy else "INACTIVE"),
                 "active_trip": active_trip_info
-            })
+            }
+            # Privacy & Data Minimization (Phase 5):
+            # Only include phone number if search term explicitly included digits/contact search
+            if search and any(c.isdigit() for c in search) and d.phone_number and search.strip() in d.phone_number:
+                rec["phone_number"] = d.phone_number
+
+            records.append(rec)
 
         return json.dumps({
             "total_count": len(records),
