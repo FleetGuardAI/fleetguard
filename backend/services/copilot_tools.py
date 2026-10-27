@@ -290,19 +290,22 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "status": {
-                        "type": "string",
-                        "enum": ["ACTIVE", "INACTIVE", "MAINTENANCE", "ALL"],
+                        "type": ["string", "null"],
+                        "enum": ["ACTIVE", "INACTIVE", "MAINTENANCE", "ALL", None],
                         "nullable": True,
-                        "description": "Optional operational status filter (or null for all)."
+                        "default": "ALL",
+                        "description": "Optional operational status filter: 'ACTIVE', 'INACTIVE', 'MAINTENANCE', 'ALL', or null for all."
                     },
                     "search": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
-                        "description": "Optional text search for registration or make/model (or null)."
+                        "default": "",
+                        "description": "Optional text search for registration or make/model (or null/empty for no filter)."
                     },
                     "limit": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": 20,
                         "description": "Maximum number of vehicles to retrieve (default 20, max 100)."
                     }
                 },
@@ -319,13 +322,15 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "vehicle_id": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Exact database ID of the vehicle (if known, or null)."
                     },
                     "query": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
+                        "default": "",
                         "description": "Informal vehicle name, label, or partial registration number (e.g. 'Truck 02', 'RJ14UF0089') (or null)."
                     }
                 },
@@ -342,13 +347,15 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "vehicle_id": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Exact database ID of the vehicle (if known, or null)."
                     },
                     "query": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
+                        "default": "",
                         "description": "Informal vehicle name, label, partial registration (e.g. 'Truck 02', '0089'), or 'all'/'both' for all fleet vehicles (or null)."
                     }
                 },
@@ -365,24 +372,28 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "is_active": {
-                        "type": "boolean",
+                        "type": ["boolean", "null"],
                         "nullable": True,
-                        "description": "Filter by active status in fleet (true for active only, false for inactive, or null for all)."
+                        "default": None,
+                        "description": "Filter by active status in fleet (true for active only, false for inactive, or null/omitted for all/no status restriction)."
                     },
                     "available_only": {
-                        "type": "boolean",
+                        "type": ["boolean", "null"],
                         "nullable": True,
+                        "default": False,
                         "description": "Filter to only drivers who are ACTIVE and NOT currently on an in-progress trip (default false)."
                     },
                     "search": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
-                        "description": "Optional name, phone, or employee ID search (or null if not filtering)."
+                        "default": "",
+                        "description": "Optional name, phone, or employee ID search (or null/empty for no search restriction)."
                     },
                     "limit": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
-                        "description": "Maximum drivers to return (default 20, max 100)."
+                        "default": 20,
+                        "description": "Maximum drivers to return (default 20, bounded between 1 and 100)."
                     }
                 },
                 "required": []
@@ -398,20 +409,23 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "status": {
-                        "type": "string",
-                        "enum": ["CREATED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ALL"],
+                        "type": ["string", "null"],
+                        "enum": ["CREATED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ALL", None],
                         "nullable": True,
-                        "description": "Filter trips by operational status (or null)."
+                        "default": "ALL",
+                        "description": "Filter trips by operational status (or null/omitted for all)."
                     },
                     "search": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
-                        "description": "Search by city, trip ID, or location (or null)."
+                        "default": "",
+                        "description": "Search by city, trip ID, or location (or null/empty for no search restriction)."
                     },
                     "limit": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
-                        "description": "Maximum trips to return (default 20, max 100)."
+                        "default": 20,
+                        "description": "Maximum trips to return (default 20, bounded between 1 and 100)."
                     }
                 },
                 "required": []
@@ -427,13 +441,15 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "trip_id": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Primary key ID of the trip (or null)."
                     },
                     "trip_business_id": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
+                        "default": "",
                         "description": "Trip business ID (e.g., 'TRP-101', 'TRP-A1B2C3D4') (or null)."
                     }
                 },
@@ -466,18 +482,21 @@ COPILOT_TOOLS_DEFINITION = [
                         "description": "Planned departure date and time (ISO format or formatted string, e.g. '2026-10-27T08:00:00')."
                     },
                     "driver_query": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Optional driver name, phone, or ID to assign (or null for auto-select or unassigned)."
                     },
                     "planned_distance_km": {
-                        "type": "number",
+                        "type": ["number", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Optional estimated route distance in km (or null)."
                     },
                     "revenue": {
-                        "type": "number",
+                        "type": ["number", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Optional expected freight revenue in rupees (or null)."
                     }
                 },
@@ -620,19 +639,22 @@ COPILOT_TOOLS_DEFINITION = [
                 "type": "object",
                 "properties": {
                     "category": {
-                        "type": "string",
-                        "enum": ["FUEL", "MAINTENANCE", "TYRE", "TOLL", "PARKING", "SALARY", "ALLOWANCE", "PENALTY", "ALL"],
+                        "type": ["string", "null"],
+                        "enum": ["FUEL", "MAINTENANCE", "TYRE", "TOLL", "PARKING", "SALARY", "ALLOWANCE", "PENALTY", "ALL", None],
                         "nullable": True,
-                        "description": "Optional category filter (e.g. 'FUEL', or null)."
+                        "default": "ALL",
+                        "description": "Optional category filter: 'FUEL', 'MAINTENANCE', 'TYRE', 'TOLL', etc. (or null for all)."
                     },
                     "vehicle_id": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": None,
                         "description": "Optional vehicle ID filter (or null)."
                     },
                     "limit": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "nullable": True,
+                        "default": 10,
                         "description": "Maximum number of expense records to retrieve (default 10, max 100)."
                     }
                 },
@@ -713,6 +735,8 @@ class CopilotToolExecutor:
         """
         if val is None or val == "":
             return default
+        if isinstance(val, str) and val.strip().lower() in ("none", "null"):
+            return default
         try:
             if isinstance(val, bool):
                 raise ValueError("Boolean passed for integer")
@@ -724,6 +748,36 @@ class CopilotToolExecutor:
                 parsed = int(str(val).strip())
         except (ValueError, TypeError):
             raise ValueError(f"Invalid integer value for '{param_name}': expected integer, got '{val}'")
+
+        if min_val is not None and parsed < min_val:
+            parsed = min_val
+        if max_val is not None and parsed > max_val:
+            parsed = max_val
+        return parsed
+
+    @staticmethod
+    def _parse_float(
+        val: Any,
+        default: Optional[float] = None,
+        min_val: Optional[float] = None,
+        max_val: Optional[float] = None,
+        param_name: str = "parameter"
+    ) -> Optional[float]:
+        """
+        Parses float inputs safely, converting string representations and validating bounds.
+        Treats None / empty / 'null' values as default.
+        Raises ValueError on malformed inputs.
+        """
+        if val is None or val == "":
+            return default
+        if isinstance(val, str) and val.strip().lower() in ("none", "null"):
+            return default
+        try:
+            if isinstance(val, bool):
+                raise ValueError("Boolean passed for float")
+            parsed = float(val)
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid numeric value for '{param_name}': expected number, got '{val}'")
 
         if min_val is not None and parsed < min_val:
             parsed = min_val
@@ -1455,13 +1509,13 @@ class CopilotToolExecutor:
     async def _prepare_trip_proposal(self, args: Dict[str, Any]) -> str:
         session = self._get_session()
 
-        vehicle_query = args.get("vehicle_query")
-        origin = args.get("origin")
-        destination = args.get("destination")
-        planned_start_time = args.get("planned_start_time")
-        driver_query = args.get("driver_query")
-        planned_distance_km = args.get("planned_distance_km")
-        revenue = args.get("revenue")
+        vehicle_query = self._parse_str(args.get("vehicle_query"), default=None, param_name="vehicle_query")
+        origin = self._parse_str(args.get("origin"), default=None, param_name="origin")
+        destination = self._parse_str(args.get("destination"), default=None, param_name="destination")
+        planned_start_time = self._parse_str(args.get("planned_start_time"), default=None, param_name="planned_start_time")
+        driver_query = self._parse_str(args.get("driver_query"), default=None, param_name="driver_query")
+        planned_distance_km = self._parse_float(args.get("planned_distance_km"), default=None, min_val=0.0, param_name="planned_distance_km")
+        revenue = self._parse_float(args.get("revenue"), default=None, min_val=0.0, param_name="revenue")
 
         if not vehicle_query or not origin or not destination or not planned_start_time:
             return json.dumps({
@@ -1605,8 +1659,8 @@ class CopilotToolExecutor:
             origin_location=origin.strip(),
             destination_location=destination.strip(),
             planned_start_time=planned_start_time.strip(),
-            planned_distance_km=float(planned_distance_km) if planned_distance_km else None,
-            revenue=float(revenue) if revenue else None,
+            planned_distance_km=planned_distance_km,
+            revenue=revenue,
         )
 
         return json.dumps({
