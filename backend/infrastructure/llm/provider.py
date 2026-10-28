@@ -20,6 +20,21 @@ class LLMResponse(BaseModel):
     finish_reason: str
 
 
+class LLMProviderError(Exception):
+    """Base exception for all LLM provider interactions."""
+    pass
+
+
+class LLMValidationError(LLMProviderError):
+    """Raised when the LLM provider rejects request schema, prompt, or tool call parameters (HTTP 400)."""
+    pass
+
+
+class LLMServiceUnavailableError(LLMProviderError):
+    """Raised when the LLM provider is unreachable, timed out, or experiencing outages (HTTP 5xx / connection error)."""
+    pass
+
+
 class LLMProvider(ABC):
     """Abstract interface for LLM operations."""
 
