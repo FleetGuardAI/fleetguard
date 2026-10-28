@@ -542,10 +542,163 @@ COPILOT_TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "get_fleet_health",
-            "description": "Retrieves the overall health, domain risks, findings, and signals for the authenticated user's fleet.",
+            "description": "Retrieves the overall health overview of the fleet, including active/maintenance vehicle counts, live/stale/unavailable GPS telemetry status, overdue/upcoming maintenance, delayed trips, and top priority findings.",
             "parameters": {
                 "type": "object",
                 "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_fleet_anomalies",
+            "description": "Retrieves ranked operational anomalies and threshold violations across fuel, maintenance, trips, and telemetry with supporting evidence and recommended next steps.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": ["string", "null"],
+                        "enum": ["ALL", "FLEET_HEALTH", "FUEL_EFFICIENCY", "MAINTENANCE", "TRIP_OPERATIONS", "DATA_QUALITY", None],
+                        "nullable": True,
+                        "default": "ALL",
+                        "description": "Optional anomaly category filter (or null/ALL for all categories)."
+                    },
+                    "min_severity": {
+                        "type": ["string", "null"],
+                        "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "ALL", None],
+                        "nullable": True,
+                        "default": "ALL",
+                        "description": "Minimum severity threshold (e.g. 'HIGH' returns CRITICAL and HIGH, or null/ALL for all)."
+                    },
+                    "limit": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 10,
+                        "description": "Maximum number of anomalies to return (default 10, max 50)."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_fuel_efficiency",
+            "description": "Analyzes fleet and vehicle fuel expenditure and consumption (km/L and L/100km). Compares period-over-period spend and detects unusual consumption spikes against baselines without double-counting expenses.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "vehicle_id": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": None,
+                        "description": "Optional specific vehicle database ID (or null for fleet-wide)."
+                    },
+                    "query": {
+                        "type": ["string", "null"],
+                        "nullable": True,
+                        "default": "",
+                        "description": "Optional vehicle registration or informal name (e.g. 'Truck 02', 'RJ14UF0089') (or null)."
+                    },
+                    "period_days": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 30,
+                        "description": "Analysis observation period in days (default 30, max 90)."
+                    },
+                    "compare_previous": {
+                        "type": ["boolean", "null"],
+                        "nullable": True,
+                        "default": True,
+                        "description": "Whether to compare against the equivalent preceding period (default true)."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_maintenance_priorities",
+            "description": "Identifies vehicles with overdue or upcoming maintenance, chronic repeated maintenance issues, and odometer discrepancies with actionable next steps.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status_filter": {
+                        "type": ["string", "null"],
+                        "enum": ["ALL", "OVERDUE", "DUE_SOON", "REPEAT", None],
+                        "nullable": True,
+                        "default": "ALL",
+                        "description": "Optional filter: 'OVERDUE', 'DUE_SOON', 'REPEAT', or null/ALL for all priorities."
+                    },
+                    "limit": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 10,
+                        "description": "Maximum priorities to return (default 10, max 30)."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_trip_performance",
+            "description": "Audits operational trip records for departure delays, en-route delivery delays, route distance deviations (>15%), and unclosed trips.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "trip_id": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": None,
+                        "description": "Optional specific trip database ID (or null for fleet-wide)."
+                    },
+                    "status": {
+                        "type": ["string", "null"],
+                        "enum": ["ALL", "CREATED", "IN_PROGRESS", "COMPLETED", None],
+                        "nullable": True,
+                        "default": "ALL",
+                        "description": "Optional trip operational status filter."
+                    },
+                    "days": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 30,
+                        "description": "Analysis window in days (default 30, max 90)."
+                    },
+                    "limit": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 10,
+                        "description": "Maximum trip findings to return (default 10, max 30)."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_data_quality_findings",
+            "description": "Audits fleet data completeness and instrumentation issues: missing GPS tracking, stale telemetry, missing/zero odometers, and unlogged trip mileage. Clearly distinguishes data gaps from vehicle mechanical defects.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": ["integer", "null"],
+                        "nullable": True,
+                        "default": 15,
+                        "description": "Maximum data quality findings to return (default 15, max 50)."
+                    }
+                },
                 "required": []
             }
         }
@@ -859,10 +1012,38 @@ class CopilotToolExecutor:
                 return await self._cancel_trip_proposal(proposal_id=proposal_id)
 
             elif tool_name == "get_fleet_health":
-                from services.fleet_intelligence_service import FleetIntelligenceService
-                svc = FleetIntelligenceService(self.uow)
-                report = await svc.get_fleet_health(str(self.company_id))
-                return report.model_dump_json()
+                return await self._get_fleet_health()
+
+            elif tool_name == "get_fleet_anomalies":
+                category = self._parse_str(args.get("category"), default=None, param_name="category")
+                min_severity = self._parse_str(args.get("min_severity"), default=None, param_name="min_severity")
+                limit = self._parse_int(args.get("limit"), default=10, min_val=1, max_val=50, param_name="limit")
+                return await self._get_fleet_anomalies(category=category, min_severity=min_severity, limit=limit)
+
+            elif tool_name == "analyze_fuel_efficiency":
+                vehicle_id = self._parse_int(args.get("vehicle_id"), default=None, min_val=1, param_name="vehicle_id")
+                query = self._parse_str(args.get("query"), default=None, param_name="query")
+                period_days = self._parse_int(args.get("period_days"), default=30, min_val=1, max_val=90, param_name="period_days")
+                compare_previous = self._parse_bool(args.get("compare_previous"), default=True, param_name="compare_previous")
+                return await self._analyze_fuel_efficiency(
+                    vehicle_id=vehicle_id, query=query, period_days=period_days, compare_previous=compare_previous
+                )
+
+            elif tool_name == "get_maintenance_priorities":
+                status_filter = self._parse_str(args.get("status_filter"), default=None, param_name="status_filter")
+                limit = self._parse_int(args.get("limit"), default=10, min_val=1, max_val=30, param_name="limit")
+                return await self._get_maintenance_priorities(status_filter=status_filter, limit=limit)
+
+            elif tool_name == "analyze_trip_performance":
+                trip_id = self._parse_int(args.get("trip_id"), default=None, min_val=1, param_name="trip_id")
+                status = self._parse_str(args.get("status"), default=None, param_name="status")
+                days = self._parse_int(args.get("days"), default=30, min_val=1, max_val=90, param_name="days")
+                limit = self._parse_int(args.get("limit"), default=10, min_val=1, max_val=30, param_name="limit")
+                return await self._analyze_trip_performance(trip_id=trip_id, status=status, days=days, limit=limit)
+
+            elif tool_name == "get_data_quality_findings":
+                limit = self._parse_int(args.get("limit"), default=15, min_val=1, max_val=50, param_name="limit")
+                return await self._get_data_quality_findings(limit=limit)
 
             elif tool_name == "get_trip_intelligence":
                 trip_id = self._parse_int(args.get("trip_id"), default=None, min_val=1, param_name="trip_id")
@@ -2025,3 +2206,92 @@ class CopilotToolExecutor:
             "category_filter": category or "ALL",
             "expenses": records
         })
+
+    # ==========================================================================
+    # EVIDENCE-GROUNDED FLEET INTELLIGENCE TOOLS (P3)
+    # ==========================================================================
+
+    async def _get_fleet_health(self) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        overview = await engine.get_fleet_health_overview()
+        return overview.model_dump_json()
+
+    async def _get_fleet_anomalies(
+        self,
+        category: Optional[str] = None,
+        min_severity: Optional[str] = None,
+        limit: int = 10
+    ) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        anomalies = await engine.get_fleet_anomalies(
+            category=category,
+            min_severity=min_severity,
+            limit=limit
+        )
+        return anomalies.model_dump_json()
+
+    async def _analyze_fuel_efficiency(
+        self,
+        vehicle_id: Optional[int] = None,
+        query: Optional[str] = None,
+        period_days: int = 30,
+        compare_previous: bool = True
+    ) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        session = self._get_session()
+
+        target_vid = vehicle_id
+        if not target_vid and query:
+            v_res = await session.execute(
+                select(Vehicle).where(Vehicle.company_id == self.company_id)
+            )
+            vehicles = v_res.scalars().all()
+            resolved = CopilotEntityResolver.resolve_vehicle(vehicles, query)
+            if resolved.get("status") == "EXACT":
+                target_vid = resolved["vehicle"].id
+
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        result = await engine.analyze_fuel_efficiency(
+            vehicle_id=target_vid,
+            period_days=period_days,
+            compare_previous=compare_previous
+        )
+        return result.model_dump_json()
+
+    async def _get_maintenance_priorities(
+        self,
+        status_filter: Optional[str] = None,
+        limit: int = 10
+    ) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        result = await engine.get_maintenance_priorities(
+            status_filter=status_filter,
+            limit=limit
+        )
+        return result.model_dump_json()
+
+    async def _analyze_trip_performance(
+        self,
+        trip_id: Optional[int] = None,
+        status: Optional[str] = None,
+        days: int = 30,
+        limit: int = 10
+    ) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        result = await engine.analyze_trip_performance(
+            trip_id=trip_id,
+            status=status,
+            days=days,
+            limit=limit
+        )
+        return result.model_dump_json()
+
+    async def _get_data_quality_findings(self, limit: int = 15) -> str:
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        engine = FleetIntelligenceEngine(self.uow, self.company_id)
+        result = await engine.get_data_quality_findings(limit=limit)
+        return result.model_dump_json()

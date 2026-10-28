@@ -9,8 +9,13 @@ import { cn } from '@/utils/cn';
  * Safe by default: raw HTML execution is disabled to prevent XSS.
  * Supports headings, bold/italic, ordered/unordered lists, code blocks,
  * blockquotes, and responsive styled tables.
+ *
+ * @param {string} content - Markdown text content
+ * @param {boolean} suppressTables - When true, suppresses redundant markdown tables
+ *                                   when structured interactive cards are already displayed.
+ * @param {string} className - Optional container styling
  */
-export default function MarkdownMessage({ content, className = '' }) {
+export default function MarkdownMessage({ content, suppressTables = false, className = '' }) {
   if (!content) return null;
 
   return (
@@ -48,6 +53,9 @@ export default function MarkdownMessage({ content, className = '' }) {
           blockquote: ({ node, ...props }) => (
             <blockquote className="border-l-2 border-brand-400 pl-3 italic text-content-secondary my-2 text-xs" {...props} />
           ),
+          pre: ({ node, ...props }) => (
+            <pre className="p-3 rounded-xl bg-surface-secondary/80 border border-border overflow-x-auto text-xs font-mono my-2 text-content" {...props} />
+          ),
           code: ({ node, inline, className: codeClassName, children, ...props }) => {
             if (inline) {
               return (
@@ -57,21 +65,24 @@ export default function MarkdownMessage({ content, className = '' }) {
               );
             }
             return (
-              <pre className="p-3 rounded-xl bg-surface-secondary/80 border border-border overflow-x-auto text-xs font-mono my-2 text-content">
-                <code {...props}>{children}</code>
-              </pre>
+              <code className={cn("text-xs font-mono", codeClassName)} {...props}>
+                {children}
+              </code>
             );
           },
-          table: ({ node, ...props }) => (
-            <div className="overflow-x-auto my-2.5 rounded-xl border border-border shadow-xs">
-              <table className="min-w-full divide-y divide-border text-xs text-left" {...props} />
-            </div>
-          ),
+          table: ({ node, ...props }) => {
+            if (suppressTables) return null;
+            return (
+              <div className="overflow-x-auto my-2.5 rounded-xl border border-border shadow-xs bg-surface/40">
+                <table className="min-w-full divide-y divide-border text-xs text-left" {...props} />
+              </div>
+            );
+          },
           thead: ({ node, ...props }) => (
             <thead className="bg-surface-secondary/70 text-content font-semibold" {...props} />
           ),
           tbody: ({ node, ...props }) => (
-            <tbody className="divide-y divide-border/60 bg-surface/40" {...props} />
+            <tbody className="divide-y divide-border/60 bg-surface/30" {...props} />
           ),
           tr: ({ node, ...props }) => (
             <tr className="hover:bg-surface-secondary/30 transition-colors" {...props} />
@@ -80,14 +91,23 @@ export default function MarkdownMessage({ content, className = '' }) {
             <th className="px-3 py-2 text-[11px] font-semibold text-content uppercase tracking-wider" {...props} />
           ),
           td: ({ node, ...props }) => (
-            <td className="px-3 py-2 whitespace-nowrap text-content text-xs font-light" {...props} />
+            <td className="px-3 py-2 text-content text-xs font-light" {...props} />
           ),
           hr: ({ node, ...props }) => (
             <hr className="my-3 border-border/60" {...props} />
           ),
-          a: ({ node, ...props }) => (
-            <a className="text-brand-500 underline hover:text-brand-600" target="_blank" rel="noopener noreferrer" {...props} />
-          )
+          a: ({ node, href, children, ...props }) => {
+            const rawHref = (href || '').trim().toLowerCase();
+            const isUnsafe = rawHref.startsWith('javascript:') || rawHref.startsWith('data:') || rawHref.startsWith('vbscript:');
+            if (isUnsafe) {
+              return <span>{children}</span>;
+            }
+            return (
+              <a href={href} className="text-brand-500 underline hover:text-brand-600" target="_blank" rel="noopener noreferrer" {...props}>
+                {children}
+              </a>
+            );
+          }
         }}
       >
         {content}
