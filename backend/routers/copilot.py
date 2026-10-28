@@ -22,7 +22,9 @@ from schemas.copilot import (
     ConversationDetailResponse,
     DeleteConversationResponse,
 )
+from infrastructure.llm.provider import LLMValidationError, LLMServiceUnavailableError
 from services.copilot_service import CopilotService
+
 
 router = APIRouter(prefix="/copilot", tags=["Copilot"])
 logger = logging.getLogger("fleetguard.routers.copilot")
@@ -60,8 +62,20 @@ async def chat_with_copilot(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found or unauthorized access."
         )
+    except LLMValidationError as ve:
+        logger.error(f"Provider tool schema or argument validation failure: {ve}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI provider could not process the tool parameters for this request. Please try rephrasing your question."
+        )
+    except LLMServiceUnavailableError as se:
+        logger.error(f"LLM provider service unavailable: {se}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI service is temporarily unavailable. Please try again in a few moments."
+        )
     except RuntimeError as re:
-        logger.error(f"Copilot AI service unavailable: {re}")
+        logger.error(f"Copilot runtime failure: {re}")
         user_msg = str(re)
         if any(marker in user_msg for marker in ("{", "Error code:", "failed_generation", "Traceback", "BadRequestError")):
             user_msg = "The AI service encountered an issue processing tool arguments. Please try again or rephrase your request."
@@ -75,6 +89,7 @@ async def chat_with_copilot(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while communicating with the Copilot service. Please try again later."
         )
+
 
 
 @router.get(

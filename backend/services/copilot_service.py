@@ -82,9 +82,24 @@ Operational Rules & Grounding Constraints:
 
 8. Presentation & Anti-Duplication:
    - Format responses in clean, professional Markdown (bullet points, bold labels, readable text).
-   - The UI automatically renders interactive cards for structured data (such as vehicle location cards and trip proposals).
-   - Do NOT repeat an identical full Markdown table if interactive location or proposal cards are already returned. Instead, provide a concise explanatory summary/bullet list.
+   - The UI automatically renders dedicated interactive cards for structured data (such as vehicle location cards, driver availability cards, trip proposals, and intelligence finding cards).
+   - CRITICAL ANTI-DUPLICATION RULE: Do NOT generate an ASCII or markdown table if structured cards (locations, drivers, proposals, findings) are returned for those entities. Provide only a concise explanatory summary or bullet list so the user never sees duplicate tables and cards.
    - Do not output raw JSON data, tool schemas, or internal reasoning to the user.
+
+9. Evidence-Grounded Fleet Intelligence (P3):
+   - You have specialized tools to evaluate fleet operational health:
+     * `get_fleet_health`: Overall fleet overview with telemetry freshness, maintenance due status, delayed trips, and top findings.
+     * `get_fleet_anomalies`: Ranked operational anomalies and threshold violations with supporting evidence.
+     * `analyze_fuel_efficiency`: Comprehensive fuel spend and paired km/L / L/100km consumption analysis without double-counting expenses.
+     * `get_maintenance_priorities`: Vehicles with overdue or upcoming maintenance, chronic repeated repairs, and odometer inconsistencies.
+     * `analyze_trip_performance`: Operational trip delays, route distance deviations (>15%), and unclosed trips.
+     * `get_data_quality_findings`: Data gaps (missing GPS tracking, stale telemetry, missing odometers) clearly distinguished from physical vehicle defects.
+   - When responding to operational questions:
+     * Ground your explanation strictly on the measurements, comparison baseline, observation period, and evidence record IDs returned by the tool.
+     * Never manufacture or invent mechanical causes, diagnostic fault codes, breakdown predictions, or financial savings.
+     * If telemetry is stale or missing, inform the operator honestly that telemetry is unavailable; do NOT assume the vehicle has broken down or is stopped.
+     * State the concrete recommended next step provided by the tool.
+     * The UI automatically renders interactive Intelligence Finding Cards for findings. Provide a concise, professional summary without duplicating full tables.
 """
 
 
@@ -280,30 +295,106 @@ class CopilotService:
     # --------------------------------------------------------------------------
 
     @staticmethod
+    def _estimate_message_tokens(m: Any) -> int:
+        """
+        Conservative token estimator for chat messages.
+        Uses ~3.5 chars per token fallback + framing overhead per message.
+        """
+        base = 4  # Overhead for role and message delimiter
+        content = getattr(m, "content", "") or ""
+        if content:
+            base += max(1, int(len(content) / 3.5) + 1)
+        tool_calls = getattr(m, "tool_calls", None)
+        if tool_calls:
+            try:
+                tc_str = json.dumps(tool_calls) if not isinstance(tool_calls, str) else tool_calls
+                base += max(1, int(len(tc_str) / 3.5) + 1)
+            except Exception:
+                base += 50
+        name = getattr(m, "name", None)
+        if name:
+            base += max(1, len(name) // 4 + 1)
+        return base
+
+    @classmethod
+    def _find_atomic_block_start(cls, msg_list: List[Any], idx: int) -> int:
+        """
+        If idx points to a 'tool' message, or is immediately after an assistant
+        tool_call message, find the start of the atomic tool-call block.
+        """
+        cur = idx
+        while cur > 0 and getattr(msg_list[cur], "role", None) == "tool":
+            cur -= 1
+        if cur > 0 and getattr(msg_list[cur - 1], "tool_calls", None):
+            cur -= 1
+        return cur
+
+    @classmethod
+    def _find_atomic_block_end(cls, msg_list: List[Any], idx: int) -> int:
+        """
+        If idx points to an assistant message with tool_calls or a 'tool' message,
+        find the index of the first message AFTER all tool results of this block.
+        """
+        cur = idx
+        if cur < len(msg_list) and getattr(msg_list[cur], "tool_calls", None):
+            cur += 1
+            while cur < len(msg_list) and getattr(msg_list[cur], "role", None) == "tool":
+                cur += 1
+            return cur
+        while cur < len(msg_list) and getattr(msg_list[cur], "role", None) == "tool":
+            cur += 1
+        return cur
+
+    @classmethod
     def _slice_safe_context_window(
+        cls,
         messages: Sequence[Any],
         max_window: int = 20,
-        max_messages: Optional[int] = None
+        max_messages: Optional[int] = None,
+        max_tokens: Optional[int] = None
     ) -> Tuple[List[Any], List[Any]]:
         """
-        Splits messages into (older, recent) such that the recent window does not exceed
-        max_window while guaranteeing that no tool-result message is separated from its
-        originating assistant tool_calls message.
+        Splits messages into (older, recent) such that:
+        1. The recent window does not exceed max_window / max_messages.
+        2. The estimated token budget does not exceed max_tokens (default 4000).
+        3. Provider tool-call / tool-result sequences are never severed.
+           - An assistant message with tool_calls and its matching tool-result messages
+             form an atomic block. They are either both kept in recent or both moved to older.
+           - The recent window never starts with a tool-role message.
         """
-        limit = max_messages if max_messages is not None else max_window
         msg_list = list(messages)
-        if len(msg_list) <= limit:
-            return [], msg_list
+        if not msg_list:
+            return [], []
 
-        split_idx = len(msg_list) - limit
+        limit = max_messages if max_messages is not None else max_window
+        token_budget = max_tokens if max_tokens is not None else 4000
 
-        # Never start recent window with a 'tool' role message; shift backward to include assistant caller
-        while split_idx > 0 and msg_list[split_idx].role == "tool":
-            split_idx -= 1
+        # Step 1: Initial window based on message count limit
+        split_idx = max(0, len(msg_list) - limit)
 
-        # If the message directly preceding split_idx was an assistant tool call, include it
-        if split_idx > 0 and msg_list[split_idx - 1].tool_calls:
-            split_idx -= 1
+        # Step 2: Ensure split_idx does not split an atomic tool-call block
+        split_idx = cls._find_atomic_block_start(msg_list, split_idx)
+
+        # Step 3: Check token budget of recent messages (msg_list[split_idx:])
+        # If tokens exceed token_budget, increment split_idx forward (move older messages to `older`)
+        # while keeping at least the latest 1 message and preserving tool integrity.
+        while split_idx < len(msg_list) - 1:
+            total_tokens = sum(cls._estimate_message_tokens(m) for m in msg_list[split_idx:])
+            if total_tokens <= token_budget:
+                break
+            # Advance split_idx past the current message or atomic block
+            if getattr(msg_list[split_idx], "tool_calls", None):
+                next_idx = cls._find_atomic_block_end(msg_list, split_idx)
+                if next_idx >= len(msg_list):
+                    split_idx = len(msg_list) - 1
+                    break
+                split_idx = next_idx
+            else:
+                split_idx += 1
+                split_idx = cls._find_atomic_block_end(msg_list, split_idx)
+                if split_idx >= len(msg_list):
+                    split_idx = len(msg_list) - 1
+                    break
 
         return msg_list[:split_idx], msg_list[split_idx:]
 
@@ -444,7 +535,12 @@ class CopilotService:
         all_db_msgs = await self.uow.repositories.conversation.get_messages(conv_id)
 
         max_window = getattr(settings, "COPILOT_MAX_CONTEXT_MESSAGES", 20)
-        older_msgs, recent_msgs = self._slice_safe_context_window(all_db_msgs, max_window)
+        max_tokens = getattr(settings, "COPILOT_MAX_CONTEXT_TOKENS", 4000)
+        older_msgs, recent_msgs = self._slice_safe_context_window(
+            messages=all_db_msgs,
+            max_window=max_window,
+            max_tokens=max_tokens
+        )
 
         # 5. Rolling Summarization for older context
         active_summary = conv.summary
@@ -479,7 +575,10 @@ class CopilotService:
         structured_metadata: Dict[str, Any] = {
             "proposals": [],
             "locations": [],
-            "action_executed": False
+            "drivers": [],
+            "action_executed": False,
+            "intelligence_findings": [],
+            "fleet_health": None
         }
 
         while iterations < MAX_TOOL_ITERATIONS:
@@ -527,8 +626,19 @@ class CopilotService:
                                 structured_metadata["locations"].extend(parsed_res["locations"])
                             else:
                                 structured_metadata["locations"].append(parsed_res)
+                        elif func_name == "list_drivers" and parsed_res.get("drivers"):
+                            structured_metadata["drivers"] = parsed_res["drivers"]
+                        elif func_name == "get_fleet_health":
+                            structured_metadata["fleet_health"] = parsed_res
+                            if parsed_res.get("key_findings"):
+                                structured_metadata["intelligence_findings"].extend(parsed_res["key_findings"])
+                        elif func_name in ("get_fleet_anomalies", "analyze_fuel_efficiency", "get_maintenance_priorities", "analyze_trip_performance", "get_data_quality_findings"):
+                            findings = parsed_res.get("anomalies") or parsed_res.get("findings") or []
+                            if findings:
+                                structured_metadata["intelligence_findings"].extend(findings)
                     except Exception:
                         pass
+
 
                 except Exception as e:
                     logger.error(f"Error executing tool {func_name}: {e}", exc_info=True)
