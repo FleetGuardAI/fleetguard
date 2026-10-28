@@ -204,3 +204,51 @@ async def test_copilot_upstream_provider_error_sanitized(monkeypatch, mock_depen
     assert "Error code: 400" not in detail
     assert "The AI service encountered an issue processing tool arguments" in detail
 
+
+@pytest.mark.asyncio
+async def test_copilot_provider_validation_error_returns_502(monkeypatch, mock_dependencies, db_session):
+    """
+    Test that LLMValidationError (e.g. provider rejecting tool parameters with 400 Bad Request)
+    is caught and returns HTTP 502 Bad Gateway with concise, sanitized user feedback.
+    """
+    from infrastructure.llm.provider import LLMValidationError
+
+    class ValidationFailingProvider:
+        async def chat(self, messages, tools=None, temperature=0.0):
+            raise LLMValidationError("The AI provider rejected the tool parameters for this request. Please try rephrasing your question.")
+
+    monkeypatch.setattr("services.copilot_service.OpenAIProvider", ValidationFailingProvider)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "List all active drivers"}
+        )
+    assert response.status_code == 502
+    data = response.json()
+    assert "The AI provider could not process the tool parameters for this request" in data["detail"]
+    assert "{" not in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_copilot_provider_outage_returns_503(monkeypatch, mock_dependencies, db_session):
+    """
+    Test that LLMServiceUnavailableError (e.g. timeout, connection error, provider outage)
+    is caught and returns HTTP 503 Service Unavailable, clearly distinguished from validation failure.
+    """
+    from infrastructure.llm.provider import LLMServiceUnavailableError
+
+    class OutageProvider:
+        async def chat(self, messages, tools=None, temperature=0.0):
+            raise LLMServiceUnavailableError("AI provider service temporarily unavailable due to connection timeout.")
+
+    monkeypatch.setattr("services.copilot_service.OpenAIProvider", OutageProvider)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/v1/copilot/chat",
+            json={"message": "What is fleet status?"}
+        )
+    assert response.status_code == 503
+    data = response.json()
+    assert "The AI service is temporarily unavailable" in data["detail"]
