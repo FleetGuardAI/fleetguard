@@ -4,9 +4,16 @@ import openai
 from openai import AsyncOpenAI
 
 from config import settings
-from infrastructure.llm.provider import LLMProvider, LLMMessage, LLMResponse
+from infrastructure.llm.provider import (
+    LLMProvider,
+    LLMMessage,
+    LLMResponse,
+    LLMValidationError,
+    LLMServiceUnavailableError,
+)
 
 logger = logging.getLogger("fleetguard.infrastructure.llm.openai")
+
 
 
 class OpenAIProvider(LLMProvider):
@@ -92,14 +99,16 @@ class OpenAIProvider(LLMProvider):
                 finish_reason=choice.finish_reason,
             )
         except openai.BadRequestError as e:
-            logger.error("OpenAI chat completion bad request (e.g. tool schema/argument mismatch): %s", e)
-            raise RuntimeError("The AI service could not process the request with the specified parameters. Please try rephrasing your inquiry.") from e
-        except openai.APIConnectionError as e:
-            logger.error("OpenAI API connection error: %s", e)
-            raise RuntimeError("AI service temporarily unavailable (connection error).") from e
-        except openai.APITimeoutError as e:
-            logger.error("OpenAI API timeout error: %s", e)
-            raise RuntimeError("AI service temporarily unavailable (timeout).") from e
+            logger.error("OpenAI/Groq chat completion bad request (tool schema or argument validation failure): %s", e)
+            raise LLMValidationError(
+                "The AI provider could not process the tool parameters for this request. Please try rephrasing your inquiry."
+            ) from e
+        except (openai.APIConnectionError, openai.APITimeoutError) as e:
+            logger.error("OpenAI/Groq API connection or timeout error: %s", e)
+            raise LLMServiceUnavailableError("AI provider service temporarily unavailable due to connection timeout.") from e
+        except openai.RateLimitError as e:
+            logger.error("OpenAI/Groq rate limit exceeded: %s", e)
+            raise LLMServiceUnavailableError("AI service rate limit exceeded. Please try again shortly.") from e
         except Exception as e:
-            logger.error("OpenAI chat completion failed: %s", e)
-            raise RuntimeError("AI service temporarily unavailable. Please try again later.") from e
+            logger.error("OpenAI/Groq chat completion unexpected failure: %s", e)
+            raise LLMServiceUnavailableError("AI service temporarily unavailable. Please try again later.") from e
