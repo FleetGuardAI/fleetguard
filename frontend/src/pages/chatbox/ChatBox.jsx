@@ -10,6 +10,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useLanguage } from '@/i18n/LanguageContext';
 import MarkdownMessage from '@/components/shared/MarkdownMessage';
+import IntelligenceFindingCard from '@/components/shared/IntelligenceFindingCard';
 import { useCopilotConversation } from '@/hooks/useCopilotConversation';
 
 const SUGGESTED_PROMPTS = [
@@ -44,9 +45,12 @@ function ChatMessageBubble({ message, onAction }) {
   const metadata = message.metadata || {};
   const proposals = metadata.proposals || [];
   const locations = metadata.locations || [];
+  const drivers = metadata.drivers || [];
   const verifiedTrip = metadata.verified_trip;
+  const findings = metadata.intelligence_findings || [];
 
   const textContent = typeof message.content === 'object' ? message.content?.text : message.content;
+  const hasStructuredCards = locations.length > 0 || proposals.length > 0 || drivers.length > 0 || findings.length > 0;
 
   return (
     <motion.div
@@ -76,7 +80,7 @@ function ChatMessageBubble({ message, onAction }) {
               {textContent}
             </div>
           ) : (
-            <MarkdownMessage content={textContent} />
+            <MarkdownMessage content={textContent} suppressTables={hasStructuredCards} />
           )
         )}
 
@@ -125,7 +129,7 @@ function ChatMessageBubble({ message, onAction }) {
                 </div>
 
                 {loc.has_location ? (
-                  <div className="space-y-1 text-xs text-content-secondary">
+                  <div className="space-y-1.5 text-xs text-content-secondary">
                     <div className="flex items-center gap-1.5 text-content">
                       <MapPin className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
@@ -139,13 +143,30 @@ function ChatMessageBubble({ message, onAction }) {
                     {loc.timestamp && (
                       <div className="flex items-center gap-1.5 text-[11px]">
                         <Clock className="w-3 h-3 text-content-muted" />
-                        <span>Recorded: {new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({loc.source})</span>
+                        <span>
+                          Recorded: {loc.freshness === "FRESH"
+                            ? new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                            : `${new Date(loc.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${new Date(loc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          } ({loc.source})
+                        </span>
                       </div>
                     )}
                     {loc.assigned_driver && (
                       <div className="flex items-center gap-1.5 text-[11px]">
                         <User className="w-3 h-3 text-content-muted" />
                         <span>Driver: {loc.assigned_driver}</span>
+                      </div>
+                    )}
+                    {loc.freshness === "VERY_STALE" && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-rose-700 bg-rose-50/80 px-2.5 py-1 rounded-lg border border-rose-200/60 mt-1">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-rose-600" />
+                        <span>Device inactive or offline. Displaying last-known historical position from {loc.age_seconds ? `${Math.round(loc.age_seconds / 3600)}h ago` : 'past records'}.</span>
+                      </div>
+                    )}
+                    {loc.freshness === "STALE" && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/60 mt-1">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
+                        <span>Last-known position. Telemetry delayed ({loc.age_seconds ? `${Math.round(loc.age_seconds / 60)} min ago` : 'stale'}).</span>
                       </div>
                     )}
                   </div>
@@ -158,6 +179,51 @@ function ChatMessageBubble({ message, onAction }) {
             ))}
           </div>
         )}
+
+        {/* ── Structured Driver Availability Cards ── */}
+        {drivers.length > 0 && (
+          <div className="space-y-2 pt-1">
+            {drivers.map((drv, idx) => (
+              <div key={idx} className="p-3 rounded-xl border border-border/80 bg-white shadow-xs text-content">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-brand-500" />
+                    <span className="text-xs font-bold text-content">{drv.name}</span>
+                    {drv.employee_id && (
+                      <span className="text-[10px] font-mono text-content-secondary">({drv.employee_id})</span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                    drv.is_available
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : drv.availability_status === "BUSY_ON_TRIP"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200"
+                  )}>
+                    <span className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      drv.is_available ? "bg-emerald-500" : drv.availability_status === "BUSY_ON_TRIP" ? "bg-amber-500" : "bg-slate-400"
+                    )} />
+                    {drv.is_available ? "Available" : drv.availability_status === "BUSY_ON_TRIP" ? "On Trip" : "Inactive"}
+                  </span>
+                </div>
+                {drv.active_trip && (
+                  <div className="text-[11px] text-content-secondary flex items-center gap-1.5 mt-1">
+                    <Truck className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    <span>Active Route: <strong className="font-mono text-content">{drv.active_trip.business_id}</strong> ({drv.active_trip.route})</span>
+                  </div>
+                )}
+                {drv.phone_number && (
+                  <div className="text-[11px] text-content-secondary mt-0.5">
+                    Contact: <span className="font-mono">{drv.phone_number}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
 
         {/* ── Structured Trip Proposal Card (Pending Confirmation) ── */}
         {proposals.map((prop, idx) => (
@@ -225,6 +291,19 @@ function ChatMessageBubble({ message, onAction }) {
               <p><span className="font-medium">Vehicle:</span> {verifiedTrip.vehicle}</p>
               <p><span className="font-medium">Status:</span> <span className="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">{verifiedTrip.operational_status}</span></p>
             </div>
+          </div>
+        )}
+
+        {/* ── Evidence-Grounded Fleet Intelligence Findings ── */}
+        {findings.length > 0 && (
+          <div className="space-y-2 pt-1">
+            {findings.map((f, idx) => (
+              <IntelligenceFindingCard
+                key={f.finding_id || idx}
+                finding={f}
+                onAction={(fnd) => onAction && onAction(`Inspect ${fnd.title}`)}
+              />
+            ))}
           </div>
         )}
       </div>

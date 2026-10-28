@@ -581,3 +581,120 @@ async def test_unauthorized_patch_and_delete_returns_404(auth_company_a):
         delete_res = await ac.delete(f"/api/v1/copilot/conversations/{fake_id}")
         assert delete_res.status_code == 404
 
+
+def test_safe_context_window_token_budget_truncation():
+    """
+    Verify that _slice_safe_context_window truncates messages when the estimated
+    token count exceeds max_tokens, even if message count is within max_messages.
+    """
+    from services.copilot_service import CopilotService
+
+    # 10 messages of 150 chars each (~45 tokens each)
+    msgs = []
+    for i in range(10):
+        msgs.append(LLMMessage(role="user", content=f"User message {i}: " + ("x" * 150)))
+        msgs.append(LLMMessage(role="assistant", content=f"Assistant reply {i}: " + ("y" * 150)))
+
+    # Total messages: 20. Total tokens: ~900 tokens.
+    # Set max_messages=20 (would accept all), but max_tokens=150.
+    older, sliced = CopilotService._slice_safe_context_window(
+        messages=msgs,
+        max_messages=20,
+        max_tokens=150
+    )
+
+    # sliced must be bounded so total tokens <= 150 (except preserving at least 1 message)
+    total_tokens = sum(CopilotService._estimate_message_tokens(m) for m in sliced)
+    assert total_tokens <= 200
+    assert len(sliced) < len(msgs)
+    assert len(older) > 0
+    # Must preserve the latest message at the end
+    assert sliced[-1].content == msgs[-1].content
+
+
+def test_safe_context_window_atomic_tool_block_token_handling():
+    """
+    Verify that when an atomic tool block doesn't fit within the token budget,
+    the entire block is moved to older messages rather than orphaned.
+    """
+    from services.copilot_service import CopilotService
+
+    msgs = [
+        LLMMessage(role="user", content="Turn 1: user"),
+        LLMMessage(
+            role="assistant",
+            content="",
+            tool_calls=[{"id": "call_1", "type": "function", "function": {"name": "test_tool", "arguments": "{}"}}]
+        ),
+        LLMMessage(role="tool", content="Tool result " + ("z" * 300), tool_call_id="call_1", name="test_tool"),
+        LLMMessage(role="assistant", content="Turn 2: assistant response"),
+        LLMMessage(role="user", content="Turn 3: user follow up")
+    ]
+
+    # Set tight token budget so the large tool result cannot fit with Turn 2 & 3
+    older, sliced = CopilotService._slice_safe_context_window(
+        messages=msgs,
+        max_messages=5,
+        max_tokens=80
+    )
+
+    # Sliced should contain only Turn 2/3 (or just Turn 3), never starting with role="tool"
+    roles = [m.role for m in sliced]
+    assert "tool" not in roles
+    assert roles[0] in ("assistant", "user")
+
+
+@pytest.mark.asyncio
+async def test_history_restoration_never_implicitly_creates_trip(auth_company_a, db_session):
+    """
+    Loading a saved conversation transcript that mentions a trip proposal
+    must NEVER trigger trip creation in the database.
+    """
+    from repositories.conversation_repository import ConversationRepository
+    from models.trip_domain import Trip
+    from sqlalchemy import select
+
+    repo = ConversationRepository(db_session)
+    conv_id = str(uuid.uuid4())
+    await repo.create_conversation(conv_id, MOCK_USER_A_ID, MOCK_COMPANY_A, "Trip Inquiry")
+    await repo.add_message(
+        conv_id,
+        "assistant",
+        "I have prepared proposal PROP-HIST-999 for vehicle MH12 from Mumbai to Pune.",
+        message_metadata={"proposals": [{"proposal_id": "PROP-HIST-999"}]}
+    )
+    await db_session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Fetch conversation history
+        res = await ac.get(f"/api/v1/copilot/conversations/{conv_id}")
+        assert res.status_code == 200
+
+    # Verify no trip exists in database
+    trips = (await db_session.execute(select(Trip).where(Trip.company_id == MOCK_COMPANY_A))).scalars().all()
+    assert len(trips) == 0
+
+
+@pytest.mark.asyncio
+async def test_expired_or_invalid_proposal_fails_honestly(db_session):
+    """
+    Attempting to confirm a proposal that does not exist in process memory (e.g. after restart)
+    must fail honestly and report that the proposal has expired, rather than fabricating a trip.
+    """
+    from services.copilot_tools import CopilotToolExecutor
+    from infrastructure.uow import RepositoryRegistry
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+            self.repositories = RepositoryRegistry(s)
+
+    executor = CopilotToolExecutor(uow=MockUoW(db_session), company_id=MOCK_COMPANY_A, user_id=str(MOCK_USER_A_ID))
+    result_raw = await executor.execute("confirm_trip_execution", {"proposal_id": "PROP-NONEXISTENT-999"})
+    result = json.loads(result_raw)
+
+    assert "error" in result
+    assert "expired" in result["error"].lower() or "not found" in result["error"].lower()
+    assert result.get("verified") is not True
+

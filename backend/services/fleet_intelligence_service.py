@@ -7,7 +7,7 @@ uses existing repositories for data access.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from infrastructure.uow import AbstractUnitOfWork
 from models.operational_event import EntityType
@@ -168,3 +168,65 @@ class FleetIntelligenceService:
                 for i in report.fleet_insights
             ],
         )
+
+    # --------------------------------------------------------------------------
+    # EVIDENCE-GROUNDED FLEET INTELLIGENCE METHODS (P3)
+    # --------------------------------------------------------------------------
+
+    def get_engine(self, company_id: int):
+        from services.fleet_intelligence_engine import FleetIntelligenceEngine
+        return FleetIntelligenceEngine(self.uow, company_id)
+
+    async def get_fleet_health_overview(self, company_id: int):
+        return await self.get_engine(company_id).get_fleet_health_overview()
+
+    async def get_fleet_anomalies(
+        self,
+        company_id: int,
+        category: Optional[str] = None,
+        min_severity: Optional[str] = None,
+        limit: int = 20
+    ):
+        return await self.get_engine(company_id).get_fleet_anomalies(
+            category=category, min_severity=min_severity, limit=limit
+        )
+
+    async def analyze_fuel_efficiency(
+        self,
+        company_id: int,
+        vehicle_id: Optional[int] = None,
+        period_days: int = 30,
+        compare_previous: bool = True
+    ):
+        return await self.get_engine(company_id).analyze_fuel_efficiency(
+            vehicle_id=vehicle_id, period_days=period_days, compare_previous=compare_previous
+        )
+
+    async def get_maintenance_priorities(
+        self,
+        company_id: int,
+        status_filter: Optional[str] = None,
+        limit: int = 15
+    ):
+        return await self.get_engine(company_id).get_maintenance_priorities(
+            status_filter=status_filter, limit=limit
+        )
+
+    async def analyze_trip_performance(
+        self,
+        company_id: int,
+        trip_id: Optional[int] = None,
+        status: Optional[str] = None,
+        days: int = 30,
+        limit: int = 15
+    ):
+        return await self.get_engine(company_id).analyze_trip_performance(
+            trip_id=trip_id, status=status, days=days, limit=limit
+        )
+
+    async def get_data_quality_findings(
+        self,
+        company_id: int,
+        limit: int = 20
+    ):
+        return await self.get_engine(company_id).get_data_quality_findings(limit=limit)

@@ -1745,3 +1745,121 @@ async def test_groq_or_configured_provider_null_tool_call_compatibility():
             # Network/timeout errors in CI/sandbox without external access are acceptable fallbacks
             pytest.skip(f"Provider unreachable or network restricted: {e}")
 
+
+@pytest.mark.asyncio
+async def test_gps_timezone_naive_timestamp_normalization(db_session):
+    """
+    Test 32: Verifies that timezone-naive datetimes stored in database are cleanly
+    normalized to UTC without raising TypeError during age subtraction.
+    """
+    company_id = 920
+
+    v = Vehicle(registration_number="MH12NAIVE1", make="Tata", status=VehicleStatus.ACTIVE, company_id=company_id)
+    db_session.add(v)
+    await db_session.flush()
+
+    d = Driver(name="Naive Driver", phone_number="+919812345678", status=DriverStatus.ACTIVE, company_id=company_id)
+    db_session.add(d)
+    await db_session.flush()
+
+    v.assigned_driver_id = d.id
+
+    # Create naive UTC datetime (no tzinfo)
+    naive_dt = (datetime.now(timezone.utc) - timedelta(minutes=10)).replace(tzinfo=None)
+    assert naive_dt.tzinfo is None
+
+    loc = DriverLocation(
+        driver_id=d.id,
+        company_id=company_id,
+        latitude=19.0760,
+        longitude=72.8777,
+        timestamp=naive_dt,
+        source=LocationSource.PHONE_GPS,
+        speed=20.0
+    )
+    db_session.add(loc)
+    await db_session.commit()
+
+    from infrastructure.uow import RepositoryRegistry
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+
+    uow = MockUoW(db_session)
+    uow.repositories = RepositoryRegistry(db_session)
+    executor = CopilotToolExecutor(uow=uow, company_id=company_id, user_id="u_920")
+
+    res = json.loads(await executor.execute("get_vehicle_location", {"vehicle_id": v.id}))
+    assert res["has_location"] is True
+    assert res["freshness"] == "FRESH"
+    assert res["location_type"] == "CURRENT_POSITION"
+    assert res["is_last_known"] is False
+    assert res["age_seconds"] is not None
+
+
+@pytest.mark.asyncio
+async def test_copilot_service_extracts_driver_cards_metadata(db_session):
+    """
+    Test 33: Verifies that CopilotService extracts driver results into structured_metadata['drivers']
+    so the frontend renders dedicated driver cards instead of repeating markdown tables.
+    """
+    company_id = 921
+
+    d1 = Driver(name="Driver Alpha", phone_number="+919800000010", employee_id="EMP-A", status=DriverStatus.ACTIVE, company_id=company_id)
+    d2 = Driver(name="Driver Beta", phone_number="+919800000011", employee_id="EMP-B", status=DriverStatus.ACTIVE, company_id=company_id)
+    db_session.add_all([d1, d2])
+    await db_session.commit()
+
+
+    from infrastructure.uow import RepositoryRegistry
+    from services.copilot_service import CopilotService
+    from schemas.copilot import CopilotChatRequest
+    from infrastructure.llm.provider import LLMMessage, LLMResponse
+
+    class MockUoW:
+        def __init__(self, s):
+            self.session = s
+            self.repositories = RepositoryRegistry(s)
+
+        async def commit(self):
+            await self.session.commit()
+
+    class DriverToolMockLLM:
+        def __init__(self):
+            self.called = False
+
+        async def chat(self, messages, tools=None, temperature=0.0):
+            if not self.called:
+                self.called = True
+                return LLMResponse(
+                    message=LLMMessage(
+                        role="assistant",
+                        content="",
+                        tool_calls=[{
+                            "id": "tc_driver_1",
+                            "type": "function",
+                            "function": {
+                                "name": "list_drivers",
+                                "arguments": '{"available_only": true}'
+                            }
+                        }]
+                    ),
+                    finish_reason="tool_calls"
+                )
+            return LLMResponse(
+                message=LLMMessage(
+                    role="assistant",
+                    content="Here are the available drivers in your fleet."
+                ),
+                finish_reason="stop"
+            )
+
+    service = CopilotService(uow=MockUoW(db_session), company_id=company_id, user_id="1")
+    service.llm = DriverToolMockLLM()
+
+    resp = await service.chat(CopilotChatRequest(message="Which drivers are available?"))
+    assert resp.metadata is not None
+    assert "drivers" in resp.metadata
+    assert len(resp.metadata["drivers"]) == 2
+    driver_names = {d["name"] for d in resp.metadata["drivers"]}
+    assert "Driver Alpha" in driver_names
