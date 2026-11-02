@@ -62,15 +62,50 @@ def test_cross_app_sync_and_isolation(client: TestClient):
     assert res_veh_a.status_code in [200, 201], f"Veh err: {res_veh_a.text}"
     veh_a_id = res_veh_a.json()["id"]
 
-    # 2. Company A adds a driver
+    comp_a_id = comp_a.json()["company"]["id"]
+    user_a_id = comp_a.json()["user"]["id"]
+
+    # 2. Company A adds a driver (defaults to INACTIVE)
     res_drv_a = client.post("/api/v1/drivers", headers=headers_a, json={
-    "name": f"Driver A {id_a}",
-    "phone_number": f"88{random.randint(10000000, 99999999)}",
-    "license_number": f"DL-A-{id_a}",
-    "status": "ACTIVE"
+        "name": f"Driver A {id_a}",
+        "phone_number": f"88{random.randint(10000000, 99999999)}",
+        "license_number": f"DL-A-{id_a}",
     })
     assert res_drv_a.status_code in [200, 201], f"Drv err: {res_drv_a.text}"
     drv_a_id = res_drv_a.json()["id"]
+    assert res_drv_a.json()["status"] == "INACTIVE"
+
+    # Legitimate KYC document verification and explicit Admin Approval
+    import asyncio
+    from database import async_session_factory
+    from models.document import Document, DocumentVerificationStatus
+
+    async def _seed_docs_for_driver():
+        async with async_session_factory() as session:
+            for cat in ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]:
+                doc = Document(
+                    company_id=comp_a_id,
+                    target_id=str(drv_a_id),
+                    target_type="DRIVER",
+                    category=cat,
+                    original_filename="kyc.jpg",
+                    mime_type="image/jpeg",
+                    storage_path="kyc.jpg",
+                    verification_status=DocumentVerificationStatus.APPROVED,
+                    uploaded_by=str(user_a_id),
+                )
+                session.add(doc)
+            await session.commit()
+
+    asyncio.run(_seed_docs_for_driver())
+
+    res_appr = client.post(
+        f"/api/v1/drivers/{drv_a_id}/approve",
+        headers=headers_a,
+        json={"action": "APPROVED"}
+    )
+    assert res_appr.status_code == 200, f"Approve err: {res_appr.text}"
+    assert res_appr.json()["status"] == "ACTIVE"
 
     # 3. Create a trip for Driver A
     res_trip_a = client.post("/api/v1/trips", headers=headers_a, json={

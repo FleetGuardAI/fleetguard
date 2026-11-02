@@ -20,11 +20,17 @@ async def override_get_read_uow():
         pass
     yield DummyUOW()
 
+def override_get_current_driver():
+    from models.driver_domain import DriverStatus
+    return MockDriver(company_id=1, id=101, status=DriverStatus.ACTIVE)
+
 @pytest.fixture(scope="module")
 def client():
     from services.auth_service import get_current_user
+    from routers.driver_mobile import get_current_driver
     from database import get_read_uow
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_current_driver] = override_get_current_driver
     app.dependency_overrides[get_read_uow] = override_get_read_uow
     with TestClient(app) as c:
         yield c
@@ -35,8 +41,11 @@ def auth_headers(client):
     return {"Authorization": "Bearer mock-token"}
 
 class MockDriver:
-    def __init__(self, company_id):
+    def __init__(self, company_id, id=101, status=None):
         self.company_id = company_id
+        self.id = id
+        from models.driver_domain import DriverStatus
+        self.status = status or DriverStatus.ACTIVE
 
 class MockVehicle:
     def __init__(self, company_id):

@@ -78,10 +78,13 @@ async def upload_document(
             target_id=target_id,
             target_type=target_type
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Document upload failed unexpectedly: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}"
+            detail="Upload failed due to an internal server error"
         )
 
 

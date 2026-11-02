@@ -155,20 +155,114 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       ),
                     const SizedBox(height: 16),
                     Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Route Info', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Approved Route', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: (trip['route_status'] == 'DEVIATION_SUSPECTED' || trip['route_status'] == 'DEVIATION_CONFIRMED')
+                                        ? Colors.orange.shade100
+                                        : Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    trip['route_status'] ?? 'APPROVED',
+                                    style: TextStyle(
+                                      color: (trip['route_status'] == 'DEVIATION_SUSPECTED' || trip['route_status'] == 'DEVIATION_CONFIRMED')
+                                          ? Colors.orange.shade900
+                                          : Colors.green.shade900,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 20),
                             ListTile(
-                              leading: const Icon(Icons.my_location, color: Colors.green),
-                              title: Text('Pickup: ${trip['origin_location']}'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.trip_origin, color: Colors.green),
+                              title: const Text('Pickup', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              subtitle: Text(trip['origin_location'] ?? 'Not specified', style: const TextStyle(fontWeight: FontWeight.w600)),
                             ),
                             ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.location_on, color: Colors.red),
-                              title: Text('Delivery: ${trip['destination_location']}'),
+                              title: const Text('Delivery', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              subtitle: Text(trip['destination_location'] ?? 'Not specified', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text('Distance', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      trip['route_distance_km'] != null
+                                          ? '${trip['route_distance_km']} km'
+                                          : (trip['total_distance_km'] != null ? '${trip['total_distance_km']} km' : '--'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Est. Duration', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      trip['route_duration_hours'] != null
+                                          ? '${(trip['route_duration_hours'] * 60).round()} min'
+                                          : (trip['eta_minutes'] != null ? '${trip['eta_minutes']} min' : '--'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Toll Estimate', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      trip['route_toll_estimate'] != null
+                                          ? '₹${trip['route_toll_estimate']}'
+                                          : 'N/A',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.teal),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.blueGrey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 16, color: Colors.blueGrey),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Heavy commercial route approved. Follow mandatory highway restrictions.',
+                                      style: TextStyle(fontSize: 11, color: Colors.blueGrey),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

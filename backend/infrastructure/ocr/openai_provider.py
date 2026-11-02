@@ -3,7 +3,7 @@ import base64
 import time
 import uuid
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from openai import AsyncOpenAI
 from config import settings
@@ -18,8 +18,8 @@ class OpenAIOCRProvider(OCRProvider):
     Extracts structured receipt data from images.
     """
     
-    def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY or settings.OPENAI_API_KEY
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.GEMINI_API_KEY or settings.OPENAI_API_KEY
         self.base_url = settings.LLM_BASE_URL
         self.model = settings.OPENAI_MODEL
         
@@ -33,13 +33,15 @@ class OpenAIOCRProvider(OCRProvider):
         if self.api_key:
             self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    def _encode_image(self, file_path: str) -> str:
-        with open(file_path, "rb") as image_file:
+    def _encode_image(self, file_data: Any) -> str:
+        if isinstance(file_data, bytes):
+            return base64.b64encode(file_data).decode('utf-8')
+        with open(file_data, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
 
-    async def extract_text(self, file_path: str, mime_type: str) -> OCRResult:
+    async def extract_text(self, file_data: Any, mime_type: str, document_type: str = "receipt") -> OCRResult:
         if not self.client:
-            raise RuntimeError("OPENAI_API_KEY is not configured.")
+            raise RuntimeError("OpenAI API key not configured")
 
         start_time = time.monotonic()
         

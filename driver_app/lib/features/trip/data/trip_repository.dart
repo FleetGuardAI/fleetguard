@@ -75,5 +75,42 @@ class TripRepository {
       throw Exception('Failed to resume trip: $e');
     }
   }
+
+  Future<Map<String, dynamic>> getTripDetail(int tripId) async {
+    try {
+      final response = await _dio.get('/api/v1/driver-app/trips/$tripId');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      throw Exception('Failed to get trip details: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> reportDeviationExplanation(
+    int tripId, {
+    required String reason,
+    String? notes,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/driver-app/trips/$tripId/deviation-explanation',
+        data: {
+          'reason': reason,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        },
+      );
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      throw Exception('Failed to report deviation explanation: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getActiveRoute(int tripId) async {
+    try {
+      final response = await _dio.get('/api/v1/trips/$tripId/routes/active');
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      throw Exception('Failed to get active route: $e');
+    }
+  }
 }
 

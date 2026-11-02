@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from database import get_db, get_read_uow
 from infrastructure.uow import AbstractUnitOfWork
 from services.driver_service import DriverService
-from models.driver_domain import Driver, DriverStatus
+from models.driver_domain import Driver, DriverStatus, VerificationStatus
 from models.vehicle_domain import Vehicle
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
 from models.driver_fleet_transfer import DriverFleetTransfer, TransferStatus
@@ -22,6 +22,20 @@ from models.notification import Notification, NotificationCategory
 from schemas.driver_domain import DriverResponse, DriverCreate, DriverUpdated
 from services.auth_service import get_current_user
 from models.user import User, UserRole
+
+DRIVER_MANAGEMENT_ROLES = [
+    UserRole.COMPANY_ADMIN,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.FLEET_MANAGER,
+    UserRole.DISPATCHER,
+]
+
+DRIVER_ADMIN_ROLES = [
+    UserRole.COMPANY_ADMIN,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+]
 
 router = APIRouter(prefix="/v1", tags=["Driver Domain"])
 
@@ -251,6 +265,12 @@ async def create_driver(
     current_user: User = Depends(get_current_user)
 ) -> DriverResponse:
     """Register a new driver in the database."""
+    if current_user.role not in DRIVER_MANAGEMENT_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only fleet managers or administrators can register new drivers."
+        )
+
     # Check if driver with phone already exists
     existing = await db.execute(select(Driver).where(Driver.phone_number == payload.phone_number))
     if existing.scalar_one_or_none():
@@ -266,6 +286,7 @@ async def create_driver(
         employee_id=payload.employee_id,
         license_number=payload.license_number,
         status=DriverStatus.INACTIVE,
+        verification_status=VerificationStatus.PENDING_DOCUMENTS,
         origin_type="rest_api",
         company_id=current_user.company_id
     )
@@ -297,8 +318,14 @@ async def update_driver(
     current_user: User = Depends(get_current_user)
 ) -> DriverResponse:
     """Update driver profile details."""
+    if current_user.role not in DRIVER_MANAGEMENT_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only fleet managers or administrators can update driver profiles."
+        )
+
     driver = await db.get(Driver, driver_id)
-    if not driver or driver.company_id != current_user.company_id:
+    if not driver or (driver.company_id != current_user.company_id and current_user.role != UserRole.SUPER_ADMIN):
         raise HTTPException(404, f"Driver {driver_id} not found")
 
     if payload.name is not None:
@@ -320,8 +347,14 @@ async def delete_driver(
     current_user: User = Depends(get_current_user)
 ):
     """Archive/delete a driver."""
+    if current_user.role not in DRIVER_ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only company administrators can delete driver profiles."
+        )
+
     driver = await db.get(Driver, driver_id)
-    if not driver or driver.company_id != current_user.company_id:
+    if not driver or (driver.company_id != current_user.company_id and current_user.role != UserRole.SUPER_ADMIN):
         raise HTTPException(404, f"Driver {driver_id} not found")
 
     await db.delete(driver)

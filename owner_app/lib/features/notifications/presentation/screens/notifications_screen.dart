@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
+import '../../../trip/data/trip_repository.dart';
+import '../../../trip/presentation/screens/trip_detail_screen.dart';
 
 final notificationsProvider = FutureProvider<List<dynamic>>((ref) async {
   final dio = ref.watch(apiClientProvider).dio;
@@ -135,9 +138,30 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       ),
                     ],
                   ),
-                  onTap: () {
+                  onTap: () async {
                     if (!isRead) {
                       _markAsRead(notif['id']);
+                    }
+                    final data = notif['data'];
+                    int? tripId;
+                    if (data is Map && data['trip_id'] != null) {
+                      tripId = int.tryParse(data['trip_id'].toString());
+                    }
+                    if (tripId != null && mounted) {
+                      try {
+                        final tripRepo = OwnerTripRepository(ref.read(apiClientProvider).dio);
+                        final trip = await tripRepo.getTripDetail(tripId);
+                        if (mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => TripDetailScreen(trip: trip)),
+                          );
+                        }
+                      } catch (_) {
+                        if (mounted) context.push('/trips');
+                      }
+                    } else if ((notif['title']?.toString().contains('Deviation') ?? false) && mounted) {
+                      context.push('/trips');
                     }
                   },
                 );

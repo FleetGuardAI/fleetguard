@@ -18,24 +18,87 @@ from sqlalchemy.pool import NullPool
 import os
 import uuid
 
+import sys
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
+
+# --- Hard Safety Guard for Testing ---
+import re
+
+def _mask_db_url(url: str) -> str:
+    if not url:
+        return ""
+    return re.sub(r"://([^:@]+):([^@]+)@", r"://\1:***@", url)
+
+def _validate_approved_test_database(url: str) -> None:
+    masked = _mask_db_url(url)
+    url_lower = url.lower()
+    forbidden = [
+        "supabase",
+        "pooler",
+        "aws-",
+        "rds.amazonaws",
+        "azure",
+        "gcp",
+        "neon.tech",
+        "elephantsql",
+        "render.com",
+        "railway.app",
+        "lckabcseysgzlvkjpgtg",
+    ]
+    for f in forbidden:
+        if f in url_lower:
+            raise RuntimeError(
+                f"CRITICAL SAFETY VIOLATION: Refusing to create database engine pointing to cloud/production ({masked}) during tests!"
+            )
+    is_approved_sqlite = "sqlite" in url_lower and ("test" in url_lower or ":memory:" in url_lower)
+    is_approved_local_pg = (
+        ("postgresql" in url_lower or "asyncpg" in url_lower)
+        and ("localhost" in url_lower or "127.0.0.1" in url_lower)
+        and "test" in url_lower
+    )
+    if not (is_approved_sqlite or is_approved_local_pg):
+        raise RuntimeError(
+            f"CRITICAL SAFETY VIOLATION: Database URL '{masked}' is not an approved isolated test database! "
+            "Tests are strictly restricted to isolated test databases (e.g. SQLite test_db or local localhost test DB)."
+        )
+
+db_url = settings.DATABASE_URL
+if os.environ.get("TESTING") == "True" or "pytest" in sys.modules:
+    _validate_approved_test_database(db_url)
+
 # --- Engine ---
-connect_args = {
-    "statement_cache_size": 0,
-    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
-}
+connect_args = {}
+if "postgresql" in db_url or "asyncpg" in db_url:
+    connect_args = {
+        "statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+    }
+elif "sqlite" in db_url:
+    connect_args = {
+        "check_same_thread": False,
+        "timeout": 30,
+    }
 
 # Automatically use Supabase pooler transaction mode (port 6543) if session mode (port 5432) is configured
-db_url = settings.DATABASE_URL
 if ".pooler.supabase.com:5432" in db_url:
     db_url = db_url.replace(".pooler.supabase.com:5432", ".pooler.supabase.com:6543")
 
 engine_kwargs = {
     "echo": settings.DEBUG,
-    "connect_args": connect_args,
     "pool_pre_ping": True,
 }
+if connect_args:
+    engine_kwargs["connect_args"] = connect_args
 
-if os.environ.get("OTP_MOCK_MODE") == "True":
+if "sqlite" in db_url:
+    from sqlalchemy.pool import StaticPool
+    engine_kwargs["poolclass"] = StaticPool
+elif os.environ.get("OTP_MOCK_MODE") == "True":
     engine_kwargs["poolclass"] = NullPool
 else:
     # Cap connection pool to avoid exhausting Supabase limits under burst traffic

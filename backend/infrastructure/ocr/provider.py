@@ -357,7 +357,11 @@ class GoogleDocumentAIProvider(OCRProvider):
 
 
 def get_ocr_provider() -> OCRProvider:
-    provider_type = os.environ.get("OCR_PROVIDER", "mock").lower()
+    from config import settings
+    provider_type = getattr(settings, "OCR_PROVIDER", None)
+    if not provider_type or (os.environ.get("OCR_PROVIDER") and os.environ.get("OCR_PROVIDER") != "mock"):
+        provider_type = os.environ.get("OCR_PROVIDER", "mock")
+    provider_type = provider_type.lower()
     
     if provider_type == "mock":
         return MockOCRProvider()
@@ -366,8 +370,10 @@ def get_ocr_provider() -> OCRProvider:
     elif provider_type == "ocr_space":
         api_key = os.environ.get("OCR_SPACE_API_KEY")
         if not api_key:
-            from config import settings
             api_key = settings.OCR_SPACE_API_KEY
         return OCRSpaceProvider(api_key=api_key)
+    elif provider_type == "openai":
+        from infrastructure.ocr.openai_provider import OpenAIOCRProvider
+        return OpenAIOCRProvider()
     else:
         raise ValueError(f"Unknown OCR_PROVIDER configured: {provider_type}")

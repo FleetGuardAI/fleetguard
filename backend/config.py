@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     LOCATION_PROVIDER: str = "google"  # "google", "geoapify", "none"
     ROUTE_CACHE_TTL_SECONDS: int = 3600
     DEFAULT_TOLL_RATE_PER_KM: float = 2.5  # Fallback if tolls not available
+    ROUTE_DEVIATION_THRESHOLD_METERS: float = 200.0
+    ROUTE_DEVIATION_RECOVERY_METERS: float = 150.0
+    ROUTE_DEVIATION_CONFIRMATION_COUNT: int = 3
+    ROUTE_DEVIATION_NOTIFICATION_COOLDOWN_MINUTES: int = 15
 
     # --- Validation Pipeline ---
     KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
@@ -97,6 +101,18 @@ class Settings(BaseSettings):
         else:
             origins = []
 
+        # If explicit origins are provided via environment variable, use them directly
+        # to ensure strict environment isolation (preventing localhost origins from leaking into production/staging)
+        if origins:
+            normalized: list[str] = []
+            for origin in origins:
+                if origin:
+                    cleaned = str(origin).strip().rstrip("/")
+                    if cleaned and cleaned not in normalized:
+                        normalized.append(cleaned)
+            return normalized
+
+        # Default fallback for development/testing when CORS_ORIGINS is not set in environment:
         default_origins = [
             "https://super-admin-seven-sepia.vercel.app",
             "https://fleetguard-delta.vercel.app",
@@ -111,7 +127,7 @@ class Settings(BaseSettings):
         ]
 
         normalized: list[str] = []
-        for origin in list(origins) + default_origins:
+        for origin in default_origins:
             if origin:
                 cleaned = str(origin).strip().rstrip("/")
                 if cleaned and cleaned not in normalized:

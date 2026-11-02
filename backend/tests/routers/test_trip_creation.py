@@ -1,6 +1,30 @@
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from main import app
+from models.user import User, UserRole
+from services.auth_service import get_current_user
+
+@pytest.fixture
+def auth_user():
+    return User(
+        id=1,
+        company_id=1,
+        email="admin@fleetguard.com",
+        full_name="Fleet Admin",
+        role=UserRole.COMPANY_ADMIN,
+        is_active=True
+    )
+
+@pytest.fixture
+async def client(auth_user):
+    app.dependency_overrides[get_current_user] = lambda: auth_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.pop(get_current_user, None)
+
+@pytest.fixture
+def auth_headers():
+    return {"Authorization": "Bearer mock-token"}
 
 @pytest.mark.asyncio
 async def test_create_trip_with_receiver_info(client: AsyncClient, auth_headers):

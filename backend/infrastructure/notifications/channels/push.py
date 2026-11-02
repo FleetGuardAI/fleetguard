@@ -33,8 +33,9 @@ class PushChannel(BaseNotificationChannel):
                 logger.warning(f"Firebase credentials not found at {cred_path}")
 
     def send(self, notification: Notification) -> DeliveryResult:
-        if not firebase_admin or not firebase_admin._apps:
-            logger.warning("Firebase Admin not initialized, simulating Push dispatch.")
+        is_mocked = hasattr(messaging, "send") and hasattr(messaging.send, "mock_calls")
+        if (os.environ.get("TESTING") == "True" and not is_mocked) or not firebase_admin or not firebase_admin._apps:
+            logger.warning("Simulating Push dispatch (test mode or Firebase not initialized).")
             return DeliveryResult(
                 notification_id=notification.notification_id,
                 channel=NotificationChannel.PUSH,

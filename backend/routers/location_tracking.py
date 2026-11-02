@@ -11,7 +11,7 @@ Provides production-ready, company-scoped endpoints for:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -231,9 +231,18 @@ async def batch_upload_locations(
     latest_location = None
 
     for loc in payload.locations:
+        # Validate coordinate range
+        if not (-90.0 <= loc.latitude <= 90.0) or not (-180.0 <= loc.longitude <= 180.0):
+            logger.warning(f"Skipping invalid GPS coordinates from driver #{driver.id}: ({loc.latitude}, {loc.longitude})")
+            continue
+
         try:
             ts = datetime.fromisoformat(loc.timestamp.replace("Z", "+00:00"))
         except ValueError:
+            ts = datetime.now(tz=timezone.utc)
+
+        # Reject timestamps more than 24 hours in the future
+        if ts > datetime.now(tz=timezone.utc) + timedelta(hours=24):
             ts = datetime.now(tz=timezone.utc)
 
         db_loc = DriverLocation(
@@ -262,6 +271,30 @@ async def batch_upload_locations(
 
     await db.commit()
 
+    # Route Deviation Evaluation on latest position for active trip
+    deviation_info = None
+    if current_trip_id and latest_location:
+        try:
+            from services.deviation_service import RouteDeviationService
+            dev_service = RouteDeviationService(db)
+            try:
+                latest_ts = datetime.fromisoformat(latest_location.timestamp.replace("Z", "+00:00"))
+            except ValueError:
+                latest_ts = datetime.now(tz=timezone.utc)
+
+            deviation_info = await dev_service.evaluate_position(
+                driver_id=driver.id,
+                company_id=driver.company_id or 0,
+                latitude=latest_location.latitude,
+                longitude=latest_location.longitude,
+                accuracy=latest_location.accuracy,
+                speed=latest_location.speed,
+                timestamp=latest_ts,
+                trip_id_hint=current_trip_id
+            )
+        except Exception as e:
+            logger.error(f"Error evaluating route deviation during location batch: {e}")
+
     if latest_location:
         from routers.ws_driver import owner_ws_manager
         await owner_ws_manager.broadcast_to_company(driver.company_id or 0, {
@@ -274,11 +307,16 @@ async def batch_upload_locations(
             "heading": latest_location.heading,
             "battery_percent": latest_location.battery_percent,
             "duty_status": driver.duty_status.value if driver.duty_status else None,
+            "trip_id": current_trip_id,
+            "deviation_status": deviation_info.get("status") if deviation_info else None,
             "last_updated": datetime.now(tz=timezone.utc).isoformat()
         })
 
-    logger.info(f"Driver {driver.id}: {locations_added} locations synced")
-    return {"message": f"{locations_added} locations recorded"}
+    logger.info(f"Driver {driver.id}: {locations_added} locations synced, deviation: {deviation_info.get('status') if deviation_info else 'N/A'}")
+    return {
+        "message": f"{locations_added} locations recorded",
+        "deviation": deviation_info
+    }
 
 
 # ==========================================================================

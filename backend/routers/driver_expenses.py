@@ -20,7 +20,7 @@ from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from models.operational_event import EventType, CaptureMethod, EntityType
 from models.driver_domain import Driver
 from services.auth_service import get_current_user
-from models.user import User
+from models.user import User, UserRole
 from models.vehicle_domain import Vehicle
 from models.trip_domain import Trip
 from models.fuel_domain import FuelTransaction, FuelTransactionType
@@ -31,6 +31,7 @@ from services.file_upload_service import storage_service
 from models.driver_domain import Driver
 from services.auth_service import get_current_user
 from models.user import User
+from config import settings
 from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.driver_expenses")
@@ -117,9 +118,11 @@ async def process_receipt_ocr(
         )
     except RuntimeError as re:
         logger.error(f"OCR AI service unavailable: {re}")
+        err_str = str(re)
+        detail_msg = err_str if ("not configured" in err_str.lower() or "key" in err_str.lower()) else "Receipt processing service is temporarily unavailable. Please try again later."
         raise HTTPException(
             status_code=503, 
-            detail="Receipt processing service is temporarily unavailable. Please try again later."
+            detail=detail_msg
         )
     except ValueError as ve:
         logger.warning(f"OCR input validation failed: {ve}")
@@ -133,18 +136,40 @@ async def process_receipt_ocr(
             status_code=500, 
             detail="Receipt processing failed. Please try again."
         )
-    text = ocr_result.text or ""
-    fields = ocr_result.extracted_fields
-    
-    # Try AI Extraction first!
-    from services.ai_extraction_service import ai_extractor
+    text = getattr(ocr_result, "text", "") or ""
+    fields = getattr(ocr_result, "extracted_fields", None) or {}
     
     vendor = "Unknown Vendor"
     date = datetime.now().strftime("%Y-%m-%d")
     amount = 0.0
     gst_number = None
+
+    category = "MISCELLANEOUS"
+
+    # If text is already JSON (e.g. from structured Vision OCR provider), parse it directly
+    if text.strip().startswith("{") and text.strip().endswith("}"):
+        import json
+        try:
+            parsed = json.loads(text.strip())
+            if isinstance(parsed, dict):
+                vendor = parsed.get("vendor") or vendor
+                date = parsed.get("date") or date
+                if parsed.get("amount") is not None:
+                    try:
+                        amount = float(parsed["amount"])
+                    except (ValueError, TypeError):
+                        pass
+                gst_number = parsed.get("gst_number") or gst_number
+                if parsed.get("category"):
+                    category = str(parsed["category"]).upper()
+        except Exception:
+            pass
+
+    # Try AI Extraction only if real AI provider is selected and configured
+    from services.ai_extraction_service import ai_extractor
     
-    if ai_extractor.is_available:
+    is_mock_provider = getattr(settings, "OCR_PROVIDER", "").lower() == "mock"
+    if not is_mock_provider and ai_extractor.is_available and (vendor == "Unknown Vendor" and amount == 0.0):
         try:
             ai_data = await ai_extractor.extract_expense_data(text)
             if ai_data.get("vendor") or ai_data.get("amount") is not None:
@@ -152,6 +177,8 @@ async def process_receipt_ocr(
                 date = ai_data.get("date") or date
                 amount = float(ai_data.get("amount") or 0.0)
                 gst_number = ai_data.get("gst_number")
+                if ai_data.get("category"):
+                    category = str(ai_data["category"]).upper()
         except Exception as e:
             logger.error(f"AI Extraction failed, falling back to basic fields: {e}")
             
@@ -196,16 +223,16 @@ async def process_receipt_ocr(
         evidence = Evidence(
             event_id=event.id,
             evidence_type=EvidenceType.OCR_EXTRACTION,
-            source=ocr_result.provider_name,
+            source=getattr(ocr_result, "provider_name", "OCR"),
             status=EvidenceStatus.COMPLETED,
             summary=f"Extracted {amount} from {vendor}",
-            details=ocr_result.text[:500] if ocr_result.text else None,
+            details=getattr(ocr_result, "text", "")[:500] if getattr(ocr_result, "text", None) else None,
             raw_data={
-                "extracted_fields": ocr_result.extracted_fields,
-                "confidence": ocr_result.confidence,
-                "processing_time_ms": ocr_result.processing_time_ms,
-                "provider_request_id": ocr_result.provider_request_id,
-                "metadata": ocr_result.metadata
+                "extracted_fields": getattr(ocr_result, "extracted_fields", {}),
+                "confidence": getattr(ocr_result, "confidence", 1.0),
+                "processing_time_ms": getattr(ocr_result, "processing_time_ms", 0),
+                "provider_request_id": getattr(ocr_result, "provider_request_id", None),
+                "metadata": getattr(ocr_result, "metadata", {})
             }
         )
         db.add(evidence)
@@ -219,7 +246,7 @@ async def process_receipt_ocr(
         gst_number=gst_number,
         date=date,
         amount=amount,
-        category="MISCELLANEOUS",
+        category=category,
         fraud_risk_score=0.0,
         is_suspicious=False,
         fraud_flags=[],
@@ -241,6 +268,15 @@ async def create_expense(
     # Use authenticated driver from JWT
     if not driver or driver.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Unauthorized driver")
+
+    target_driver = driver
+    if payload.driver_id and payload.driver_id != driver.id:
+        if current_user.role == UserRole.DRIVER:
+            raise HTTPException(status_code=403, detail="Drivers cannot submit expenses for another driver")
+        fetched_driver = await db.get(Driver, payload.driver_id)
+        if not fetched_driver or fetched_driver.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Unauthorized driver")
+        target_driver = fetched_driver
 
     # Validate vehicle ownership if present
     if payload.vehicle_id:
@@ -301,11 +337,11 @@ async def create_expense(
         description=payload.description,
         receipt_reference=payload.receipt_url,
         vehicle_id=payload.vehicle_id,
-        driver_id=driver.id,
-        company_id=driver.company_id,
+        driver_id=target_driver.id,
+        company_id=target_driver.company_id,
         trip_id=payload.trip_id,
         origin_type="driver_app",
-        origin_id=f"driver_{driver.id}",
+        origin_id=f"driver_{target_driver.id}",
     )
 
     db.add(expense)
@@ -357,18 +393,30 @@ async def create_expense(
 
 @router.get("/expenses", response_model=List[ExpenseResponse])
 async def list_driver_expenses(
-    driver_id: Optional[int] = Query(None), # Kept for backwards compatibility but ignored
+    driver_id: Optional[int] = Query(None), # Kept for backwards compatibility but validated for tenant isolation
     limit: int = Query(50, ge=1, le=200),
     driver: Driver = Depends(get_current_driver),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """List expenses for a specific driver."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=403, detail="User is not associated with a company")
+
+    target_driver_id = driver.id
+    if driver_id and driver_id != driver.id:
+        if current_user.role == UserRole.DRIVER:
+            raise HTTPException(status_code=403, detail="Drivers can only view their own expenses")
+        target_driver = await db.get(Driver, driver_id)
+        if not target_driver or target_driver.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Unauthorized driver")
+        target_driver_id = target_driver.id
+
+    stmt = select(Expense).where(Expense.driver_id == target_driver_id)
+    if current_user.role != UserRole.SUPER_ADMIN:
+        stmt = stmt.where(Expense.company_id == current_user.company_id)
     result = await db.execute(
-        select(Expense)
-        .where(Expense.driver_id == driver.id)
-        .order_by(desc(Expense.created_at))
-        .limit(limit)
+        stmt.order_by(desc(Expense.created_at)).limit(limit)
     )
     expenses = result.scalars().all() or []
 

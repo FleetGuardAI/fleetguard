@@ -19,6 +19,10 @@ from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver, VerificationStatus, DutyStatus
 from models.driver_qualification import DriverQualification, QualificationType, LicenseClass, QualificationVerificationStatus
 from models.trip_domain import Trip
+from models.route_domain import (
+    RouteVersion, RouteDeviationEvent, RouteType, RouteVersionStatus,
+    DeviationStatus, DeviationSeverity, ObstructionReason
+)
 from models.maintenance_domain import MaintenanceRecord, MaintenanceTask
 from models.tyre_domain import Tyre, TyreLifecycleRecord
 from models.asset_domain import Asset, AssetHistory, AssetOperationalStatus, AssetHistoryCategory
@@ -117,6 +121,13 @@ __all__ = [
     "EmergencyAlert",
     "WalletTransaction",
     "TripStartSelfie",
+    "RouteVersion",
+    "RouteDeviationEvent",
+    "RouteType",
+    "RouteVersionStatus",
+    "DeviationStatus",
+    "DeviationSeverity",
+    "ObstructionReason",
     "Notification",
     # Admin & Support
     "AdminRole",

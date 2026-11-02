@@ -237,6 +237,7 @@ from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
 from routers.location import router as location_router
+from routers.route_intelligence import router as route_intelligence_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -279,60 +280,63 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
 
-    # Safe startup schema verification to ensure critical columns exist
-    try:
-        from sqlalchemy import text
-        async with async_session_factory() as session:
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_hash VARCHAR(128);"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_issued_at TIMESTAMPTZ;"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_used_at TIMESTAMPTZ;"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_revoked_at TIMESTAMPTZ;"))
-            await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;"))
-            await session.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS reset_request_id INTEGER REFERENCES admin_password_reset_requests(id) ON DELETE SET NULL;"))
-            await session.execute(text("ALTER TABLE driver_locations ADD COLUMN IF NOT EXISTS trip_id VARCHAR(255);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_driver_locations_trip_id ON driver_locations (trip_id);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
-            # AI Copilot persistent conversation and message tables
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS copilot_conversations (
-                    id VARCHAR(50) PRIMARY KEY,
-                    company_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    title VARCHAR(255) NOT NULL,
-                    summary TEXT,
-                    summary_updated_at TIMESTAMPTZ,
-                    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
-                    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-            """))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_company_id ON copilot_conversations (company_id);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_user_id ON copilot_conversations (user_id);"))
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS copilot_messages (
-                    id SERIAL PRIMARY KEY,
-                    conversation_id VARCHAR(50) NOT NULL REFERENCES copilot_conversations(id) ON DELETE CASCADE,
-                    sequence_number INTEGER NOT NULL,
-                    role VARCHAR(20) NOT NULL,
-                    content TEXT NOT NULL,
-                    name VARCHAR(100),
-                    tool_call_id VARCHAR(100),
-                    tool_calls JSONB,
-                    message_metadata JSONB,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-            """))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_conversation_id ON copilot_messages (conversation_id);"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_sequence ON copilot_messages (conversation_id, sequence_number ASC);"))
-            await session.commit()
-            logger.info("✅ Verified admin_password_reset_requests, driver_locations, and copilot schema tables and indexes.")
-    except Exception as e:
-        logger.warning(f"⚠️ Startup schema self-check notice: {e}")
+    # Safe startup schema verification to ensure critical columns exist in production
+    # NEVER run during automated testing
+    import sys, os
+    if os.environ.get("TESTING") != "True" and "pytest" not in sys.modules:
+        try:
+            from sqlalchemy import text
+            async with async_session_factory() as session:
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_hash VARCHAR(128);"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_issued_at TIMESTAMPTZ;"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_used_at TIMESTAMPTZ;"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_revoked_at TIMESTAMPTZ;"))
+                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;"))
+                await session.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS reset_request_id INTEGER REFERENCES admin_password_reset_requests(id) ON DELETE SET NULL;"))
+                await session.execute(text("ALTER TABLE driver_locations ADD COLUMN IF NOT EXISTS trip_id VARCHAR(255);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_driver_locations_trip_id ON driver_locations (trip_id);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
+                # AI Copilot persistent conversation and message tables
+                await session.execute(text("""
+                    CREATE TABLE IF NOT EXISTS copilot_conversations (
+                        id VARCHAR(50) PRIMARY KEY,
+                        company_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        title VARCHAR(255) NOT NULL,
+                        summary TEXT,
+                        summary_updated_at TIMESTAMPTZ,
+                        is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+                        is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_company_id ON copilot_conversations (company_id);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_user_id ON copilot_conversations (user_id);"))
+                await session.execute(text("""
+                    CREATE TABLE IF NOT EXISTS copilot_messages (
+                        id SERIAL PRIMARY KEY,
+                        conversation_id VARCHAR(50) NOT NULL REFERENCES copilot_conversations(id) ON DELETE CASCADE,
+                        sequence_number INTEGER NOT NULL,
+                        role VARCHAR(20) NOT NULL,
+                        content TEXT NOT NULL,
+                        name VARCHAR(100),
+                        tool_call_id VARCHAR(100),
+                        tool_calls JSONB,
+                        message_metadata JSONB,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_conversation_id ON copilot_messages (conversation_id);"))
+                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_sequence ON copilot_messages (conversation_id, sequence_number ASC);"))
+                await session.commit()
+                logger.info("✅ Verified admin_password_reset_requests, password_reset_tokens, driver_locations, and copilot schema tables and indexes.")
+        except Exception as e:
+            logger.warning(f"⚠️ Startup schema self-check notice: {e}")
 
     # Database Migrations (Alembic) are now handled exclusively by the CI/CD pipeline
     # (see .github/workflows/backend-migrations.yml) to ensure safe, controlled schema updates.
@@ -430,11 +434,21 @@ async def root() -> dict[str, str]:
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict[str, str]:
-    """Detailed health check."""
+    """Detailed health check validating core service readiness."""
+    db_status = "connected"
+    try:
+        from sqlalchemy import text
+        async with async_session_factory() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.warning(f"Database health check probe failed: {type(e).__name__}")
+        db_status = "disconnected"
+
+    is_healthy = (db_status == "connected")
     return {
-        "status": "healthy",
-        "database": "connected",
-        "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
+        "status": "healthy" if is_healthy else "degraded",
+        "database": db_status,
+        "openai": "configured" if bool(settings.OPENAI_API_KEY) else "not_configured",
     }
 
 @app.get("/api/v1/health/cors", tags=["Health"])
@@ -473,6 +487,7 @@ app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
+app.include_router(route_intelligence_router)
 
 
 # Mount Driver Mobile App Routers

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from models.vehicle_domain import Vehicle
     from models.driver_domain import Driver
     from models.user import Company
+    from models.route_domain import RouteVersion, RouteDeviationEvent
 
 
 class TripStatus(str, enum.Enum):
@@ -61,6 +62,11 @@ class Trip(Base):
     route_toll_estimate = Column(Float, nullable=True)
     route_provider = Column(String(50), nullable=True)
     route_polyline = Column(Text, nullable=True)
+    approved_route_version_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("route_versions.id", ondelete="SET NULL", use_alter=True, name="fk_trips_approved_route_v"),
+        nullable=True, index=True
+    )
+    route_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="PENDING")
 
     # --- Distance (in km or standard unit) ---
     planned_distance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -80,6 +86,16 @@ class Trip(Base):
     driver: Mapped[Optional["Driver"]] = relationship("Driver", lazy="selectin", back_populates="trips")
     start_selfies = relationship("TripStartSelfie", back_populates="trip", cascade="all, delete-orphan")
     start_selfie_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    route_versions: Mapped[list["RouteVersion"]] = relationship(
+        "RouteVersion", foreign_keys="[RouteVersion.trip_id]", back_populates="trip", cascade="all, delete-orphan"
+    )
+    approved_route_version: Mapped[Optional["RouteVersion"]] = relationship(
+        "RouteVersion", foreign_keys=[approved_route_version_id]
+    )
+    deviation_events: Mapped[list["RouteDeviationEvent"]] = relationship(
+        "RouteDeviationEvent", foreign_keys="[RouteDeviationEvent.trip_id]", back_populates="trip", cascade="all, delete-orphan"
+    )
 
     # --- Isolation ---
     company_id: Mapped[int] = mapped_column(
