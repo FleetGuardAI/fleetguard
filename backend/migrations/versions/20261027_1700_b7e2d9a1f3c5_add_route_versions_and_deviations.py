@@ -1,6 +1,6 @@
 """add_route_versions_and_deviations
 
-Revision ID: c4a8b9e1d2f3
+Revision ID: b7e2d9a1f3c5
 Revises: 5df0285937a9
 Create Date: 2026-10-27 17:00:00.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c4a8b9e1d2f3'
+revision: str = 'b7e2d9a1f3c5'
 down_revision: Union[str, None] = '5df0285937a9'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -123,3 +123,4 @@ def downgrade() -> None:
 
     if "route_versions" in existing_tables:
         op.drop_table("route_versions")
+
