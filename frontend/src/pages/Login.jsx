@@ -77,7 +77,7 @@ export default function Login() {
         window.msg91Initialized = true;
       }
     };
-    
+
     const scriptTimer = setInterval(() => {
       if (window.initSendOTP) {
         initMsg91();
@@ -144,9 +144,9 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    
+
     const isEmail = email.includes('@');
-    
+
     if (!isEmail) {
       if (!window.sendOtp) {
          setLoading(false);
@@ -156,17 +156,17 @@ export default function Login() {
       console.log('[AUTH DEBUG] web OTP flow started');
       console.log('[AUTH DEBUG] calling MSG91 sendOtp');
       const formattedMobile = formatMobileForMsg91(email);
-      
+
       let handled = false;
-      
+
       const handleSuccess = (data) => {
         if (handled) return;
         handled = true;
         console.log('[MSG91 DEBUG] sendOtp success callback fired', data);
-        
+
         // Extract reqId if provided by MSG91, otherwise fallback
         const returnedReqId = data?.message || data?.reqId || 'msg91-widget';
-        
+
         console.log('[AUTH DEBUG] showing OTP input');
         setLoading(false);
         success('OTP Sent', 'A verification code has been sent to your mobile.');
@@ -176,7 +176,7 @@ export default function Login() {
         setReqId(returnedReqId);
         setVerifiedMsg91Token(null);
       };
-      
+
       const handleFailure = (errData) => {
         if (handled) return;
         handled = true;
@@ -198,7 +198,7 @@ export default function Login() {
       return;
     }
 
-    
+
     try {
       const res = await requestOtp(email);
       success('OTP Sent', res.message);
@@ -216,7 +216,7 @@ export default function Login() {
 
   const handleResendOtp = async () => {
     if (countdown > 0) return;
-    
+
     if (!reqId) {
       success('OTP Sent', 'A verification code has been sent.');
       setCountdown(60);
@@ -224,7 +224,7 @@ export default function Login() {
     }
 
     setLoading(true);
-    
+
     const isEmail = email.includes('@');
     if (!isEmail && (reqId === 'msg91-widget' || reqId)) {
       if (!window.retryOtp) {
@@ -232,9 +232,9 @@ export default function Login() {
          error('OTP Resend Failed', 'MSG91 Web SDK is not loaded.');
          return;
       }
-      
+
       let handled = false;
-      
+
       const handleSuccess = (data) => {
         if (handled) return;
         handled = true;
@@ -243,7 +243,7 @@ export default function Login() {
         setCountdown(60);
         setVerifiedMsg91Token(null);
       };
-      
+
       const handleFailure = (errData) => {
         if (handled) return;
         handled = true;
@@ -263,7 +263,7 @@ export default function Login() {
       }
       return;
     }
-    
+
     try {
       const { resendOtp } = await import('@/api/authApi');
       const res = await resendOtp(reqId);
@@ -283,18 +283,18 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    
+
     const isEmail = email.includes('@');
     if (!isEmail && (reqId === 'msg91-widget' || reqId)) {
-      
+
       const executeFleetGuardVerification = async (token) => {
         try {
           console.log('[AUTH DEBUG] calling the vahan verify-otp');
           // Optional: Add debug log for API URL, but VITE_API_URL might just be '/api' locally
           console.log('[AUTH DEBUG] the vahan API URL:', import.meta.env.VITE_API_URL || 'default /api');
-          
+
           const res = await verifyOtpApi(email, null, null, { rememberMe, msg91Token: token });
-          
+
           console.log('[AUTH DEBUG] the vahan authentication successful');
           success('Login Successful', `Welcome back, ${res.user.name}!`);
           navigate('/dashboard');
@@ -319,17 +319,17 @@ export default function Login() {
          error('OTP Verification Failed', 'MSG91 Web SDK is not loaded.');
          return;
       }
-      
+
       console.log('[AUTH DEBUG] MSG91 verifyOtp called');
       const formattedMobile = formatMobileForMsg91(email);
-      
+
       let handled = false;
-      
+
       const handleSuccess = async (data) => {
         if (handled) return;
         handled = true;
         console.log('[AUTH DEBUG] MSG91 OTP verified successfully');
-        
+
         console.log('[AUTH DEBUG] MSG91 verification response structure:', {
           responseKeys: data ? Object.keys(data) : [],
           messageType: typeof data?.message,
@@ -362,12 +362,12 @@ export default function Login() {
               msg91Token = data.data;
            }
         }
-        
+
         // If we still couldn't find it, stringify the whole object so the backend logs can at least show it safely
         if (!msg91Token) {
            msg91Token = typeof data === 'object' ? JSON.stringify(data) : String(data);
         }
-        
+
         console.log('[AUTH DEBUG] MSG91 token received:', !!msg91Token);
         setVerifiedMsg91Token(msg91Token);
         await executeFleetGuardVerification(msg91Token);
@@ -392,7 +392,7 @@ export default function Login() {
       }
       return;
     }
-    
+
     try {
       const res = await verifyOtpApi(email, reqId || "null_req", otpCode, { rememberMe });
       success('Login Successful', `Welcome back, ${res.user.name}!`);
@@ -557,7 +557,7 @@ export default function Login() {
                     Resend OTP
                   </button>
                 )}
-                
+
                 <button
                   type="button"
                   onClick={() => { setOtpStep(1); setOtpCode(''); }}
@@ -570,23 +570,25 @@ export default function Login() {
           </form>
         )}
 
-        {/* Skip Login (Test Mode) */}
-        <Button
-          type="button"
-          onClick={() => {
-            localStorage.setItem('fleetguard_token', 'test-token');
-            localStorage.setItem('fleetguard_token_type', 'bearer');
-            localStorage.setItem('fleetguard_user', JSON.stringify({ 
-              name: 'Test Admin', 
-              role: 'admin',
-              email: 'test@fleetguard.com'
-            }));
-            navigate('/dashboard');
-          }}
-          className="w-full justify-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2.5 rounded-lg"
-        >
-          Skip Login (Test Mode)
-        </Button>
+        {/* Skip Login (Development Only - Stripped from production builds) */}
+        {import.meta.env.DEV && (
+          <Button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('fleetguard_token', 'test-token');
+              localStorage.setItem('fleetguard_token_type', 'bearer');
+              localStorage.setItem('fleetguard_user', JSON.stringify({
+                name: 'Test Admin',
+                role: 'admin',
+                email: 'test@fleetguard.com'
+              }));
+              navigate('/dashboard');
+            }}
+            className="w-full justify-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2.5 rounded-lg"
+          >
+            Skip Login (Test Mode)
+          </Button>
+        )}
 
         <div className="text-center text-xs text-slate-500 mt-4">
           <p className="mb-2">

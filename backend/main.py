@@ -220,6 +220,7 @@ from routers.driver_domain import router as driver_domain_router
 from routers.driver_qualification import router as driver_qualification_router
 from routers.trip_domain import router as trip_domain_router
 from domain.fuel.api import router as fuel_domain_router
+from routers.fuel_domain import router as fuel_domain_ops_router
 from routers.maintenance_domain import router as maintenance_domain_router
 from routers.tyre_domain import router as tyre_domain_router
 from routers.asset_domain import router as asset_domain_router
@@ -270,10 +271,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - Shutdown: Cleanup resources.
     """
     logger.info("🚛 FleetGuard TMS starting up...")
+    # FG-SEC-003: Enforce dedicated admin signing secret on startup
+    from services.admin_auth_service import get_admin_jwt_secret
+    get_admin_jwt_secret()
+    # FG-SEC-002: Enforce dedicated OTP recipient fingerprint key on startup
+    from services.otp_service import get_otp_fingerprint_key
+    get_otp_fingerprint_key()
     logger.info(f"   Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   Event Bus: {event_bus}")
-    
+
     logger.info("PRODUCTION CORS ORIGINS: %s", settings.CORS_ORIGINS)
     logger.info("CORS SUPER ADMIN ALLOWED: %s", "https://super-admin-seven-sepia.vercel.app" in settings.CORS_ORIGINS)
 
@@ -462,6 +469,7 @@ app.include_router(vehicle_domain_router, prefix=API_PREFIX)
 app.include_router(expense_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)
 app.include_router(fuel_domain_router, prefix=API_PREFIX)
+app.include_router(fuel_domain_ops_router, prefix=API_PREFIX)
 app.include_router(auth_router)                   # carries its own /api/v1/auth prefix
 app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
