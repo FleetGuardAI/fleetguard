@@ -13,6 +13,7 @@ from models.user import User
 from models.auth_session import AuthSession
 from models.password_reset_token import PasswordResetToken
 from models.owner_pairing_token import OwnerPairingToken
+from models.otp_transaction import OTPTransaction
 
 # --- Fleet Models ---
 from models.vehicle_domain import Vehicle

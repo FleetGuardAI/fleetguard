@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # --- Validation Pipeline ---
     KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
-    
+
     # Outbox Pattern
     OUTBOX_POLL_INTERVAL_MS: int = 2000
     OUTBOX_BATCH_SIZE: int = 50
@@ -133,6 +133,17 @@ class Settings(BaseSettings):
     # IMPORTANT: Override SECRET_KEY with a strong random value in production.
     # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
     SECRET_KEY: str
+    ADMIN_JWT_SECRET: Optional[str] = None
+
+    # --- OTP Cryptographic Identity Binding (FG-SEC-002) ---
+    # Mandatory in production & staging. Never fall back to SECRET_KEY or dev constants.
+    # Requires minimum 256 bits (32 bytes) of random key material generated using a CSPRNG.
+    # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+    OTP_RECIPIENT_FINGERPRINT_KEY: Optional[str] = None
+
+    # Optional previous rotation key to support zero-downtime rotation of in-flight 5-minute OTPs.
+    # Validated strictly whenever configured; never silently ignored.
+    OTP_PREVIOUS_FINGERPRINT_KEY: Optional[str] = None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     REMEMBER_ME_EXPIRE_DAYS: int = 30
@@ -158,7 +169,7 @@ class Settings(BaseSettings):
     KAFKA_SASL_USERNAME: str | None = None
     KAFKA_SASL_PASSWORD: str | None = None
     KAFKA_OPERATIONAL_EVENTS_TOPIC: str = "operational-events"
-    
+
     # --- Dead Letter Queue (DLQ) ---
     DLQ_TOPIC_NAME: str = "fleetguard.dlq"
     DLQ_INCLUDE_STACK_TRACE: bool = True

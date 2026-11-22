@@ -60,3 +60,11 @@ frontend/check_*.ps1
 frontend/find_*.ps1
 frontend/fix_*.py
 frontend/patch_*.py
+
+# -----------------------
+# Runtime Uploads & Sensitive KYC Artifacts (FG-SEC-006 Containment)
+# -----------------------
+# Narrowly scoped runtime upload exclusions - never track uploaded files or KYC documents
+backend/uploads/
+uploads/
+**/uploads/

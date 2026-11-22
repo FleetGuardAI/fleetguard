@@ -4,7 +4,7 @@ Abstracts OTP generation and delivery from FleetGuard logic.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 class OTPRequestResult:
     def __init__(self, success: bool, message: str, provider_reference: Optional[str] = None):
@@ -21,14 +21,14 @@ class OTPProvider(ABC):
     """
     Abstract interface for OTP generation and verification.
     """
-    
+
     @abstractmethod
-    async def request_otp(self, identifier: str) -> OTPRequestResult:
+    async def request_otp(self, identifier: str, db: Optional[Any] = None) -> OTPRequestResult:
         """
         Request the provider to generate and send an OTP.
         """
         pass
-        
+
     @abstractmethod
     async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
         """

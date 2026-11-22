@@ -181,7 +181,7 @@ async def get_onboarding_driver(
         select(Driver).where(Driver.user_id == current_user.id)
     )
     driver = result.scalar_one_or_none()
-    
+
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -201,7 +201,7 @@ async def get_current_driver(
         select(Driver).where(Driver.user_id == current_user.id)
     )
     driver = result.scalar_one_or_none()
-    
+
     if not driver or driver.status != DriverStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -402,12 +402,12 @@ async def resolve_qr_code(
 
 
 @router.post("/send-otp")
-async def send_otp(payload: SendOtpRequest):
+async def send_otp(payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
     """
     Send OTP to driver's phone number.
     """
     otp_provider = get_otp_provider()
-    result = await otp_provider.request_otp(payload.phone_number)
+    result = await otp_provider.request_otp(payload.phone_number, db=db)
     if not result.success:
         raise HTTPException(500, result.message)
     return {
@@ -434,17 +434,31 @@ async def verify_otp(
     """
     # Verify OTP
     otp_provider = get_otp_provider()
-    
+
     if payload.msg91_token:
         result = await otp_provider.verify_access_token(payload.msg91_token)
     else:
+        # FG-SEC-002: Pre-validate identity binding before verifying OTP code
+        from services.otp_service import otp_tracker
+        is_bound, bind_err = await otp_tracker.validate_binding(payload.req_id, payload.phone_number, db=db)
+        if not is_bound:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP."
+            )
         result = await otp_provider.verify_otp(payload.req_id, payload.otp_code)
-        
-    if not result.success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.message
-        )
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.message
+            )
+        # Atomically consume transaction after code is verified
+        is_consumed, consume_err = await otp_tracker.consume_transaction(payload.req_id, payload.phone_number, db=db)
+        if not is_consumed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP."
+            )
 
     # Validate invite token if provided
     invite = None
@@ -568,7 +582,7 @@ async def verify_otp(
             # IMPORTANT: Do NOT silently overwrite driver.company_id!
             # Preserve current fleet assignment and flag mismatch for user confirmation.
             is_mismatch = True
-            
+
             # Check for existing pending transfer
             trans_res = await db.execute(
                 select(DriverFleetTransfer).where(
@@ -917,9 +931,9 @@ async def upload_document(
 
         from services.unified_pipeline_service import UnifiedPipelineService
         from models.operational_event import EntityType
-        
+
         pipeline = UnifiedPipelineService(db)
-        
+
         logger.info("[UPLOAD DEBUG] storage upload started")
         url, extracted_fields = await pipeline.process_document(
             file=file,
@@ -939,7 +953,7 @@ async def upload_document(
 
             # Check driver verification status by looking at the latest document in each category
             from models.document import Document, DocumentVerificationStatus
-            
+
             all_docs_result = await db.execute(
                 select(Document)
                 .where(Document.target_id == str(driver.id))
@@ -947,18 +961,18 @@ async def upload_document(
                 .order_by(desc(Document.created_at))
             )
             all_docs = all_docs_result.scalars().all()
-            
+
             latest_by_category = {}
             for d in all_docs:
                 if d.category and d.category not in latest_by_category:
                     latest_by_category[d.category] = d
-                    
+
             required_categories = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
-            
+
             all_required_approved = True
             any_latest_rejected = False
             has_all_required = True
-            
+
             for cat in required_categories:
                 latest_doc = latest_by_category.get(cat)
                 if not latest_doc:
@@ -969,7 +983,7 @@ async def upload_document(
                     all_required_approved = False
                 if latest_doc.verification_status == DocumentVerificationStatus.REJECTED:
                     any_latest_rejected = True
-                    
+
             if has_all_required and all_required_approved:
                 driver.verification_status = VerificationStatus.PENDING_APPROVAL
             elif any_latest_rejected:
@@ -1011,7 +1025,7 @@ async def get_my_documents(
     """
     from models.document import Document
     from services.file_upload_service import storage_service
-    
+
     result = await db.execute(
         select(Document)
         .where(Document.target_id == str(driver.id))
@@ -1019,19 +1033,19 @@ async def get_my_documents(
         .order_by(desc(Document.created_at))
     )
     all_docs = result.scalars().all()
-    
+
     # Only return the latest document per category
     latest_by_category = {}
     for d in all_docs:
         if d.category and d.category not in latest_by_category:
             latest_by_category[d.category] = d
-            
+
     results = []
     for doc in latest_by_category.values():
         resp = DocumentResponse.model_validate(doc)
         resp.storage_path = storage_service.create_signed_url(doc.storage_path)
         results.append(resp)
-        
+
     return results
 
 
@@ -1107,7 +1121,7 @@ async def update_driver_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The provided License Number is already registered."
         )
-        
+
     await db.refresh(driver)
     response = _driver_to_response(driver)
     response.assigned_vehicle = await _get_assigned_vehicle(driver.id, db)
@@ -1187,7 +1201,7 @@ async def resume_duty(
 def _driver_to_response(driver: Driver) -> DriverProfileResponse:
     """Convert Driver ORM to response schema, resolving signed URLs."""
     from services.file_upload_service import storage_service
-    
+
     return DriverProfileResponse(
         id=driver.id,
         name=driver.name,
@@ -1244,4 +1258,3 @@ async def _get_pending_transfer(driver_id: int, db: AsyncSession) -> Optional[Di
         "status": transfer.status.value,
         "created_at": transfer.created_at.isoformat() if transfer.created_at else None,
     }
-
