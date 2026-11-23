@@ -25,12 +25,11 @@ def get_postgres_url() -> str:
 
 
 @pytest.fixture
-def pg_engine():
+async def pg_engine():
     url = get_postgres_url()
     engine = create_async_engine(url, pool_pre_ping=True, echo=False)
     yield engine
-    # Cleanup engine connections
-    asyncio.run(engine.dispose())
+    await engine.dispose()
 
 
 @pytest.mark.asyncio

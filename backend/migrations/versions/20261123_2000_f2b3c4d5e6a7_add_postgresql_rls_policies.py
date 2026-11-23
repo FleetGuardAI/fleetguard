@@ -44,6 +44,13 @@ def upgrade() -> None:
     inspector = sa.inspect(conn)
     existing_tables = set(inspector.get_table_names())
 
+    # Ensure maintenance_records has company_id if missing from legacy foundation migration
+    if "maintenance_records" in existing_tables:
+        columns = {col["name"] for col in inspector.get_columns("maintenance_records")}
+        if "company_id" not in columns:
+            op.add_column("maintenance_records", sa.Column("company_id", sa.Integer(), sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=True))
+            op.create_index(op.f("ix_maintenance_records_company_id"), "maintenance_records", ["company_id"], unique=False)
+
     for table in TENANT_TABLES:
         if table in existing_tables:
             columns = {col["name"] for col in inspector.get_columns(table)}
