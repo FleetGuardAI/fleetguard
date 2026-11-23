@@ -5,11 +5,12 @@ Handles public tenant registration, dual-identifier login (email or mobile),
 and retrieval of current user profile context.
 """
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import logging
 from database import get_db
+from utils.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 from models.user import User, UserRole
@@ -53,7 +54,9 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new company and its admin user",
 )
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     payload: CompanyRegistrationRequest,
     db: AsyncSession = Depends(get_db),
 ) -> RegisterCompanyResponse:
@@ -72,7 +75,9 @@ async def register(
     status_code=status.HTTP_200_OK,
     summary="Authenticate a user and return a JWT access token",
 )
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -330,7 +335,9 @@ from schemas.auth import OTPRequest, OTPRequestResponse, OTPVerifyRequest, OTPRe
     status_code=status.HTTP_200_OK,
     summary="Request an OTP for login via SMS",
 )
+@limiter.limit("3/10minute")
 async def request_otp_endpoint(
+    request: Request,
     payload: OTPRequest,
     db: AsyncSession = Depends(get_db),
 ) -> OTPRequestResponse:
@@ -344,7 +351,9 @@ async def request_otp_endpoint(
     status_code=status.HTTP_200_OK,
     summary="Verify an OTP and return a JWT access token",
 )
+@limiter.limit("5/10minute")
 async def verify_otp_endpoint(
+    request: Request,
     payload: OTPVerifyRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -371,7 +380,9 @@ async def verify_otp_endpoint(
     status_code=status.HTTP_200_OK,
     summary="Resend an OTP",
 )
+@limiter.limit("3/10minute")
 async def resend_otp_endpoint(
+    request: Request,
     payload: OTPResendRequest,
     db: AsyncSession = Depends(get_db),
 ) -> OTPRequestResponse:

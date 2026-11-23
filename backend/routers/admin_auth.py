@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 
@@ -6,11 +6,14 @@ from database import get_db
 from schemas.admin_domain import AdminLogin, Token, AdminUserResponse
 from services.admin_auth_service import authenticate_admin, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_admin
 from models.admin_domain import AdminUser
+from utils.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/v1/admin/auth", tags=["Admin Auth"])
 
 @router.post("/login", response_model=Token, summary="Admin Login")
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     payload: AdminLogin,
     db: AsyncSession = Depends(get_db)
 ):
