@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator, Any, Optional
 
 from config import settings
 
@@ -126,6 +126,31 @@ AsyncSessionLocal = async_session_factory
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models."""
     pass
+
+
+async def set_tenant_context(
+    session: AsyncSession,
+    company_id: Optional[int] = None,
+    is_super_admin: bool = False
+) -> None:
+    """
+    Sets PostgreSQL session configuration variables for Row-Level Security (RLS).
+    Uses SET LOCAL so the setting is strictly scoped to the active transaction and does not
+    pollute pooled connections. Gracefully ignored on non-PostgreSQL dialects (e.g. SQLite).
+    """
+    from sqlalchemy import text
+    try:
+        if is_super_admin:
+            await session.execute(text("SET LOCAL app.is_super_admin = 'true';"))
+            await session.execute(text("SET LOCAL app.current_company_id = '0';"))
+        elif company_id is not None:
+            await session.execute(text("SET LOCAL app.is_super_admin = 'false';"))
+            await session.execute(text("SET LOCAL app.current_company_id = :cid;"), {"cid": str(company_id)})
+        else:
+            await session.execute(text("SET LOCAL app.is_super_admin = 'false';"))
+            await session.execute(text("SET LOCAL app.current_company_id = '';"))
+    except Exception:
+        pass
 
 
 # --- Dependency ---

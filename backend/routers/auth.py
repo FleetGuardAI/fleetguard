@@ -12,7 +12,7 @@ import logging
 from database import get_db
 
 logger = logging.getLogger(__name__)
-from models import User
+from models.user import User, UserRole
 from schemas import (
     CompanyOut,
     CompanyRegistrationRequest,
@@ -41,6 +41,7 @@ from services import (
     verify_otp,
     resend_otp,
     _oauth2_scheme,
+    requires_role,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
@@ -170,7 +171,7 @@ async def get_me(
 )
 async def update_company(
     payload: CompanyUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> MeResponse:
     """

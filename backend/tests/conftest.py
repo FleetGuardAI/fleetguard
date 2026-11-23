@@ -82,9 +82,31 @@ print(f"\n[TEST ENVIRONMENT] Using database: {mask_db_url(TEST_DATABASE_URL)}\n"
 
 
 # --- 2. ENGINE & SESSION SETUP ---
-from database import engine, AsyncSessionLocal
-test_engine = engine
-TestSessionLocal = AsyncSessionLocal
+# We use an async engine tailored to the test database
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+TestSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+import database
+database.async_session_factory = TestSessionLocal
+database.AsyncSessionLocal = TestSessionLocal
+database.engine = test_engine
+
+# Ensure all background and event consumers use the test database
+import main
+main.async_session_factory = TestSessionLocal
+if hasattr(main, "processing_consumer_instance"):
+    main.processing_consumer_instance.processing_service.db_session_factory = TestSessionLocal
+if hasattr(main, "validation_consumer"):
+    main.validation_consumer.validation_service.db_session_factory = TestSessionLocal
+if hasattr(main, "evidence_orchestrator"):
+    main.evidence_orchestrator.session_factory = TestSessionLocal
+if hasattr(main, "ocr_evidence_provider"):
+    main.ocr_evidence_provider._db_session_factory = TestSessionLocal
+if hasattr(main, "outbox_publisher"):
+    main.outbox_publisher.db_session_factory = TestSessionLocal
 
 # --- 3. EVENT LOOP SCOPING (Fixes "Event loop is closed") ---
 
@@ -92,7 +114,7 @@ TestSessionLocal = AsyncSessionLocal
 def event_loop():
     """
     Creates a single event loop for the entire test session.
-    This prevents 'RuntimeError: Event loop is closed' when background tasks 
+    This prevents 'RuntimeError: Event loop is closed' when background tasks
     from previous tests overlap with pytest-asyncio tearing down function-scoped loops.
     """
     loop = asyncio.new_event_loop()
@@ -112,9 +134,9 @@ async def initialize_test_database():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield
-    
+
     # Optional teardown
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -135,33 +157,31 @@ def auth_headers():
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     """
-    Yields an isolated database session for testing using the test engine session factory,
-    and cleans up all table data before and after each test to guarantee complete test isolation.
+    Yields an isolated database session.
+    Uses connection-level savepoints (begin_nested) to rollback all changes
+    at the end of the test, guaranteeing no pollution.
     """
-    from database import async_session_factory, Base
-    async with async_session_factory() as session:
-        try:
-            for table in reversed(Base.metadata.sorted_tables):
-                await session.execute(table.delete())
-            await session.commit()
-        except Exception:
-            await session.rollback()
+    async with test_engine.connect() as conn:
+        await conn.begin()
+        await conn.begin_nested() # For nested transactions (savepoints)
+
+        session = AsyncSession(
+            bind=conn,
+            join_transaction_mode="create_savepoint",
+            expire_on_commit=False,
+        )
 
         yield session
 
-        try:
-            for table in reversed(Base.metadata.sorted_tables):
-                await session.execute(table.delete())
-            await session.commit()
-        except Exception:
-            await session.rollback()
+        await session.close()
+        await conn.rollback() # Rolls back everything that happened in the test
 
 from infrastructure.uow import SqlAlchemyUnitOfWork, AbstractUnitOfWork, RepositoryRegistry
 
 @pytest.fixture(scope="function")
 def client(db_session):
     """
-    FastAPI TestClient with the `get_db`, `get_uow`, and `get_read_uow` dependencies 
+    FastAPI TestClient with the `get_db`, `get_uow`, and `get_read_uow` dependencies
     securely overridden to use our transactional test session.
     """
     async def override_get_db():
@@ -171,7 +191,7 @@ def client(db_session):
         class TestUoW(SqlAlchemyUnitOfWork):
             def __init__(self):
                 self.session_factory = None
-                
+
             async def __aenter__(self):
                 self.session = db_session
                 self.repositories = RepositoryRegistry(self.session)
@@ -203,8 +223,8 @@ def client(db_session):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_uow] = override_get_uow
     app.dependency_overrides[get_read_uow] = override_get_read_uow
-    
+
     with TestClient(app) as test_client:
         yield test_client
-        
+
     app.dependency_overrides.clear()

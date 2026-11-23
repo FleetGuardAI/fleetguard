@@ -41,6 +41,7 @@ FastAPI dependency.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -105,12 +106,11 @@ class EventDispatcher:
             If a subscriber with the same ``name`` is already registered.
             Names must be unique to enable targeted unregistration.
         """
-        for existing in self._subscribers:
+        for i, existing in enumerate(self._subscribers):
             if existing.name == subscriber.name:
-                raise ValueError(
-                    f"A subscriber named '{subscriber.name}' is already registered. "
-                    "Unregister the existing one first, or use a unique name."
-                )
+                self._subscribers[i] = subscriber
+                logger.info("Subscriber '%s' re-registered / updated.", subscriber.name)
+                return
         self._subscribers.append(subscriber)
         logger.info(
             "Subscriber registered: name='%s' filter=%s",
@@ -194,18 +194,25 @@ class EventDispatcher:
             len(matching),
         )
 
+        errors = []
         for subscriber in matching:
             try:
                 await subscriber.handle(event)
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:  # noqa: BLE001
-                # A failing subscriber must not block others or propagate to
-                # the caller.  Log the full traceback for debugging.
                 logger.exception(
                     "Subscriber '%s' raised an exception for event id=%s: %s",
                     subscriber.name,
                     event.id,
                     exc,
                 )
+                errors.append(exc)
+
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            raise RuntimeError(f"Multiple subscribers failed for event {event.id}: {errors}")
 
     # -----------------------------------------------------------------------
     # Introspection (useful for tests and health checks)
@@ -239,3 +246,7 @@ class EventDispatcher:
             for s in self._subscribers
             if s.event_filter is None or event.event_type in s.event_filter
         ]
+
+
+# Singleton in-process event dispatcher instance for application-wide pub/sub
+default_dispatcher = EventDispatcher()

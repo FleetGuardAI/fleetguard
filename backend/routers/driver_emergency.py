@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.emergency import EmergencyAlert, EmergencyStatus
 from models.driver_domain import Driver
+from models.user import User, UserRole
+from services.auth_service import get_current_user
 from models.support_domain import (
     SupportTicket,
     SupportTicketMessage,
@@ -320,18 +322,64 @@ async def send_driver_ticket_message(
 
 @router.get("/sos/active", response_model=List[SosResponse])
 async def list_active_sos(
-    company_id: int,
+    company_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List active emergency SOS alerts for fleet dashboard."""
-    result = await db.execute(
-        select(EmergencyAlert)
-        .where(
-            EmergencyAlert.company_id == company_id,
+    """
+    FG-SEC-005: List active emergency SOS alerts.
+    Enforces authentication, role checks, and tenant isolation.
+    """
+    allowed_management_roles = [
+        UserRole.COMPANY_ADMIN,
+        UserRole.FLEET_MANAGER,
+        UserRole.DISPATCHER,
+        UserRole.ADMIN,
+        UserRole.SUPER_ADMIN,
+    ]
+
+    if current_user.role == UserRole.DRIVER:
+        # Drivers may only view their own active emergency alerts
+        driver_res = await db.execute(
+            select(Driver).where(Driver.user_id == current_user.id)
+        )
+        driver = driver_res.scalar_one_or_none()
+        if not driver:
+            driver_res = await db.execute(
+                select(Driver).where(Driver.phone_number == current_user.mobile_number)
+            )
+            driver = driver_res.scalar_one_or_none()
+
+        if not driver:
+            return []
+
+        query = select(EmergencyAlert).where(
+            EmergencyAlert.driver_id == driver.id,
             EmergencyAlert.status == EmergencyStatus.ACTIVE,
         )
-        .order_by(desc(EmergencyAlert.created_at))
-    )
+    elif current_user.role in allowed_management_roles:
+        # Tenant isolation
+        if current_user.role != UserRole.SUPER_ADMIN:
+            if company_id is not None and company_id != current_user.company_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied to another company's emergency alerts."
+                )
+            target_company_id = current_user.company_id
+        else:
+            target_company_id = company_id
+
+        query = select(EmergencyAlert).where(EmergencyAlert.status == EmergencyStatus.ACTIVE)
+        if target_company_id is not None:
+            query = query.where(EmergencyAlert.company_id == target_company_id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to view emergency alerts."
+        )
+
+    query = query.order_by(desc(EmergencyAlert.created_at))
+    result = await db.execute(query)
     alerts = result.scalars().all()
 
     return [

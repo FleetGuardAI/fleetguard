@@ -18,7 +18,7 @@ from config import settings
 from models.vehicle_domain import Vehicle, VehicleStatus
 from models.driver_domain import Driver, DriverStatus, DutyStatus
 from models.trip_domain import Trip, TripStatus
-from models.location_tracking import DriverLocation, LocationSource
+from models.location_tracking import DriverLocation, LocationSource, VehicleCurrentLocation
 from models.maintenance_domain import MaintenanceRecord, MaintenanceStatus, MaintenanceCategory
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from schemas.fleet_intelligence import (
@@ -61,13 +61,31 @@ class FleetIntelligenceEngine:
 
     async def _get_vehicle_latest_location(
         self, session: AsyncSession, v: Vehicle
-    ) -> Tuple[Optional[datetime], Optional[DriverLocation]]:
+    ) -> Tuple[Optional[datetime], Optional[Any]]:
         """
         Resolves latest GPS telemetry and timestamp for a vehicle by checking:
-        1. Driver on active in-progress trip
-        2. Vehicle's assigned driver
-        3. Driver's latest recorded location point in DriverLocation or last_location_at
+        1. VehicleCurrentLocation (hardware GPS / synced companion app)
+        2. Driver on active in-progress trip
+        3. Vehicle's assigned driver
+        4. Driver's latest recorded location point in DriverLocation or last_location_at
         """
+        best_time = None
+        best_loc = None
+
+        # 1. Direct VehicleCurrentLocation (hardware telematics or mobile sync)
+        vcl_stmt = (
+            select(VehicleCurrentLocation)
+            .where(VehicleCurrentLocation.vehicle_id == v.id)
+            .order_by(desc(VehicleCurrentLocation.last_timestamp))
+            .limit(1)
+        )
+        vcl_res = await session.execute(vcl_stmt)
+        latest_vcl = vcl_res.scalar_one_or_none()
+        if latest_vcl and latest_vcl.last_timestamp:
+            best_time = latest_vcl.last_timestamp
+            best_loc = latest_vcl
+
+        # 2. Driver-associated telemetry
         driver_id = None
         trip_stmt = (
             select(Trip.driver_id)
@@ -97,13 +115,18 @@ class FleetIntelligenceEngine:
             )
             latest_loc = loc_res.scalar_one_or_none()
             if latest_loc and latest_loc.timestamp:
-                return latest_loc.timestamp, latest_loc
+                loc_ts = latest_loc.timestamp if latest_loc.timestamp.tzinfo else latest_loc.timestamp.replace(tzinfo=timezone.utc)
+                bt_ts = best_time if (best_time and best_time.tzinfo) else (best_time.replace(tzinfo=timezone.utc) if best_time else None)
+                if bt_ts is None or loc_ts > bt_ts:
+                    best_time = latest_loc.timestamp
+                    best_loc = latest_loc
+            elif best_time is None:
+                drv = await session.get(Driver, driver_id)
+                if drv and drv.last_location_at:
+                    best_time = drv.last_location_at
+                    best_loc = None
 
-            drv = await session.get(Driver, driver_id)
-            if drv and drv.last_location_at:
-                return drv.last_location_at, None
-
-        return None, None
+        return best_time, best_loc
 
     # ==========================================================================
     # 1. FLEET HEALTH OVERVIEW

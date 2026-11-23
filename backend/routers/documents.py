@@ -250,8 +250,8 @@ async def ocr_vehicle_rc(
         
     text = result.text or ""
     
-    # Safely log raw OCR text for debugging
-    logger.info(f"--- OCR COMPLETED ---\nCharacters: {len(text)}\nRaw Text:\n{text}\n---------------------")
+    # FG-SEC-019: Redact raw OCR text from logs; log only document metadata
+    logger.info(f"--- OCR COMPLETED --- Characters: {len(text)} --- Document type: rc")
     
     fields = result.extracted_fields or {}
     

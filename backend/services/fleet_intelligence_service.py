@@ -57,13 +57,26 @@ class FleetIntelligenceService:
 
         for vehicle in vehicles:
             # 2. Fetch recent operational events for each vehicle via existing repository
-            db_events = await self.uow.repositories.operational_event.list_events_by_entity(
+            db_events_reg = await self.uow.repositories.operational_event.list_events_by_entity(
                 company_id=company_id,
                 entity_type=EntityType.VEHICLE,
                 entity_id=vehicle.registration_number,
                 limit=100,
                 offset=0,
             )
+            db_events_id = await self.uow.repositories.operational_event.list_events_by_entity(
+                company_id=company_id,
+                entity_type=EntityType.VEHICLE,
+                entity_id=str(vehicle.id),
+                limit=100,
+                offset=0,
+            )
+            seen_ids = set()
+            db_events = []
+            for ev in list(db_events_reg) + list(db_events_id):
+                if ev.id not in seen_ids:
+                    seen_ids.add(ev.id)
+                    db_events.append(ev)
 
             # 3. Transform DB events → intelligence pydantic events for the builder
             pydantic_events = []
@@ -85,10 +98,12 @@ class FleetIntelligenceService:
 
                 try:
                     if ev.event_type.value == "FUEL_FILLED":
+                        quantity_val = float(payload.get("quantity") or payload.get("liters") or 0.0)
+                        amount_val = float(payload.get("amount") or payload.get("cost_inr") or payload.get("cost") or 0.0)
                         pydantic_events.append(FuelReceiptEvent(
                             **base_kwargs,
-                            quantity=payload.get("quantity", 0.0),
-                            amount=payload.get("amount", 0.0),
+                            quantity=quantity_val,
+                            amount=amount_val,
                             station_name=payload.get("station_name"),
                             station_lat=payload.get("latitude"),
                             station_lon=payload.get("longitude"),

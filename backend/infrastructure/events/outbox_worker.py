@@ -19,16 +19,17 @@ class OutboxWorkerRunner:
     def __init__(self, publisher: OutboxPublisher):
         self.publisher = publisher
         self._task: asyncio.Task | None = None
-        self._stop_event = asyncio.Event()
+        self._stop_event: asyncio.Event | None = None
 
     async def start(self) -> None:
-        """Starts the background polling loop."""
+        """Starts the background polling loop bound to the active event loop."""
         if self._task is not None:
             return
             
-        self._stop_event.clear()
+        self._stop_event = asyncio.Event()
         self._task = asyncio.create_task(self._run_loop())
-        logger.info(f"OutboxWorker started. Polling every {settings.OUTBOX_POLL_INTERVAL_MS}ms.")
+        poll_ms = getattr(settings, "OUTBOX_POLL_INTERVAL_MS", 1000)
+        logger.info(f"OutboxWorker started. Polling every {poll_ms}ms.")
 
     async def stop(self) -> None:
         """Stops the background polling loop gracefully."""
@@ -36,31 +37,45 @@ class OutboxWorkerRunner:
             return
             
         logger.info("OutboxWorker stopping...")
-        self._stop_event.set()
+        if self._stop_event is not None:
+            self._stop_event.set()
         
         try:
             await asyncio.wait_for(self._task, timeout=5.0)
-        except asyncio.TimeoutError:
+        except (asyncio.TimeoutError, RuntimeError):
             logger.warning("OutboxWorker did not shut down gracefully. Forcing cancellation.")
             self._task.cancel()
+            try:
+                await self._task
+            except (asyncio.CancelledError, Exception):
+                pass
+        except asyncio.CancelledError:
+            pass
             
         self._task = None
+        self._stop_event = None
         logger.info("OutboxWorker stopped.")
 
     async def _run_loop(self) -> None:
-        interval_seconds = settings.OUTBOX_POLL_INTERVAL_MS / 1000.0
+        interval_seconds = getattr(settings, "OUTBOX_POLL_INTERVAL_MS", 1000) / 1000.0
         
-        while not self._stop_event.is_set():
+        while self._stop_event is not None and not self._stop_event.is_set():
             try:
                 processed = await self.publisher.publish_pending()
                 if processed > 0:
                     logger.debug(f"OutboxWorker published {processed} events.")
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 logger.error(f"OutboxWorker encountered an unexpected error: {e}")
                 
             # Sleep until next poll, checking for stop_event periodically to allow fast shutdown
+            if self._stop_event is None or self._stop_event.is_set():
+                break
             try:
                 await asyncio.wait_for(self._stop_event.wait(), timeout=interval_seconds)
-            except asyncio.TimeoutError:
-                # Normal timeout, continue loop
+            except (asyncio.TimeoutError, RuntimeError):
+                # Normal timeout or loop change, continue loop
                 pass
+            except asyncio.CancelledError:
+                break

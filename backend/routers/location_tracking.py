@@ -22,7 +22,7 @@ from routers.driver_mobile import get_current_driver
 
 from database import get_db
 from models.driver_domain import Driver, DutyStatus
-from models.location_tracking import DriverLocation, LocationSource
+from models.location_tracking import DriverLocation, LocationSource, VehicleCurrentLocation
 from models.trip_domain import Trip, TripStatus
 from models.vehicle_domain import Vehicle
 from models.user import User
@@ -45,13 +45,13 @@ router = APIRouter(tags=["Location Tracking"])
 # ==========================================================================
 
 class LocationPoint(BaseModel):
-    latitude: float
-    longitude: float
-    speed: Optional[float] = None
-    heading: Optional[float] = None
-    accuracy: Optional[float] = None
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude between -90 and 90 degrees")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude between -180 and 180 degrees")
+    speed: Optional[float] = Field(None, ge=0.0, le=300.0, description="Speed (non-negative)")
+    heading: Optional[float] = Field(None, ge=0.0, le=360.0, description="Heading in degrees between 0 and 360")
+    accuracy: Optional[float] = Field(None, ge=0.0, description="Accuracy in meters (non-negative)")
     timestamp: str
-    battery_percent: Optional[int] = None
+    battery_percent: Optional[int] = Field(None, ge=0, le=100)
     activity_state: Optional[str] = None
 
 
@@ -81,8 +81,8 @@ class LocationResponse(BaseModel):
 class LiveDriverLocation(BaseModel):
     driver_id: int
     driver_name: str
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
     speed: Optional[float] = None
     speed_kmh: Optional[float] = None
     heading: Optional[float] = None
@@ -145,8 +145,8 @@ class DriverTripSummary(BaseModel):
 class DetailedLocationPoint(BaseModel):
     id: int
     driver_id: int
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
     speed_mps: Optional[float] = None
     speed_kmh: Optional[float] = None
     heading: Optional[float] = None
@@ -218,14 +218,22 @@ async def batch_upload_locations(
     if driver is None:
         raise HTTPException(404, "Driver not found")
 
-    # Check for active trip
+    # Check for active trip and vehicle
     active_trip_res = await db.execute(
-        select(Trip.trip_id).where(
+        select(Trip.trip_id, Trip.vehicle_id).where(
             Trip.driver_id == driver.id,
             Trip.status == TripStatus.IN_PROGRESS
         ).limit(1)
     )
-    current_trip_id = active_trip_res.scalar_one_or_none()
+    active_trip_row = active_trip_res.first()
+    current_trip_id = active_trip_row[0] if active_trip_row else None
+    current_vehicle_id = active_trip_row[1] if active_trip_row else None
+
+    if not current_vehicle_id:
+        veh_res = await db.execute(
+            select(Vehicle.id).where(Vehicle.assigned_driver_id == driver.id).limit(1)
+        )
+        current_vehicle_id = veh_res.scalar_one_or_none()
 
     locations_added = 0
     latest_location = None
@@ -263,11 +271,51 @@ async def batch_upload_locations(
         locations_added += 1
         latest_location = loc
 
-    # Update driver's last known position
+    # Update driver's last known position and VehicleCurrentLocation with out-of-order protection
     if latest_location:
+        try:
+            latest_ts = datetime.fromisoformat(latest_location.timestamp.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            latest_ts = datetime.now(tz=timezone.utc)
+
         driver.last_known_lat = latest_location.latitude
         driver.last_known_lng = latest_location.longitude
-        driver.last_location_at = datetime.now(tz=timezone.utc)
+        driver.last_location_at = latest_ts
+
+        if current_vehicle_id:
+            vcl_res = await db.execute(
+                select(VehicleCurrentLocation).where(
+                    VehicleCurrentLocation.vehicle_id == current_vehicle_id,
+                    VehicleCurrentLocation.source == LocationSource.PHONE_GPS
+                ).limit(1)
+            )
+            vcl = vcl_res.scalar_one_or_none()
+            if not vcl:
+                vcl = VehicleCurrentLocation(
+                    vehicle_id=current_vehicle_id,
+                    source=LocationSource.PHONE_GPS,
+                    latitude=latest_location.latitude,
+                    longitude=latest_location.longitude,
+                    speed=latest_location.speed,
+                    heading=latest_location.heading,
+                    accuracy=latest_location.accuracy,
+                    last_timestamp=latest_ts,
+                    last_received_at=datetime.now(tz=timezone.utc),
+                    driver_id=driver.id,
+                )
+                db.add(vcl)
+            else:
+                vcl_ts = vcl.last_timestamp if (vcl.last_timestamp and vcl.last_timestamp.tzinfo) else (vcl.last_timestamp.replace(tzinfo=timezone.utc) if vcl.last_timestamp else None)
+                cur_ts = latest_ts if latest_ts.tzinfo else latest_ts.replace(tzinfo=timezone.utc)
+                if vcl_ts is None or cur_ts >= vcl_ts:
+                    vcl.latitude = latest_location.latitude
+                    vcl.longitude = latest_location.longitude
+                    vcl.speed = latest_location.speed
+                    vcl.heading = latest_location.heading
+                    vcl.accuracy = latest_location.accuracy
+                    vcl.last_timestamp = latest_ts
+                    vcl.last_received_at = datetime.now(tz=timezone.utc)
+                    vcl.driver_id = driver.id
 
     await db.commit()
 

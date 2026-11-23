@@ -294,16 +294,20 @@ class OperationalEventRepository:
     # Read Methods
     # -----------------------------------------------------------------------
 
-    async def get_event_by_id(self, event_id: uuid.UUID, company_id: int) -> OperationalEvent:
+    async def get_event_by_id(
+        self,
+        event_id: uuid.UUID | str,
+        company_id: Optional[int] = None
+    ) -> OperationalEvent:
         """
         Retrieve a single event by its UUID primary key.
 
         Parameters
         ----------
-        event_id : uuid.UUID
+        event_id : uuid.UUID | str
             The UUID of the event to retrieve.
-        company_id : int
-            The tenant boundary.
+        company_id : Optional[int]
+            The tenant boundary (optional for internal processing).
 
         Returns
         -------
@@ -313,9 +317,10 @@ class OperationalEventRepository:
         Raises
         ------
         EventNotFoundError
-            If no event with the given ID exists in the specified company.
+            If no event with the given ID exists.
         """
-        return await self._get_or_raise(event_id, company_id)
+        uid = uuid.UUID(str(event_id)) if not isinstance(event_id, uuid.UUID) else event_id
+        return await self._get_or_raise(uid, company_id)
 
     async def list_events(
         self,
@@ -513,10 +518,15 @@ class OperationalEventRepository:
         EventNotFoundError
             If no event with the given UUID exists in the database for the company.
         """
-        stmt = select(OperationalEvent).where(
-            OperationalEvent.id == event_id,
-            OperationalEvent.company_id == company_id
-        )
+        if company_id is not None:
+            stmt = select(OperationalEvent).where(
+                OperationalEvent.id == event_id,
+                OperationalEvent.company_id == company_id
+            )
+        else:
+            stmt = select(OperationalEvent).where(
+                OperationalEvent.id == event_id
+            )
         result = await self._db.execute(stmt)
         event: OperationalEvent | None = result.scalar_one_or_none()
         if event is None:

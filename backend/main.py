@@ -34,15 +34,21 @@ from infrastructure.evidence.orchestrator import EvidenceOrchestrator
 from infrastructure.evidence.registry import EvidenceProviderRegistry
 from services.operational_event_service import OperationalEventService
 
+from dispatchers.event_dispatcher import default_dispatcher
+
 # Application-level event bus singleton.
 # Injected into OperationalEventService via get_event_service dependency.
-event_bus = KafkaEventBus(
-    bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
-    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
-    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
-    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+if settings.KAFKA_ENABLED:
+    event_bus = KafkaEventBus(
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+        sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+        sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+        sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
+    )
+else:
+    from infrastructure.events.bus import InProcessEventBus
+    event_bus = InProcessEventBus(dispatcher=default_dispatcher)
 
 # Initialize Validation & Enrichment Engine
 from infrastructure.validation.registry import ValidationRuleRegistry
@@ -62,7 +68,7 @@ validation_registry.register(ExpenseLocationFraudRule())
 validation_engine = ValidationEngine(validation_registry)
 
 def event_service_factory(uow) -> OperationalEventService:
-    return OperationalEventService(uow)
+    return OperationalEventService(uow, dispatcher=default_dispatcher)
 
 def validation_service_factory(db: async_session_factory) -> ValidationService:
     # Need to pass db inside consumer or instantiate service with factory.
@@ -84,7 +90,7 @@ validation_consumer = ValidationConsumer(
     )
 )
 
-# Attach Validation Engine to its own consumer group
+# Attach Validation Engine to its own consumer group (Kafka mode only)
 validation_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="validation-group",
@@ -95,7 +101,7 @@ validation_consumer_runner = KafkaConsumerRunner(
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Processing Engine
 from infrastructure.processing.domain_router import get_default_domain_router
@@ -112,7 +118,7 @@ processing_consumer_instance = ProcessingConsumer(
     )
 )
 
-# Attach Processing Engine to its own consumer group
+# Attach Processing Engine to its own consumer group (Kafka mode only)
 processing_consumer = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="processing-group",
@@ -123,7 +129,7 @@ processing_consumer = KafkaConsumerRunner(
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Evidence Framework
 evidence_registry = EvidenceProviderRegistry()
@@ -164,42 +170,51 @@ ocr_evidence_provider = OCREvidenceProvider(
 )
 evidence_registry.register(ocr_evidence_provider)
 
-def event_service_factory(uow) -> OperationalEventService:
-    return OperationalEventService(uow)
+evidence_orchestrator = EvidenceOrchestrator(
+    session_factory=async_session_factory,
+    registry=evidence_registry,
+    event_service_factory=event_service_factory
+)
 
+# Attach Evidence Engine to its own consumer group (Kafka mode only)
 evidence_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="evidence-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
-    subscriber=EvidenceOrchestrator(
-        session_factory=async_session_factory,
-        registry=evidence_registry,
-        event_service_factory=event_service_factory
-    ),
+    subscriber=evidence_orchestrator,
     dlq_publisher=dlq_publisher,
     security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Fuel Intelligence Engine
 from infrastructure.intelligence.fuel_domain.orchestrator import FuelIntelligenceOrchestrator
 from infrastructure.intelligence.fuel_domain.consumer import FuelIntelligenceConsumer
 
+fuel_intelligence_consumer = FuelIntelligenceConsumer(
+    orchestrator=FuelIntelligenceOrchestrator()
+)
+
+# Attach Fuel Intelligence to its own consumer group (Kafka mode only)
 fuel_intelligence_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="fie-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
-    subscriber=FuelIntelligenceConsumer(
-        orchestrator=FuelIntelligenceOrchestrator()
-    ),
+    subscriber=fuel_intelligence_consumer,
     dlq_publisher=dlq_publisher,
     security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
+
+# Register all subscribers with the in-process event dispatcher
+default_dispatcher.register_subscriber(evidence_orchestrator)
+default_dispatcher.register_subscriber(validation_consumer)
+default_dispatcher.register_subscriber(processing_consumer_instance)
+default_dispatcher.register_subscriber(fuel_intelligence_consumer)
 
 # Initialize Outbox Pattern
 from infrastructure.events.outbox_publisher import OutboxPublisher
@@ -220,6 +235,7 @@ from routers.driver_domain import router as driver_domain_router
 from routers.driver_qualification import router as driver_qualification_router
 from routers.trip_domain import router as trip_domain_router
 from domain.fuel.api import router as fuel_domain_router
+from routers.fuel_domain import router as fuel_domain_ops_router
 from routers.maintenance_domain import router as maintenance_domain_router
 from routers.tyre_domain import router as tyre_domain_router
 from routers.asset_domain import router as asset_domain_router
@@ -237,6 +253,7 @@ from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
 from routers.location import router as location_router
+from routers.telematics import router as telematics_router
 from routers.route_intelligence import router as route_intelligence_router
 
 # Import Driver Mobile App routers
@@ -271,72 +288,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - Shutdown: Cleanup resources.
     """
     logger.info("🚛 FleetGuard TMS starting up...")
+    # FG-SEC-003: Enforce dedicated admin signing secret on startup
+    from services.admin_auth_service import get_admin_jwt_secret
+    get_admin_jwt_secret()
+    # FG-SEC-002: Enforce dedicated OTP recipient fingerprint key on startup
+    from services.otp_service import get_otp_fingerprint_key
+    get_otp_fingerprint_key()
     logger.info(f"   Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
     logger.info(f"   OpenAI configured: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"   Event Bus: {event_bus}")
-    
+
     logger.info("PRODUCTION CORS ORIGINS: %s", settings.CORS_ORIGINS)
     logger.info("CORS SUPER ADMIN ALLOWED: %s", "https://super-admin-seven-sepia.vercel.app" in settings.CORS_ORIGINS)
 
-    logger.info("✅ PostgreSQL database detected. Alembic manages the schema.")
-
-    # Safe startup schema verification to ensure critical columns exist in production
-    # NEVER run during automated testing
-    import sys, os
-    if os.environ.get("TESTING") != "True" and "pytest" not in sys.modules:
-        try:
-            from sqlalchemy import text
-            async with async_session_factory() as session:
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_hash VARCHAR(128);"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_issued_at TIMESTAMPTZ;"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_used_at TIMESTAMPTZ;"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS token_revoked_at TIMESTAMPTZ;"))
-                await session.execute(text("ALTER TABLE admin_password_reset_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;"))
-                await session.execute(text("ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS reset_request_id INTEGER REFERENCES admin_password_reset_requests(id) ON DELETE SET NULL;"))
-                await session.execute(text("ALTER TABLE driver_locations ADD COLUMN IF NOT EXISTS trip_id VARCHAR(255);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_driver_locations_trip_id ON driver_locations (trip_id);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_timestamp ON driver_locations (driver_id, timestamp ASC);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_driver_locations_company_driver_ts ON driver_locations (company_id, driver_id, timestamp ASC);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS idx_trips_company_driver ON trips (company_id, driver_id);"))
-                # AI Copilot persistent conversation and message tables
-                await session.execute(text("""
-                    CREATE TABLE IF NOT EXISTS copilot_conversations (
-                        id VARCHAR(50) PRIMARY KEY,
-                        company_id INTEGER NOT NULL,
-                        user_id INTEGER NOT NULL,
-                        title VARCHAR(255) NOT NULL,
-                        summary TEXT,
-                        summary_updated_at TIMESTAMPTZ,
-                        is_archived BOOLEAN NOT NULL DEFAULT FALSE,
-                        is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );
-                """))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_company_id ON copilot_conversations (company_id);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_conversations_user_id ON copilot_conversations (user_id);"))
-                await session.execute(text("""
-                    CREATE TABLE IF NOT EXISTS copilot_messages (
-                        id SERIAL PRIMARY KEY,
-                        conversation_id VARCHAR(50) NOT NULL REFERENCES copilot_conversations(id) ON DELETE CASCADE,
-                        sequence_number INTEGER NOT NULL,
-                        role VARCHAR(20) NOT NULL,
-                        content TEXT NOT NULL,
-                        name VARCHAR(100),
-                        tool_call_id VARCHAR(100),
-                        tool_calls JSONB,
-                        message_metadata JSONB,
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );
-                """))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_conversation_id ON copilot_messages (conversation_id);"))
-                await session.execute(text("CREATE INDEX IF NOT EXISTS ix_copilot_messages_sequence ON copilot_messages (conversation_id, sequence_number ASC);"))
-                await session.commit()
-                logger.info("✅ Verified admin_password_reset_requests, password_reset_tokens, driver_locations, and copilot schema tables and indexes.")
-        except Exception as e:
-            logger.warning(f"⚠️ Startup schema self-check notice: {e}")
+    logger.info("✅ PostgreSQL database detected. Alembic manages the schema exclusively.")
 
     # Database Migrations (Alembic) are now handled exclusively by the CI/CD pipeline
     # (see .github/workflows/backend-migrations.yml) to ensure safe, controlled schema updates.
@@ -359,18 +324,38 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
     else:
-        logger.info("Kafka workers disabled — KAFKA_ENABLED=False")
+        logger.info("Kafka workers disabled — KAFKA_ENABLED=False (using InProcessEventBus)")
+        try:
+            # Replay any pending/crashed outbox events on startup
+            replayed = await outbox_publisher.publish_pending()
+            if replayed > 0:
+                logger.info(f"✅ Recovered and published {replayed} pending outbox events at startup.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not replay pending outbox events at startup: {e}")
+        try:
+            # Start background outbox polling worker for periodic retries of failed/staged events
+            await outbox_worker.start()
+            logger.info("✅ In-process Outbox polling worker started.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start in-process outbox worker: {e}")
 
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
     if settings.KAFKA_ENABLED:
-        await validation_consumer_runner.stop()
-        await processing_consumer.stop()
-        await evidence_consumer_runner.stop()
+        if validation_consumer_runner:
+            await validation_consumer_runner.stop()
+        if processing_consumer:
+            await processing_consumer.stop()
+        if evidence_consumer_runner:
+            await evidence_consumer_runner.stop()
         await outbox_worker.stop()
-        await fuel_intelligence_consumer_runner.stop()
+        if fuel_intelligence_consumer_runner:
+            await fuel_intelligence_consumer_runner.stop()
         await event_bus.stop()
+    else:
+        # Gracefully stop the in-process outbox polling worker
+        await outbox_worker.stop()
 
 
 # --- FastAPI App ---
@@ -476,6 +461,7 @@ app.include_router(vehicle_domain_router, prefix=API_PREFIX)
 app.include_router(expense_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)
 app.include_router(fuel_domain_router, prefix=API_PREFIX)
+app.include_router(fuel_domain_ops_router, prefix=API_PREFIX)
 app.include_router(auth_router)                   # carries its own /api/v1/auth prefix
 app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
 app.include_router(documents_router)              # carries its own /api/v1/documents prefix
@@ -487,6 +473,7 @@ app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
+app.include_router(telematics_router)
 app.include_router(route_intelligence_router)
 
 

@@ -22,8 +22,9 @@ class IntelligenceConsumer(EventSubscriber):
         EventType.FUEL_FILLED
     })
 
-    def __init__(self, orchestrator: GenericIntelligenceOrchestrator) -> None:
+    def __init__(self, orchestrator: GenericIntelligenceOrchestrator, session_factory=None) -> None:
         self.orchestrator = orchestrator
+        self.session_factory = session_factory
 
     async def handle(self, event: OperationalEventResponse) -> None:
         """
@@ -31,7 +32,8 @@ class IntelligenceConsumer(EventSubscriber):
         """
         logger.info(f"IntelligenceConsumer received {event.event_type.name} for Entity {event.entity_id}")
         
-        uow = SqlAlchemyUnitOfWork(async_session_factory)
+        factory = self.session_factory or async_session_factory
+        uow = SqlAlchemyUnitOfWork(factory)
         async with uow:
             occurred_at = event.occurred_at
             if isinstance(occurred_at, str):
@@ -39,16 +41,18 @@ class IntelligenceConsumer(EventSubscriber):
                     occurred_at = datetime.fromisoformat(occurred_at)
                 except ValueError:
                     occurred_at = datetime.now(timezone.utc)
+            elif not isinstance(occurred_at, datetime):
+                occurred_at = datetime.now(timezone.utc)
                         
-                # Event processing must either fully succeed or fail the transaction.
-                await self.orchestrator.execute_from_event(
-                    uow=uow,
-                    event_type=event.event_type,
-                    entity_id=event.entity_id,
-                    payload=event.payload or {},
-                    occurred_at=occurred_at
-                )
-                await uow.commit()
+            # Event processing must either fully succeed or fail the transaction.
+            await self.orchestrator.execute_from_event(
+                uow=uow,
+                event_type=event.event_type,
+                entity_id=event.entity_id,
+                payload=event.payload or {},
+                occurred_at=occurred_at
+            )
+            await uow.commit()
 
 # Backward compatibility alias
 FuelIntelligenceConsumer = IntelligenceConsumer

@@ -20,7 +20,29 @@ class FuelStateRepository:
         await self.db.refresh(transaction)
         return transaction
 
-    async def get_transaction_by_id(self, transaction_id: int) -> Optional[FuelTransaction]:
+    async def get_transaction_by_id(
+        self, transaction_id: int, company_id: int
+    ) -> Optional[FuelTransaction]:
+        """
+        Retrieve a fuel transaction scoped strictly to a company.
+        company_id is mandatory to prevent cross-tenant IDOR.
+        """
+        if company_id is None:
+            raise ValueError("company_id is mandatory for tenant-scoped fuel transaction lookup")
+        stmt = (
+            select(FuelTransaction)
+            .where(FuelTransaction.id == transaction_id)
+            .where(FuelTransaction.company_id == company_id)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_transaction_by_id_unscoped(
+        self, transaction_id: int
+    ) -> Optional[FuelTransaction]:
+        """
+        Explicit privileged method for system-internal or super-admin operations only.
+        """
         return await self.db.get(FuelTransaction, transaction_id)
 
     async def get_fuel_transactions_by_vehicle(self, vehicle_id: int, limit: int = 100) -> Sequence[FuelTransaction]:

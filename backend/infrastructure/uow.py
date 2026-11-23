@@ -71,7 +71,8 @@ class AbstractUnitOfWork(ABC):
         return self
 
     async def __aexit__(self, exc_type, exc_val, tb):
-        await self.rollback()
+        if exc_type is not None:
+            await self.rollback()
 
     @abstractmethod
     async def commit(self):
@@ -89,16 +90,28 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     def __init__(self, session_factory):
         self.session_factory = session_factory
         self.session: AsyncSession = None
+        self._should_close: bool = True
 
     async def __aenter__(self):
-        self.session = self.session_factory()
+        if isinstance(self.session_factory, AsyncSession):
+            self.session = self.session_factory
+            self._should_close = False
+        else:
+            session = self.session_factory()
+            if isinstance(session, AsyncSession):
+                self.session = session
+                self._should_close = not getattr(session, "_is_shared", False)
+            else:
+                self.session = session
+                self._should_close = True
         self.repositories = RepositoryRegistry(self.session)
         await super().__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_val, tb):
         await super().__aexit__(exc_type, exc_val, tb)
-        await self.session.close()
+        if self._should_close and self.session:
+            await self.session.close()
 
     async def commit(self):
         await self.session.commit()

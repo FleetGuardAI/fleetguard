@@ -319,7 +319,8 @@ async def create_expense(
             occurred_at=datetime.now(timezone.utc),
             capture_method=CaptureMethod.MANUAL_ENTRY,
             created_by=f"driver_{driver.id}",
-            payload=event_payload
+            payload=event_payload,
+            company_id=driver.company_id
         )
         
         await event_service.create_event(event_create)
