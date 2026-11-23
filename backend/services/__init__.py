@@ -23,6 +23,7 @@ from services.auth_service import (
     request_otp,
     resend_otp,
     verify_otp,
+    requires_role,
 )
 
 from services.operational_event_service import (

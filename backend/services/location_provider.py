@@ -4,12 +4,22 @@ Abstracts interaction with Places APIs (e.g. Google Places API).
 """
 
 import httpx
-from typing import List, Optional
+from typing import List, Optional, Any
 from config import settings
 from schemas.location import PlacePrediction, PlaceDetails
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_log_message(msg: Any, *secrets: Optional[str]) -> str:
+    """FG-SEC-020: Redact secret API keys from exception and log messages."""
+    text = str(msg)
+    for secret in secrets:
+        if secret and secret in text:
+            text = text.replace(secret, "[REDACTED_API_KEY]")
+    return text
+
 
 class LocationProvider:
     def __init__(self):
@@ -92,10 +102,10 @@ class LocationProvider:
                 ))
             return predictions
         except httpx.HTTPStatusError as e:
-            logger.error(f"Error fetching autocomplete HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(f"Error fetching autocomplete HTTP {e.response.status_code}: {sanitize_log_message(e.response.text, self.api_key)}")
             return []
         except Exception as e:
-            logger.error(f"Error fetching autocomplete: {e}")
+            logger.error(f"Error fetching autocomplete: {sanitize_log_message(e, self.api_key)}")
             return []
 
     async def get_place_details(self, place_id: str, session_token: Optional[str] = None) -> Optional[PlaceDetails]:
@@ -156,10 +166,10 @@ class LocationProvider:
             )
             return None
         except httpx.HTTPStatusError as e:
-            logger.error(f"Error fetching place details HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(f"Error fetching place details HTTP {e.response.status_code}: {sanitize_log_message(e.response.text, self.api_key)}")
             return None
         except Exception as e:
-            logger.error(f"Error fetching place details: {e}")
+            logger.error(f"Error fetching place details: {sanitize_log_message(e, self.api_key)}")
             return None
 
     async def reverse_geocode(self, lat: float, lng: float) -> Optional[str]:
@@ -194,5 +204,5 @@ class LocationProvider:
                         
             return None
         except Exception as e:
-            logger.error(f"Error in reverse geocoding: {e}")
+            logger.error(f"Error in reverse geocoding: {sanitize_log_message(e, self.api_key)}")
             return None

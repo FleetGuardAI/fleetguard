@@ -365,6 +365,15 @@ class PersistentOTPTracker:
 otp_tracker = PersistentOTPTracker()
 
 
+def _sanitize_error_message(err: Any, *secrets: Optional[str]) -> str:
+    """FG-SEC-020: Strip API keys and secret tokens from error representations before logging."""
+    msg = str(err)
+    for secret in secrets:
+        if secret and secret in msg:
+            msg = msg.replace(secret, "[REDACTED_API_KEY]")
+    return msg
+
+
 class MSG91OTPProvider(OTPProvider):
     """
     Official MSG91 Standard OTP API integration.
@@ -395,7 +404,8 @@ class MSG91OTPProvider(OTPProvider):
         if len(cleaned_id) == 10:
             cleaned_id = f"91{cleaned_id}"
 
-        url = f"https://control.msg91.com/api/v5/otp?authkey={self.auth_key}&template_id={self.template_id}&mobile={cleaned_id}"
+        # FG-SEC-020: Authkey passed securely via headers (_get_headers), not in query parameters
+        url = f"https://control.msg91.com/api/v5/otp?template_id={self.template_id}&mobile={cleaned_id}"
 
         try:
             async with httpx.AsyncClient() as client:
@@ -412,15 +422,16 @@ class MSG91OTPProvider(OTPProvider):
                     error_detail = data.get("message", "Unknown MSG91 error")
                     return OTPRequestResult(False, f"MSG91 Error: {error_detail}")
         except Exception as e:
-            logger.error(f"MSG91 API exception: {e}")
-            return OTPRequestResult(False, f"Provider API error: {str(e)}")
+            logger.error(f"MSG91 API exception: {_sanitize_error_message(e, self.auth_key)}")
+            return OTPRequestResult(False, "Provider API error")
 
     async def retry_otp(self, req_id: str, channel: str = "SMS") -> OTPRequestResult:
         if not self.auth_key:
             logger.error("OTP Retry Failed: MSG91 is not fully configured.")
             return OTPRequestResult(False, "Configuration Error: MSG91 is not fully configured")
 
-        url = f"https://control.msg91.com/api/v5/otp/retry?authkey={self.auth_key}&retrytype=text&mobile={req_id}"
+        # FG-SEC-020: Authkey passed securely via headers (_get_headers), not in query parameters
+        url = f"https://control.msg91.com/api/v5/otp/retry?retrytype=text&mobile={req_id}"
 
         try:
             async with httpx.AsyncClient() as client:
@@ -434,7 +445,7 @@ class MSG91OTPProvider(OTPProvider):
                     logger.error(f"MSG91 Standard retry failed: {data}")
                     return OTPRequestResult(False, "Failed to resend OTP via provider")
         except Exception as e:
-            logger.error(f"MSG91 API exception: {e}")
+            logger.error(f"MSG91 API exception: {_sanitize_error_message(e, self.auth_key)}")
             return OTPRequestResult(False, "Provider API error")
 
     async def verify_otp(self, req_id: str, code: str) -> OTPVerificationResult:
@@ -442,7 +453,8 @@ class MSG91OTPProvider(OTPProvider):
             logger.error("OTP Verify Failed: MSG91 is not fully configured.")
             return OTPVerificationResult(False, "Configuration Error: MSG91 is not fully configured")
 
-        url = f"https://control.msg91.com/api/v5/otp/verify?authkey={self.auth_key}&otp={code}&mobile={req_id}"
+        # FG-SEC-020: Authkey passed securely via headers (_get_headers), not in query parameters
+        url = f"https://control.msg91.com/api/v5/otp/verify?otp={code}&mobile={req_id}"
 
         try:
             async with httpx.AsyncClient() as client:
@@ -456,7 +468,7 @@ class MSG91OTPProvider(OTPProvider):
                     logger.warning(f"MSG91 Standard verification failed for {req_id}: {data}")
                     return OTPVerificationResult(False, "Invalid or expired OTP")
         except Exception as e:
-            logger.error(f"MSG91 API exception: {e}")
+            logger.error(f"MSG91 API exception: {_sanitize_error_message(e, self.auth_key)}")
             return OTPVerificationResult(False, "Provider API error")
 
     async def verify_access_token(self, token: str) -> OTPVerificationResult:

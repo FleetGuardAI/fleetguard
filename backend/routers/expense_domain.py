@@ -14,7 +14,7 @@ from database import get_db
 from models.expense_domain import ExpenseCategory, ExpenseStatus, Expense
 from schemas.expense_domain import ExpenseResponse, ExpenseApproveRequest, ExpenseRejectRequest
 from repositories.expense_repository import ExpenseRepository
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, requires_role
 from models.user import User, UserRole
 
 logger = logging.getLogger("fleetguard.expense_domain")
@@ -228,7 +228,7 @@ async def update_expense(
 async def approve_expense(
     expense_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN))
 ) -> ExpenseResponse:
     """
     Approve a pending expense claim.
@@ -266,7 +266,7 @@ async def reject_expense(
     expense_id: int,
     payload: ExpenseRejectRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(requires_role(UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.ADMIN))
 ) -> ExpenseResponse:
     """
     Reject a pending expense claim.
