@@ -84,6 +84,12 @@ class DriverTripResponse(BaseModel):
     distance_remaining_km: Optional[float] = None
     stops: List[StopPoint] = []
     start_selfie_url: Optional[str] = None
+    route_polyline: Optional[str] = None
+    route_distance_km: Optional[float] = None
+    route_duration_hours: Optional[float] = None
+    route_toll_estimate: Optional[float] = None
+    route_status: Optional[str] = None
+    approved_route_version_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -135,10 +141,67 @@ async def get_today_trips(
                 instructions=trip.instructions,
                 stops=stops,
                 start_selfie_url=trip.start_selfie_url,
+                route_polyline=trip.route_polyline,
+                route_distance_km=trip.route_distance_km,
+                route_duration_hours=trip.route_duration_hours,
+                route_toll_estimate=trip.route_toll_estimate,
+                route_status=trip.route_status or "APPROVED",
+                approved_route_version_id=trip.approved_route_version_id,
             )
         )
 
     return response_trips
+
+
+@router.get("/trips/{trip_id}", response_model=DriverTripResponse)
+async def get_driver_trip(
+    trip_id: int,
+    driver: Driver = Depends(get_current_driver),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get single assigned trip details for authenticated driver."""
+    trip = await db.get(Trip, trip_id)
+    if not trip or trip.driver_id != driver.id or trip.company_id != driver.company_id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    stops = [
+        StopPoint(location=trip.origin_location or "Pickup", stop_order=1, status="COMPLETED" if trip.status == TripStatus.IN_PROGRESS else "PENDING"),
+        StopPoint(location=trip.destination_location or "Delivery", stop_order=2, status="PENDING"),
+    ]
+
+    return DriverTripResponse(
+        id=trip.id,
+        trip_id=trip.trip_id,
+        status=trip.status.value if trip.status else "CREATED",
+        origin_location=trip.origin_location,
+        destination_location=trip.destination_location,
+        origin_lat=trip.origin_lat,
+        origin_lng=trip.origin_lng,
+        origin_address=trip.origin_address,
+        destination_lat=trip.destination_lat,
+        destination_lng=trip.destination_lng,
+        destination_address=trip.destination_address,
+        planned_distance=trip.planned_distance,
+        actual_distance=trip.actual_distance,
+        planned_start_time=trip.planned_start_time,
+        actual_start_time=trip.actual_start_time,
+        planned_end_time=trip.planned_end_time,
+        actual_end_time=trip.actual_end_time,
+        vehicle_id=trip.vehicle_id,
+        driver_id=trip.driver_id,
+        customer_name=trip.customer_name,
+        customer_phone=trip.customer_phone,
+        customer_contact_person=trip.customer_contact_person,
+        instructions=trip.instructions,
+        stops=stops,
+        start_selfie_url=trip.start_selfie_url,
+        route_polyline=trip.route_polyline,
+        route_distance_km=trip.route_distance_km,
+        route_duration_hours=trip.route_duration_hours,
+        route_toll_estimate=trip.route_toll_estimate,
+        route_status=trip.route_status or "APPROVED",
+        approved_route_version_id=trip.approved_route_version_id,
+    )
 
 
 @router.post("/trips/{trip_id}/start-selfie")

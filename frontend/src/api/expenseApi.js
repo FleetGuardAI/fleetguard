@@ -215,7 +215,11 @@ export async function uploadExpenseReceiptOCR(file) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').trim();
+  const trimmedBase = rawApiUrl.replace(/\/+$/, '');
+  const API_BASE = (trimmedBase && !trimmedBase.endsWith('/api'))
+    ? `${trimmedBase}/api`
+    : (trimmedBase || '/api');
   
   const response = await fetch(`${API_BASE}/v1/driver-app/expenses/ocr`, {
     method: 'POST',

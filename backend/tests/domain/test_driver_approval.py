@@ -18,46 +18,53 @@ async def test_driver_activation_document_security():
         session.add(admin)
         await session.commit()
         await session.refresh(admin)
-        admin_token = create_access_token(data={"sub": admin.mobile_number, "role": admin.role.value})
+        from services.auth_service import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: admin
+        admin_token = "mock-admin-token"
         
-        # Test 0-5 loop
-        for count in range(6):
-            driver_mobile = f"8880{random.randint(100000, 999999)}"
-            driver = Driver(company_id=1, name=f"Driver {count}", phone_number=driver_mobile, status=DriverStatus.INACTIVE, origin_type="test")
-            session.add(driver)
-            await session.commit()
-            await session.refresh(driver)
-            
-            # Add documents
-            required_cats = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
-            for i in range(count):
-                doc = Document(
-                    company_id=1,
-                    target_id=str(driver.id),
-                    target_type="DRIVER",
-                    category=required_cats[i],
-                    file_url="test.jpg",
-                    verification_status=DocumentVerificationStatus.APPROVED,
-                    uploaded_by=admin.id
-                )
-                session.add(doc)
-            await session.commit()
-            
-            # Make API Call
-            from httpx import ASGITransport
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.post(
-                    f"/api/v1/drivers/{driver.id}/approve",
-                    headers={"Authorization": f"Bearer {admin_token}"},
-                    json={"action": "APPROVED"}
-                )
-            
-            if count < 5:
-                # Should fail because not all 5 are present and approved
-                assert resp.status_code == 400
-                assert "Cannot approve" in resp.json()["detail"]
-            else:
-                # Should succeed because all 5 are present and approved
-                assert resp.status_code == 200
-                assert resp.json()["verification_status"] == "APPROVED"
-                assert resp.json()["status"] == "ACTIVE"
+        try:
+            # Test 0-5 loop
+            for count in range(6):
+                driver_mobile = f"8880{random.randint(100000, 999999)}"
+                driver = Driver(company_id=1, name=f"Driver {count}", phone_number=driver_mobile, status=DriverStatus.INACTIVE, origin_type="test")
+                session.add(driver)
+                await session.commit()
+                await session.refresh(driver)
+
+                # Add documents
+                required_cats = ["license_front", "license_back", "aadhaar_front", "aadhaar_back", "selfie"]
+                for i in range(count):
+                    doc = Document(
+                        company_id=1,
+                        target_id=str(driver.id),
+                        target_type="DRIVER",
+                        category=required_cats[i],
+                        original_filename="test.jpg",
+                        mime_type="image/jpeg",
+                        storage_path="test.jpg",
+                        verification_status=DocumentVerificationStatus.APPROVED,
+                        uploaded_by=str(admin.id)
+                    )
+                    session.add(doc)
+                await session.commit()
+
+                # Make API Call
+                from httpx import ASGITransport
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                    resp = await ac.post(
+                        f"/api/v1/drivers/{driver.id}/approve",
+                        headers={"Authorization": f"Bearer {admin_token}"},
+                        json={"action": "APPROVED"}
+                    )
+
+                if count < 5:
+                    # Should fail because not all 5 are present and approved
+                    assert resp.status_code == 400
+                    assert "Cannot approve" in resp.json()["detail"]
+                else:
+                    # Should succeed because all 5 are present and approved
+                    assert resp.status_code == 200
+                    assert resp.json()["verification_status"] == "APPROVED"
+                    assert resp.json()["status"] == "ACTIVE"
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)

@@ -137,8 +137,9 @@ async def test_document_verification_replacement_flow(
     # latest document is APPROVED
     assert doc2.verification_status == DocumentVerificationStatus.APPROVED
 
-    # overall verification considers latest document only and should be APPROVED
-    assert driver.verification_status == VerificationStatus.APPROVED
+    # overall verification considers latest document only and should be PENDING_APPROVAL
+    # (Preserves explicit human approval requirement for driver activation)
+    assert driver.verification_status == VerificationStatus.PENDING_APPROVAL
     
     app.dependency_overrides.clear()
 

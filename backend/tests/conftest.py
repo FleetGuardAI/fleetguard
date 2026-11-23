@@ -33,26 +33,55 @@ otp_service.otp_provider = otp_service.MockOTPProvider()
 otp_service.settings.OTP_MOCK_MODE = True
 
 # --- 1. SECURITY GUARD & CONFIGURATION ---
+import re
 
-# We load TEST_DATABASE_URL. It MUST be explicitly set.
-# For local testing convenience without Docker, you can use SQLite:
-# TEST_DATABASE_URL=sqlite+aiosqlite:///./test_db.sqlite
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+def mask_db_url(url: str) -> str:
+    if not url:
+        return ""
+    return re.sub(r"://([^:@]+):([^@]+)@", r"://\1:***@", url)
 
-if not TEST_DATABASE_URL:
-    pytest.exit("TEST_DATABASE_URL is required. Refusing to run tests against DATABASE_URL.")
+def validate_approved_test_database(url: str) -> None:
+    masked = mask_db_url(url)
+    url_lower = url.lower()
+    forbidden = [
+        "supabase",
+        "pooler",
+        "aws-",
+        "rds.amazonaws",
+        "azure",
+        "gcp",
+        "neon.tech",
+        "elephantsql",
+        "render.com",
+        "railway.app",
+        "lckabcseysgzlvkjpgtg",
+    ]
+    for f in forbidden:
+        if f in url_lower:
+            pytest.exit(
+                f"CRITICAL TEST ISOLATION FAILURE: Refusing connection to cloud/production database ({masked}) during tests! "
+                "Aborting test run immediately to protect remote data."
+            )
+    is_approved_sqlite = "sqlite" in url_lower and ("test" in url_lower or ":memory:" in url_lower)
+    is_approved_local_pg = (
+        ("postgresql" in url_lower or "asyncpg" in url_lower)
+        and ("localhost" in url_lower or "127.0.0.1" in url_lower)
+        and "test" in url_lower
+    )
+    if not (is_approved_sqlite or is_approved_local_pg):
+        pytest.exit(
+            f"CRITICAL TEST ISOLATION FAILURE: Database URL '{masked}' is not an approved isolated test database! "
+            "Tests are strictly restricted to isolated test databases (e.g. SQLite test_db or local localhost test DB)."
+        )
 
-if TEST_DATABASE_URL == settings.DATABASE_URL:
-    pytest.exit("TEST_DATABASE_URL must be separate from DATABASE_URL. Refusing to run tests.")
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///./test_db.sqlite")
+validate_approved_test_database(TEST_DATABASE_URL)
+validate_approved_test_database(settings.DATABASE_URL)
 
-if "pooler.supabase.com" in TEST_DATABASE_URL:
-    pytest.exit("TEST_DATABASE_URL appears to point to production Supabase. Refusing to run.")
-
-print(f"\n[TEST ENVIRONMENT] Using database: {TEST_DATABASE_URL.split('@')[-1] if '@' in TEST_DATABASE_URL else TEST_DATABASE_URL}\n")
+print(f"\n[TEST ENVIRONMENT] Using database: {mask_db_url(TEST_DATABASE_URL)}\n")
 
 
 # --- 2. ENGINE & SESSION SETUP ---
-
 # We use an async engine tailored to the test database
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(
@@ -66,11 +95,6 @@ database.AsyncSessionLocal = TestSessionLocal
 database.engine = test_engine
 
 # Ensure all background and event consumers use the test database
-import database
-database.engine = test_engine
-database.async_session_factory = TestSessionLocal
-database.AsyncSessionLocal = TestSessionLocal
-
 import main
 main.async_session_factory = TestSessionLocal
 if hasattr(main, "processing_consumer_instance"):
@@ -83,7 +107,6 @@ if hasattr(main, "ocr_evidence_provider"):
     main.ocr_evidence_provider._db_session_factory = TestSessionLocal
 if hasattr(main, "outbox_publisher"):
     main.outbox_publisher.db_session_factory = TestSessionLocal
-
 
 # --- 3. EVENT LOOP SCOPING (Fixes "Event loop is closed") ---
 
@@ -107,6 +130,7 @@ async def initialize_test_database():
     Since we might be using SQLite for testing (which is compatible via JSONB fallback and Uuid),
     we use Base.metadata.create_all for broad compatibility in the isolated test environment.
     """
+    import models  # noqa: F401 - Ensure all models are registered on Base.metadata
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -116,6 +140,17 @@ async def initialize_test_database():
     # Optional teardown
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.fixture
+def auth_headers():
+    from utils.security import create_access_token
+    from models.user import UserRole
+    token = create_access_token(data={
+        "sub": "1",
+        "company_id": 1,
+        "role": UserRole.COMPANY_ADMIN.value,
+    })
+    return {"Authorization": f"Bearer {token}"}
 
 # --- 5. TRANSACTION ISOLATION & DEPENDENCY OVERRIDE ---
 

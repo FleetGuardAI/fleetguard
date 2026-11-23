@@ -80,8 +80,8 @@ jobs:
 
       - name: Test Migration Downgrade on Disposable Database
         run: |
-          echo "Verifying migration downgrade (-1 drops RLS policies)..."
-          alembic downgrade -1
+          echo "Verifying migration downgrade to e5b6c7d8a9f0 (drops RLS policies)..."
+          alembic downgrade e5b6c7d8a9f0
           # Verify RLS policies were cleanly dropped
           python -c "
           import asyncio

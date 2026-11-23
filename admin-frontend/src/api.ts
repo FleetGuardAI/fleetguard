@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 function resolveAdminBaseUrl(): string {
-  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  const envUrl = ((import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL) as string | undefined)?.trim();
   if (envUrl) {
     const cleaned = envUrl.replace(/\/+$/, '');
     if (cleaned.endsWith('/admin')) {

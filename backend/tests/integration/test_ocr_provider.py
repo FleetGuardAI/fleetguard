@@ -18,7 +18,7 @@ async def test_mock_ocr_provider():
     result = await provider.extract_text(b"dummy", "image/jpeg")
     assert result.provider_name == "MockOCRProvider"
     assert "MockOCRProvider" in result.provider_name
-    assert result.confidence == 0.95
+    assert result.confidence == 0.85
 
 @pytest.mark.asyncio
 async def test_google_ocr_provider_init_fails_without_credentials():

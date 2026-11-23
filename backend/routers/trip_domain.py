@@ -203,6 +203,54 @@ async def create_trip(
         logging.getLogger(__name__).error(f"Failed to calculate pre-trip intelligence: {e}")
         
     db.add(trip)
+    await db.flush()
+
+    # Automatically persist initial RouteVersion (v1) if coordinates are available
+    if trip.origin_lat and trip.destination_lat:
+        try:
+            from services.route_version_service import RouteVersionService
+            from models.route_domain import RouteVersionStatus
+            version_service = RouteVersionService(db)
+            route_option_data = {
+                "polyline": trip.route_polyline or "",
+                "distance_km": trip.route_distance_km or trip.planned_distance or 0.0,
+                "duration_hours": trip.route_duration_hours or 0.0,
+                "duration_seconds": int((trip.route_duration_hours or 0.0) * 3600),
+                "toll_cost_estimate": trip.route_toll_estimate,
+                "provider": trip.route_provider or "google",
+                "category": "RECOMMENDED",
+                "selection_reason": "Initial planned route on dispatch",
+            }
+            if not route_option_data["polyline"]:
+                from services.routing.engine import RoutingEngine
+                from services.routing.schemas import RouteCalculationInput
+                r_engine = RoutingEngine()
+                r_out = await r_engine.calculate_routes(RouteCalculationInput(
+                    origin_lat=trip.origin_lat,
+                    origin_lng=trip.origin_lng,
+                    destination_lat=trip.destination_lat,
+                    destination_lng=trip.destination_lng,
+                    vehicle_id=trip.vehicle_id,
+                ))
+                rec = r_out.recommended_route
+                route_option_data["polyline"] = rec.polyline
+                route_option_data["distance_km"] = rec.distance_km
+                route_option_data["duration_hours"] = rec.duration_hours
+                route_option_data["duration_seconds"] = rec.duration_seconds
+                route_option_data["toll_cost_estimate"] = rec.toll_estimate
+                route_option_data["provider"] = rec.provider
+
+            await version_service.persist_route_version(
+                trip_id=trip.id,
+                company_id=current_user.company_id,
+                route_option_data=route_option_data,
+                status=RouteVersionStatus.APPROVED,
+                approved_by_user_id=current_user.id,
+                selection_reason="Initial route created during trip dispatch."
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Could not persist initial route version for trip #{trip.id}: {e}")
     
     # Authoritative OperationalEvent emissions
     event_created = create_trip_operational_event(
