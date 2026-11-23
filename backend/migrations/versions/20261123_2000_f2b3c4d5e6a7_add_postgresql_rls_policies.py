@@ -53,10 +53,6 @@ def upgrade() -> None:
 
     for table in TENANT_TABLES:
         if table in existing_tables:
-            columns = {col["name"] for col in inspector.get_columns(table)}
-            if "company_id" not in columns:
-                continue
-
             # Enable RLS and force it even for table owners/superusers
             op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
             op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
