@@ -23,17 +23,41 @@ class OutboxPublisher:
         self.db_session_factory = db_session_factory
         self.event_bus = event_bus
 
+    async def recover_stale_claims(self) -> int:
+        """
+        Recovers any outbox events left in PUBLISHING status due to previous crashes.
+        """
+        try:
+            async with SqlAlchemyUnitOfWork(self.db_session_factory) as uow:
+                timeout = getattr(settings, "OUTBOX_STALE_TIMEOUT_SECONDS", 30)
+                recovered = await uow.repositories.outbox.recover_stale_publishing(stale_threshold_seconds=timeout)
+                if recovered > 0:
+                    await uow.commit()
+                    logger.warning(f"OutboxPublisher recovered {recovered} stale PUBLISHING events back to PENDING.")
+                return recovered
+        except Exception as e:
+            logger.error(f"Failed to recover stale outbox claims: {e}")
+            return 0
+
     async def publish_pending(self) -> int:
         """
         Polls for a batch of pending events and publishes them.
         Returns the number of events processed.
         """
         published_count = 0
+        batch_size = getattr(settings, "OUTBOX_BATCH_SIZE", 50)
+        max_retries = getattr(settings, "OUTBOX_MAX_RETRIES", 5)
         
+        # 0. Periodically recover any stale PUBLISHING claims
+        await self.recover_stale_claims()
+
         try:
             async with SqlAlchemyUnitOfWork(self.db_session_factory) as uow:
-                # 1. Fetch pending batch
-                events = await uow.repositories.outbox.get_pending_batch(batch_size=settings.OUTBOX_BATCH_SIZE)
+                # 1. Fetch pending batch (bounded by max_retries)
+                events = await uow.repositories.outbox.get_pending_batch(
+                    batch_size=batch_size,
+                    max_retries=max_retries
+                )
                 
                 if not events:
                     return 0
@@ -52,11 +76,9 @@ class OutboxPublisher:
             async with SqlAlchemyUnitOfWork(self.db_session_factory) as uow:
                 try:
                     # Re-fetch event inside the loop's transaction
-                    # We can use the cached object, but we need to merge or just update it via repository
-                    # To be clean, let's execute raw update or just merge
                     current_event = await uow.session.merge(event)
                     
-                    # Attempt Kafka publish
+                    # Attempt publish via event bus (in-process or Kafka)
                     await self.event_bus.publish(current_event.topic, current_event.payload)
                     
                     # Mark successful
@@ -69,10 +91,19 @@ class OutboxPublisher:
                     # Rollback the failed attempt just in case
                     await uow.rollback()
                     
-                    # Record the transient failure
+                    # Record the failure
                     async with SqlAlchemyUnitOfWork(self.db_session_factory) as failure_uow:
                         failure_event = await failure_uow.session.merge(event)
-                        await failure_uow.repositories.outbox.mark_failed(failure_event, str(e))
+                        new_retry_count = (failure_event.retry_count or 0) + 1
+                        if new_retry_count >= max_retries:
+                            err_msg = f"[POISON_PILL / MAX_RETRIES_EXCEEDED] Attempt {new_retry_count}/{max_retries}: {e}"
+                            logger.critical(
+                                f"Outbox event {event.id} (event_id={event.event_id}) exceeded max retries ({max_retries}). "
+                                f"Moved to Dead-Letter state: {e}"
+                            )
+                        else:
+                            err_msg = f"Attempt {new_retry_count}/{max_retries}: {e}"
+                        await failure_uow.repositories.outbox.mark_failed(failure_event, err_msg)
                         await failure_uow.commit()
 
         return published_count

@@ -65,6 +65,7 @@ from models.operational_event import (
     OperationalEvent,
     VerificationStatus,
 )
+from models.outbox_event import OutboxStatus
 from repositories.operational_event_repository import (
     EventNotFoundError,
     EventPersistenceError,
@@ -95,7 +96,7 @@ class EventServiceError(Exception):
 class EventNotFound(EventServiceError):
     """Raised when a requested event does not exist."""
 
-    def __init__(self, event_id: uuid.UUID) -> None:
+    def __init__(self, event_id: uuid.UUID | str) -> None:
         self.event_id = event_id
         super().__init__(f"Operational event '{event_id}' not found.")
 
@@ -127,9 +128,24 @@ class OperationalEventService:
 
     def __init__(
         self,
-        uow: AbstractUnitOfWork,
+        uow: Any,
+        dispatcher: Optional[Any] = None,
     ) -> None:
-        self.uow = uow
+        if hasattr(uow, "repositories"):
+            self.uow = uow
+        else:
+            # Fallback wrapper for raw AsyncSession
+            from infrastructure.uow import RepositoryRegistry
+            class _SessionUoW(AbstractUnitOfWork):
+                def __init__(self, s):
+                    self.session = s
+                    self.repositories = RepositoryRegistry(s)
+                async def commit(self):
+                    await self.session.commit()
+                async def rollback(self):
+                    await self.session.rollback()
+            self.uow = _SessionUoW(uow)
+        self.dispatcher = dispatcher
 
     # -----------------------------------------------------------------------
     # Write Operations
@@ -137,49 +153,34 @@ class OperationalEventService:
 
     async def create_event(
         self,
-        company_id: int,
-        payload: OperationalEventCreate,
+        company_id_or_payload: int | OperationalEventCreate,
+        payload: Optional[OperationalEventCreate] = None,
     ) -> OperationalEventResponse:
         """
         Record a new Operational Event.
 
-        Accepts a validated ``OperationalEventCreate`` schema, constructs the
-        ORM instance, persists it via the repository, and returns the full
-        response schema.
-
-        Extension point
-        ---------------
-        ``_after_create`` is called immediately after a successful persist.
-        This is where the Event Dispatcher or Fleet Memory integration will
-        be wired in a future milestone.
-
-        Parameters
-        ----------
-        company_id : int
-            The tenant boundary.
-        payload : OperationalEventCreate
-            Validated event data from the caller.
-
-        Returns
-        -------
-        OperationalEventResponse
-            The persisted event with all server-generated fields populated.
-
-        Raises
-        ------
-        EventWriteError
-            If the repository cannot persist the event.
+        Accepts either (company_id, payload) or (payload) where company_id
+        is embedded in payload or defaulted.
         """
+        if isinstance(company_id_or_payload, OperationalEventCreate):
+            event_payload = company_id_or_payload
+            company_id = getattr(event_payload, "company_id", None) or 1
+        else:
+            company_id = int(company_id_or_payload)
+            if payload is None:
+                raise ValueError("OperationalEventCreate payload must be provided")
+            event_payload = payload
+
         event = OperationalEvent(
-            event_type=payload.event_type,
-            entity_type=payload.entity_type,
-            entity_id=payload.entity_id,
-            occurred_at=payload.occurred_at,
-            capture_method=payload.capture_method,
-            created_by=payload.created_by,
-            payload=payload.payload,
-            event_metadata=payload.event_metadata,
-            notes=payload.notes,
+            event_type=event_payload.event_type,
+            entity_type=event_payload.entity_type,
+            entity_id=event_payload.entity_id,
+            occurred_at=event_payload.occurred_at,
+            capture_method=event_payload.capture_method,
+            created_by=event_payload.created_by,
+            payload=event_payload.payload,
+            event_metadata=event_payload.event_metadata,
+            notes=event_payload.notes,
             company_id=company_id,
         )
 
@@ -189,25 +190,63 @@ class OperationalEventService:
             logger.error("create_event failed: %s", exc.detail)
             raise EventWriteError(exc.detail) from exc
 
+        event_id_str = str(persisted.id)
         logger.info(
-            "Event created: id=%s type=%s entity=%s:%s",
-            persisted.id,
+            "Event created: id=%s type=%s entity=%s:%s company_id=%s",
+            event_id_str,
             persisted.event_type.value,
             persisted.entity_type.value,
             persisted.entity_id,
+            persisted.company_id,
         )
 
-        # Stage the event in the Outbox to guarantee delivery
-        outbox_payload = OperationalEventResponse.model_validate(persisted).model_dump(mode="json")
+        response = OperationalEventResponse.model_validate(persisted)
+
+        # Stage the event in the Outbox to guarantee delivery.
+        # In no-Kafka mode with an active in-process dispatcher, stage with status PUBLISHING
+        # to claim the record immediately, preventing competing polling workers from dispatching concurrently.
+        initial_status = (
+            OutboxStatus.PUBLISHING
+            if (not getattr(settings, "KAFKA_ENABLED", False) and self.dispatcher is not None)
+            else OutboxStatus.PENDING
+        )
+
+        outbox_payload = response.model_dump(mode="json")
         await self.uow.repositories.outbox.create_event(
             topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
             payload=outbox_payload,
-            event_id=str(persisted.id)
+            event_id=event_id_str,
+            status=initial_status,
         )
 
         await self.uow.commit()
 
-        return OperationalEventResponse.model_validate(persisted)
+        # In-process dispatch if a dispatcher is registered
+        if self.dispatcher is not None:
+            try:
+                await self.dispatcher.publish(response)
+                # Successful in-process dispatch -> advance outbox state to PUBLISHED
+                if not getattr(settings, "KAFKA_ENABLED", False):
+                    try:
+                        outbox_record = await self.uow.repositories.outbox.get_by_event_id(event_id_str)
+                        if outbox_record:
+                            await self.uow.repositories.outbox.mark_published(outbox_record)
+                            await self.uow.commit()
+                    except Exception as outbox_err:
+                        logger.warning("Could not advance outbox state for event %s: %s", event_id_str, outbox_err)
+            except Exception as exc:
+                logger.exception("In-process dispatch failed for event %s: %s", event_id_str, exc)
+                # Dispatch failed -> release claim back to PENDING for the background worker to retry
+                if not getattr(settings, "KAFKA_ENABLED", False):
+                    try:
+                        outbox_record = await self.uow.repositories.outbox.get_by_event_id(event_id_str)
+                        if outbox_record:
+                            await self.uow.repositories.outbox.mark_failed(outbox_record, str(exc))
+                            await self.uow.commit()
+                    except Exception as failure_err:
+                        logger.error("Could not record dispatch failure for event %s: %s", event_id_str, failure_err)
+
+        return response
 
     async def update_notes(
         self,
@@ -360,18 +399,18 @@ class OperationalEventService:
 
     async def get_event(
         self,
-        event_id: uuid.UUID,
-        company_id: int,
+        event_id: uuid.UUID | str,
+        company_id: Optional[int] = None,
     ) -> OperationalEventResponse:
         """
         Retrieve a single event by its UUID.
 
         Parameters
         ----------
-        event_id : uuid.UUID
+        event_id : uuid.UUID | str
             UUID of the event to retrieve.
-        company_id : int
-            The tenant boundary.
+        company_id : Optional[int]
+            The tenant boundary if scoped, or None for internal processing.
 
         Returns
         -------

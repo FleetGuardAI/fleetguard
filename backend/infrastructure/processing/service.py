@@ -4,6 +4,7 @@ FleetGuard — Processing Service
 
 import time
 import logging
+from datetime import datetime, timezone
 from typing import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -160,18 +161,19 @@ class ProcessingService:
             
             processing_event_payload = OperationalEventCreate(
                 event_type=target_event_type,
-                entity_type=EntityType.OPERATIONAL_EVENT,
+                entity_type=EntityType.SYSTEM,
                 entity_id=original_event_id,
-                capture_method=CaptureMethod.SYSTEM,
+                capture_method=CaptureMethod.SYSTEM_GENERATED,
+                occurred_at=datetime.now(timezone.utc),
                 created_by="system:processing-engine",
                 payload=processing_result.model_dump(mode="json"),
-                notes=f"Processing resulted in {final_status.value}."
+                notes=f"Processing resulted in {final_status.value}.",
+                company_id=orm_event.company_id if orm_event else 1,
             )
             
             await event_service.create_event(processing_event_payload)
             
             # Update legacy ProcessingRecord DB state
-            from datetime import datetime, timezone
             await final_uow.repositories.processing.update_record(
                 record_id=record.id,
                 status=RecordStatus.FAILED if has_failure else RecordStatus.COMPLETED,

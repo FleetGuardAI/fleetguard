@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     ROUTE_CACHE_TTL_SECONDS: int = 3600
     DEFAULT_TOLL_RATE_PER_KM: float = 2.5  # Fallback if tolls not available
 
+    # --- Hardware Telematics Webhook ---
+    TELEMATICS_WEBHOOK_SECRET: Optional[str] = None
+    ALLOW_REGISTRATION_ONLY_TELEMATICS: bool = False
+
     # --- Validation Pipeline ---
     KAFKA_VALIDATION_RESULTS_TOPIC: str = "fleetguard.validation.results"
 
@@ -173,6 +177,12 @@ class Settings(BaseSettings):
     # --- Dead Letter Queue (DLQ) ---
     DLQ_TOPIC_NAME: str = "fleetguard.dlq"
     DLQ_INCLUDE_STACK_TRACE: bool = True
+
+    # --- Outbox Worker (No-Kafka / In-Process Mode) ---
+    OUTBOX_POLL_INTERVAL_MS: int = 1000
+    OUTBOX_BATCH_SIZE: int = 50
+    OUTBOX_MAX_RETRIES: int = 5
+    OUTBOX_STALE_TIMEOUT_SECONDS: int = 30
 
     # --- Supabase Storage ---
     SUPABASE_URL: str | None = None

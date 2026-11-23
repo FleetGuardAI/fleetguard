@@ -18,6 +18,8 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: KAFKA_ENABLED
+        value: "false"
       - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false
       - key: KAFKA_SECURITY_PROTOCOL

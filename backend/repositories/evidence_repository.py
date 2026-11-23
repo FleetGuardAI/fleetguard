@@ -78,20 +78,19 @@ class EvidenceRepository:
             
         return evidence
 
-    async def get_for_event(self, event_id: uuid.UUID, company_id: int) -> Sequence[Evidence]:
+    async def get_for_event(self, event_id: uuid.UUID, company_id: int | None = None) -> Sequence[Evidence]:
         """
         Fetch all evidence records attached to a specific Operational Event.
         Ordered chronologically.
         """
-        stmt = (
-            select(Evidence)
-            .join(OperationalEvent, Evidence.event_id == OperationalEvent.id)
-            .where(
+        stmt = select(Evidence).order_by(Evidence.created_at.asc())
+        if company_id is not None:
+            stmt = stmt.join(OperationalEvent, Evidence.event_id == OperationalEvent.id).where(
                 Evidence.event_id == event_id,
                 OperationalEvent.company_id == company_id
             )
-            .order_by(Evidence.created_at.asc())
-        )
+        else:
+            stmt = stmt.where(Evidence.event_id == event_id)
         result = await self._session.execute(stmt)
         return result.scalars().all()
 

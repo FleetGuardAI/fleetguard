@@ -226,8 +226,8 @@ async def approve_or_reject_ticket(
         event_payload = OperationalEventCreate(
             entity_type=EntityType.EXPENSE,
             entity_id=f"TICKET-{ticket.id}",
-            event_type=EventType.EXPENSE_RECORDED,
-            capture_method=CaptureMethod.SYSTEM_INTERNAL,
+            event_type=EventType.EXPENSE_ADDED,
+            capture_method=CaptureMethod.SYSTEM_GENERATED,
             payload={
                 "category": ticket.issue_type,
                 "amount": ticket.amount,
@@ -238,7 +238,8 @@ async def approve_or_reject_ticket(
                 "driver_id": ticket.driver_id,
                 "expense_date": ticket.expense_date.isoformat() if ticket.expense_date else None
             },
-            notes=f"Auto-generated from approved Ticket {ticket.id}"
+            notes=f"Auto-generated from approved Ticket {ticket.id}",
+            company_id=current_user.company_id,
         )
         
         await event_service.create_event(event_payload)

@@ -24,6 +24,7 @@ import uuid
 from services.auth_service import get_current_user
 from models.user import User
 from services.odometer_service import OdometerService
+from services.maintenance_finance import ensure_maintenance_expense
 
 router = APIRouter(prefix="/v1", tags=["Maintenance Domain"])
 

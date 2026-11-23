@@ -2085,7 +2085,9 @@ class CopilotToolExecutor:
         all_evidence = []
         for ev in events:
             try:
-                evidence_list = await self.uow.repositories.evidence.get_for_event(ev.id)
+                evidence_list = await self.uow.repositories.evidence.get_for_event(
+                    ev.id, company_id=self.company_id
+                )
                 for evidence in evidence_list:
                     all_evidence.append({
                         "evidence_id": str(evidence.id),

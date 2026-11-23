@@ -4,6 +4,7 @@ FleetGuard — Evidence Orchestrator
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,12 +130,14 @@ class EvidenceOrchestrator(EventSubscriber):
             
             completion_payload = OperationalEventCreate(
                 event_type=EventType.EVIDENCE_PACKAGE_READY,
-                entity_type=EntityType.OPERATIONAL_EVENT,
+                entity_type=EntityType.SYSTEM,
                 entity_id=str(event.id),
-                capture_method=CaptureMethod.SYSTEM,
+                capture_method=CaptureMethod.SYSTEM_GENERATED,
+                occurred_at=datetime.now(timezone.utc),
                 created_by="system:evidence-framework",
                 payload=package.model_dump(mode="json"),
-                notes=f"Evidence package ready (Status: {package.collection_status})"
+                notes=f"Evidence package ready (Status: {package.collection_status})",
+                company_id=getattr(event, "company_id", None) or 1,
             )
             
             await event_service.create_event(completion_payload)

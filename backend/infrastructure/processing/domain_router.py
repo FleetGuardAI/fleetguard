@@ -12,7 +12,7 @@ from models.operational_event import EventType
 from schemas.operational_event import OperationalEventResponse
 
 #from services.assignment_service import AssignmentService
-from domain.fuel.service import FuelService
+from services.fuel_service import FuelService
 from services.driver_service import DriverService
 from services.trip_service import TripService
 from services.maintenance_service import MaintenanceService
@@ -66,11 +66,11 @@ def get_default_domain_router() -> DomainRouter:
     router.register(EventType.FUEL_FILLED, lambda uow: ExpenseService(uow))
     
     # --- VEHICLE_* ---
-    for evt in (EventType.VEHICLE_ASSIGNED, EventType.VEHICLE_UNASSIGNED, EventType.VEHICLE_STATUS_CHANGED):
+    for evt in (EventType.VEHICLE_REGISTERED, EventType.VEHICLE_ASSIGNED, EventType.VEHICLE_UNASSIGNED, EventType.VEHICLE_STATUS_CHANGED):
         router.register(evt, lambda uow: VehicleService(uow))
         
     # --- DRIVER_* ---
-    for evt in (EventType.DRIVER_ASSIGNED, EventType.DRIVER_UNASSIGNED, EventType.DRIVER_STATUS_CHANGED):
+    for evt in (EventType.DRIVER_REGISTERED, EventType.DRIVER_ASSIGNED, EventType.DRIVER_UNASSIGNED, EventType.DRIVER_STATUS_CHANGED):
         router.register(evt, lambda uow: DriverService(uow))
         
     # --- TRIP_* ---

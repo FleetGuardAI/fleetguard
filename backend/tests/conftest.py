@@ -65,6 +65,26 @@ database.async_session_factory = TestSessionLocal
 database.AsyncSessionLocal = TestSessionLocal
 database.engine = test_engine
 
+# Ensure all background and event consumers use the test database
+import database
+database.engine = test_engine
+database.async_session_factory = TestSessionLocal
+database.AsyncSessionLocal = TestSessionLocal
+
+import main
+main.async_session_factory = TestSessionLocal
+if hasattr(main, "processing_consumer_instance"):
+    main.processing_consumer_instance.processing_service.db_session_factory = TestSessionLocal
+if hasattr(main, "validation_consumer"):
+    main.validation_consumer.validation_service.db_session_factory = TestSessionLocal
+if hasattr(main, "evidence_orchestrator"):
+    main.evidence_orchestrator.session_factory = TestSessionLocal
+if hasattr(main, "ocr_evidence_provider"):
+    main.ocr_evidence_provider._db_session_factory = TestSessionLocal
+if hasattr(main, "outbox_publisher"):
+    main.outbox_publisher.db_session_factory = TestSessionLocal
+
+
 # --- 3. EVENT LOOP SCOPING (Fixes "Event loop is closed") ---
 
 @pytest.fixture(scope="session")

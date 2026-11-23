@@ -34,15 +34,21 @@ from infrastructure.evidence.orchestrator import EvidenceOrchestrator
 from infrastructure.evidence.registry import EvidenceProviderRegistry
 from services.operational_event_service import OperationalEventService
 
+from dispatchers.event_dispatcher import default_dispatcher
+
 # Application-level event bus singleton.
 # Injected into OperationalEventService via get_event_service dependency.
-event_bus = KafkaEventBus(
-    bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-    security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
-    sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
-    sasl_plain_username=settings.KAFKA_SASL_USERNAME,
-    sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+if settings.KAFKA_ENABLED:
+    event_bus = KafkaEventBus(
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
+        sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
+        sasl_plain_username=settings.KAFKA_SASL_USERNAME,
+        sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
+    )
+else:
+    from infrastructure.events.bus import InProcessEventBus
+    event_bus = InProcessEventBus(dispatcher=default_dispatcher)
 
 # Initialize Validation & Enrichment Engine
 from infrastructure.validation.registry import ValidationRuleRegistry
@@ -62,7 +68,7 @@ validation_registry.register(ExpenseLocationFraudRule())
 validation_engine = ValidationEngine(validation_registry)
 
 def event_service_factory(uow) -> OperationalEventService:
-    return OperationalEventService(uow)
+    return OperationalEventService(uow, dispatcher=default_dispatcher)
 
 def validation_service_factory(db: async_session_factory) -> ValidationService:
     # Need to pass db inside consumer or instantiate service with factory.
@@ -84,7 +90,7 @@ validation_consumer = ValidationConsumer(
     )
 )
 
-# Attach Validation Engine to its own consumer group
+# Attach Validation Engine to its own consumer group (Kafka mode only)
 validation_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="validation-group",
@@ -95,7 +101,7 @@ validation_consumer_runner = KafkaConsumerRunner(
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Processing Engine
 from infrastructure.processing.domain_router import get_default_domain_router
@@ -112,7 +118,7 @@ processing_consumer_instance = ProcessingConsumer(
     )
 )
 
-# Attach Processing Engine to its own consumer group
+# Attach Processing Engine to its own consumer group (Kafka mode only)
 processing_consumer = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="processing-group",
@@ -123,7 +129,7 @@ processing_consumer = KafkaConsumerRunner(
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Evidence Framework
 evidence_registry = EvidenceProviderRegistry()
@@ -164,42 +170,51 @@ ocr_evidence_provider = OCREvidenceProvider(
 )
 evidence_registry.register(ocr_evidence_provider)
 
-def event_service_factory(uow) -> OperationalEventService:
-    return OperationalEventService(uow)
+evidence_orchestrator = EvidenceOrchestrator(
+    session_factory=async_session_factory,
+    registry=evidence_registry,
+    event_service_factory=event_service_factory
+)
 
+# Attach Evidence Engine to its own consumer group (Kafka mode only)
 evidence_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="evidence-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
-    subscriber=EvidenceOrchestrator(
-        session_factory=async_session_factory,
-        registry=evidence_registry,
-        event_service_factory=event_service_factory
-    ),
+    subscriber=evidence_orchestrator,
     dlq_publisher=dlq_publisher,
     security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
 
 # Initialize Fuel Intelligence Engine
 from infrastructure.intelligence.fuel_domain.orchestrator import FuelIntelligenceOrchestrator
 from infrastructure.intelligence.fuel_domain.consumer import FuelIntelligenceConsumer
 
+fuel_intelligence_consumer = FuelIntelligenceConsumer(
+    orchestrator=FuelIntelligenceOrchestrator()
+)
+
+# Attach Fuel Intelligence to its own consumer group (Kafka mode only)
 fuel_intelligence_consumer_runner = KafkaConsumerRunner(
     bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
     group_id="fie-group",
     topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
-    subscriber=FuelIntelligenceConsumer(
-        orchestrator=FuelIntelligenceOrchestrator()
-    ),
+    subscriber=fuel_intelligence_consumer,
     dlq_publisher=dlq_publisher,
     security_protocol=settings.KAFKA_SECURITY_PROTOCOL,
     sasl_mechanism=settings.KAFKA_SASL_MECHANISM,
     sasl_plain_username=settings.KAFKA_SASL_USERNAME,
     sasl_plain_password=settings.KAFKA_SASL_PASSWORD,
-)
+) if settings.KAFKA_ENABLED else None
+
+# Register all subscribers with the in-process event dispatcher
+default_dispatcher.register_subscriber(evidence_orchestrator)
+default_dispatcher.register_subscriber(validation_consumer)
+default_dispatcher.register_subscriber(processing_consumer_instance)
+default_dispatcher.register_subscriber(fuel_intelligence_consumer)
 
 # Initialize Outbox Pattern
 from infrastructure.events.outbox_publisher import OutboxPublisher
@@ -238,6 +253,7 @@ from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
 from routers.location import router as location_router
+from routers.telematics import router as telematics_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -362,18 +378,38 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             logger.warning(f"⚠️ Could not start background Kafka runners: {e}")
     else:
-        logger.info("Kafka workers disabled — KAFKA_ENABLED=False")
+        logger.info("Kafka workers disabled — KAFKA_ENABLED=False (using InProcessEventBus)")
+        try:
+            # Replay any pending/crashed outbox events on startup
+            replayed = await outbox_publisher.publish_pending()
+            if replayed > 0:
+                logger.info(f"✅ Recovered and published {replayed} pending outbox events at startup.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not replay pending outbox events at startup: {e}")
+        try:
+            # Start background outbox polling worker for periodic retries of failed/staged events
+            await outbox_worker.start()
+            logger.info("✅ In-process Outbox polling worker started.")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start in-process outbox worker: {e}")
 
     yield
 
     logger.info("🛑 FleetGuard TMS shutting down.")
     if settings.KAFKA_ENABLED:
-        await validation_consumer_runner.stop()
-        await processing_consumer.stop()
-        await evidence_consumer_runner.stop()
+        if validation_consumer_runner:
+            await validation_consumer_runner.stop()
+        if processing_consumer:
+            await processing_consumer.stop()
+        if evidence_consumer_runner:
+            await evidence_consumer_runner.stop()
         await outbox_worker.stop()
-        await fuel_intelligence_consumer_runner.stop()
+        if fuel_intelligence_consumer_runner:
+            await fuel_intelligence_consumer_runner.stop()
         await event_bus.stop()
+    else:
+        # Gracefully stop the in-process outbox polling worker
+        await outbox_worker.stop()
 
 
 # --- FastAPI App ---
@@ -481,6 +517,7 @@ app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
+app.include_router(telematics_router)
 
 
 # Mount Driver Mobile App Routers
