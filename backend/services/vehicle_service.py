@@ -36,31 +36,27 @@ class VehicleService:
         registration_number = payload.get("registration_number", event.entity_id)
 
         # Route by event type
-        if event.event_type == EventType.VEHICLE_ASSIGNED:
-            # VEHICLE_ASSIGNED acts as registration/creation for this epic
+        if event.event_type in (EventType.VEHICLE_REGISTERED, EventType.VEHICLE_ASSIGNED):
             await self._record_vehicle_registered(
                 registration_number=registration_number,
                 payload=payload,
-                origin_id=str(event.id)
+                origin_id=str(event.id),
+                company_id=event.company_id
             )
 
-        elif event.event_type == EventType.VEHICLE_UPDATED:
-            await self._record_vehicle_updated(
-                registration_number=registration_number,
-                payload=payload,
-                origin_id=str(event.id)
-            )
-            
         elif event.event_type == EventType.VEHICLE_STATUS_CHANGED:
             await self._record_vehicle_status_changed(
                 registration_number=registration_number,
                 payload=payload,
-                origin_id=str(event.id)
+                origin_id=str(event.id),
+                company_id=event.company_id
             )
 
-    async def _record_vehicle_registered(self, registration_number: str, payload: dict, origin_id: str) -> None:
-        company_id = payload.get("company_id")
-        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=company_id)
+    async def _record_vehicle_registered(
+        self, registration_number: str, payload: dict, origin_id: str, company_id: Optional[int] = None
+    ) -> None:
+        effective_company_id = payload.get("company_id") or company_id or 1
+        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=effective_company_id)
         if vehicle:
             # If already exists, we might just update it or skip
             pass
@@ -77,7 +73,7 @@ class VehicleService:
                 status=VehicleStatus.ACTIVE,
                 origin_type="verified_event",
                 origin_id=origin_id,
-                company_id=company_id or 1
+                company_id=effective_company_id
             )
         await self.uow.repositories.vehicle.upsert_vehicle(vehicle)
         
@@ -107,9 +103,11 @@ class VehicleService:
         
         await self.uow.repositories.vehicle.upsert_vehicle(vehicle)
 
-    async def _record_vehicle_status_changed(self, registration_number: str, payload: dict, origin_id: str) -> None:
-        company_id = payload.get("company_id")
-        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=company_id)
+    async def _record_vehicle_status_changed(
+        self, registration_number: str, payload: dict, origin_id: str, company_id: Optional[int] = None
+    ) -> None:
+        effective_company_id = payload.get("company_id") or company_id or 1
+        vehicle = await self.uow.repositories.vehicle.get_vehicle_by_registration(registration_number, company_id=effective_company_id)
         if not vehicle:
             return
             

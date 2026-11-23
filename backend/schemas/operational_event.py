@@ -111,6 +111,10 @@ class OperationalEventCreate(BaseModel):
         None,
         description="Optional free-text annotation.",
     )
+    company_id: Optional[int] = Field(
+        None,
+        description="Tenant boundary / company identifier.",
+    )
 
 
 # ===========================================================================
@@ -169,6 +173,7 @@ class OperationalEventResponse(BaseModel):
     payload: Optional[dict[str, Any]] = Field(None, description="Event-specific data bag.")
     event_metadata: Optional[dict[str, Any]] = Field(None, description="Operational metadata bag.")
     notes: Optional[str] = Field(None, description="Free-text annotation.")
+    company_id: Optional[int] = Field(None, description="Company / tenant boundary.")
     created_at: datetime = Field(..., description="Row insert timestamp.")
     updated_at: datetime = Field(..., description="Row last-modified timestamp.")
 

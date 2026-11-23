@@ -36,36 +36,24 @@ class DriverService:
         phone_number = payload.get("phone_number", event.entity_id)
 
         # Route by event type
-        if event.event_type == EventType.DRIVER_REGISTERED:
+        if event.event_type in (EventType.DRIVER_REGISTERED, EventType.DRIVER_ASSIGNED):
             await self._record_driver_registered(
                 phone_number=phone_number,
                 payload=payload,
-                origin_id=str(event.id)
+                origin_id=str(event.id),
+                company_id=event.company_id
             )
 
-        elif event.event_type == EventType.DRIVER_UPDATED:
-            await self._record_driver_updated(
-                phone_number=phone_number,
-                payload=payload,
-                origin_id=str(event.id)
-            )
-            
-        elif event.event_type == EventType.DRIVER_STATUS_CHANGED:
+        elif event.event_type in (EventType.DRIVER_STATUS_CHANGED, EventType.DRIVER_UNASSIGNED):
             await self._record_driver_status_changed(
                 phone_number=phone_number,
                 payload=payload,
                 origin_id=str(event.id)
             )
 
-        elif event.event_type == EventType.DRIVER_LICENSE_UPDATED:
-            await self._record_driver_license_updated(
-                phone_number=phone_number,
-                payload=payload,
-                origin_id=str(event.id)
-            )
-
-
-    async def _record_driver_registered(self, phone_number: str, payload: dict, origin_id: str) -> None:
+    async def _record_driver_registered(
+        self, phone_number: str, payload: dict, origin_id: str, company_id: Optional[int] = None
+    ) -> None:
         driver = await self.uow.repositories.driver.get_driver_by_phone(phone_number)
         if not driver:
             driver = Driver(
@@ -73,6 +61,7 @@ class DriverService:
                 phone_number=phone_number,
                 employee_id=payload.get("employee_id"),
                 status=DriverStatus.INACTIVE,
+                company_id=payload.get("company_id") or company_id or 1,
                 origin_type="verified_event",
                 origin_id=origin_id
             )

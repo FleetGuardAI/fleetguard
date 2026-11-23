@@ -79,6 +79,8 @@ router = APIRouter(
 # Dependency — service factory
 # ---------------------------------------------------------------------------
 
+from dispatchers.event_dispatcher import default_dispatcher
+
 def get_event_service(
     uow = Depends(get_uow),
 ) -> OperationalEventService:
@@ -87,7 +89,7 @@ def get_event_service(
 
     Inject with ``Depends(get_event_service)`` in endpoint signatures.
     """
-    return OperationalEventService(uow)
+    return OperationalEventService(uow, dispatcher=default_dispatcher)
 
 
 # ---------------------------------------------------------------------------

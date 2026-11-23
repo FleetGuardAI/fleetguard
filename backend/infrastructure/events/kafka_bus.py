@@ -63,6 +63,9 @@ class KafkaEventBus(EventBus):
             logger.warning("Kafka producer is not running. Attempting to start...")
             await self.start()
             
+        if isinstance(event, dict):
+            event = OperationalEventResponse.model_validate(event)
+
         if isinstance(event, OperationalEventResponse):
             serialized = EventSerializer.serialize(event)
             # Use event_id as the partition key to ensure events for the same entity 
@@ -71,4 +74,4 @@ class KafkaEventBus(EventBus):
             await self._producer.send_and_wait(topic, value=serialized, key=key)
             logger.debug(f"Published event {event.id} to topic {topic}")
         else:
-            logger.error(f"Cannot publish event of type {type(event)}. Only OperationalEventResponse is supported.")
+            raise TypeError(f"Cannot publish event of type {type(event)}. Only OperationalEventResponse or dict is supported.")

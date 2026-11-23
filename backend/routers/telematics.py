@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Security, Request, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import Settings
+from config import Settings, settings as global_settings
 from database import get_db
 from schemas.telematics import NormalizedHardwareEvent, TelematicsBatchResponse
 from services.location_service import LocationService
@@ -19,6 +19,11 @@ router = APIRouter(
 
 webhook_header = APIKeyHeader(name="X-Telematics-Secret", auto_error=False)
 
+
+def _get_settings(request: Request) -> Settings:
+    return getattr(request.app.state, "settings", global_settings)
+
+
 def verify_telematics_secret(
     request: Request,
     api_key_header: str = Security(webhook_header)
@@ -26,7 +31,7 @@ def verify_telematics_secret(
     """
     Validates the hardware provider webhook secret.
     """
-    settings: Settings = request.app.state.settings
+    settings: Settings = _get_settings(request)
     if not settings.TELEMATICS_WEBHOOK_SECRET:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -55,7 +60,7 @@ async def process_hardware_telematics(
     """
     Ingest a batch of hardware GPS locations.
     """
-    settings: Settings = request.app.state.settings
+    settings: Settings = _get_settings(request)
     
     result = await LocationService.process_hardware_batch(
         db=db,

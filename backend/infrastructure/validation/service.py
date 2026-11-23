@@ -3,6 +3,7 @@ FleetGuard — Validation Service
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +54,9 @@ class ValidationService:
                     return
                 
                 # 2. Fetch all evidence records for this event and convert to dicts
-                evidence_records_models = await evidence_repo.get_for_event(event_response.id)
+                evidence_records_models = await evidence_repo.get_for_event(
+                    event_response.id, company_id=event_response.company_id
+                )
                 evidence_records = [
                     {"id": str(e.id), "evidence_type": e.evidence_type, "source": e.source, "raw_data": e.raw_data}
                     for e in evidence_records_models
@@ -82,12 +85,14 @@ class ValidationService:
                 # 5. Emit new operational event
                 validation_event_payload = OperationalEventCreate(
                     event_type=target_event_type,
-                    entity_type=EntityType.OPERATIONAL_EVENT,
+                    entity_type=EntityType.SYSTEM,
                     entity_id=str(event_response.id),
-                    capture_method=CaptureMethod.SYSTEM,
+                    capture_method=CaptureMethod.SYSTEM_GENERATED,
+                    occurred_at=datetime.now(timezone.utc),
                     created_by="system:validation-engine",
                     payload=validation_result.model_dump(mode="json"),
-                    notes=f"Validation resulted in {validation_result.verdict.value}."
+                    notes=f"Validation resulted in {validation_result.verdict.value}.",
+                    company_id=event_response.company_id,
                 )
                 
                 await event_service.create_event(validation_event_payload)
