@@ -26,7 +26,7 @@ TENANT_TABLES = [
     "operational_events",
     "copilot_conversations",
     "documents",
-    "tickets",
+    "support_tickets",
     "fleet_invites",
     "vehicle_inspections",
     "owner_pairing_tokens",
@@ -46,6 +46,10 @@ def upgrade() -> None:
 
     for table in TENANT_TABLES:
         if table in existing_tables:
+            columns = {col["name"] for col in inspector.get_columns(table)}
+            if "company_id" not in columns:
+                continue
+
             # Enable RLS and force it even for table owners/superusers
             op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
             op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
@@ -66,6 +70,30 @@ def upgrade() -> None:
                     OR company_id = NULLIF(current_setting('app.current_company_id', true), '')::integer
                 );
             """)
+
+    # Special policy for tickets (expense receipts join drivers on driver_id)
+    if "tickets" in existing_tables and "drivers" in existing_tables:
+        op.execute("ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;")
+        op.execute("ALTER TABLE tickets FORCE ROW LEVEL SECURITY;")
+        op.execute("DROP POLICY IF EXISTS tickets_tenant_isolation_policy ON tickets;")
+        op.execute("""
+            CREATE POLICY tickets_tenant_isolation_policy ON tickets
+            FOR ALL
+            USING (
+                current_setting('app.is_super_admin', true) = 'true'
+                OR driver_id IN (
+                    SELECT id FROM drivers
+                    WHERE company_id = NULLIF(current_setting('app.current_company_id', true), '')::integer
+                )
+            )
+            WITH CHECK (
+                current_setting('app.is_super_admin', true) = 'true'
+                OR driver_id IN (
+                    SELECT id FROM drivers
+                    WHERE company_id = NULLIF(current_setting('app.current_company_id', true), '')::integer
+                )
+            );
+        """)
 
     # Special policy for copilot_messages (joins copilot_conversations on conversation_id)
     if "copilot_messages" in existing_tables and "copilot_conversations" in existing_tables:
@@ -105,9 +133,13 @@ def downgrade() -> None:
         op.execute("ALTER TABLE copilot_messages NO FORCE ROW LEVEL SECURITY;")
         op.execute("ALTER TABLE copilot_messages DISABLE ROW LEVEL SECURITY;")
 
+    if "tickets" in existing_tables:
+        op.execute("DROP POLICY IF EXISTS tickets_tenant_isolation_policy ON tickets;")
+        op.execute("ALTER TABLE tickets NO FORCE ROW LEVEL SECURITY;")
+        op.execute("ALTER TABLE tickets DISABLE ROW LEVEL SECURITY;")
+
     for table in TENANT_TABLES:
         if table in existing_tables:
             op.execute(f"DROP POLICY IF EXISTS {table}_tenant_isolation_policy ON {table};")
             op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
             op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
-
