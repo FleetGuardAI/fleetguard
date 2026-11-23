@@ -5,7 +5,7 @@ Aggregation endpoints for the Owner Mobile App Dashboard.
 
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -449,3 +449,95 @@ async def get_owner_wallet_transactions(
         })
         
     return transactions
+
+
+@router.get("/trips")
+async def get_owner_fleet_trips(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List fleet trips for Owner App with vehicle, driver, and route geometry.
+    Enforces strict company tenant isolation.
+    """
+    from sqlalchemy.orm import selectinload
+    stmt = (
+        select(Trip)
+        .options(selectinload(Trip.driver), selectinload(Trip.vehicle))
+        .where(Trip.company_id == current_user.company_id)
+    )
+
+    if status and status.upper() != "ALL":
+        try:
+            status_enum = TripStatus(status.upper())
+            stmt = stmt.where(Trip.status == status_enum)
+        except ValueError:
+            pass
+
+    if search:
+        search_term = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Trip.trip_id.ilike(search_term),
+                Trip.origin_location.ilike(search_term),
+                Trip.destination_location.ilike(search_term),
+                Trip.customer_name.ilike(search_term),
+            )
+        )
+
+    stmt = stmt.order_by(desc(Trip.id)).offset(offset).limit(limit)
+    res = await db.execute(stmt)
+    trips = res.scalars().all()
+
+    output = []
+    for t in trips:
+        output.append({
+            "id": t.id,
+            "trip_id": t.trip_id,
+            "status": t.status.value if t.status else "CREATED",
+            "origin_location": t.origin_location,
+            "destination_location": t.destination_location,
+            "origin_lat": t.origin_lat,
+            "origin_lng": t.origin_lng,
+            "destination_lat": t.destination_lat,
+            "destination_lng": t.destination_lng,
+            "origin_address": t.origin_address,
+            "destination_address": t.destination_address,
+            "route_polyline": t.route_polyline,
+            "route_distance_km": t.route_distance_km,
+            "route_duration_hours": t.route_duration_hours,
+            "route_toll_estimate": t.route_toll_estimate,
+            "route_status": t.route_status or "APPROVED",
+            "approved_route_version_id": t.approved_route_version_id,
+            "planned_distance": t.planned_distance,
+            "actual_distance": t.actual_distance,
+            "planned_start_time": t.planned_start_time.isoformat() if t.planned_start_time else None,
+            "actual_start_time": t.actual_start_time.isoformat() if t.actual_start_time else None,
+            "planned_end_time": t.planned_end_time.isoformat() if t.planned_end_time else None,
+            "actual_end_time": t.actual_end_time.isoformat() if t.actual_end_time else None,
+            "revenue": t.revenue,
+            "planned_cost": t.planned_cost,
+            "planned_fuel_liters": t.planned_fuel_liters,
+            "cargo_weight": t.cargo_weight,
+            "driver_id": t.driver_id,
+            "vehicle_id": t.vehicle_id,
+            "driver": {
+                "id": t.driver.id,
+                "name": t.driver.name,
+                "phone_number": t.driver.phone_number,
+                "last_known_lat": t.driver.last_known_lat,
+                "last_known_lng": t.driver.last_known_lng,
+            } if t.driver else None,
+            "vehicle": {
+                "id": t.vehicle.id,
+                "registration_number": t.vehicle.registration_number,
+                "make": t.vehicle.make,
+                "model": t.vehicle.model,
+            } if t.vehicle else None,
+        })
+
+    return output

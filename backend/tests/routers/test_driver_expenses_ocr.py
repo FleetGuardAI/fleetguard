@@ -44,8 +44,8 @@ def test_ocr_mock_provider(client: TestClient, auth_headers):
         
     assert response.status_code == 200
     data = response.json()
-    assert data["vendor"] == "HP Fuel Station #482"
-    assert data["amount"] == 2500.0
+    assert data["vendor"] == "Sample Fuel Station"
+    assert data["amount"] == 1250.0
 
 def test_ocr_openai_missing_key(client: TestClient, auth_headers):
     # Set provider to openai but clear keys

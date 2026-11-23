@@ -254,6 +254,7 @@ from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
 from routers.location import router as location_router
 from routers.telematics import router as telematics_router
+from routers.route_intelligence import router as route_intelligence_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -418,11 +419,21 @@ async def root() -> dict[str, str]:
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict[str, str]:
-    """Detailed health check."""
+    """Detailed health check validating core service readiness."""
+    db_status = "connected"
+    try:
+        from sqlalchemy import text
+        async with async_session_factory() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.warning(f"Database health check probe failed: {type(e).__name__}")
+        db_status = "disconnected"
+
+    is_healthy = (db_status == "connected")
     return {
-        "status": "healthy",
-        "database": "connected",
-        "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
+        "status": "healthy" if is_healthy else "degraded",
+        "database": db_status,
+        "openai": "configured" if bool(settings.OPENAI_API_KEY) else "not_configured",
     }
 
 @app.get("/api/v1/health/cors", tags=["Health"])
@@ -463,6 +474,7 @@ app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
 app.include_router(telematics_router)
+app.include_router(route_intelligence_router)
 
 
 # Mount Driver Mobile App Routers
