@@ -164,7 +164,10 @@ class RoutingProvider:
             )
 
         except Exception as e:
-            logger.error(f"Error computing route via Google: {e}")
+            err_msg = str(e)
+            if self.api_key and self.api_key in err_msg:
+                err_msg = err_msg.replace(self.api_key, "[REDACTED_API_KEY]")
+            logger.error(f"Error computing route via Google: {err_msg}")
             return self._mock_route(request)
 
     def _mock_route(self, request: RouteCalculationRequest) -> RouteCalculationResponse:

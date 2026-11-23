@@ -45,13 +45,13 @@ router = APIRouter(tags=["Location Tracking"])
 # ==========================================================================
 
 class LocationPoint(BaseModel):
-    latitude: float
-    longitude: float
-    speed: Optional[float] = None
-    heading: Optional[float] = None
-    accuracy: Optional[float] = None
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude between -90 and 90 degrees")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude between -180 and 180 degrees")
+    speed: Optional[float] = Field(None, ge=0.0, le=300.0, description="Speed (non-negative)")
+    heading: Optional[float] = Field(None, ge=0.0, le=360.0, description="Heading in degrees between 0 and 360")
+    accuracy: Optional[float] = Field(None, ge=0.0, description="Accuracy in meters (non-negative)")
     timestamp: str
-    battery_percent: Optional[int] = None
+    battery_percent: Optional[int] = Field(None, ge=0, le=100)
     activity_state: Optional[str] = None
 
 
@@ -81,8 +81,8 @@ class LocationResponse(BaseModel):
 class LiveDriverLocation(BaseModel):
     driver_id: int
     driver_name: str
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
     speed: Optional[float] = None
     speed_kmh: Optional[float] = None
     heading: Optional[float] = None
@@ -145,8 +145,8 @@ class DriverTripSummary(BaseModel):
 class DetailedLocationPoint(BaseModel):
     id: int
     driver_id: int
-    latitude: float
-    longitude: float
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
     speed_mps: Optional[float] = None
     speed_kmh: Optional[float] = None
     heading: Optional[float] = None
