@@ -32,6 +32,10 @@ import services.otp_service as otp_service
 otp_service.otp_provider = otp_service.MockOTPProvider()
 otp_service.settings.OTP_MOCK_MODE = True
 
+# Disable rate limiter by default for test suites (explicitly enabled in security rate limit tests)
+from utils.rate_limiter import limiter
+limiter.enabled = False
+
 # --- 1. SECURITY GUARD & CONFIGURATION ---
 import re
 

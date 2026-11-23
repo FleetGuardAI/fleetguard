@@ -210,6 +210,9 @@ class Settings(BaseSettings):
     SUPABASE_URL: str | None = None
     SUPABASE_KEY: str | None = None
 
+    # --- Rate Limiting (FG-SEC-021) ---
+    RATE_LIMIT_ENABLED: bool = True
+
     # --- Redis Caching ---
     REDIS_URL: Optional[str] = "redis://localhost:6379"
     SUPABASE_STORAGE_BUCKET: str = "fleetguard-uploads"

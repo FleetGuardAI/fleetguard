@@ -489,10 +489,14 @@ class StorageService:
 
         return sanitized_content, detected_mime
 
-    def _sanitize_folder(self, folder: str) -> str:
-        """Sanitizes folder path against directory traversal and special characters."""
+    def _sanitize_folder(self, folder: str, company_id: Optional[int] = None) -> str:
+        """Sanitizes folder path against directory traversal and special characters, optionally scoping to tenant."""
         parts = [p for p in folder.strip("/\\").split("/") if p and p not in (".", "..")]
         clean_parts = [re.sub(r"[^a-zA-Z0-9_\-]", "", p) for p in parts]
+        if company_id is not None:
+            comp_prefix = f"company_{company_id}"
+            if not clean_parts or clean_parts[0] != comp_prefix:
+                clean_parts.insert(0, comp_prefix)
         sanitized = "/".join(p for p in clean_parts if p)
         return sanitized if sanitized else "general"
 
@@ -501,6 +505,7 @@ class StorageService:
         file: UploadFile,
         folder: str = "general",
         filename: Optional[str] = None,
+        company_id: Optional[int] = None,
     ) -> str:
         """
         Save uploaded file with structural validation and server-controlled filename.
@@ -509,7 +514,7 @@ class StorageService:
         raw_content = await file.read()
         sanitized_content, detected_mime = self._validate_and_sanitize(raw_content, file.content_type)
         safe_ext = MIME_TO_EXT[detected_mime]
-        safe_folder = self._sanitize_folder(folder)
+        safe_folder = self._sanitize_folder(folder, company_id=company_id)
 
         # Enforce server-controlled UUID filename to prevent arbitrary naming attacks
         server_filename = f"{uuid.uuid4().hex}{safe_ext}"
@@ -534,12 +539,13 @@ class StorageService:
         data: bytes,
         folder: str,
         filename: Optional[str] = None,
-        content_type: str = "application/octet-stream"
+        content_type: str = "application/octet-stream",
+        company_id: Optional[int] = None,
     ) -> str:
         """Save raw bytes with structural validation and server-controlled filename."""
         sanitized_content, detected_mime = self._validate_and_sanitize(data, content_type)
         safe_ext = MIME_TO_EXT[detected_mime]
-        safe_folder = self._sanitize_folder(folder)
+        safe_folder = self._sanitize_folder(folder, company_id=company_id)
 
         server_filename = f"{uuid.uuid4().hex}{safe_ext}"
         object_path = f"{safe_folder}/{server_filename}"
@@ -570,7 +576,7 @@ class StorageService:
     def create_signed_url(
         self,
         object_path: str,
-        expires_in: int = 86400 * 7,
+        expires_in: int = 3600,
         download: Optional[Union[bool, str]] = None
     ) -> Optional[str]:
         """
@@ -587,6 +593,9 @@ class StorageService:
         """
         if not object_path:
             return None
+
+        # FG-SEC-027: Cap maximum lifetime to 3,600s (1 hour) to eliminate prolonged exposure risk
+        expires_in = min(max(1, int(expires_in)), 3600)
 
         clean_path = object_path.split("?")[0].strip().lower()
         ext = clean_path.rsplit(".", 1)[-1] if "." in clean_path else ""
@@ -621,16 +630,16 @@ class StorageService:
     def create_preview_signed_url(
         self,
         object_path: str,
-        expires_in: int = 3600
+        expires_in: int = 900
     ) -> Optional[str]:
-        """Generate signed URL specifically for safe raster image preview in <img> tags."""
-        return self.create_signed_url(object_path, expires_in=expires_in, download=False)
+        """Generate signed URL specifically for safe raster image preview in <img> tags (default 15m)."""
+        return self.create_signed_url(object_path, expires_in=min(expires_in, 900), download=False)
 
     def create_attachment_signed_url(
         self,
         object_path: str,
         filename: Optional[str] = None,
-        expires_in: int = 86400 * 7
+        expires_in: int = 3600
     ) -> Optional[str]:
         """Generate signed URL explicitly forcing attachment download."""
         return self.create_signed_url(object_path, expires_in=expires_in, download=filename or True)
@@ -638,7 +647,7 @@ class StorageService:
     async def create_signed_url_async(
         self,
         object_path: str,
-        expires_in: int = 86400 * 7,
+        expires_in: int = 3600,
         download: Optional[Union[bool, str]] = None
     ) -> Optional[str]:
         """Async wrapper for create_signed_url."""
@@ -648,7 +657,7 @@ class StorageService:
     async def create_preview_signed_url_async(
         self,
         object_path: str,
-        expires_in: int = 3600
+        expires_in: int = 900
     ) -> Optional[str]:
         """Async wrapper for create_preview_signed_url."""
         import asyncio
@@ -658,7 +667,7 @@ class StorageService:
         self,
         object_path: str,
         filename: Optional[str] = None,
-        expires_in: int = 86400 * 7
+        expires_in: int = 3600
     ) -> Optional[str]:
         """Async wrapper for create_attachment_signed_url."""
         import asyncio
