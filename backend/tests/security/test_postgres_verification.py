@@ -254,3 +254,31 @@ async def test_postgres_rollback_and_persistence(pg_engine):
             assert persisted.status == "PENDING"
     finally:
         await new_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_postgres_rls_policies_applied(pg_engine):
+    """
+    FG-SEC-009: Verifies that Row-Level Security (RLS) is enabled and forced
+    on core tenant tables in PostgreSQL.
+    """
+    async with pg_engine.connect() as conn:
+        res = await conn.execute(text("""
+            SELECT relname, relrowsecurity, relforcerowsecurity
+            FROM pg_class
+            WHERE relname IN ('vehicles', 'trips', 'maintenance_records', 'copilot_messages');
+        """))
+        rows = {row[0]: {"rls": row[1], "force": row[2]} for row in res.fetchall()}
+        for table in ['vehicles', 'trips', 'maintenance_records']:
+            if table in rows:
+                assert rows[table]["rls"] is True, f"RLS not enabled on {table}"
+                assert rows[table]["force"] is True, f"RLS not forced on {table}"
+
+        policy_res = await conn.execute(text("""
+            SELECT policyname, tablename
+            FROM pg_policies
+            WHERE policyname LIKE '%tenant_isolation_policy';
+        """))
+        policies = {row[1]: row[0] for row in policy_res.fetchall()}
+        assert len(policies) > 0, "No tenant isolation policies found in pg_policies"
+
