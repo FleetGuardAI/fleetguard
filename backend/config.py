@@ -148,6 +148,12 @@ class Settings(BaseSettings):
     # Optional previous rotation key to support zero-downtime rotation of in-flight 5-minute OTPs.
     # Validated strictly whenever configured; never silently ignored.
     OTP_PREVIOUS_FINGERPRINT_KEY: Optional[str] = None
+
+    # --- PII Field-Level Encryption (FG-SEC-030) ---
+    # AES-256-GCM encryption key for sensitive PII (Aadhaar, driver license numbers) at rest.
+    # Requires 256 bits (32 bytes / 64 hex characters) of key material.
+    FIELD_ENCRYPTION_KEY: Optional[str] = None
+
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     REMEMBER_ME_EXPIRE_DAYS: int = 30

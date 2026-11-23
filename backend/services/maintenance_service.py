@@ -41,7 +41,7 @@ class MaintenanceService:
         business_id = event.entity_id
 
         if event.event_type == EventType.MAINTENANCE_CREATED:
-            await self._record_maintenance_created(business_id, payload, str(event.id))
+            await self._record_maintenance_created(business_id, payload, str(event.id), company_id=event.company_id)
         elif event.event_type == EventType.MAINTENANCE_SCHEDULED:
             await self._record_maintenance_scheduled(business_id, payload, str(event.id))
         elif event.event_type == EventType.MAINTENANCE_STARTED:
@@ -55,15 +55,21 @@ class MaintenanceService:
         elif event.event_type == EventType.MAINTENANCE_TASK_COMPLETED:
             await self._record_maintenance_task_completed(business_id, payload, str(event.id))
 
-    async def _record_maintenance_created(self, business_id: str, payload: dict, origin_id: str) -> None:
+    async def _record_maintenance_created(
+        self, business_id: str, payload: dict, origin_id: str, company_id: Optional[int] = None
+    ) -> None:
+        effective_company_id = company_id or payload.get("company_id")
         record = await self.uow.repositories.maintenance.get_maintenance_by_business_id(business_id)
         if not record:
             record = MaintenanceRecord(
                 business_id=business_id,
+                company_id=effective_company_id,
                 status=MaintenanceStatus.CREATED,
                 origin_type="verified_event",
                 origin_id=origin_id
             )
+        elif effective_company_id and not record.company_id:
+            record.company_id = effective_company_id
             
         if "category" in payload:
             try:

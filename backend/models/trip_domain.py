@@ -83,7 +83,7 @@ class Trip(Base):
 
     # --- Isolation ---
     company_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("companies.id"), nullable=False, index=True, default=1
+        Integer, ForeignKey("companies.id"), nullable=False, index=True
     )
     company: Mapped[Optional["Company"]] = relationship("Company", lazy="selectin")
 

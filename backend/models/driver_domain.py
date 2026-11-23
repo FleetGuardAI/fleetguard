@@ -11,6 +11,7 @@ import enum
 from datetime import date, datetime
 
 from database import Base
+from utils.encryption import EncryptedString
 
 if TYPE_CHECKING:
     from models.ticket import Ticket
@@ -71,7 +72,7 @@ class Driver(Base):
 
     # --- Identity & License ---
     employee_id: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
-    license_number: Mapped[Optional[str]] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    license_number: Mapped[Optional[str]] = mapped_column(EncryptedString(255), unique=True, index=True, nullable=True)
     license_valid_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     # --- Document URLs (added for driver app) ---
@@ -80,7 +81,7 @@ class Driver(Base):
     aadhaar_front_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     aadhaar_back_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     selfie_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    aadhaar_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    aadhaar_number: Mapped[Optional[str]] = mapped_column(EncryptedString(255), nullable=True)
 
     # --- Verification (added for driver app) ---
     verification_status: Mapped[Optional[VerificationStatus]] = mapped_column(
