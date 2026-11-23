@@ -36,7 +36,9 @@ except ImportError:
 logger = logging.getLogger("fleetguard.storage")
 
 # Configure Pillow decompression bomb protection
-Image.MAX_IMAGE_PIXELS = 25_000_000  # Max 25 megapixels
+MAX_IMAGE_PIXELS = 25_000_000  # Max 25 megapixels
+if Image is not None:
+    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 MAX_DIMENSION = 8192                 # Max width or height
 
 ALLOWED_MIME_TYPES = {
@@ -109,7 +111,7 @@ def validate_and_sanitize_image(content: bytes) -> Tuple[bytes, str]:
                     status_code=400,
                     detail=f"Image dimensions ({width}x{height}) exceed maximum allowed dimension ({MAX_DIMENSION}px)."
                 )
-            if width * height > Image.MAX_IMAGE_PIXELS:
+            if width * height > MAX_IMAGE_PIXELS:
                 raise HTTPException(
                     status_code=400,
                     detail="Image exceeds maximum pixel limit (decompression bomb protection)."

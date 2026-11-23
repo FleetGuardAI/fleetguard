@@ -112,7 +112,8 @@ class Settings(BaseSettings):
             for origin in origins:
                 if origin:
                     cleaned = str(origin).strip().rstrip("/")
-                    if cleaned and cleaned not in normalized:
+                    # FG-SEC-048: Reject wildcard '*' to prevent credentialed CORS reflection vulnerabilities
+                    if cleaned and cleaned != "*" and cleaned not in normalized:
                         normalized.append(cleaned)
             return normalized
 

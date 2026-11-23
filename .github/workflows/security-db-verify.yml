@@ -8,6 +8,8 @@ on:
       - '.github/workflows/security-db-verify.yml'
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   postgres-security-verification:
     name: Ephemeral PostgreSQL Security & Concurrency Verification
