@@ -12,7 +12,11 @@ import logging
 import urllib.parse
 from typing import Optional, Tuple, Union, Any
 from fastapi import UploadFile, HTTPException
-from PIL import Image, UnidentifiedImageError
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:
+    Image = None
+    UnidentifiedImageError = Exception
 
 try:
     import pypdf

@@ -100,7 +100,8 @@ class TripService:
             await self._record_trip_created(
                 trip_business_id=trip_business_id,
                 payload=payload,
-                origin_id=str(event.id)
+                origin_id=str(event.id),
+                company_id=event.company_id
             )
 
         elif event.event_type == EventType.TRIP_STARTED:
@@ -152,15 +153,21 @@ class TripService:
                 origin_id=str(event.id)
             )
 
-    async def _record_trip_created(self, trip_business_id: str, payload: dict, origin_id: str) -> None:
+    async def _record_trip_created(
+        self, trip_business_id: str, payload: dict, origin_id: str, company_id: Optional[int] = None
+    ) -> None:
+        effective_company_id = company_id or payload.get("company_id")
         trip = await self.uow.repositories.trip.get_trip_by_business_id(trip_business_id)
         if not trip:
             trip = Trip(
                 trip_id=trip_business_id,
+                company_id=effective_company_id,
                 status=TripStatus.CREATED,
                 origin_type="verified_event",
                 origin_id=origin_id
             )
+        elif effective_company_id and not trip.company_id:
+            trip.company_id = effective_company_id
             
         trip.origin_location = payload.get("origin_location", trip.origin_location)
         trip.destination_location = payload.get("destination_location", trip.destination_location)

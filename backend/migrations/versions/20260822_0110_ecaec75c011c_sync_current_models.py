@@ -21,6 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+
     # 1. evidence
     op.create_table(
         'evidence',
@@ -89,22 +93,23 @@ def upgrade() -> None:
     op.create_index(op.f('ix_documents_status'), 'documents', ['status'], unique=False)
 
     # 5. fleet_invites
-    op.create_table(
-        'fleet_invites',
-        sa.Column('id', sa.Integer(), autoincrement=True, primary_key=True),
-        sa.Column('company_id', sa.Integer(), nullable=False),
-        sa.Column('invite_token', sa.String(length=255), nullable=False),
-        sa.Column('label', sa.String(length=255), nullable=True),
-        sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
-        sa.Column('max_uses', sa.Integer(), nullable=True),
-        sa.Column('use_count', sa.Integer(), server_default='0', nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
-        sa.UniqueConstraint('invite_token')
-    )
-    op.create_index(op.f('ix_fleet_invites_company_id'), 'fleet_invites', ['company_id'], unique=False)
-    op.create_index(op.f('ix_fleet_invites_invite_token'), 'fleet_invites', ['invite_token'], unique=True)
+    if 'fleet_invites' not in existing_tables:
+        op.create_table(
+            'fleet_invites',
+            sa.Column('id', sa.Integer(), autoincrement=True, primary_key=True),
+            sa.Column('company_id', sa.Integer(), nullable=False),
+            sa.Column('invite_token', sa.String(length=255), nullable=False),
+            sa.Column('label', sa.String(length=255), nullable=True),
+            sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
+            sa.Column('max_uses', sa.Integer(), nullable=True),
+            sa.Column('use_count', sa.Integer(), server_default='0', nullable=False),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+            sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
+            sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
+            sa.UniqueConstraint('invite_token')
+        )
+        op.create_index(op.f('ix_fleet_invites_company_id'), 'fleet_invites', ['company_id'], unique=False)
+        op.create_index(op.f('ix_fleet_invites_invite_token'), 'fleet_invites', ['invite_token'], unique=True)
 
     # 6. driver_locations
     op.create_table(
@@ -236,6 +241,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+
     op.drop_index(op.f('ix_wallet_transactions_transaction_type'), table_name='wallet_transactions')
     op.drop_index(op.f('ix_wallet_transactions_driver_id'), table_name='wallet_transactions')
     op.drop_index(op.f('ix_wallet_transactions_company_id'), table_name='wallet_transactions')
@@ -274,9 +283,10 @@ def downgrade() -> None:
     op.drop_table('driver_locations')
     op.execute("DROP TYPE locationsource;")
 
-    op.drop_index(op.f('ix_fleet_invites_invite_token'), table_name='fleet_invites')
-    op.drop_index(op.f('ix_fleet_invites_company_id'), table_name='fleet_invites')
-    op.drop_table('fleet_invites')
+    if 'fleet_invites' in existing_tables:
+        op.drop_index(op.f('ix_fleet_invites_invite_token'), table_name='fleet_invites')
+        op.drop_index(op.f('ix_fleet_invites_company_id'), table_name='fleet_invites')
+        op.drop_table('fleet_invites')
 
     op.drop_index(op.f('ix_documents_status'), table_name='documents')
     op.drop_index(op.f('ix_documents_company_id'), table_name='documents')

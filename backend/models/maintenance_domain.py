@@ -85,7 +85,7 @@ class MaintenanceRecord(Base):
     completed_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # --- Financial & Operational ---
-    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True, default=1)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
     driver_id: Mapped[Optional[int]] = mapped_column(ForeignKey("drivers.id"), nullable=True, index=True)
     trip_id: Mapped[Optional[int]] = mapped_column(ForeignKey("trips.id"), nullable=True, index=True)
     expense_id: Mapped[Optional[int]] = mapped_column(ForeignKey("expenses.id"), nullable=True, index=True)

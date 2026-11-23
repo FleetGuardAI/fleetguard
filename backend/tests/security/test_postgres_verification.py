@@ -25,12 +25,11 @@ def get_postgres_url() -> str:
 
 
 @pytest.fixture
-def pg_engine():
+async def pg_engine():
     url = get_postgres_url()
     engine = create_async_engine(url, pool_pre_ping=True, echo=False)
     yield engine
-    # Cleanup engine connections
-    asyncio.run(engine.dispose())
+    await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -50,15 +49,15 @@ async def test_postgres_schema_and_indexes(pg_engine):
         cols = {row[0]: {"type": row[1], "nullable": row[2]} for row in col_res.fetchall()}
 
         expected_cols = [
-            "id", "transaction_id", "recipient_fingerprint",
-            "purpose", "status", "expires_at", "created_at", "consumed_at"
+            "id", "req_id", "recipient_fingerprint",
+            "provider", "expires_at", "is_consumed", "consumed_at", "created_at"
         ]
         for col in expected_cols:
             assert col in cols, f"Column '{col}' missing from otp_transactions table"
 
-        assert cols["transaction_id"]["nullable"] == "NO"
+        assert cols["req_id"]["nullable"] == "NO"
         assert cols["recipient_fingerprint"]["nullable"] == "NO"
-        assert cols["status"]["nullable"] == "NO"
+        assert cols["is_consumed"]["nullable"] == "NO"
 
         # 2. Verify indexes
         idx_res = await conn.execute(text("""
@@ -68,9 +67,9 @@ async def test_postgres_schema_and_indexes(pg_engine):
         """))
         indexes = [row[0] for row in idx_res.fetchall()]
 
-        assert "ix_otp_transactions_transaction_id" in indexes
+        assert "ix_otp_transactions_req_id" in indexes
         assert "ix_otp_transactions_recipient_fingerprint" in indexes
-        assert "ix_otp_transactions_status" in indexes
+        assert "ix_otp_transactions_is_consumed" in indexes
 
 
 @pytest.mark.asyncio
@@ -89,10 +88,10 @@ async def test_postgres_otp_lifecycle_and_binding(pg_engine):
     # 1. Create OTP Transaction
     async with session_factory() as session:
         txn = OTPTransaction(
-            transaction_id="pg-test-txn-1",
+            req_id="pg-test-txn-1",
             recipient_fingerprint=fingerprint,
-            purpose="login",
-            status="PENDING",
+            provider="MSG91",
+            is_consumed=False,
             expires_at=now + timedelta(minutes=5),
             created_at=now
         )
@@ -105,7 +104,7 @@ async def test_postgres_otp_lifecycle_and_binding(pg_engine):
         # Correct phone matches fingerprint
         res = await session.execute(
             select(OTPTransaction).where(
-                OTPTransaction.transaction_id == "pg-test-txn-1",
+                OTPTransaction.req_id == "pg-test-txn-1",
                 OTPTransaction.recipient_fingerprint == compute_recipient_fingerprint("+919876543210")
             )
         )
@@ -115,7 +114,7 @@ async def test_postgres_otp_lifecycle_and_binding(pg_engine):
         # Different phone rejected
         res_diff = await session.execute(
             select(OTPTransaction).where(
-                OTPTransaction.transaction_id == "pg-test-txn-1",
+                OTPTransaction.req_id == "pg-test-txn-1",
                 OTPTransaction.recipient_fingerprint == compute_recipient_fingerprint("+919999988888")
             )
         )
@@ -124,10 +123,10 @@ async def test_postgres_otp_lifecycle_and_binding(pg_engine):
     # 3. Expiry enforcement check
     async with session_factory() as session:
         expired_txn = OTPTransaction(
-            transaction_id="pg-test-expired",
+            req_id="pg-test-expired",
             recipient_fingerprint=fingerprint,
-            purpose="login",
-            status="PENDING",
+            provider="MSG91",
+            is_consumed=False,
             expires_at=now - timedelta(seconds=10),
             created_at=now - timedelta(minutes=6)
         )
@@ -137,7 +136,7 @@ async def test_postgres_otp_lifecycle_and_binding(pg_engine):
         # Query active transactions (expires_at > now) excludes expired transaction
         active_res = await session.execute(
             select(OTPTransaction).where(
-                OTPTransaction.transaction_id == "pg-test-expired",
+                OTPTransaction.req_id == "pg-test-expired",
                 OTPTransaction.expires_at > datetime.now(timezone.utc)
             )
         )
@@ -160,10 +159,10 @@ async def test_postgres_atomic_concurrent_consumption(pg_engine):
     # Insert test transaction
     async with session_factory() as session:
         txn = OTPTransaction(
-            transaction_id=txn_uuid,
+            req_id=txn_uuid,
             recipient_fingerprint="test-fingerprint-concurrency",
-            purpose="login",
-            status="PENDING",
+            provider="MSG91",
+            is_consumed=False,
             expires_at=now + timedelta(minutes=5),
             created_at=now
         )
@@ -174,13 +173,13 @@ async def test_postgres_atomic_concurrent_consumption(pg_engine):
     async def attempt_consume(worker_id: int) -> bool:
         # Each worker opens its own dedicated AsyncSession and connection
         async with session_factory() as worker_session:
-            # Atomic update with WHERE status = 'PENDING'
+            # Atomic update with WHERE is_consumed = FALSE
             result = await worker_session.execute(text("""
                 UPDATE otp_transactions
-                SET status = 'CONSUMED', consumed_at = NOW()
-                WHERE transaction_id = :txn_id AND status = 'PENDING'
+                SET is_consumed = TRUE, consumed_at = NOW()
+                WHERE req_id = :req_id AND is_consumed = FALSE
                 RETURNING id;
-            """), {"txn_id": txn_uuid})
+            """), {"req_id": txn_uuid})
             row = result.fetchone()
             await worker_session.commit()
             return row is not None
@@ -209,10 +208,10 @@ async def test_postgres_rollback_and_persistence(pg_engine):
     # 1. Test Rollback
     async with session_factory() as session:
         txn_rollback = OTPTransaction(
-            transaction_id="pg-test-rollback",
+            req_id="pg-test-rollback",
             recipient_fingerprint="fp-rollback",
-            purpose="login",
-            status="PENDING",
+            provider="MSG91",
+            is_consumed=False,
             expires_at=now + timedelta(minutes=5),
             created_at=now
         )
@@ -222,17 +221,17 @@ async def test_postgres_rollback_and_persistence(pg_engine):
 
     async with session_factory() as session:
         check = await session.execute(
-            select(OTPTransaction).where(OTPTransaction.transaction_id == "pg-test-rollback")
+            select(OTPTransaction).where(OTPTransaction.req_id == "pg-test-rollback")
         )
         assert check.scalar_one_or_none() is None, "Rolled-back transaction was persisted!"
 
     # 2. Test Persistence across session / application restart simulation
     async with session_factory() as session:
         txn_persist = OTPTransaction(
-            transaction_id="pg-test-persist",
+            req_id="pg-test-persist",
             recipient_fingerprint="fp-persist",
-            purpose="login",
-            status="PENDING",
+            provider="MSG91",
+            is_consumed=False,
             expires_at=now + timedelta(minutes=5),
             created_at=now
         )
@@ -247,10 +246,37 @@ async def test_postgres_rollback_and_persistence(pg_engine):
     try:
         async with new_session_factory() as session:
             check = await session.execute(
-                select(OTPTransaction).where(OTPTransaction.transaction_id == "pg-test-persist")
+                select(OTPTransaction).where(OTPTransaction.req_id == "pg-test-persist")
             )
             persisted = check.scalar_one_or_none()
             assert persisted is not None, "Committed transaction did not persist across engine restart!"
-            assert persisted.status == "PENDING"
+            assert persisted.is_consumed is False
     finally:
         await new_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_postgres_rls_policies_applied(pg_engine):
+    """
+    FG-SEC-009: Verifies that Row-Level Security (RLS) is enabled and forced
+    on core tenant tables in PostgreSQL.
+    """
+    async with pg_engine.connect() as conn:
+        res = await conn.execute(text("""
+            SELECT relname, relrowsecurity, relforcerowsecurity
+            FROM pg_class
+            WHERE relname IN ('vehicles', 'trips', 'maintenance_records', 'copilot_messages');
+        """))
+        rows = {row[0]: {"rls": row[1], "force": row[2]} for row in res.fetchall()}
+        for table in ['vehicles', 'trips', 'maintenance_records']:
+            if table in rows:
+                assert rows[table]["rls"] is True, f"RLS not enabled on {table}"
+                assert rows[table]["force"] is True, f"RLS not forced on {table}"
+
+        policy_res = await conn.execute(text("""
+            SELECT policyname, tablename
+            FROM pg_policies
+            WHERE policyname LIKE '%tenant_isolation_policy';
+        """))
+        policies = {row[1]: row[0] for row in policy_res.fetchall()}
+        assert len(policies) > 0, "No tenant isolation policies found in pg_policies"

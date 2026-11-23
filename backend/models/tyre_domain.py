@@ -42,7 +42,7 @@ class Tyre(Base):
     # --- Multi-tenancy ---
     company_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False, default=1, index=True,
+        nullable=False, index=True,
         comment="Tenant isolation boundary"
     )
 
