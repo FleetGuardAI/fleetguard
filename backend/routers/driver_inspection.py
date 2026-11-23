@@ -18,6 +18,7 @@ from database import get_db
 from models.vehicle_inspection import VehicleInspection, InspectionType, InspectionStatus
 from models.ticket import Ticket, TicketStatus, RiskLevel
 from models.driver_domain import Driver
+from models.vehicle_domain import Vehicle
 from routers.driver_mobile import get_current_driver
 
 logger = logging.getLogger("fleetguard.inspection")
@@ -67,6 +68,19 @@ async def submit_inspection(
     Submit a pre-trip or post-trip vehicle inspection report.
     Automatically generates maintenance tickets for failed items.
     """
+    # FG-SEC-023: Prevent Cross-Tenant Inspection & Maintenance Ticket Poisoning
+    vehicle = await db.get(Vehicle, payload.vehicle_id)
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vehicle #{payload.vehicle_id} not found"
+        )
+    if vehicle.company_id != driver.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized vehicle: vehicle does not belong to your company"
+        )
+
     try:
         insp_type = InspectionType(payload.inspection_type.upper())
     except ValueError:
@@ -98,6 +112,8 @@ async def submit_inspection(
         failed_names = ", ".join([item.name for item in failed_items])
         ticket = Ticket(
             description=f"INSPECTION FAILURE ({payload.inspection_type}): {failed_names} on Vehicle #{payload.vehicle_id}. Notes: {payload.notes or 'None'}",
+            issue_type="Vehicle Inspection",
+            amount=0.0,
             status=TicketStatus.PENDING,
             risk_level=RiskLevel.HIGH,
             vehicle_id=payload.vehicle_id,
@@ -132,7 +148,10 @@ async def list_inspections(
     """List inspection reports for a driver."""
     result = await db.execute(
         select(VehicleInspection)
-        .where(VehicleInspection.driver_id == driver.id)
+        .where(
+            VehicleInspection.driver_id == driver.id,
+            VehicleInspection.company_id == driver.company_id
+        )
         .order_by(desc(VehicleInspection.created_at))
         .limit(limit)
     )

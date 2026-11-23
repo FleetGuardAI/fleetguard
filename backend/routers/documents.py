@@ -10,9 +10,11 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import random
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
+
+from utils.rate_limiter import limiter
 
 logger = logging.getLogger("fleetguard.routers.documents")
 
@@ -44,7 +46,9 @@ def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentService:
     status_code=status.HTTP_201_CREATED,
     summary="Upload a new document",
 )
+@limiter.limit("30/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     name: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
@@ -139,7 +143,9 @@ async def list_documents(
     response_model=Dict[str, Any],
     summary="OCR for Driver License",
 )
+@limiter.limit("15/minute")
 async def ocr_driver_license(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
@@ -211,7 +217,9 @@ async def ocr_driver_license(
     response_model=Dict[str, Any],
     summary="OCR for Vehicle RC",
 )
+@limiter.limit("15/minute")
 async def ocr_vehicle_rc(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):

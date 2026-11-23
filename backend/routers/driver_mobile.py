@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from urllib.parse import urlparse, parse_qs
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +44,7 @@ from services.otp_service import get_otp_provider
 from services.file_upload_service import storage_service
 from utils.security import hash_password, create_access_token, decode_access_token
 from services.auth_service import get_current_user_allow_inactive, get_current_user
+from utils.rate_limiter import limiter
 
 logger = logging.getLogger("fleetguard.driver_mobile")
 
@@ -402,7 +403,8 @@ async def resolve_qr_code(
 
 
 @router.post("/send-otp")
-async def send_otp(payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/10minute")
+async def send_otp(request: Request, payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
     """
     Send OTP to driver's phone number.
     """
@@ -418,7 +420,9 @@ async def send_otp(payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/verify-otp", response_model=VerifyOtpResponse)
+@limiter.limit("5/10minute")
 async def verify_otp(
+    request: Request,
     payload: VerifyOtpRequest,
     db: AsyncSession = Depends(get_db),
 ) -> VerifyOtpResponse:
