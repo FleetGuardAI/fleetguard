@@ -12,8 +12,10 @@ from models.location_tracking import VehicleLocation, VehicleCurrentLocation, Lo
 from models.trip_domain import Trip
 from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver
-from models.asset_domain import Asset, AssetType
+from models.asset_domain import Asset, AssetType, AssetInstallationStatus
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+from models.outbox_event import OutboxEvent, OutboxStatus
+from config import settings
 from schemas.operational_event import OperationalEventResponse
 from schemas.telematics import NormalizedHardwareEvent
 
@@ -113,6 +115,23 @@ class LocationService:
             except ValueError:
                 item_status["status"] = "invalid"
                 item_status["reason"] = "invalid_timestamp"
+                result["rejected"] += 1
+                result["items"].append(item_status)
+                continue
+
+            # FG-SEC-034: Enforce timestamp bounds (reject > 5 mins in future or > 7 days in past)
+            now = datetime.now(timezone.utc)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            if ts > now + timedelta(minutes=5):
+                item_status["status"] = "invalid"
+                item_status["reason"] = "future_timestamp"
+                result["rejected"] += 1
+                result["items"].append(item_status)
+                continue
+            if ts < now - timedelta(days=7):
+                item_status["status"] = "invalid"
+                item_status["reason"] = "stale_timestamp"
                 result["rejected"] += 1
                 result["items"].append(item_status)
                 continue
@@ -227,10 +246,14 @@ class LocationService:
 
                     # 3. Update Vehicle Cache if newer
                     if is_newer:
-                        vehicle.last_known_lat = loc.latitude
-                        vehicle.last_known_lng = loc.longitude
-                        vehicle.last_location_at = ts
-                        vehicle.last_location_source = source
+                        if hasattr(vehicle, "last_known_lat"):
+                            vehicle.last_known_lat = loc.latitude
+                        if hasattr(vehicle, "last_known_lng"):
+                            vehicle.last_known_lng = loc.longitude
+                        if hasattr(vehicle, "last_location_at"):
+                            vehicle.last_location_at = ts
+                        if hasattr(vehicle, "last_location_source"):
+                            vehicle.last_location_source = source
                         
                         # Emit LOCATION_UPDATED event
                         op_event = OperationalEvent(
@@ -238,7 +261,7 @@ class LocationService:
                             entity_type=EntityType.VEHICLE,
                             entity_id=str(vehicle_id),
                             occurred_at=ts,
-                            capture_method=CaptureMethod.API,
+                            capture_method=CaptureMethod.API_INTEGRATION,
                             created_by=str(driver_id),
                             company_id=company_id,
                             payload={
@@ -253,10 +276,11 @@ class LocationService:
                         await db.flush()
                         
                         outbox_payload = OperationalEventResponse.model_validate(op_event).model_dump(mode="json")
-                        outbox_msg = OutboxMessage(
+                        outbox_msg = OutboxEvent(
                             topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
                             payload=outbox_payload,
-                            event_id=str(op_event.id)
+                            event_id=str(op_event.id),
+                            status=OutboxStatus.PENDING
                         )
                         db.add(outbox_msg)
 
@@ -307,6 +331,23 @@ class LocationService:
             # Extract timestamp
             ts = loc.timestamp
             
+            # FG-SEC-034: Enforce timestamp bounds on hardware telemetry
+            now = datetime.now(timezone.utc)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            if ts > now + timedelta(minutes=5):
+                item_status["status"] = "invalid"
+                item_status["reason"] = "future_timestamp"
+                result["rejected"] += 1
+                result["items"].append(item_status)
+                continue
+            if ts < now - timedelta(days=7):
+                item_status["status"] = "invalid"
+                item_status["reason"] = "stale_timestamp"
+                result["rejected"] += 1
+                result["items"].append(item_status)
+                continue
+            
             # Validate coordinates
             if not (-90 <= loc.latitude <= 90) or not (-180 <= loc.longitude <= 180):
                 item_status["status"] = "invalid"
@@ -337,12 +378,41 @@ class LocationService:
                     result["items"].append(item_status)
                     continue
                 elif len(assets) > 1:
-                    item_status["status"] = "ambiguous_device"
-                    result["rejected"] += 1
-                    result["items"].append(item_status)
-                    continue
-                    
-                asset = assets[0]
+                    # FG-SEC-033: Prevent cross-tenant telemetry DoS via duplicate IMEI registration.
+                    # Prioritize active/installed assets with an assigned vehicle.
+                    installed_assets = [
+                        a for a in assets
+                        if a.installation_status == AssetInstallationStatus.INSTALLED and a.current_vehicle_id is not None
+                    ]
+                    if loc.vehicle_registration:
+                        v_query = select(Vehicle).where(Vehicle.registration_number == loc.vehicle_registration)
+                        v_res = await db.execute(v_query)
+                        matching_veh = v_res.scalars().first()
+                        if matching_veh:
+                            reg_matches = [a for a in (installed_assets or assets) if a.current_vehicle_id == matching_veh.id]
+                            if len(reg_matches) == 1:
+                                asset = reg_matches[0]
+                            else:
+                                item_status["status"] = "ambiguous_device"
+                                result["rejected"] += 1
+                                result["items"].append(item_status)
+                                continue
+                        elif len(installed_assets) == 1:
+                            asset = installed_assets[0]
+                        else:
+                            item_status["status"] = "ambiguous_device"
+                            result["rejected"] += 1
+                            result["items"].append(item_status)
+                            continue
+                    elif len(installed_assets) == 1:
+                        asset = installed_assets[0]
+                    else:
+                        item_status["status"] = "ambiguous_device"
+                        result["rejected"] += 1
+                        result["items"].append(item_status)
+                        continue
+                else:
+                    asset = assets[0]
                 device_id = asset.id
                 
                 if not asset.current_vehicle_id:
@@ -470,11 +540,15 @@ class LocationService:
                         is_stale_for_hardware = True
 
                     # 3. Cross-source vehicle cache
-                    if vehicle.last_location_at is None or ts > vehicle.last_location_at:
-                        vehicle.last_known_lat = loc.latitude
-                        vehicle.last_known_lng = loc.longitude
-                        vehicle.last_location_at = ts
-                        vehicle.last_location_source = LocationSource.HARDWARE_GPS.value
+                    if hasattr(vehicle, "last_location_at"):
+                        if vehicle.last_location_at is None or ts > vehicle.last_location_at:
+                            if hasattr(vehicle, "last_known_lat"):
+                                vehicle.last_known_lat = loc.latitude
+                            if hasattr(vehicle, "last_known_lng"):
+                                vehicle.last_known_lng = loc.longitude
+                            vehicle.last_location_at = ts
+                            if hasattr(vehicle, "last_location_source"):
+                                vehicle.last_location_source = LocationSource.HARDWARE_GPS.value
                         
                     if is_newer_than_cache:
                         # Emit LOCATION_UPDATED event
@@ -483,7 +557,7 @@ class LocationService:
                             entity_type=EntityType.VEHICLE,
                             entity_id=str(vehicle_id),
                             occurred_at=ts,
-                            capture_method=CaptureMethod.API,
+                            capture_method=CaptureMethod.TELEMATICS,
                             created_by=str(device_id),
                             company_id=company_id,
                             payload={
@@ -498,10 +572,11 @@ class LocationService:
                         await db.flush()
                         
                         outbox_payload = OperationalEventResponse.model_validate(op_event).model_dump(mode="json")
-                        outbox_msg = OutboxMessage(
+                        outbox_msg = OutboxEvent(
                             topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
                             payload=outbox_payload,
-                            event_id=str(op_event.id)
+                            event_id=str(op_event.id),
+                            status=OutboxStatus.PENDING
                         )
                         db.add(outbox_msg)
                         

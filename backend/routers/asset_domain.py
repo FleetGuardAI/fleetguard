@@ -19,10 +19,8 @@ from models.vehicle_domain import Vehicle
 from schemas.asset_domain import AssetResponse, HardwareAssetCreate
 from services.auth_service import get_current_user
 from models.user import User
-from passlib.context import CryptContext
+from utils.security import hash_password
 import uuid
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter(prefix="/v1", tags=["Asset Domain"])
 
@@ -118,16 +116,32 @@ async def add_hardware_device(
         raise HTTPException(400, "This vehicle is not available in your fleet.")
 
     # Validate that we don't already have an asset with this API key
-    hashed_key = pwd_context.hash(payload.api_key.strip())
+    hashed_key = hash_password(payload.api_key.strip())
     # Note: We can't strictly search by hash since hashes use salts, 
     # but we will just trust the UI to not allow duplicate inserts if they somehow have the same key.
     # Alternatively, just create the asset. 
+
+    clean_serial = payload.serial_number.strip() if payload.serial_number else None
+    if clean_serial:
+        # Prevent cross-tenant and duplicate GPS device registration collisions (FG-SEC-033)
+        dup_query = select(Asset).where(
+            Asset.serial_number == clean_serial,
+            Asset.asset_type == AssetType.GPS_DEVICE,
+            Asset.installation_status == AssetInstallationStatus.INSTALLED,
+        )
+        dup_res = await db.execute(dup_query)
+        if dup_res.scalars().first():
+            raise HTTPException(
+                status_code=409,
+                detail=f"GPS device with serial number/IMEI '{clean_serial}' is already registered and active."
+            )
 
     new_asset = Asset(
         business_id=f"HW-{uuid.uuid4().hex[:8].upper()}",
         asset_type=AssetType.GPS_DEVICE, # default
         manufacturer="Unknown",
         model=payload.device_name.strip(),
+        serial_number=clean_serial,
         current_vehicle_id=payload.vehicle_id,
         installation_status=AssetInstallationStatus.INSTALLED,
         operational_status=AssetOperationalStatus.OK,

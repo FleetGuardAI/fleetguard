@@ -247,11 +247,20 @@ async def batch_upload_locations(
         try:
             ts = datetime.fromisoformat(loc.timestamp.replace("Z", "+00:00"))
         except ValueError:
-            ts = datetime.now(tz=timezone.utc)
+            logger.warning(f"Skipping malformed GPS timestamp from driver #{driver.id}: {loc.timestamp}")
+            continue
 
-        # Reject timestamps more than 24 hours in the future
-        if ts > datetime.now(tz=timezone.utc) + timedelta(hours=24):
-            ts = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=timezone.utc)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+
+        # FG-SEC-034: Strictly reject timestamps > 5 minutes in the future or older than 7 days
+        if ts > now + timedelta(minutes=5):
+            logger.warning(f"Skipping future GPS timestamp from driver #{driver.id}: {ts} (drift > 5m)")
+            continue
+        if ts < now - timedelta(days=7):
+            logger.warning(f"Skipping stale GPS timestamp from driver #{driver.id}: {ts} (> 7 days old)")
+            continue
 
         db_loc = DriverLocation(
             driver_id=driver.id,
