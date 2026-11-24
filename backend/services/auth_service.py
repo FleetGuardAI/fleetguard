@@ -90,25 +90,27 @@ def _build_token_payload(user: User, jti: str, remember_me: bool) -> dict:
 def _session_expiry(remember_me: bool) -> datetime:
     if remember_me:
         return _utcnow() + timedelta(days=settings.REMEMBER_ME_EXPIRE_DAYS)
-    return _utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return _utcnow() + timedelta(days=1)
 
 
 def _create_access_token(user: User, jti: str, remember_me: bool) -> str:
     """
     Encode a signed JWT for *user*.
+    FG-SEC-053: Access token lifetime is strictly bounded to ACCESS_TOKEN_EXPIRE_MINUTES
+    (60 minutes) regardless of remember_me status.
     """
     payload = _build_token_payload(user, jti=jti, remember_me=remember_me)
     payload["type"] = "access"
     return create_access_token(
         payload,
-        expires_delta=(_session_expiry(remember_me) - _utcnow()),
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
 def _create_refresh_token(user: User, jti: str, remember_me: bool) -> str:
     payload = _build_token_payload(user, jti=jti, remember_me=remember_me)
     payload["type"] = "refresh"
-    # Refresh tokens last longer (e.g., 30 days)
-    expires_delta = timedelta(days=30)
+    # Refresh tokens last for the session duration
+    expires_delta = timedelta(days=settings.REMEMBER_ME_EXPIRE_DAYS) if remember_me else timedelta(days=1)
     return create_access_token(payload, expires_delta=expires_delta)
 
 
@@ -773,11 +775,13 @@ async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenRes
         raise _CREDENTIALS_EXCEPTION
 
     now = _utcnow()
+    # FG-SEC-054: Reject expired sessions to prevent infinite access token generation
     session_result = await db.execute(
         select(AuthSession).where(
             AuthSession.session_jti == token_jti,
             AuthSession.user_id == user_id,
-            AuthSession.revoked_at.is_(None)
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
         )
     )
     auth_session = session_result.scalar_one_or_none()
@@ -789,8 +793,9 @@ async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenRes
     if user is None or not user.is_active:
         raise _CREDENTIALS_EXCEPTION
 
-    # Optional: we can roll the refresh token or keep the same session.
-    # To keep the session, we just issue a new access token (and same refresh token)
+    auth_session.last_seen_at = now
+
+    # Issue a new access token using the hardened lifetime (60m)
     return TokenResponse(
         access_token=_create_access_token(user, jti=token_jti, remember_me=auth_session.remember_me),
         refresh_token=refresh_token,

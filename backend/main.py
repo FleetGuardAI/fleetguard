@@ -238,7 +238,6 @@ from routers.support import router as support_router
 from routers.driver_domain import router as driver_domain_router
 from routers.driver_qualification import router as driver_qualification_router
 from routers.trip_domain import router as trip_domain_router
-from domain.fuel.api import router as fuel_domain_router
 from routers.fuel_domain import router as fuel_domain_ops_router
 from routers.maintenance_domain import router as maintenance_domain_router
 from routers.tyre_domain import router as tyre_domain_router
@@ -470,7 +469,6 @@ app.include_router(asset_domain_router, prefix=API_PREFIX)
 app.include_router(vehicle_domain_router, prefix=API_PREFIX)
 app.include_router(expense_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)
-app.include_router(fuel_domain_router, prefix=API_PREFIX)
 app.include_router(fuel_domain_ops_router, prefix=API_PREFIX)
 app.include_router(auth_router)                   # carries its own /api/v1/auth prefix
 app.include_router(operational_events_router)     # carries its own /api/v1/events prefix
@@ -480,7 +478,8 @@ app.include_router(fleet_intelligence_router, prefix="/api/v1") # carries /intel
 app.include_router(fuel_intelligence_router, prefix="/api/v1") # carries /intelligence/fuel prefix
 app.include_router(copilot_router, prefix="/api/v1")
 app.include_router(owner_dashboard_router)
-app.include_router(owner_emergency_router, prefix="/api/v1")
+app.include_router(owner_emergency_router, prefix=API_PREFIX)
+app.include_router(owner_emergency_router)
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
 app.include_router(telematics_router)

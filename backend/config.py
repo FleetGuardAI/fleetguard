@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     FIELD_ENCRYPTION_KEY: Optional[str] = None
 
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 60 minutes (1 hour per FG-SEC-053)
     REMEMBER_ME_EXPIRE_DAYS: int = 30
     PASSWORD_RESET_EXPIRE_MINUTES: int = 30
 
