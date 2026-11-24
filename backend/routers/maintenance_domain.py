@@ -10,6 +10,7 @@ via the Vehicle→company_id relationship.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
@@ -199,6 +200,24 @@ async def create_maintenance(
     await db.refresh(record)
     return MaintenanceRecordResponse.model_validate(record)
 
+
+async def _get_locked_maintenance_record(
+    db: AsyncSession, maintenance_id: int, company_id: int
+) -> Optional[MaintenanceRecord]:
+    """
+    FG-SEC-051: Concurrency-safe retrieval with exclusive row-level locking
+    and eager loading of parts and labour collections to prevent lost cost updates.
+    """
+    stmt = (
+        select(MaintenanceRecord)
+        .where(MaintenanceRecord.id == maintenance_id, MaintenanceRecord.company_id == company_id)
+        .options(selectinload(MaintenanceRecord.parts), selectinload(MaintenanceRecord.labour))
+        .with_for_update()
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 @router.patch("/maintenance/{maintenance_id}", response_model=MaintenanceRecordResponse)
 async def update_maintenance(
     maintenance_id: int,
@@ -208,10 +227,8 @@ async def update_maintenance(
 ) -> MaintenanceRecordResponse:
     company_id = current_user.company_id
     
-    result = await db.execute(
-        select(MaintenanceRecord).where(MaintenanceRecord.id == maintenance_id, MaintenanceRecord.company_id == company_id)
-    )
-    record = result.scalar_one_or_none()
+    # FG-SEC-051: Lock record with with_for_update to protect concurrent status and cost transitions
+    record = await _get_locked_maintenance_record(db, maintenance_id, company_id)
     if not record:
         raise HTTPException(404, "Maintenance record not found")
         
@@ -378,8 +395,8 @@ async def add_maintenance_part(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)
@@ -413,8 +430,8 @@ async def update_maintenance_part(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)
@@ -450,8 +467,8 @@ async def delete_maintenance_part(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)
@@ -475,8 +492,8 @@ async def add_maintenance_labour(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)
@@ -509,8 +526,8 @@ async def update_maintenance_labour(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)
@@ -544,8 +561,8 @@ async def delete_maintenance_labour(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = await db.get(MaintenanceRecord, id)
-    if not record or record.company_id != current_user.company_id:
+    record = await _get_locked_maintenance_record(db, id, current_user.company_id)
+    if not record:
         raise HTTPException(404, "Maintenance record not found")
         
     await _verify_mutability(db, record)

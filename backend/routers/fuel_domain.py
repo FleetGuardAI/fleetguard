@@ -52,10 +52,20 @@ async def get_fuel_caller(
         payload = jwt.decode(token, admin_secret, algorithms=["HS256"])
         if payload.get("token_type") == "admin_access" and payload.get("admin_id") is not None:
             admin_id = int(payload.get("admin_id"))
+            token_jti = payload.get("jti")
+            from services.admin_auth_service import is_admin_token_revoked
+            if is_admin_token_revoked(token_jti, admin_id=admin_id):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Admin token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
             result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))
             admin = result.scalar_one_or_none()
             if admin and admin.is_active:
                 return admin
+    except HTTPException:
+        raise
     except Exception:
         pass  # Not an admin token; proceed to user verification
 

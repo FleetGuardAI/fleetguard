@@ -15,11 +15,17 @@ class MaintenanceRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_maintenance_by_id(self, maintenance_id: int) -> Optional[MaintenanceRecord]:
+    async def get_maintenance_by_id(self, maintenance_id: int, for_update: bool = False) -> Optional[MaintenanceRecord]:
+        if for_update:
+            stmt = select(MaintenanceRecord).where(MaintenanceRecord.id == maintenance_id).with_for_update()
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none()
         return await self.db.get(MaintenanceRecord, maintenance_id)
 
-    async def get_maintenance_by_business_id(self, business_id: str) -> Optional[MaintenanceRecord]:
+    async def get_maintenance_by_business_id(self, business_id: str, for_update: bool = False) -> Optional[MaintenanceRecord]:
         stmt = select(MaintenanceRecord).where(MaintenanceRecord.business_id == business_id)
+        if for_update:
+            stmt = stmt.with_for_update()
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 

@@ -4,7 +4,14 @@ from datetime import timedelta
 
 from database import get_db
 from schemas.admin_domain import AdminLogin, Token, AdminUserResponse
-from services.admin_auth_service import authenticate_admin, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_admin
+from services.admin_auth_service import (
+    authenticate_admin,
+    create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    get_current_admin,
+    revoke_admin_token,
+    oauth2_scheme,
+)
 from models.admin_domain import AdminUser
 from utils.rate_limiter import limiter
 
@@ -42,3 +49,11 @@ async def login(
 @router.get("/me", response_model=AdminUserResponse, summary="Get Current Admin")
 async def get_me(current_admin: AdminUser = Depends(get_current_admin)):
     return current_admin
+
+@router.post("/logout", summary="Admin Logout")
+async def logout(
+    token: str = Depends(oauth2_scheme),
+    current_admin: AdminUser = Depends(get_current_admin),
+):
+    revoke_admin_token(token)
+    return {"message": "Admin session revoked successfully"}

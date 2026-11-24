@@ -18,8 +18,46 @@ from database import get_db
 logger = logging.getLogger("fleetguard.admin_auth")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 12 # 12 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 60 minutes (FG-SEC-053)
 _TEST_ADMIN_SECRET = "test-only-admin-jwt-secret-not-for-production-min32chars"
+
+# FG-SEC-055: Admin Token Revocation Registry
+_REVOKED_ADMIN_JTIS: set[str] = set()
+_REVOKED_ADMIN_USERS: dict[int, datetime] = {}
+
+def revoke_admin_token(token_or_jti: str) -> None:
+    """Revoke an individual admin token by its JTI or raw token string."""
+    jti = token_or_jti
+    if "." in token_or_jti:
+        try:
+            payload = jwt.decode(
+                token_or_jti,
+                get_admin_jwt_secret(),
+                algorithms=[ALGORITHM],
+                options={"verify_exp": False},
+            )
+            jti = payload.get("jti") or token_or_jti
+        except Exception:
+            jti = token_or_jti
+    if jti:
+        _REVOKED_ADMIN_JTIS.add(jti)
+
+def revoke_all_admin_tokens_for_user(admin_id: int) -> None:
+    """Invalidate all tokens for an admin user issued prior to now."""
+    _REVOKED_ADMIN_USERS[admin_id] = datetime.utcnow()
+
+def is_admin_token_revoked(jti: Optional[str], admin_id: Optional[int] = None) -> bool:
+    """Check if an admin token has been explicitly revoked."""
+    if jti and jti in _REVOKED_ADMIN_JTIS:
+        return True
+    if admin_id and admin_id in _REVOKED_ADMIN_USERS:
+        return True
+    return False
+
+def clear_admin_revocations_for_testing() -> None:
+    """Helper for test cleanup."""
+    _REVOKED_ADMIN_JTIS.clear()
+    _REVOKED_ADMIN_USERS.clear()
 
 
 def get_admin_jwt_secret() -> str:
@@ -67,6 +105,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    if "jti" not in to_encode:
+        import secrets
+        to_encode["jti"] = secrets.token_urlsafe(24)
     to_encode.update({"exp": expire, "token_type": "admin_access"})
     encoded_jwt = jwt.encode(to_encode, get_admin_jwt_secret(), algorithm=ALGORITHM)
     return encoded_jwt
@@ -99,7 +140,11 @@ async def get_current_admin(token: str = Depends(oauth2_scheme), db: AsyncSessio
             logger.warning("Rejected non-admin token type presented to admin endpoint")
             raise credentials_exception
         admin_id: str = payload.get("admin_id")
+        token_jti: Optional[str] = payload.get("jti")
         if admin_id is None:
+            raise credentials_exception
+        if is_admin_token_revoked(token_jti, admin_id=int(admin_id)):
+            logger.warning(f"Rejected revoked admin token for admin_id={admin_id}")
             raise credentials_exception
     except JWTError:
         raise credentials_exception
