@@ -2,6 +2,7 @@
 FleetGuard — Telematics Webhook Router
 Handles hardware GPS payloads.
 """
+import hmac
 from typing import Annotated, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Security, Request, status
 from fastapi.security import APIKeyHeader
@@ -29,7 +30,7 @@ def verify_telematics_secret(
     api_key_header: str = Security(webhook_header)
 ) -> bool:
     """
-    Validates the hardware provider webhook secret.
+    Validates the hardware provider webhook secret using timing-safe comparison (FG-SEC-032).
     """
     settings: Settings = _get_settings(request)
     if not settings.TELEMATICS_WEBHOOK_SECRET:
@@ -38,7 +39,17 @@ def verify_telematics_secret(
             detail="Telematics ingestion not configured"
         )
     
-    if api_key_header != settings.TELEMATICS_WEBHOOK_SECRET:
+    if not api_key_header:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid telematics secret"
+        )
+
+    # Constant-time comparison to prevent side-channel timing attacks (FG-SEC-032)
+    if not hmac.compare_digest(
+        api_key_header.encode("utf-8"),
+        settings.TELEMATICS_WEBHOOK_SECRET.encode("utf-8")
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid telematics secret"

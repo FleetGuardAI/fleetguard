@@ -387,8 +387,13 @@ async def update_trip(
         trip.status = payload.status
         if trip.status == TripStatus.IN_PROGRESS and not trip.actual_start_time:
             trip.actual_start_time = datetime.now(timezone.utc)
-        elif trip.status == TripStatus.COMPLETED and not trip.actual_end_time:
-            trip.actual_end_time = datetime.now(timezone.utc)
+        elif trip.status == TripStatus.COMPLETED:
+            if not trip.actual_end_time:
+                trip.actual_end_time = datetime.now(timezone.utc)
+            # Finalize telemetry immediately upon completion to freeze metrics (FG-SEC-035/052)
+            from services.trip_completion_service import TripCompletionService
+            completion_svc = TripCompletionService(db)
+            await completion_svc.finalize_trip_telemetry(trip.id)
 
         # Emit corresponding event
         status_event_map = {

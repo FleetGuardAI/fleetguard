@@ -77,13 +77,15 @@ class HardwareAssetCreate(BaseModel):
     api_key: str
     vehicle_id: int
     device_name: str
+    serial_number: Optional[str] = None
     
     model_config = {
         "json_schema_extra": {
             "example": {
                 "api_key": "sec_12345",
                 "vehicle_id": 1,
-                "device_name": "Truck 01 GPS"
+                "device_name": "Truck 01 GPS",
+                "serial_number": "864201040123456"
             }
         }
     }
