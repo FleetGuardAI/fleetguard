@@ -8,7 +8,7 @@ Isolates SQLAlchemy 2.x async queries from the Service layer.
 import uuid
 from typing import Sequence, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.document import Document, DocumentStorageStatus
@@ -71,11 +71,13 @@ class DocumentRepository:
         *,
         status: Optional[DocumentStorageStatus] = None,
         company_id: Optional[int] = None,
+        driver_user_id: Optional[str] = None,
+        driver_target_ids: Optional[Sequence[str]] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Sequence[Document]:
         """
-        List documents, optionally filtered by status and company_id.
+        List documents, optionally filtered by status, company_id, and driver scoping.
         Ordered by creation time descending.
         """
         stmt = select(Document).order_by(Document.created_at.desc())
@@ -85,6 +87,22 @@ class DocumentRepository:
             
         if company_id is not None:
             stmt = stmt.where(Document.company_id == company_id)
+
+        # FG-SEC-028: Enforce horizontal IDOR protection for drivers
+        if driver_user_id is not None:
+            target_ids = list(driver_target_ids or [])
+            if target_ids:
+                stmt = stmt.where(
+                    or_(
+                        Document.uploaded_by == driver_user_id,
+                        and_(
+                            Document.target_type == "driver",
+                            Document.target_id.in_(target_ids)
+                        )
+                    )
+                )
+            else:
+                stmt = stmt.where(Document.uploaded_by == driver_user_id)
             
         stmt = stmt.limit(limit).offset(offset)
         result = await self._session.execute(stmt)

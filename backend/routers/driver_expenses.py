@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +27,7 @@ from models.fuel_domain import FuelTransaction, FuelTransactionType
 from models.user import User
 from schemas.operational_event import OperationalEventCreate
 from services.operational_event_service import OperationalEventService
-from services.file_upload_service import storage_service
+from services.file_upload_service import storage_service, read_bounded_file, MAX_OCR_FILE_SIZE_BYTES
 from models.driver_domain import Driver
 from services.auth_service import get_current_user
 from models.user import User
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/api/v1/driver-app", tags=["Driver Expenses"])
 
 class ExpenseCreateRequest(BaseModel):
     category: str  # FUEL, TOLL, PARKING, MAINTENANCE, ALLOWANCE, MISCELLANEOUS
-    amount: float
+    amount: float = Field(..., gt=0, le=10_000_000, description="Expense amount must be strictly positive")
     description: Optional[str] = None
     receipt_url: Optional[str] = None
     vehicle_id: Optional[int] = None
@@ -51,8 +51,8 @@ class ExpenseCreateRequest(BaseModel):
     driver_id: Optional[int] = None  # Ignored for security, identity derived from JWT
     
     # Fuel specific fields (Milestone 1C)
-    fuel_quantity_liters: Optional[float] = None
-    odometer_reading: Optional[float] = None
+    fuel_quantity_liters: Optional[float] = Field(None, gt=0)
+    odometer_reading: Optional[float] = Field(None, ge=0)
     is_full_tank: Optional[bool] = None
 
 
@@ -99,7 +99,8 @@ async def process_receipt_ocr(
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User is not associated with a company")
 
-    content = await file.read()
+    # FG-SEC-029: Bounded file read to prevent memory exhaustion
+    content = await read_bounded_file(file, MAX_OCR_FILE_SIZE_BYTES)
     await file.seek(0)
     
     url = await storage_service.upload_file(file, folder="receipts")
@@ -264,6 +265,10 @@ async def create_expense(
     """Submit a driver expense."""
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User is not associated with a company")
+
+    # FG-SEC-050: Strict validation against zero or negative financial claims
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Expense amount must be strictly greater than zero.")
 
     # Use authenticated driver from JWT
     if not driver or driver.company_id != current_user.company_id:

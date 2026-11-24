@@ -4,7 +4,7 @@ Defines value objects for maintenance operations and read-models for API respons
 """
 
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
 
@@ -153,44 +153,42 @@ class MaintenanceCreateRequest(BaseModel):
     completed_date: Optional[datetime] = None
     workshop: Optional[str] = None
     description: Optional[str] = None
-    odometer: Optional[float] = None
-    cost: Optional[float] = None
-    other_cost: Optional[float] = None
-    other_cost: float = 0.0
+    odometer: Optional[float] = Field(None, ge=0)
+    cost: Optional[float] = Field(None, ge=0, description="Cost must be non-negative")
+    other_cost: Optional[float] = Field(0.0, ge=0, description="Other cost must be non-negative")
 
 class MaintenanceUpdateRequest(BaseModel):
     driver_id: Optional[int] = None
     trip_id: Optional[int] = None
     status: Optional[MaintenanceStatus] = None
     completed_date: Optional[datetime] = None
-    cost: Optional[float] = None
-    other_cost: Optional[float] = None
-    other_cost: float = 0.0
-    odometer: Optional[float] = None
+    cost: Optional[float] = Field(None, ge=0, description="Cost must be non-negative")
+    other_cost: Optional[float] = Field(None, ge=0, description="Other cost must be non-negative")
+    odometer: Optional[float] = Field(None, ge=0)
     description: Optional[str] = None
     workshop: Optional[str] = None
 
 class MaintenancePartCreate(BaseModel):
     name: str
     part_number: Optional[str] = None
-    quantity: int = 1
-    unit_cost: float = 0.0
+    quantity: int = Field(1, ge=1)
+    unit_cost: float = Field(0.0, ge=0)
 
 class MaintenancePartUpdate(BaseModel):
     name: Optional[str] = None
     part_number: Optional[str] = None
-    quantity: Optional[int] = None
-    unit_cost: Optional[float] = None
+    quantity: Optional[int] = Field(None, ge=1)
+    unit_cost: Optional[float] = Field(None, ge=0)
 
 class MaintenanceLabourCreate(BaseModel):
     description: str
-    hours: float = 1.0
-    hourly_rate: float = 0.0
+    hours: float = Field(1.0, ge=0)
+    hourly_rate: float = Field(0.0, ge=0)
 
 class MaintenanceLabourUpdate(BaseModel):
     description: Optional[str] = None
-    hours: Optional[float] = None
-    hourly_rate: Optional[float] = None
+    hours: Optional[float] = Field(None, ge=0)
+    hourly_rate: Optional[float] = Field(None, ge=0)
 
 class MaintenanceDocumentCreate(BaseModel):
     document_id: uuid.UUID

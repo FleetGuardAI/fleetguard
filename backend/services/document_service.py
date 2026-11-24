@@ -122,13 +122,17 @@ class DocumentService:
         *,
         status: Optional[DocumentStorageStatus] = None,
         company_id: Optional[int] = None,
+        driver_user_id: Optional[str] = None,
+        driver_target_ids: Optional[Sequence[str]] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Sequence[DocumentResponse]:
-        """List documents, optionally filtered by status and company."""
+        """List documents, optionally filtered by status, company, and driver scoping."""
         docs = await self._repo.list_documents(
             status=status,
             company_id=company_id,
+            driver_user_id=driver_user_id,
+            driver_target_ids=driver_target_ids,
             limit=limit,
             offset=offset
         )
