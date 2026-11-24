@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,8 +43,8 @@ class WalletSummaryResponse(BaseModel):
 
 
 class AdvanceRequest(BaseModel):
-    amount: float
-    reason: Optional[str] = None
+    amount: float = Field(..., gt=0, le=1_000_000, description="Advance amount requested must be positive")
+    reason: Optional[str] = Field(None, max_length=500)
 
 
 @router.get("/wallet", response_model=WalletSummaryResponse)
@@ -102,6 +102,9 @@ async def request_advance(
     db: AsyncSession = Depends(get_db),
 ):
     """Submit salary advance request."""
+    # FG-SEC-050: Strict validation against zero or negative financial advances
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Advance request amount must be greater than zero.")
     tx = WalletTransaction(
         driver_id=driver.id,
         company_id=driver.company_id,

@@ -12,7 +12,13 @@ from typing import List, Optional
 
 from database import get_db
 from models.expense_domain import ExpenseCategory, ExpenseStatus, Expense
-from schemas.expense_domain import ExpenseResponse, ExpenseApproveRequest, ExpenseRejectRequest
+from schemas.expense_domain import (
+    ExpenseResponse, 
+    ExpenseApproveRequest, 
+    ExpenseRejectRequest,
+    ExpenseCreateRequest,
+    ExpenseUpdateRequest
+)
 from repositories.expense_repository import ExpenseRepository
 from services.auth_service import get_current_user, requires_role
 from models.user import User, UserRole
@@ -125,7 +131,7 @@ async def get_maintenance_expenses(
 
 @router.post("/expenses", response_model=ExpenseResponse, status_code=201)
 async def create_expense(
-    payload: dict,
+    payload: ExpenseCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> ExpenseResponse:
@@ -134,46 +140,41 @@ async def create_expense(
     from models.trip_domain import Trip
     import uuid
 
-    if payload.get("vehicle_id"):
-        vehicle = await db.get(Vehicle, payload.get("vehicle_id"))
+    # FG-SEC-050: Strict validation against negative or zero expense amount
+    if payload.amount <= 0:
+        raise HTTPException(400, "Expense amount must be strictly greater than zero.")
+
+    if payload.vehicle_id:
+        vehicle = await db.get(Vehicle, payload.vehicle_id)
         if not vehicle or vehicle.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid vehicle_id or unauthorized")
             
-    if payload.get("driver_id"):
-        driver = await db.get(Driver, payload.get("driver_id"))
+    if payload.driver_id:
+        driver = await db.get(Driver, payload.driver_id)
         if not driver or driver.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid driver_id or unauthorized")
             
     trip = None
-    if payload.get("trip_id"):
-        trip = await db.get(Trip, payload.get("trip_id"))
+    if payload.trip_id:
+        trip = await db.get(Trip, payload.trip_id)
         if not trip or trip.company_id != current_user.company_id:
             raise HTTPException(400, "Invalid trip_id or unauthorized")
 
-    resolved_vehicle_id = payload.get("vehicle_id") or (trip.vehicle_id if trip else None)
+    resolved_vehicle_id = payload.vehicle_id or (trip.vehicle_id if trip else None)
     
-    # Parse expense date if provided, otherwise default to current UTC time
-    exp_date_raw = payload.get("expense_date")
-    if exp_date_raw:
-        if isinstance(exp_date_raw, str):
-            from dateutil import parser
-            expense_date = parser.isoparse(exp_date_raw)
-        else:
-            expense_date = exp_date_raw
-    else:
-        expense_date = datetime.now(timezone.utc)
+    expense_date = payload.expense_date or datetime.now(timezone.utc)
 
     expense = Expense(
         business_id=f"EXP-{str(uuid.uuid4())[:8].upper()}",
         company_id=current_user.company_id,
-        category=payload.get("category", "MISCELLANEOUS"),
-        amount=payload.get("amount", 0.0),
+        category=payload.category or "MISCELLANEOUS",
+        amount=payload.amount,
         status="PENDING",
         expense_date=expense_date,
-        description=payload.get("description", ""),
+        description=payload.description or "",
         vehicle_id=resolved_vehicle_id,
-        driver_id=payload.get("driver_id"),
-        trip_id=payload.get("trip_id"),
+        driver_id=payload.driver_id,
+        trip_id=payload.trip_id,
         origin_type="rest_api",
         origin_id="manual"
     )
@@ -186,7 +187,7 @@ async def create_expense(
 @router.patch("/expenses/{expense_id}", response_model=ExpenseResponse)
 async def update_expense(
     expense_id: int,
-    payload: dict,
+    payload: ExpenseUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> ExpenseResponse:
@@ -202,20 +203,16 @@ async def update_expense(
             f"Cannot modify an expense with status '{expense.status.value}'. Only PENDING or RECORDED expenses can be edited."
         )
 
-    # Block direct status changes via PATCH — use approve/reject endpoints instead
-    if "status" in payload:
-        raise HTTPException(
-            400,
-            "Status changes are not allowed via PATCH. Use POST /expenses/{id}/approve or /expenses/{id}/reject."
-        )
-    
-    if "description" in payload:
-        expense.description = payload["description"]
-    if "amount" in payload:
-        expense.amount = float(payload["amount"])
-    if "category" in payload:
+    if payload.description is not None:
+        expense.description = payload.description
+    if payload.amount is not None:
+        # FG-SEC-050: Strict validation against negative or zero updated amount
+        if payload.amount <= 0:
+            raise HTTPException(400, "Expense amount must be strictly greater than zero.")
+        expense.amount = payload.amount
+    if payload.category is not None:
         try:
-            expense.category = ExpenseCategory(payload["category"])
+            expense.category = ExpenseCategory(payload.category)
         except ValueError:
             pass
 

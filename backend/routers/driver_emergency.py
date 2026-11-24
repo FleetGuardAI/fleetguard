@@ -133,8 +133,9 @@ async def trigger_sos(
     await db.commit()
     await db.refresh(sos)
 
+    # FG-SEC-047: Redact plaintext GPS coordinates from application logs to preserve privacy
     logger.critical(
-        f"🚨 EMERGENCY SOS triggered by Driver #{driver.id} at ({payload.latitude}, {payload.longitude}) [Ticket {ticket_code}]"
+        f"🚨 EMERGENCY SOS triggered by Driver #{driver.id} [Coordinates: REDACTED] [Ticket {ticket_code}]"
     )
 
     return SosResponse(

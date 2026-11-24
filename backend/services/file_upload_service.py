@@ -11,7 +11,7 @@ import uuid
 import logging
 import urllib.parse
 from typing import Optional, Tuple, Union, Any
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile, HTTPException, status
 try:
     from PIL import Image, UnidentifiedImageError
 except ImportError:
@@ -65,6 +65,29 @@ SAFE_RASTER_IMAGE_EXTENSIONS = {
 }
 
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
+MAX_OCR_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+async def read_bounded_file(file: UploadFile, max_bytes: int = MAX_FILE_SIZE_BYTES) -> bytes:
+    """
+    FG-SEC-029: Safely stream and read uploaded file with hard memory bounding.
+    Prevents unbounded memory consumption and OOM DoS attacks.
+    """
+    chunk_size = 64 * 1024  # 64 KB chunks
+    buffer = bytearray()
+    
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        buffer.extend(chunk)
+        if len(buffer) > max_bytes:
+            max_mb = max_bytes // (1024 * 1024)
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum allowed size of {max_mb}MB."
+            )
+    return bytes(buffer)
 
 DANGEROUS_CONTENT_SIGNATURES = (
     b"<html", b"<!doctype", b"<script", b"<svg", b"<?php", b"<xml", b"javascript:",
@@ -513,7 +536,7 @@ class StorageService:
         Save uploaded file with structural validation and server-controlled filename.
         Returns object path formatted as `{folder}/{uuid}.{ext}`.
         """
-        raw_content = await file.read()
+        raw_content = await read_bounded_file(file, MAX_FILE_SIZE_BYTES)
         sanitized_content, detected_mime = self._validate_and_sanitize(raw_content, file.content_type)
         safe_ext = MIME_TO_EXT[detected_mime]
         safe_folder = self._sanitize_folder(folder, company_id=company_id)

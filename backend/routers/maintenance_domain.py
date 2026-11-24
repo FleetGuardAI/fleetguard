@@ -140,6 +140,12 @@ async def create_maintenance(
         if not vehicle or vehicle.company_id != company_id:
             raise HTTPException(403, "Unauthorized vehicle")
 
+    # FG-SEC-050: Strict validation against negative costs
+    if payload.cost is not None and payload.cost < 0:
+        raise HTTPException(400, "Maintenance cost cannot be negative.")
+    if payload.other_cost is not None and payload.other_cost < 0:
+        raise HTTPException(400, "Maintenance other_cost cannot be negative.")
+
     # Create Expense if COMPLETED and cost exists
     expense_id = None
     if payload.status == MaintenanceStatus.COMPLETED and payload.cost and payload.cost > 0:
@@ -215,6 +221,8 @@ async def update_maintenance(
     if payload.completed_date:
         record.completed_date = payload.completed_date
     if payload.cost is not None:
+        if payload.cost < 0:
+            raise HTTPException(400, "Maintenance cost cannot be negative.")
         record.cost = payload.cost
     if payload.odometer is not None:
         record.odometer = payload.odometer
@@ -223,6 +231,8 @@ async def update_maintenance(
     if payload.workshop is not None:
         record.workshop = payload.workshop
     if payload.other_cost is not None:
+        if payload.other_cost < 0:
+            raise HTTPException(400, "Maintenance other_cost cannot be negative.")
         record.other_cost = payload.other_cost
     if payload.trip_id is not None:
         record.trip_id = payload.trip_id
