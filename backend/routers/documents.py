@@ -22,6 +22,7 @@ from database import get_db
 from models.document import DocumentStorageStatus
 from schemas.document import DocumentResponse
 from services.document_service import DocumentService, DocumentNotFound
+from services.file_upload_service import read_bounded_file, MAX_OCR_FILE_SIZE_BYTES
 from routers.auth import get_current_user
 from models.user import User, UserRole
 from models.document import Document, DocumentVerificationStatus
@@ -100,13 +101,33 @@ async def upload_document(
 async def get_document(
     document_id: uuid.UUID,
     service: DocumentService = Depends(get_document_service),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Retrieve the metadata and processing status of a specific document.
     """
     try:
-        return await service.get_document(document_id, company_id=current_user.company_id)
+        doc = await service.get_document(document_id, company_id=current_user.company_id)
+        
+        # FG-SEC-028: Prevent Horizontal IDOR across drivers
+        if current_user.role == UserRole.DRIVER:
+            user_id_str = str(current_user.id)
+            driver_res = await db.execute(select(Driver).where(Driver.user_id == current_user.id))
+            driver = driver_res.scalar_one_or_none()
+            allowed_targets = [user_id_str]
+            if driver:
+                allowed_targets.append(str(driver.id))
+                
+            is_owner = (doc.uploaded_by == user_id_str)
+            is_target = (doc.target_type == "driver" and doc.target_id in allowed_targets)
+            if not (is_owner or is_target):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: Drivers can only access their own documents."
+                )
+                
+        return doc
     except DocumentNotFound as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -124,15 +145,30 @@ async def list_documents(
     limit: int = 50,
     offset: int = 0,
     service: DocumentService = Depends(get_document_service),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     List documents with optional filtering by storage status.
     """
     company_id = current_user.company_id if current_user.role != UserRole.SUPER_ADMIN else None
+    
+    # FG-SEC-028: Prevent Horizontal IDOR across drivers in document list
+    driver_user_id = None
+    driver_target_ids = None
+    if current_user.role == UserRole.DRIVER:
+        driver_user_id = str(current_user.id)
+        driver_res = await db.execute(select(Driver).where(Driver.user_id == current_user.id))
+        driver = driver_res.scalar_one_or_none()
+        driver_target_ids = [str(current_user.id)]
+        if driver:
+            driver_target_ids.append(str(driver.id))
+
     return await service.list_documents(
         status=storage_status,
         company_id=company_id,
+        driver_user_id=driver_user_id,
+        driver_target_ids=driver_target_ids,
         limit=limit,
         offset=offset,
     )
@@ -165,7 +201,7 @@ async def ocr_driver_license(
             detail="This does not appear to be a valid image."
         )
 
-    content = await file.read()
+    content = await read_bounded_file(file, MAX_OCR_FILE_SIZE_BYTES)
     from infrastructure.ocr.provider import get_ocr_provider
     provider = get_ocr_provider()
     
@@ -239,7 +275,7 @@ async def ocr_vehicle_rc(
             detail="This does not appear to be a valid image."
         )
 
-    content = await file.read()
+    content = await read_bounded_file(file, MAX_OCR_FILE_SIZE_BYTES)
     from infrastructure.ocr.provider import get_ocr_provider
     provider = get_ocr_provider()
     

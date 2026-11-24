@@ -53,3 +53,27 @@ class ExpenseApproveRequest(BaseModel):
 class ExpenseRejectRequest(BaseModel):
     """Request body for rejecting an expense. Rejection reason is mandatory."""
     rejection_reason: str = Field(..., min_length=1, max_length=1000, description="Reason for rejecting this expense claim")
+
+
+class ExpenseCreateRequest(BaseModel):
+    """
+    FG-SEC-050: Strict validation enforcing positive amount for new expense records.
+    """
+    amount: float = Field(..., gt=0, le=10_000_000, description="Expense amount must be strictly positive")
+    category: Optional[str] = "MISCELLANEOUS"
+    currency: Optional[str] = "INR"
+    description: Optional[str] = Field(None, max_length=1000)
+    vehicle_id: Optional[int] = None
+    driver_id: Optional[int] = None
+    trip_id: Optional[int] = None
+    maintenance_id: Optional[int] = None
+    expense_date: Optional[datetime] = None
+
+
+class ExpenseUpdateRequest(BaseModel):
+    """
+    FG-SEC-050: Strict validation enforcing positive amount for updated expense records.
+    """
+    amount: Optional[float] = Field(None, gt=0, le=10_000_000, description="Updated expense amount must be strictly positive")
+    category: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=1000)

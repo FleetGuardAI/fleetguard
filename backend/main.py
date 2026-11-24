@@ -22,6 +22,7 @@ from database import create_all_tables, async_session_factory
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from utils.rate_limiter import limiter
+from utils.security_headers import SecurityHeadersMiddleware
 
 # --- Logging ---
 logging.basicConfig(
@@ -377,10 +378,11 @@ app = FastAPI(
 # --- Mount Static Files (Uploads) ---
 # REMOVED for production security: Files are now retrieved securely via Supabase Storage signed URLs.
 
-# --- CORS Middleware ---
+# --- CORS & Security Headers Middleware ---
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -399,7 +401,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.exception(f"Unhandled server error on {request.method} {request.url.path}: {exc}")
     origin = request.headers.get("origin")
     headers = {}
-    if origin and (origin in settings.CORS_ORIGINS or "*" in settings.CORS_ORIGINS):
+    if origin and origin in settings.CORS_ORIGINS:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
         headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"

@@ -10,6 +10,8 @@ on:
       - 'backend/alembic.ini'
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
