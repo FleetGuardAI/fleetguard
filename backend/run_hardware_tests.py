@@ -19,6 +19,7 @@ if __name__ == "__main__":
     import tests.test_migration_safety as mod_migration
     import tests.test_quarantine_security as mod_quarantine
     import tests.test_raw_wire_protocols_and_forwarder as mod_wire
+    import tests.test_task5_synthetic_registration as mod_task5
     
     suite.addTests(loader.loadTestsFromModule(mod_telematics))
     suite.addTests(loader.loadTestsFromModule(mod_router))
@@ -28,6 +29,7 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(mod_migration))
     suite.addTests(loader.loadTestsFromModule(mod_quarantine))
     suite.addTests(loader.loadTestsFromModule(mod_wire))
+    suite.addTests(loader.loadTestsFromModule(mod_task5))
     
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
