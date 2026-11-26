@@ -218,5 +218,9 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = "redis://localhost:6379"
     SUPABASE_STORAGE_BUCKET: str = "fleetguard-uploads"
 
+    # --- Telematics & Universal Hardware Ingestion ---
+    TELEMATICS_WEBHOOK_SECRET: Optional[str] = None
+    ALLOW_REGISTRATION_ONLY_TELEMATICS: bool = False
+
 
 settings = Settings()

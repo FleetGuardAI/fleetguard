@@ -63,3 +63,69 @@ export async function createHardwareAsset(data) {
   const record = await api.assets.createHardware(data);
   return normalizeAsset(record);
 }
+
+// ── Universal Hardware & Telematics Endpoints ─────────────────────────
+
+export async function getHardwareSummaryStats() {
+  return await api.hardware.getStats();
+}
+
+export async function getHardwareProtocols() {
+  return await api.hardware.getProtocols();
+}
+
+export async function getHardwareDevices(params = {}) {
+  return await api.hardware.getDevices(params);
+}
+
+export async function getHardwareDeviceById(id) {
+  return await api.hardware.getDevice(id);
+}
+
+export async function registerHardwareDevice(data) {
+  return await api.hardware.registerDevice(data);
+}
+
+export async function updateHardwareDevice(id, data) {
+  return await api.hardware.updateDevice(id, data);
+}
+
+export async function reassignDeviceVehicle(id, data) {
+  return await api.hardware.reassignVehicle(id, data);
+}
+
+export async function disconnectHardwareDevice(id) {
+  return await api.hardware.disconnectDevice(id);
+}
+
+export async function removeHardwareDevice(id) {
+  return await api.hardware.removeDevice(id);
+}
+
+export async function testHardwareConnection(id) {
+  return await api.hardware.testConnection(id);
+}
+
+export async function getDeviceLocationHistory(id, params = {}) {
+  return await api.hardware.getLocations(id, params);
+}
+
+export async function getGPSProviders() {
+  return await api.hardware.getProviders();
+}
+
+export async function createGPSProvider(data) {
+  return await api.hardware.createProvider(data);
+}
+
+export async function testGPSProvider(id) {
+  return await api.hardware.testProvider(id);
+}
+
+export async function syncGPSProvider(id) {
+  return await api.hardware.syncProvider(id);
+}
+
+export async function deleteGPSProvider(id) {
+  return await api.hardware.deleteProvider(id);
+}

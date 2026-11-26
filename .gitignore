@@ -64,9 +64,21 @@ frontend/fix_*.py
 frontend/patch_*.py
 
 # -----------------------
+# -----------------------
 # Runtime Uploads & Sensitive KYC Artifacts (FG-SEC-006 Containment)
 # -----------------------
 # Narrowly scoped runtime upload exclusions - never track uploaded files or KYC documents
 backend/uploads/
 uploads/
 **/uploads/
+
+# -----------------------
+# Presentation & QA Scratch
+# -----------------------
+test_*.ps1
+enable_vbom.ps1
+test_download.jpg
+temp_slide_export/
+qa_slides/
+qa_slides_final/
+assets/cropped_cache/

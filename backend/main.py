@@ -257,8 +257,8 @@ from routers.owner_dashboard import router as owner_dashboard_router
 from routers.owner_emergency import router as owner_emergency_router
 from routers.notifications import router as notifications_router
 from routers.location import router as location_router
-from routers.telematics import router as telematics_router
 from routers.route_intelligence import router as route_intelligence_router
+from routers.telematics import router as telematics_router
 
 # Import Driver Mobile App routers
 from routers.driver_mobile import router as driver_mobile_router
@@ -292,6 +292,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - Shutdown: Cleanup resources.
     """
     logger.info("🚛 FleetGuard TMS starting up...")
+    app.state.settings = settings
     # FG-SEC-003: Enforce dedicated admin signing secret on startup
     from services.admin_auth_service import get_admin_jwt_secret
     get_admin_jwt_secret()
@@ -374,6 +375,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+app.state.settings = settings
 
 # --- Mount Static Files (Uploads) ---
 # REMOVED for production security: Files are now retrieved securely via Supabase Storage signed URLs.
@@ -483,8 +485,8 @@ app.include_router(owner_dashboard_router)
 app.include_router(owner_emergency_router, prefix="/api/v1")
 app.include_router(notifications_router)
 app.include_router(location_router, prefix="/api")
-app.include_router(telematics_router)
 app.include_router(route_intelligence_router)
+app.include_router(telematics_router)
 
 
 # Mount Driver Mobile App Routers

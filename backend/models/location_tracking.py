@@ -169,7 +169,7 @@ class VehicleLocation(Base):
         Enum(LocationSource, native_enum=False, length=50),
         nullable=False, default=LocationSource.PHONE_GPS
     )
-    event_fingerprint: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    event_fingerprint: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     source_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     original_driver_location_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -358,6 +358,44 @@ const api = {
     createHardware: (data) => request('/v1/assets/hardware', { method: 'POST', body: JSON.stringify(data) }),
   },
 
+  // ── Universal Hardware & Telematics Domain (/api/v1/assets/hardware) ──
+  hardware: {
+    getStats: () => request('/v1/assets/hardware/stats'),
+    getProtocols: () => request('/v1/assets/hardware/protocols'),
+    getDevices: (params = {}) => {
+      const cleanParams = {};
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+          cleanParams[k] = v;
+        }
+      });
+      const query = new URLSearchParams(cleanParams).toString();
+      return request(`/v1/assets/hardware/devices${query ? `?${query}` : ''}`);
+    },
+    getDevice: (id) => request(`/v1/assets/hardware/devices/${id}`),
+    registerDevice: (data) => request('/v1/assets/hardware/register', { method: 'POST', body: JSON.stringify(data) }),
+    updateDevice: (id, data) => request(`/v1/assets/hardware/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    reassignVehicle: (id, data) => request(`/v1/assets/hardware/devices/${id}/reassign`, { method: 'POST', body: JSON.stringify(data) }),
+    disconnectDevice: (id) => request(`/v1/assets/hardware/devices/${id}/disconnect`, { method: 'POST' }),
+    removeDevice: (id) => request(`/v1/assets/hardware/devices/${id}`, { method: 'DELETE' }),
+    testConnection: (id) => request(`/v1/assets/hardware/devices/${id}/test-connection`, { method: 'POST' }),
+    getLocations: (id, params = {}) => {
+      const cleanParams = {};
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+          cleanParams[k] = v;
+        }
+      });
+      const query = new URLSearchParams(cleanParams).toString();
+      return request(`/v1/assets/hardware/devices/${id}/locations${query ? `?${query}` : ''}`);
+    },
+    getProviders: () => request('/v1/assets/hardware/providers'),
+    createProvider: (data) => request('/v1/assets/hardware/providers', { method: 'POST', body: JSON.stringify(data) }),
+    testProvider: (id) => request(`/v1/assets/hardware/providers/${id}/test`, { method: 'POST' }),
+    syncProvider: (id) => request(`/v1/assets/hardware/providers/${id}/sync`, { method: 'POST' }),
+    deleteProvider: (id) => request(`/v1/assets/hardware/providers/${id}`, { method: 'DELETE' }),
+  },
+
   // ── Tyre Domain (NEW - /api/v1/tyres) ──────────────────────
   tyres: {
     list: (params = {}) => {

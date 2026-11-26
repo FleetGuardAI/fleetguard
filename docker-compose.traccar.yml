@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  traccar:
+    image: traccar/traccar:6.5
+    container_name: vahan-traccar-engine
+    restart: always
+    ports:
+      # Traccar Web UI & REST Management API
+      - "8082:8082"
+      # Universal GPS Telematics Device Ports (TCP & UDP)
+      # Teltonika (Codec 8, Codec 8E, Codec 16)
+      - "5027:5027/tcp"
+      - "5027:5027/udp"
+      # Concox / Jimi IoT (GT06, GT06N, WeTrack2, JM-VL02)
+      - "5023:5023/tcp"
+      - "5023:5023/udp"
+      # Coban (TK103, GPS103, TK303)
+      - "5001:5001/tcp"
+      - "5001:5001/udp"
+      # Queclink (@Track GV300, GV50)
+      - "5004:5004/tcp"
+      - "5004:5004/udp"
+      # Sinotrack (H02)
+      - "5013:5013/tcp"
+      - "5013:5013/udp"
+      # JT/T 808 (Chinese Standard Transport Protocol)
+      - "5008:5008/tcp"
+      - "5008:5008/udp"
+      # Meitrack (T333, T366G)
+      - "5020:5020/tcp"
+      - "5020:5020/udp"
+      # AIS-140 Indian Government Certified Telematics
+      - "5140:5140/tcp"
+      - "5140:5140/udp"
+      # OsmAnd / Mobile GPS Client HTTP Ingestion
+      - "5055:5055/tcp"
+    environment:
+      - CONFIG_USE_ENVIRONMENT_VARIABLES=true
+      - FORWARD_ENABLE=true
+      - FORWARD_URL=http://vahan-backend:8000/api/v1/tracking/telematics/traccar
+      - FORWARD_JSON=true
+      - FORWARD_HEADER=Content-Type: application/json\nX-Telematics-Secret: ${TELEMATICS_WEBHOOK_SECRET}
+      - TELEMATICS_WEBHOOK_SECRET=${TELEMATICS_WEBHOOK_SECRET}
+    volumes:
+      - ./docs/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - traccar_logs:/opt/traccar/logs
+      - traccar_data:/opt/traccar/data
+    networks:
+      - vahan-telematics-net
+
+volumes:
+  traccar_logs:
+  traccar_data:
+
+networks:
+  vahan-telematics-net:
+    driver: bridge

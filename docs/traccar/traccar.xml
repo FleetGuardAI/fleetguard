@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>
+<properties>
+    <!-- Traccar Telematics Server Configuration for Vahan Platform -->
+    
+    <!-- Database Configuration (Internal SQLite or connect to RDS) -->
+    <entry key='database.driver'>org.h2.Driver</entry>
+    <entry key='database.url'>jdbc:h2:/opt/traccar/data/database</entry>
+    <entry key='database.user'>sa</entry>
+    <entry key='database.password'></entry>
+
+    <!-- Web Interface and Management API -->
+    <entry key='web.port'>8082</entry>
+    <entry key='web.address'>0.0.0.0</entry>
+
+    <!-- Vahan Real-Time Forwarding Webhook Integration -->
+    <!-- Forwards normalized positions in real-time to Vahan Telematics Router -->
+    <entry key='forward.enable'>true</entry>
+    <entry key='forward.url'>http://vahan-backend:8000/api/v1/tracking/telematics/traccar</entry>
+    <entry key='forward.json'>true</entry>
+    <entry key='forward.header'>Content-Type: application/json&#x0A;X-Telematics-Secret: ${env.TELEMATICS_WEBHOOK_SECRET}</entry>
+
+    <!-- Filter Configuration: Discard duplicate coordinates & non-moving jitter -->
+    <entry key='filter.enable'>true</entry>
+    <entry key='filter.future'>86400</entry>
+    <entry key='filter.duplicate'>true</entry>
+    <entry key='filter.distance'>10</entry>
+    <entry key='filter.skipLimit'>300</entry>
+
+    <!-- Protocol Listeners Enabled -->
+    <entry key='teltonika.port'>5027</entry>
+    <entry key='gt06.port'>5023</entry>
+    <entry key='tk103.port'>5001</entry>
+    <entry key='queclink.port'>5004</entry>
+    <entry key='h02.port'>5013</entry>
+    <entry key='jt808.port'>5008</entry>
+    <entry key='meitrack.port'>5020</entry>
+    <entry key='ais140.port'>5140</entry>
+    <entry key='osmand.port'>5055</entry>
+
+    <!-- Logging -->
+    <entry key='logger.level'>info</entry>
+    <entry key='logger.file'>/opt/traccar/logs/tracker-server.log</entry>
+</properties>

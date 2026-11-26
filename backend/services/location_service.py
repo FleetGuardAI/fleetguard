@@ -8,12 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 
+from config import settings
+
 from models.location_tracking import VehicleLocation, VehicleCurrentLocation, LocationSource
 from models.trip_domain import Trip
 from models.vehicle_domain import Vehicle
 from models.driver_domain import Driver
-from models.asset_domain import Asset, AssetType
+from models.asset_domain import Asset, AssetType, AssetOperationalStatus, ConnectionStatus
 from models.operational_event import OperationalEvent, EventType, EntityType, CaptureMethod
+from models.outbox_event import OutboxEvent, OutboxStatus
 from schemas.operational_event import OperationalEventResponse
 from schemas.telematics import NormalizedHardwareEvent
 
@@ -24,6 +27,15 @@ LIVE_LOCATION_ASSIGNMENT_WINDOW_MINUTES = 30
 
 
 class LocationService:
+    @staticmethod
+    def _normalize_dt(dt: Optional[datetime]) -> Optional[datetime]:
+        """Ensures datetime is offset-aware in UTC for safe comparisons."""
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     @staticmethod
     def _generate_fingerprint(
         source: str, 
@@ -157,6 +169,10 @@ class LocationService:
             
             # Prepare metadata
             metadata = {}
+            if getattr(loc, "source_metadata", None):
+                metadata.update(loc.source_metadata)
+            if getattr(loc, "ignition_status", None) is not None:
+                metadata["ignition"] = loc.ignition_status
             if getattr(loc, "battery_percent", None) is not None:
                 metadata["battery_percent"] = loc.battery_percent
             if getattr(loc, "activity_state", None) is not None:
@@ -253,10 +269,11 @@ class LocationService:
                         await db.flush()
                         
                         outbox_payload = OperationalEventResponse.model_validate(op_event).model_dump(mode="json")
-                        outbox_msg = OutboxMessage(
+                        outbox_msg = OutboxEvent(
                             topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
                             payload=outbox_payload,
-                            event_id=str(op_event.id)
+                            event_id=str(op_event.id),
+                            status=OutboxStatus.PENDING
                         )
                         db.add(outbox_msg)
 
@@ -304,8 +321,8 @@ class LocationService:
         for loc in locations:
             item_status = {"timestamp": loc.timestamp}
             
-            # Extract timestamp
-            ts = loc.timestamp
+            # Extract and normalize timestamp to UTC
+            ts = cls._normalize_dt(loc.timestamp) or datetime.now(timezone.utc)
             
             # Validate coordinates
             if not (-90 <= loc.latitude <= 90) or not (-180 <= loc.longitude <= 180):
@@ -321,10 +338,13 @@ class LocationService:
             device_id = None
             
             if loc.device_imei:
-                # 1. Resolve by IMEI
+                # 1. Resolve by IMEI or Serial Number
                 asset_query = select(Asset).where(
                     and_(
-                        Asset.serial_number == loc.device_imei,
+                        or_(
+                            Asset.imei == loc.device_imei,
+                            Asset.serial_number == loc.device_imei
+                        ),
                         Asset.asset_type == AssetType.GPS_DEVICE
                     )
                 )
@@ -346,8 +366,32 @@ class LocationService:
                 device_id = asset.id
                 
                 if not asset.current_vehicle_id:
-                    item_status["status"] = "device_not_assigned"
-                    result["rejected"] += 1
+                    # Unassigned hardware sends valid GPS telemetry:
+                    # Update Asset state directly without creating VehicleLocation
+                    ts = cls._normalize_dt(loc.timestamp) or datetime.now(timezone.utc)
+                    if asset.last_communication_at is None or ts >= cls._normalize_dt(asset.last_communication_at):
+                        asset.last_communication_at = ts
+                        asset.last_known_lat = loc.latitude
+                        asset.last_known_lng = loc.longitude
+                        if loc.speed is not None:
+                            asset.last_known_speed = loc.speed
+                        if loc.heading is not None:
+                            asset.last_known_heading = loc.heading
+                        if loc.ignition_status is not None:
+                            asset.last_known_ignition = loc.ignition_status
+                        if loc.source_metadata and isinstance(loc.source_metadata, dict):
+                            batt = loc.source_metadata.get("battery_level") or loc.source_metadata.get("battery")
+                            if batt is not None:
+                                try:
+                                    asset.last_known_battery = float(batt)
+                                except (ValueError, TypeError):
+                                    pass
+
+                    asset.connection_status = ConnectionStatus.CONNECTED.value
+                    asset.operational_status = AssetOperationalStatus.OK
+
+                    item_status["status"] = "accepted_unassigned"
+                    result["accepted"] += 1
                     result["items"].append(item_status)
                     continue
                     
@@ -399,6 +443,16 @@ class LocationService:
                 latitude=loc.latitude,
                 longitude=loc.longitude
             )
+            
+            # Idempotency / Duplicate Check
+            dup_check = await db.execute(
+                select(VehicleLocation.id).where(VehicleLocation.event_fingerprint == fingerprint).limit(1)
+            )
+            if dup_check.scalar_one_or_none():
+                item_status["status"] = "duplicate"
+                result["duplicates"] += 1
+                result["items"].append(item_status)
+                continue
             
             metadata = loc.source_metadata or {}
             if loc.ignition_status is not None:
@@ -453,7 +507,7 @@ class LocationService:
                         )
                         db.add(current_loc)
                         is_newer_than_cache = True
-                    elif ts > current_loc.last_timestamp:
+                    elif ts > cls._normalize_dt(current_loc.last_timestamp):
                         current_loc.latitude = loc.latitude
                         current_loc.longitude = loc.longitude
                         current_loc.speed = loc.speed
@@ -469,21 +523,42 @@ class LocationService:
                         current_loc.last_received_at = datetime.now(timezone.utc)
                         is_stale_for_hardware = True
 
-                    # 3. Cross-source vehicle cache
-                    if vehicle.last_location_at is None or ts > vehicle.last_location_at:
-                        vehicle.last_known_lat = loc.latitude
-                        vehicle.last_known_lng = loc.longitude
-                        vehicle.last_location_at = ts
-                        vehicle.last_location_source = LocationSource.HARDWARE_GPS.value
+                    # 3. Cross-source vehicle cache (if supported by vehicle model)
+                    if hasattr(vehicle, "last_location_at"):
+                        if vehicle.last_location_at is None or ts > cls._normalize_dt(vehicle.last_location_at):
+                            vehicle.last_known_lat = loc.latitude
+                            vehicle.last_known_lng = loc.longitude
+                            vehicle.last_location_at = ts
+                            vehicle.last_location_source = LocationSource.HARDWARE_GPS.value
+
+                    # 4. Update Asset hardware telemetry state
+                    if asset:
+                        if asset.last_communication_at is None or ts >= cls._normalize_dt(asset.last_communication_at):
+                            asset.last_communication_at = ts
+                            asset.last_known_lat = loc.latitude
+                            asset.last_known_lng = loc.longitude
+                            asset.last_known_speed = loc.speed
+                            asset.last_known_heading = loc.heading
+                            if loc.ignition_status is not None:
+                                asset.last_known_ignition = loc.ignition_status
+                            if loc.source_metadata and isinstance(loc.source_metadata, dict):
+                                batt = loc.source_metadata.get("battery_level") or loc.source_metadata.get("battery")
+                                if batt is not None:
+                                    try:
+                                        asset.last_known_battery = float(batt)
+                                    except (ValueError, TypeError):
+                                        pass
+                        asset.connection_status = ConnectionStatus.CONNECTED.value
+                        asset.operational_status = AssetOperationalStatus.OK
                         
                     if is_newer_than_cache:
-                        # Emit LOCATION_UPDATED event
+                        # Emit POSITION_RECORDED event
                         op_event = OperationalEvent(
-                            event_type=EventType.LOCATION_UPDATED,
+                            event_type=EventType.POSITION_RECORDED,
                             entity_type=EntityType.VEHICLE,
                             entity_id=str(vehicle_id),
                             occurred_at=ts,
-                            capture_method=CaptureMethod.API,
+                            capture_method=CaptureMethod.TELEMATICS,
                             created_by=str(device_id),
                             company_id=company_id,
                             payload={
@@ -498,10 +573,11 @@ class LocationService:
                         await db.flush()
                         
                         outbox_payload = OperationalEventResponse.model_validate(op_event).model_dump(mode="json")
-                        outbox_msg = OutboxMessage(
+                        outbox_msg = OutboxEvent(
                             topic=settings.KAFKA_OPERATIONAL_EVENTS_TOPIC,
                             payload=outbox_payload,
-                            event_id=str(op_event.id)
+                            event_id=str(op_event.id),
+                            status=OutboxStatus.PENDING
                         )
                         db.add(outbox_msg)
                         

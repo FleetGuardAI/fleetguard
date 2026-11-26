@@ -26,7 +26,10 @@ from models.route_domain import (
 )
 from models.maintenance_domain import MaintenanceRecord, MaintenanceTask
 from models.tyre_domain import Tyre, TyreLifecycleRecord
-from models.asset_domain import Asset, AssetHistory, AssetOperationalStatus, AssetHistoryCategory
+from models.asset_domain import (
+    Asset, AssetHistory, AssetOperationalStatus, AssetHistoryCategory,
+    GPSProviderAccount, ConnectionStatus, ConnectionType
+)
 from models.expense_domain import Expense, ExpenseCategory, ExpenseStatus
 from models.ticket import Ticket
 from models.fuel_log import FuelLog
@@ -63,6 +66,7 @@ from models.notification import Notification, NotificationCategory
 
 # --- Admin & Support (Internal) ---
 from models.admin_domain import AdminRole, Permission, AdminRolePermission, AdminUser, AdminAuditLog, AdminNotification
+from models.support_domain import SupportTicket, SupportTicketMessage, SupportTicketAttachment, PasswordResetRequestAdmin
 # --- Copilot History & Memory ---
 from models.conversation import Conversation, ConversationMessage
 
