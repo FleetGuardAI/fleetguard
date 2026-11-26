@@ -469,6 +469,7 @@ app.include_router(trip_domain_router, prefix=API_PREFIX)
 app.include_router(maintenance_domain_router, prefix=API_PREFIX)
 app.include_router(tyre_domain_router, prefix=API_PREFIX)
 app.include_router(asset_domain_router, prefix=API_PREFIX)
+app.include_router(asset_domain_router)  # Dual mount for direct /v1 client calls
 app.include_router(vehicle_domain_router, prefix=API_PREFIX)
 app.include_router(expense_router, prefix=API_PREFIX)
 app.include_router(fuel_router, prefix=API_PREFIX)

@@ -22,12 +22,45 @@ def upgrade():
     existing_cols = {col['name'] for col in inspector.get_columns('assets')} if 'assets' in existing_tables else set()
     existing_indexes = {idx['name'] for idx in inspector.get_indexes('assets')} if 'assets' in existing_tables else set()
 
-    # 1. Add company_id to assets table if not present
+    # 1. Add company_id and all hardware & telematics columns to assets table if not present
     if 'company_id' not in existing_cols:
         op.add_column('assets', sa.Column('company_id', sa.Integer(), nullable=True))
     
+    col_definitions = [
+        ('device_name', sa.Column('device_name', sa.String(length=255), nullable=True)),
+        ('imei', sa.Column('imei', sa.String(length=100), nullable=True)),
+        ('connection_type', sa.Column('connection_type', sa.String(length=50), server_default='DIRECT_HARDWARE', nullable=False)),
+        ('connection_status', sa.Column('connection_status', sa.String(length=50), server_default='PENDING', nullable=False)),
+        ('protocol', sa.Column('protocol', sa.String(length=100), nullable=True)),
+        ('gps_provider', sa.Column('gps_provider', sa.String(length=100), nullable=True)),
+        ('encrypted_credentials', sa.Column('encrypted_credentials', sa.Text(), nullable=True)),
+        ('connection_config', sa.Column('connection_config', sa.JSON(), nullable=True)),
+        ('last_communication_at', sa.Column('last_communication_at', sa.DateTime(timezone=True), nullable=True)),
+        ('last_known_lat', sa.Column('last_known_lat', sa.Float(), nullable=True)),
+        ('last_known_lng', sa.Column('last_known_lng', sa.Float(), nullable=True)),
+        ('last_known_speed', sa.Column('last_known_speed', sa.Float(), nullable=True)),
+        ('last_known_heading', sa.Column('last_known_heading', sa.Float(), nullable=True)),
+        ('last_known_ignition', sa.Column('last_known_ignition', sa.Boolean(), nullable=True)),
+        ('last_known_battery', sa.Column('last_known_battery', sa.Float(), nullable=True)),
+        ('last_known_address', sa.Column('last_known_address', sa.String(length=500), nullable=True)),
+        ('installation_date', sa.Column('installation_date', sa.DateTime(timezone=True), nullable=True)),
+        ('offline_threshold_minutes', sa.Column('offline_threshold_minutes', sa.Integer(), server_default='15', nullable=False)),
+        ('created_at', sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False)),
+        ('updated_at', sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False)),
+    ]
+
+    for col_name, col_obj in col_definitions:
+        if col_name not in existing_cols:
+            op.add_column('assets', col_obj)
+
     if 'ix_assets_company_id' not in existing_indexes:
         op.create_index(op.f('ix_assets_company_id'), 'assets', ['company_id'], unique=False)
+    if 'ix_assets_imei' not in existing_indexes:
+        op.create_index(op.f('ix_assets_imei'), 'assets', ['imei'], unique=False)
+    if 'ix_assets_connection_status' not in existing_indexes:
+        op.create_index(op.f('ix_assets_connection_status'), 'assets', ['connection_status'], unique=False)
+    if 'ix_assets_last_communication_at' not in existing_indexes:
+        op.create_index(op.f('ix_assets_last_communication_at'), 'assets', ['last_communication_at'], unique=False)
     
     # 2. Backfill company_id from vehicles if current_vehicle_id is set
     op.execute("""
@@ -87,43 +120,7 @@ def upgrade():
     # 5. Enforce NOT NULL constraint on company_id now that every record is safely reconciled
     op.alter_column('assets', 'company_id', nullable=False)
 
-    # 6. Add remaining hardware & telematics columns idempotently
-    col_definitions = [
-        ('device_name', sa.Column('device_name', sa.String(length=255), nullable=True)),
-        ('imei', sa.Column('imei', sa.String(length=100), nullable=True)),
-        ('connection_type', sa.Column('connection_type', sa.String(length=50), server_default='DIRECT_HARDWARE', nullable=False)),
-        ('connection_status', sa.Column('connection_status', sa.String(length=50), server_default='PENDING', nullable=False)),
-        ('protocol', sa.Column('protocol', sa.String(length=100), nullable=True)),
-        ('gps_provider', sa.Column('gps_provider', sa.String(length=100), nullable=True)),
-        ('encrypted_credentials', sa.Column('encrypted_credentials', sa.Text(), nullable=True)),
-        ('connection_config', sa.Column('connection_config', sa.JSON(), nullable=True)),
-        ('last_communication_at', sa.Column('last_communication_at', sa.DateTime(timezone=True), nullable=True)),
-        ('last_known_lat', sa.Column('last_known_lat', sa.Float(), nullable=True)),
-        ('last_known_lng', sa.Column('last_known_lng', sa.Float(), nullable=True)),
-        ('last_known_speed', sa.Column('last_known_speed', sa.Float(), nullable=True)),
-        ('last_known_heading', sa.Column('last_known_heading', sa.Float(), nullable=True)),
-        ('last_known_ignition', sa.Column('last_known_ignition', sa.Boolean(), nullable=True)),
-        ('last_known_battery', sa.Column('last_known_battery', sa.Float(), nullable=True)),
-        ('last_known_address', sa.Column('last_known_address', sa.String(length=500), nullable=True)),
-        ('installation_date', sa.Column('installation_date', sa.DateTime(timezone=True), nullable=True)),
-        ('offline_threshold_minutes', sa.Column('offline_threshold_minutes', sa.Integer(), server_default='15', nullable=False)),
-        ('created_at', sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False)),
-        ('updated_at', sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False)),
-    ]
-
-    for col_name, col_obj in col_definitions:
-        if col_name not in existing_cols:
-            op.add_column('assets', col_obj)
-
-    # Indexes
-    if 'ix_assets_imei' not in existing_indexes:
-        op.create_index(op.f('ix_assets_imei'), 'assets', ['imei'], unique=False)
-    if 'ix_assets_connection_status' not in existing_indexes:
-        op.create_index(op.f('ix_assets_connection_status'), 'assets', ['connection_status'], unique=False)
-    if 'ix_assets_last_communication_at' not in existing_indexes:
-        op.create_index(op.f('ix_assets_last_communication_at'), 'assets', ['last_communication_at'], unique=False)
-
-    # 7. Create gps_provider_accounts table if not present
+    # 6. Create gps_provider_accounts table if not present
     if 'gps_provider_accounts' not in existing_tables:
         op.create_table(
             'gps_provider_accounts',

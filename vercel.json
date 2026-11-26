@@ -15,6 +15,10 @@
       "destination": "https://fleetguard-hpip.onrender.com/api/$1"
     },
     {
+      "source": "/v1/(.*)",
+      "destination": "https://fleetguard-hpip.onrender.com/api/v1/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

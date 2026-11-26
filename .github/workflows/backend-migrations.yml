@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'backend/models/**'
-      - 'backend/alembic/**'
+      - 'backend/migrations/**'
       - 'backend/alembic.ini'
   workflow_dispatch:
 

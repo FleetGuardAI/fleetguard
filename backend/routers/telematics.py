@@ -109,8 +109,7 @@ async def process_traccar_webhook(
     if not normalized_events:
         return TelematicsBatchResponse(accepted=0, duplicates=0, rejected=len(items), items=[])
 
-    app_state = getattr(getattr(request, "app", None), "state", None)
-    active_settings = getattr(app_state, "settings", None) or settings
+    active_settings = _get_settings(request)
     allow_reg = getattr(active_settings, "ALLOW_REGISTRATION_ONLY_TELEMATICS", False)
     
     result = await LocationService.process_hardware_batch(
@@ -168,8 +167,7 @@ async def process_direct_protocol_report(
     if not normalized_events:
         return TelematicsBatchResponse(accepted=0, duplicates=0, rejected=len(items), items=[])
 
-    app_state = getattr(getattr(request, "app", None), "state", None)
-    active_settings = getattr(app_state, "settings", None) or settings
+    active_settings = _get_settings(request)
     allow_reg = getattr(active_settings, "ALLOW_REGISTRATION_ONLY_TELEMATICS", False)
     
     result = await LocationService.process_hardware_batch(
